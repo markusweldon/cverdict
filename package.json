@@ -1,0 +1,31 @@
+{
+  "name": "cve-triage-wip",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source CVE triage: the few CVEs that matter today, and exactly why.",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "pipeline": "tsx pipeline/src/cli.ts",
+    "dev": "vite --config site/vite.config.ts",
+    "build": "vite build --config site/vite.config.ts",
+    "preview": "vite preview --config site/vite.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "preact": "^11.0.2"
+  },
+  "devDependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
