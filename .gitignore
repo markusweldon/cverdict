@@ -1,0 +1,9 @@
+node_modules/
+site/dist/
+site/public/data/
+.cache/
+out/
+published/
+*.log
+.DS_Store
+.vercel
