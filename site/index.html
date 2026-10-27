@@ -2,11 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>smoke</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-uri 'self'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>CVErdict — the few CVEs that matter today</title>
+    <meta name="description" content="CVErdict: open-source CVE triage for the 2026 flood. The few CVEs that matter today, and exactly why — built only from free public data, refreshed hourly." />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0A0B0D" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FAFAF9" media="(prefers-color-scheme: light)" />
+    <meta property="og:title" content="CVErdict" />
+    <meta property="og:description" content="The few CVEs that matter today, and exactly why. Open data, refreshed hourly." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" type="application/atom+xml" title="CVErdict · signal" href="%BASE_URL%data/feeds/signal.xml" />
+    <link rel="preload" href="../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="app"></div>
+    <noscript>
+      <p style="font-family: system-ui, sans-serif; padding: 24px; max-width: 640px">
+        CVErdict needs JavaScript for its interactive views. The data is open: start with
+        <a href="%BASE_URL%data/v1/signal.json">data/v1/signal.json</a> or subscribe to <a href="%BASE_URL%data/feeds/signal.xml">the Atom feed</a>.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

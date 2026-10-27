@@ -1,0 +1,284 @@
+# Open data API
+
+Everything CVErdict shows is published as static JSON and feeds, rebuilt every hour, free to use
+without a key. The TypeScript types are the contract: [`shared/contract.ts`](../shared/contract.ts).
+This page explains them.
+
+```sh
+# Raw files on the data branch (CORS: any origin)
+https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/meta.json
+# The same files through the site
+https://cverdict.vercel.app/data/v1/meta.json
+```
+
+Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from upstream sources
+(CVE descriptions, KEV entries, EPSS scores) stay under their own terms: see
+[ATTRIBUTIONS.md](../ATTRIBUTIONS.md).
+
+## Files
+
+| Path | Type in `contract.ts` | Contents | Size (gzip) |
+|---|---|---|--:|
+| `v1/meta.json` | `Meta` | Run metadata, headline counts with definitions, source health | ~2 KB |
+| `v1/signal.json` | `RowTable` | Window CVEs with score ≥ 35, plus every exploited or weaponized one; score desc, then newest | ~50 KB |
+| `v1/index.json` | `RowTable` | Every CVE published in the window; newest first | ~700 KB |
+| `v1/cve/<xx>.json` | `CveShard` | Full detail for window CVEs and every KEV CVE; 256 shards | ~25–50 KB each |
+| `v1/batches.json` | `BatchesFile` | Patch-day batches in the window; newest first | ~30 KB |
+| `v1/kev.json` | `KevFile` | KEV entries added in the last 30 days or due from 14 days ago on; newest first | ~4 KB |
+| `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
+| `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
+| `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~25 KB |
+| `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
+| `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
+
+The **window** is the 30 days before `meta.generated_at` (`meta.window`). Sizes are from a typical
+run; the pipeline fails a run rather than publish files far over budget.
+
+## Conventions
+
+- Minified UTF-8 JSON. Every JSON file has `schema_version` (currently `1`) and `generated_at`
+  (the run's time, ISO 8601 UTC).
+- Date-times are ISO 8601 UTC (`2026-10-26T19:30:00.000Z`); calendar dates are `YYYY-MM-DD`.
+- Missing values are `null`, never omitted, except the optional `Reason.url` and `Reason.at`.
+- **All text is plain text and attacker-controllable.** CVE titles and descriptions are written
+  by CNAs and sometimes contain HTML or script payloads. Never render them as HTML. Reference
+  links are filtered to `http(s)` URLs, but they still point at third-party content.
+- **Chip ids are stable, labels are not.** Use `Reason.id` (and `polarity`, `points`) in code;
+  labels are for humans and change wording freely.
+
+## Row tables: `index.json`, `signal.json`
+
+List files are columnar to stay small: `rows[i][j]` is the value of column `cols[j]`.
+
+```json
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-26T19:30:00.000Z",
+  "scope": "score >= 35 or exploited/weaponized; published in the last 30 days",
+  "cols": ["id","pub","cna","v","p","t","s","tier","x","w","k","ai","c","cv","e","kd","b"],
+  "rows": [["CVE-2026-107656","2026-10-26T13:45:03Z","fortinet","Fortinet","FortiSandbox","An authentication bypass…",100,"exploited",1,0,0,0,["vendor.exploited","sev.crit_net","prior.product","ssvc.total"],9.6,null,null,null]]
+}
+```
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | string | CVE ID |
+| `pub` | string | `datePublished`, ISO 8601 UTC |
+| `cna` | string | CNA short name (`assignerShortName`) |
+| `v`, `p` | string | Vendor and product of the first affected entry (`""` if unknown) |
+| `t` | string | Title, or the description cut to 160 characters |
+| `s` | number | Evidence score, 0–100 |
+| `tier` | string | `exploited` \| `likely` \| `watch` \| `quiet` at the default knob |
+| `x` | 0 \| 1 | Any confirmed-exploitation (E) chip fired |
+| `w` | 0 \| 1 | Weaponized: a Metasploit module or Nuclei template exists |
+| `k` | 0 \| 1 | In CISA KEV |
+| `ai` | 0 \| 1 | The CNA credits an AI system or lab (information only) |
+| `c` | string[] | Up to 4 chip ids, strongest first, positive before negative |
+| `cv` | number \| null | CVSS base score (CNA first, then CISA-ADP) |
+| `e` | number \| null | EPSS probability, 0–1 |
+| `kd` | string \| null | KEV due date |
+| `b` | string \| null | Batch id, when the CVE belongs to a patch-day batch |
+
+Map columns by name from `cols`, not by position. In TypeScript, `rowsFromTable()` from
+`shared/contract.ts` does it; in jq:
+
+```sh
+jq '.cols as $c | [.rows[] | [$c, .] | transpose | map({(.[0]): .[1]}) | add]' signal.json
+```
+
+To re-tier at another knob, use `tierFor(s, x === 1, w === 1, knob)` from `shared/contract.ts`:
+Exploited when `x`; else Likely next when `w` or `s ≥ knob`; else Watch when `s ≥ 25`; else Quiet.
+
+## `meta.json`
+
+| Field | Meaning |
+|---|---|
+| `score_model` | Version of the scoring model (`shared/model.ts`), e.g. `v0.1.0` |
+| `knob_default` | Knob used for every stored `tier` (default 50) |
+| `window` | `{ from, to, days }` of the window |
+| `counts` | Headline numbers, below |
+| `definitions` | A plain-language definition of every key in `counts` |
+| `sources[]` | One `SourceStatus` per upstream source, below |
+
+`counts`: `window_published`, `window_passed` (Exploited + Likely next), `window_by_tier`,
+`published_24h`, `passed_24h`, `published_7d`, `passed_7d`, `published_mtd`, `published_ytd`,
+`rejected_window`, `kev_total`, `kev_adds_30d`, `kev_adds_mtd`, `ai_credited_window`,
+`batches_window`. Read `definitions` for the exact meaning of each, rather than guessing.
+
+`SourceStatus`:
+
+| Field | Meaning |
+|---|---|
+| `id` | `cvelist`, `cisa-adp`, `kev`, `epss`, `metasploit`, `nuclei`, `exploitdb`, `poc-github` |
+| `name`, `url`, `license` | What the source is and its terms |
+| `ok` | Usable data was available this run |
+| `stale` | The live fetch failed and the last good copy was used |
+| `fetched_at` | When that copy was downloaded (for git sources: the upstream commit time) |
+| `upstream_version` | KEV catalog version, EPSS model and date, git commit, … |
+| `records` | Number of records parsed |
+| `error` | Why the fetch failed, if it did |
+
+## `cve/<xx>.json` and sharding
+
+Per-CVE detail is split into 256 shards. The shard of an ID is the FNV-1a 32-bit hash of the
+trimmed, upper-cased ID, modulo 256, as two lower-case hex digits (`shared/shard.ts`):
+
+```ts
+function shardOf(id: string): string {
+  let h = 0x811c9dc5;
+  for (const ch of id.trim().toUpperCase()) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193);
+  return ((h >>> 0) % 256).toString(16).padStart(2, '0');
+}
+// shardOf('CVE-2026-96951') === 'a5'
+```
+
+```sh
+# The same in Python, for scripts
+python3 -c 'import sys,functools as f;print("%02x"%(f.reduce(lambda h,c:((h^ord(c))*16777619)&0xffffffff,sys.argv[1].upper(),2166136261)%256))' CVE-2026-96951
+```
+
+Every shard file exists, even an empty one, so a lookup never 404s on a valid shard. A CVE that is
+neither in the window nor in KEV is not in any shard. The file is
+`{ schema_version, generated_at, items: { "<CVE ID>": CveDetail } }`.
+
+`CveDetail`:
+
+| Field | Meaning |
+|---|---|
+| `id`, `state` | CVE ID; always `PUBLISHED` (rejected records are not emitted) |
+| `published`, `reserved`, `updated` | Dates from `cveMetadata` |
+| `cna`, `title`, `description` | CNA short name; title (or `null`); English description, plain text, ≤ 1,000 characters |
+| `cvss` | `{ version, score, severity, vector, source: "cna" \| "cisa-adp" }` or `null` |
+| `cwe` | CWE ids |
+| `affected` | Up to 10 `{ vendor, product, purl }` |
+| `ssvc` | CISA SSVC `{ exploitation: none\|poc\|active, automatable: yes\|no, technical_impact: partial\|total, version, timestamp }` or `null` |
+| `kev` | `{ date_added, due_date, ransomware: Known\|Unknown, forensic_triage, name, required_action, notes }` or `null` |
+| `epss` | `{ score, percentile, date, model }` or `null` |
+| `exploits` | `metasploit[]` (`name, fullname, rank, type, url`), `nuclei[]` (`path, severity, url`), `exploitdb[]` (`id, verified, url, date`), `poc` (`count, vetted, hype, top[]` with `url, stars, created`) |
+| `ai_credit` | The matched CNA credit text, when it names an AI system or lab |
+| `tags` | CNA tags such as `disputed`, `unsupported-when-assigned` |
+| `batch` | Batch id or `null` |
+| `score` | `{ value, tier, raw, model }`: `raw` is the score before the exploitation floor and clamping |
+| `reasons[]` | Every chip, ordered E, X, SEV, SSVC, PRIOR, NOISE, then info and unknown chips |
+| `unknowns[]` | Evidence we could not see, in words |
+| `timeline[]` | `{ at, event, source }`, oldest first |
+| `references[]` | Up to 10 reference URLs from the CNA |
+
+A `Reason` is `{ id, label, polarity: up|down|info|unknown, family: E|X|SEV|SSVC|PRIOR|NOISE|INFO, points, source, url?, at? }`.
+Chips that lost to a stronger one in their family are included with `points: 0`, so
+`15 + Σ points` reproduces the score. Every chip id is listed in [SCORING.md](SCORING.md#chips-and-points).
+
+PoC repository links are third-party, unverified, and may be malware.
+
+## `batches.json`
+
+`{ schema_version, generated_at, min_size: 50, batches: Batch[] }`. A batch is 50 or more CVEs from
+one CNA published on one UTC day, such as a Patch Tuesday.
+
+| Field | Meaning |
+|---|---|
+| `id` | `<cna slug>-<YYYY-MM-DD>`, e.g. `microsoft-2026-10-13` |
+| `cna`, `date`, `count` | Who, which day, how many |
+| `by_tier` | Count per tier at the default knob |
+| `families` | Up to 8 most common products: `{ name, count, passed }` |
+| `top` | Up to 5 highest-scoring rows (objects, not columnar) |
+
+## `kev.json`
+
+`{ schema_version, generated_at, catalog_version, entries: KevEntry[] }`, newest addition first.
+Entries: `id, vendor, product, name, date_added, due_date, ransomware, forensic_triage,
+description, required_action`, plus `in_window` (the CVE was published in the window) and `score`
+(our score, if we have the record).
+
+## `stats.json`
+
+| Field | Meaning |
+|---|---|
+| `monthly[]` | Every month since 1999: `{ month, published, reserved, rejected, ai, kev_added }`. `reserved` buckets published records by their reservation month |
+| `daily[]` | Each window day, oldest first: `{ date, published, passed, exploited }` |
+| `hourly` | `{ start, hours, counts }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start` |
+| `cnas[]` | Top 25 CNAs in the window: `{ cna, count, passed, no_cvss, ssvc_missing }` |
+| `ai_credits[]` | Top 20 AI credit strings: `{ text, count }` |
+
+## `changes.json`
+
+`{ schema_version, generated_at, items: Change[] }`: escalations in the last 7 days, newest first,
+at most 500. An item is recorded when a CVE's tier rose, or a new exploitation or exploit chip
+appeared, between two hourly runs: `{ id, at, from, to, added }`. `from` is `null` for a CVE seen for
+the first time; `added` lists the chip ids that appeared.
+
+## Feeds
+
+- `feeds/signal.xml`: Atom, the newest 100 Exploited and Likely-next CVEs. Entry titles are
+  `CVE-… · <vendor> <product> · <tier>`, summaries list the top chips.
+- `feeds/kev.xml`: Atom, KEV additions of the last 30 days.
+- `feeds/kev-due.ics`: iCalendar with one all-day event per KEV due date, from 7 days ago to 60
+  days ahead. Event UIDs are stable per CVE, so calendar apps update events instead of duplicating them.
+
+## Update cadence
+
+The `refresh-data` workflow runs every hour at minute 17 (UTC) and usually publishes within a few
+minutes. raw.githubusercontent.com caches files for up to 5 minutes, and the site's `/data/` path
+adds a short CDN cache, so expect data at most about 75 minutes old. When nothing changed since
+the previous run, nothing is published and the files keep the earlier `generated_at`; when a run
+fails, the previous data stays up. Always check `meta.generated_at` and `meta.sources[].stale`
+before acting on absence of evidence.
+
+The data branch is a single force-pushed commit with no history. If you need history, archive the
+files yourself.
+
+## Stability and versioning
+
+- Paths under `v1/` and `schema_version: 1` are stable. Within v1 we only make **additive** changes:
+  new fields, new files, new chip ids, new source ids. Clients must ignore unknown fields and
+  handle unknown chip ids by their `polarity`, `points` and `label`.
+- A **breaking** change (renaming, removing or redefining a field, changing the row columns, the
+  shard function or the tier names) bumps `schema_version` and moves to `v2/`. Both versions are
+  published side by side for at least 30 days, announced in the repository's releases.
+- **Scores are not stable across score models.** Re-weighting changes values and tiers without a
+  schema change; `meta.score_model` and `score.model` say which model produced them, and
+  [SCORING.md](SCORING.md) documents each one.
+
+## Examples
+
+```sh
+BASE=https://raw.githubusercontent.com/markusweldon/cverdict/data/v1
+
+# When was this generated, and is any source stale?
+curl -s $BASE/meta.json | jq '{generated_at, score_model, stale: [.sources[] | select(.stale or (.ok | not)) | .id]}'
+
+# Exploited CVEs in the window as TSV: id, score, vendor, product
+curl -s $BASE/signal.json | jq -r '
+  .cols as $c | .rows[] | [$c, .] | transpose | map({(.[0]): .[1]}) | add
+  | select(.tier == "exploited") | [.id, .s, .v, .p] | @tsv'
+
+# Likely next at a stricter knob of 60
+curl -s $BASE/signal.json | jq -r --argjson knob 60 '
+  .cols as $c | .rows[] | [$c, .] | transpose | map({(.[0]): .[1]}) | add
+  | select(.x == 0 and (.w == 1 or .s >= $knob)) | [.id, .s, .v, .p] | @tsv'
+
+# Everything from one vendor in the window, newest first
+curl -s $BASE/index.json | jq -r --arg v fortinet '
+  .cols as $c | .rows[] | [$c, .] | transpose | map({(.[0]): .[1]}) | add
+  | select(.v | ascii_downcase | contains($v)) | [.pub[:10], .id, .tier, .s, .t] | @tsv'
+
+# The full reasoning for one CVE
+id=CVE-2026-96951
+shard=$(python3 -c 'import sys,functools as f;print("%02x"%(f.reduce(lambda h,c:((h^ord(c))*16777619)&0xffffffff,sys.argv[1].upper(),2166136261)%256))' $id)
+curl -s $BASE/cve/$shard.json | jq -r --arg id $id '
+  .items[$id] | "\(.id) · \(.score.tier) · \(.score.value)",
+  (.reasons[] | select(.points != 0) | "  \(.points)\t\(.label)"),
+  (.unknowns[] | "  ?\t\(.)")'
+
+# KEV due dates in the next 7 days
+curl -s $BASE/kev.json | jq -r '
+  (now | strftime("%Y-%m-%d")) as $today | (now + 7 * 86400 | strftime("%Y-%m-%d")) as $week
+  | .entries[] | select(.due_date >= $today and .due_date <= $week) | [.due_date, .id, .vendor, .product] | @tsv'
+
+# What escalated since yesterday
+curl -s $BASE/changes.json | jq -r --arg since "$(date -u -d '-1 day' +%FT%TZ 2>/dev/null || date -u -v-1d +%FT%TZ)" '
+  .items[] | select(.at >= $since) | "\(.at[:16])  \(.id)  \(.from // "new") → \(.to)  \(.added | join(" "))"'
+
+# This year's monthly volume
+curl -s $BASE/stats.json | jq -r '.monthly[] | select(.month >= "2026-01") | [.month, .published, .kev_added, .ai] | @tsv'
+```
