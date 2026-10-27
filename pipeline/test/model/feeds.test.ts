@@ -4,7 +4,7 @@ import type { KevEntry } from '../../../shared/contract';
 import { escapeXml, kevFeed, signalFeed } from '../../src/emit/atom';
 import { escapeIcsText, foldLine, kevDueCalendar } from '../../src/emit/ics';
 import { toDetail } from '../../src/rows';
-import { NOW, dateAgo, daysAgo, makeCve, makeKev, msf, score } from '../fixtures/model/builders';
+import { NOW, cvss, dateAgo, daysAgo, makeCve, makeKev, msf, score, ssvc } from '../fixtures/model/builders';
 
 const SITE = 'https://example.test';
 const opts = { siteUrl: SITE, now: NOW };
@@ -88,6 +88,21 @@ describe('signal Atom feed', () => {
     expect(xml).toMatch(/<summary type="text">Likely next · score \d+\/100\. Metasploit: exploit\/x\/y \(excellent\);/);
     // the entry is dated by its newest positive evidence (KEV dateAdded), not by the run
     expect(xml).toContain(`<updated>${dateAgo(2)}T00:00:00.000Z</updated>`);
+  });
+
+  it('is not re-dated by the daily EPSS score, only by exploitation and exploit evidence', () => {
+    const id = 'CVE-2026-100004';
+    // likely on EPSS alone: 15 + epss.high 27 + sev.crit_net 13 + SSVC 14 − prior.none 6 = 63
+    const epssOnly = toDetail(score(makeCve({ id, published: daysAgo(20), ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') }), { epss: { [id]: [0.5, 0.99] } }));
+    expect(epssOnly.score.tier).toBe('likely');
+    expect(epssOnly.reasons.find((r) => r.id === 'epss.high')).toMatchObject({ points: 27, at: dateAgo(0) });
+    const kevLater = toDetail(score(makeCve({ id: 'CVE-2026-100005', published: daysAgo(20) }), { epss: { 'CVE-2026-100005': [0.5, 0.99] }, kev: [makeKev('CVE-2026-100005', { dateAdded: dateAgo(6) })] }));
+    const feed = signalFeed([epssOnly, kevLater], opts);
+    const updated = [...feed.matchAll(/<entry>[\s\S]*?<id>[^<]*\/(CVE-[\d-]+)\/[^<]*<\/id>[\s\S]*?<updated>([^<]+)<\/updated>/g)].map((m) => [m[1], m[2]]);
+    expect(updated).toEqual([
+      ['CVE-2026-100005', `${dateAgo(6)}T00:00:00.000Z`],
+      [id, new Date(daysAgo(20)).toISOString()],
+    ]);
   });
 
   it('caps at 100 entries', () => {

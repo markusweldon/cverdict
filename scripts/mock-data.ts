@@ -1154,7 +1154,8 @@ function addMetasploit(d: Draft): void {
   const platform = PLATFORM[d.cna] ?? pick(['linux', 'multi', 'unix']);
   const fullname = `exploit/${platform}/http/${slug}`;
   const rank = weighted<number>([[600, 5], [500, 2], [400, 2], [300, 1]]);
-  d.exploits.metasploit.push({ name: `${d.synth.product || 'Target'} Unauthenticated RCE`, fullname, rank, type: 'exploit', url: `https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/${platform}/http/${slug}.rb` });
+  const date = ymd(Math.min(NOW - DAY, d.pub + int(1, 12) * DAY));
+  d.exploits.metasploit.push({ name: `${d.synth.product || 'Target'} Unauthenticated RCE`, fullname, rank, type: 'exploit', url: `https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/${platform}/http/${slug}.rb`, date });
 }
 function addNuclei(d: Draft): void {
   const year = d.id.slice(4, 8);
@@ -1204,8 +1205,13 @@ function markExploited(d: Draft): void {
   } else if (roll < 0.88 || !d.synth.cnaVector) {
     d.vendorItw = true;
     d.synth.description += ` ${d.cna === 'apple' ? 'Apple is aware of a report that this issue may have been exploited in an extremely sophisticated attack against specific targeted individuals.' : d.cna === 'fortinet' ? 'Fortinet has observed this to be exploited in the wild.' : 'The vendor is aware of reports that this vulnerability has been exploited in the wild.'}`;
+  } else if (d.synth.cvss?.version === '4.0') {
+    d.synth.cvss.vector = withMaturity(d.synth.cvss.vector, 'A');
   } else if (d.synth.cvss) {
-    d.synth.cvss.vector = withMaturity(d.synth.cvss.vector, d.synth.cvss.version === '4.0' ? 'A' : 'F');
+    // v3 cannot say "attacked": E:F only says a working exploit exists, so the vendor also says so in words.
+    d.synth.cvss.vector = withMaturity(d.synth.cvss.vector, 'F');
+    d.vendorItw = true;
+    d.synth.description += ' The vendor is aware of reports that this vulnerability has been exploited in the wild.';
   }
   if (chance(0.12)) addMetasploit(d);
   if (chance(0.2)) addNuclei(d);
@@ -1281,7 +1287,7 @@ function score(d: Draft): Scored {
   const e: Reason[] = [];
   if (d.kev) e.push(reason('kev.listed', `CISA KEV · added ${shortDate(Date.parse(d.kev.date_added))} · due ${shortDate(Date.parse(d.kev.due_date))}`, 0, { url: kevUrl(d.id), at: d.kev.date_added }));
   if (d.ssvc?.exploitation === 'active') e.push(reason('ssvc.active', `CISA SSVC: exploitation active · ${shortDate(Date.parse(ssvcAt!))}`, 0, { url: cveUrl(d.id), at: ssvcAt }));
-  if (maturity === 'A' || maturity === 'F' || maturity === 'H') e.push(reason('vendor.exploited', `${d.cna} CVSS vector says exploitation is active (E:${maturity})`, 0, { url: cveUrl(d.id) }));
+  if (maturity === 'A') e.push(reason('vendor.exploited', `${d.cna} CVSS v4 vector says the bug is being attacked (E:A)`, 0, { url: cveUrl(d.id) }));
   if (d.vendorItw) e.push(reason('vendor.itw', `${d.cna} says exploited in the wild · ${shortDate(d.pub)}`, 0, { url: cveUrl(d.id), at: iso(d.pub) }));
   const exploited = e.length > 0;
   const ransomware = exploited && d.kev?.ransomware === 'Known';
@@ -1297,6 +1303,7 @@ function score(d: Draft): Scored {
   if (epssOk && d.epss!.score >= 0.1) x.push(reason('epss.high', epssLabel(d.epss!), 27, { url: epssUrl, at: d.epss!.date }));
   if (ex.poc.vetted > 0) x.push(reason('x.poc', `${ex.poc.count} PoC repo${ex.poc.count === 1 ? '' : 's'} (${ex.poc.vetted} vetted) — unverified, may be malware`, 20, { url: ex.poc.top[0]?.url, at: ex.poc.top[0]?.created }));
   if (d.ssvc?.exploitation === 'poc') x.push(reason('ssvc.poc', 'CISA SSVC: public proof of concept', 10, { url: cveUrl(d.id), at: ssvcAt }));
+  if (maturity === 'F' || maturity === 'H') x.push(reason('vendor.functional', `${d.cna} CVSS vector: ${maturity === 'H' ? 'autonomous' : 'functional'} exploit code exists (E:${maturity})`, 24, { url: cveUrl(d.id) }));
   if (maturity === 'P') x.push(reason('vendor.poc', `${d.cna} CVSS vector: proof of concept exists (E:P)`, 10, { url: cveUrl(d.id) }));
   if (epssOk && d.epss!.score >= 0.01 && d.epss!.score < 0.1) x.push(reason('epss.mid', epssLabel(d.epss!), 8, { url: epssUrl, at: d.epss!.date }));
   x.sort((a, b) => b.points - a.points);
@@ -1333,9 +1340,8 @@ function score(d: Draft): Scored {
   const pr = d.synth.prior;
   const who = d.synth.product || d.synth.vendor || d.cna;
   const prior: Reason[] = [];
-  if (!d.synth.vendor && !d.synth.product) {
-    // No affected entry: nothing to match against KEV (listed under unknowns instead).
-  } else prior.push(
+  if (!d.synth.vendor) prior.push(reason('prior.unknown', 'No affected vendor named — KEV history not checked', 0));
+  else prior.push(
     pr.kind === 'product'
       ? reason('prior.product', `Product in KEV (×${pr.count}): ${who}`, 10, { url: kevUrl(d.synth.product) })
       : pr.kind === 'vendor'
@@ -1421,6 +1427,7 @@ function toRow(s: Scored): Row {
     k: d.kev ? 1 : 0,
     ai: d.aiCredit ? 1 : 0,
     c: topChips(s.reasons),
+    r: [...new Set(s.reasons.filter((r) => r.polarity !== 'unknown').map((r) => r.id))],
     cv: d.synth.cvss?.score ?? null,
     e: d.epss?.score ?? null,
     kd: d.kev?.due_date ?? null,

@@ -190,7 +190,7 @@ strong {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--faint);
+  background: var(--faint-ui);
 }
 
 .dot--accent {
@@ -356,7 +356,7 @@ strong {
 }
 
 .btn:hover {
-  border-color: var(--faint);
+  border-color: var(--faint-ui);
 }
 
 .btn:active {
@@ -529,7 +529,7 @@ strong {
   position: relative;
   width: 12px;
   height: 12px;
-  border: 1px solid var(--faint);
+  border: 1px solid var(--faint-ui);
   border-radius: 3px;
   transition:
     background-color 0.12s,

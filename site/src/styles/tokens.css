@@ -9,7 +9,9 @@
   --border-strong: #30353d;
   --text: #e6e8eb;
   --muted: #8a919c;
-  --faint: #5b616b;
+  /* --faint is for small text (≥ 4.5:1 on every surface); --faint-ui for hairlines, ticks and fills. */
+  --faint: #7d848f;
+  --faint-ui: #5b616b;
   --accent: #c6f432;
   --on-accent: #0a0b0d;
   --exploited: #ff4d4f;
@@ -65,7 +67,8 @@
   --border-strong: #d3d3ce;
   --text: #16181c;
   --muted: #5b616b;
-  --faint: #8a919c;
+  --faint: #686e78;
+  --faint-ui: #8a919c;
   --accent: #4d7c0f;
   --on-accent: #ffffff;
   --exploited: #d92d20;
@@ -95,7 +98,8 @@
     --border-strong: #d3d3ce;
     --text: #16181c;
     --muted: #5b616b;
-    --faint: #8a919c;
+    --faint: #686e78;
+    --faint-ui: #8a919c;
     --accent: #4d7c0f;
     --on-accent: #ffffff;
     --exploited: #d92d20;

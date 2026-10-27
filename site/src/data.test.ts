@@ -7,20 +7,22 @@ type Routes = Record<string, unknown | (() => Response)>;
 
 function fakeFetch(routes: Routes) {
   const calls: string[] = [];
-  const impl = (async (input: RequestInfo | URL) => {
+  const modes: (RequestCache | undefined)[] = [];
+  const impl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     calls.push(url);
+    modes.push(init?.cache);
     const hit = routes[url];
     if (hit === undefined) return new Response('not found', { status: 404 });
     if (typeof hit === 'function') return (hit as () => Response)();
     return new Response(JSON.stringify(hit), { status: 200, headers: { 'content-type': 'application/json' } });
   }) as typeof fetch;
-  return { impl, calls };
+  return { impl, calls, modes };
 }
 
 const base = '/data/v1/';
 const head = { schema_version: SCHEMA_VERSION, generated_at: '2026-10-26T19:30:00.000Z' };
-const row = ['CVE-2026-1001', '2026-10-26T10:00:00Z', 'fortinet', 'Fortinet', 'FortiOS', 'Auth bypass', 92, 'exploited', 1, 0, 1, 0, ['kev.listed'], 9.8, 0.4, '2026-10-29', null];
+const row = ['CVE-2026-1001', '2026-10-26T10:00:00Z', 'fortinet', 'Fortinet', 'FortiOS', 'Auth bypass', 92, 'exploited', 1, 0, 1, 0, ['kev.listed'], ['kev.listed', 'ssvc.active'], 9.8, 0.4, '2026-10-29', null];
 
 describe('createDataClient', () => {
   it('decodes row tables and fetches each file once', async () => {
@@ -29,10 +31,31 @@ describe('createDataClient', () => {
     expect(client.signal.peek()).toBeUndefined();
     const [a, b] = await Promise.all([client.signal.load(), client.signal.load()]);
     expect(a).toBe(b);
-    expect(a[0]).toMatchObject({ id: 'CVE-2026-1001', s: 92, tier: 'exploited', x: 1, c: ['kev.listed'], kd: '2026-10-29' });
+    expect(a[0]).toMatchObject({ id: 'CVE-2026-1001', s: 92, tier: 'exploited', x: 1, c: ['kev.listed'], r: ['kev.listed', 'ssvc.active'], kd: '2026-10-29' });
     expect(client.signal.peek()).toBe(a);
     await client.signal.load();
     expect(calls).toEqual([`${base}signal.json`]);
+  });
+
+  it('decodes tables published before the r column by their own cols', async () => {
+    const cols = ROW_COLS.filter((c) => c !== 'r');
+    const { impl } = fakeFetch({ [`${base}index.json`]: { ...head, scope: 'i', cols, rows: [row.filter((_, i) => i !== 13)] } });
+    const [r] = await createDataClient(base, impl).index.load();
+    expect(r).toMatchObject({ c: ['kev.listed'], cv: 9.8, kd: '2026-10-29' });
+    expect(r.r).toBeUndefined();
+  });
+
+  it('revalidates every file after a fresh reload, and only then', async () => {
+    const id = 'CVE-2026-1001';
+    const routes = { [`${base}meta.json`]: { ...head }, [`${base}cve/${shardOf(id)}.json`]: { ...head, items: {} } };
+    const fresh = fakeFetch(routes);
+    const client = createDataClient(base, fresh.impl, true);
+    await client.meta.load();
+    await client.detail(id).load();
+    expect(fresh.modes).toEqual(['no-cache', 'no-cache']);
+    const plain = fakeFetch(routes);
+    await createDataClient(base, plain.impl).meta.load();
+    expect(plain.modes).toEqual([undefined]);
   });
 
   it('evicts failures so a retry refetches', async () => {

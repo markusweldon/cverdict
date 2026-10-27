@@ -107,6 +107,14 @@ function readStoredWatch(): string[] {
 /** Saved watchlist merged with any shared `?watch=` list. */
 export const watchlist = createStore<string[]>(parseWatch([...readStoredWatch(), ...parseWatch(initialParams().get('watch'))].join(',')));
 watchlist.subscribe((list) => storage.set('watch', JSON.stringify(list)));
+// Adopt a shared list once: save the merge and drop the parameter, or every reload would re-add
+// whatever the viewer has removed since.
+if (browser && initialParams().has('watch')) {
+  storage.set('watch', JSON.stringify(watchlist.get()));
+  const url = new URL(window.location.href);
+  url.searchParams.delete('watch');
+  history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+}
 
 export function isWatched(list: readonly string[], row: Pick<Row, 'v' | 'p'>): boolean {
   if (list.length === 0) return false;
@@ -174,7 +182,14 @@ export function toast(text: string, tone: Toast['tone'] = 'ok'): void {
 
 // ── overlays & keyboard targets ──
 
-export const overlay = createStore<'palette' | 'help' | null>(null);
+export type Overlay = 'palette' | 'help';
+export const overlay = createStore<Overlay | null>(null);
+
+/**
+ * Close `which` if it is still the open overlay. A dialog's close event fires after the switch to
+ * another overlay (palette → help), and must not close the new one.
+ */
+export const closeOverlay = (which: Overlay): void => overlay.set((v) => (v === which ? null : v));
 
 /** Implemented by whichever list is on screen; the global key handler drives it. */
 export interface ListController {

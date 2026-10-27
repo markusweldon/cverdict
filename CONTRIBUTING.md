@@ -13,7 +13,7 @@ run `scripts/publish-data-branch.sh` locally.
 git clone --single-branch https://github.com/markusweldon/cverdict.git
 cd cverdict
 npm ci
-npx tsx scripts/mock-data.ts   # deterministic mock data in site/public/data, for site work
+npm run mock                   # deterministic mock data in site/public/data, for site work
 npm run pipeline               # or real data (the first run clones cvelistV5: a few minutes)
 npm run dev                    # http://localhost:5173
 ```
@@ -21,7 +21,8 @@ npm run dev                    # http://localhost:5173
 | Command | What it does |
 |---|---|
 | `npm run pipeline -- [flags]` | Build the data tree (`--help` lists every flag) |
-| `npx tsx scripts/mock-data.ts [dir]` | Write a deterministic mock data tree (default `site/public/data`) |
+| `npm run mock -- [dir]` | Write a deterministic mock data tree (default `site/public/data`) |
+| `npm run calibrate -- [flags]` | Print the calibration report for the current score model (`--help` lists the flags) |
 | `npm run dev` | Vite dev server for the site, serving `site/public/data` |
 | `npm run build` | Production build into `site/dist` (`BASE=/repo/` for a sub-path) |
 | `npm run preview` | Serve the production build |
@@ -43,7 +44,7 @@ pipeline/   src/ (sources → normalize → score → batches/stats/changes → 
 site/       the Vite + Preact single-page app
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md
 .github/    ci.yml, refresh.yml (hourly data), issue templates
-scripts/    publish-data-branch.sh
+scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts
 ```
 
 [docs/SPEC.md](docs/SPEC.md) is the implementation contract; read it before larger changes.
@@ -80,12 +81,18 @@ Scores only earn trust if changes to them are measured. A pull request that chan
 `shared/model.ts` or a firing rule in `pipeline/src/score.ts` must:
 
 1. Bump `SCORE_MODEL` and update the unit tests and [docs/SCORING.md](docs/SCORING.md).
-2. Include a **calibration diff**, computed on the same frozen inputs before and after
-   (`npm run pipeline -- --offline --now <same instant>`):
-   - tier counts and pass rate (`meta.counts.window_by_tier`, `window_passed`) at knobs 45, 50, 55;
-   - recall of the current year's KEV additions with the KEV listing, SSVC *active* and EPSS hidden
-     (score the records with an empty KEV catalog and EPSS table, and SSVC exploitation masked);
-   - the 20 CVEs whose tier moved the most, with their chips before and after.
+2. Include a **calibration diff**: run `npm run calibrate -- --offline --now <same instant>` on the
+   same frozen inputs before and after the change and paste both reports. The report has:
+   - tier counts and pass rate of every window CVE at knobs 40, 45, 50, 55 and 60;
+   - recall of the current year's KEV additions without the answer key. Each addition is re-scored
+     on its own: its KEV entry and the CISA-ADP KEV block removed, SSVC *active* lowered to *poc*
+     (when a public exploit artifact exists) or *none*, and its EPSS score dropped. The KEV prior
+     stays the one built from the full catalogue, minus the CVE itself, as in a normal run. Do not
+     empty the whole catalogue instead: that turns every prior into `prior.none`;
+   - the tiers of the largest patch-day batch (`--batch <id>` picks another).
+
+   Add the 20 CVEs whose tier moved the most, with their chips before and after (compare two
+   `npm run pipeline -- --offline --now <same instant>` outputs).
 3. Say what the change makes worse, not only what it improves, and how it avoids look-ahead bias
    (evidence that tends to appear only after exploitation is already known).
 

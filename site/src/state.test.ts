@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN } from '../../shared/contract';
-import { createStorage, createStore, isWatched, normalizeName, parseKnob, parseWatch } from './state';
+import { closeOverlay, createStorage, createStore, isWatched, normalizeName, overlay, parseKnob, parseWatch } from './state';
 
 describe('parseKnob', () => {
   it('clamps, rounds and falls back to the default', () => {
@@ -59,5 +59,43 @@ describe('createStorage', () => {
     }, '/');
     expect(broken.get('theme')).toBeNull();
     expect(() => broken.set('theme', 'dark')).not.toThrow();
+  });
+});
+
+describe('closeOverlay', () => {
+  it('closes only the overlay it names, so a late close event cannot close its successor', () => {
+    overlay.set('palette');
+    overlay.set('help');
+    closeOverlay('palette');
+    expect(overlay.get()).toBe('help');
+    closeOverlay('help');
+    expect(overlay.get()).toBeNull();
+  });
+});
+
+describe('a shared ?watch= list', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it('is merged into the saved list once, then dropped from the URL', async () => {
+    const saved = new Map([['/watch', '["fortinet"]']]);
+    const urls: string[] = [];
+    const href = 'https://site.example/?watch=ivanti,Fortinet&knob=40#feed';
+    vi.stubGlobal('window', {
+      location: { href, search: new URL(href).search },
+      localStorage: { getItem: (k: string) => saved.get(k) ?? null, setItem: (k: string, v: string) => saved.set(k, v) },
+      matchMedia: () => ({ matches: false }),
+    });
+    vi.stubGlobal('document', { documentElement: { dataset: {} }, querySelectorAll: () => [] });
+    vi.stubGlobal('history', { state: { scrollY: 120 }, replaceState: (_state: unknown, _title: string, url: string) => urls.push(url) });
+    vi.resetModules();
+    const fresh = await import('./state');
+    expect(fresh.watchlist.get()).toEqual(['fortinet', 'ivanti']);
+    // Saved right away: removing an item later and reloading must not bring it back.
+    expect(JSON.parse(saved.get('/watch')!)).toEqual(['fortinet', 'ivanti']);
+    expect(urls).toEqual(['/?knob=40#feed']);
+    expect(fresh.knob.get()).toBe(40);
   });
 });

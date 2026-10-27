@@ -10,7 +10,7 @@ import { CISA_ADP } from './config';
 import type { NormalizedCve } from './types';
 import { normalizeIso, normalizeYmd, parseIsoDate } from './util/dates';
 import { asArray, asNumber, asObject, asString, type JsonObject } from './util/json';
-import { clip, normalizeCveId, sanitizeLine, sanitizeText, sanitizeUrl, truncate } from './util/text';
+import { clip, excerpt, normalizeCveId, sanitizeLine, sanitizeText, sanitizeUrl, truncate } from './util/text';
 
 const MAX_DESCRIPTION = 1_000;
 const MAX_TITLE = 300;
@@ -85,15 +85,34 @@ export function cisaAdpFlags(record: unknown): { present: boolean; kev: boolean 
 // AI credit
 
 const AI_CREDIT_RE =
-  /\b(claude|anthropic|openai|gpt-?\d|codex|aardvark|big ?sleep|gemini|xbow|zeropath|depthfirst|striga|zerotrail|mythos|glasswing|llm|large language model|agentic|ai[- ](assisted|agent|powered|driven|discovered|found|security|scanner))\b/i;
+  /\b(claude|anthropic|openai|gpt-?\d+(?:\.\d+)?o?|codex|aardvark|big ?sleep|gemini|xbow|zeropath|depthfirst|striga|zerotrail|mythos|glasswing|llm|large language model|agentic|ai[- ](assisted|agent|powered|driven|discovered|found|security|scanner))\b/gi;
 /** A handle ending in `-ai` or `.ai`, e.g. "zerotrail-ai", "striga.ai". */
-const AI_HANDLE_RE = /(?<![\w.-])[a-z0-9][\w.-]*[.-]ai(?![\w-])/i;
+const AI_HANDLE_RE = /(?<![\w.-])[a-z0-9][\w.-]*[.-]ai(?![\w-])/gi;
+/** "Claude" followed by another capitalised word is a person ("Claude Ndanda") unless it is one of these. */
+const CLAUDE_NEXT_WORDS = new Set(['opus', 'sonnet', 'haiku', 'code', 'security', 'fable', 'mythos', 'agent', 'agents', 'ai', 'anthropic']);
+const NEXT_CAPITALISED_RE = /^ +(\p{Lu}[\p{L}\p{M}'’-]*)/u;
+/** .ai domains of companies whose credited researchers are people, not an AI system. */
+const HUMAN_AI_DOMAINS = new Set(['horizon3.ai']);
 
-/** The first CNA credit that names an AI system or lab (≤ 80 chars), or null. */
+/** Where a credit names an AI system or lab, or null. */
+function aiCreditMatch(value: string): RegExpMatchArray | null {
+  for (const m of value.matchAll(AI_CREDIT_RE)) {
+    if (m[0].toLowerCase() === 'claude') {
+      const next = NEXT_CAPITALISED_RE.exec(value.slice(m.index! + m[0].length));
+      if (next && !CLAUDE_NEXT_WORDS.has(next[1].toLowerCase())) continue;
+    }
+    return m;
+  }
+  for (const m of value.matchAll(AI_HANDLE_RE)) if (!HUMAN_AI_DOMAINS.has(m[0].toLowerCase())) return m;
+  return null;
+}
+
+/** The first CNA credit that names an AI system or lab, as ≤ 80 chars around the match, or null. */
 export function findAiCredit(cna: JsonObject | null): string | null {
   for (const credit of asArray(cna?.credits)) {
     const value = sanitizeLine(asObject(credit)?.value, 1_000);
-    if (value && (AI_CREDIT_RE.test(value) || AI_HANDLE_RE.test(value))) return truncate(value, MAX_AI_CREDIT);
+    const m = value ? aiCreditMatch(value) : null;
+    if (m) return excerpt(value, m.index!, m[0].length, MAX_AI_CREDIT);
   }
   return null;
 }
@@ -269,9 +288,12 @@ function cweIds(cna: JsonObject | null): string[] {
   return [...ids];
 }
 
+/** Vendor/product strings CNAs use when they have nothing to say. */
+const PLACEHOLDER_NAMES = new Set(['n/a', 'na', 'unknown', 'none', '-', 'not applicable']);
+
 function cleanName(value: unknown): string {
   const name = sanitizeLine(value, MAX_NAME);
-  return name.toLowerCase() === 'n/a' ? '' : name;
+  return PLACEHOLDER_NAMES.has(name.toLowerCase()) ? '' : name;
 }
 
 const PURL_RE = /^pkg:[a-z0-9.+-]+\/\S+$/i;

@@ -147,3 +147,17 @@ describe('validateOutput', () => {
     expect(validateOutput(dir).errors).toContain(`${266 + 40} files emitted; the limit is 300`);
   });
 });
+
+describe('buildOutput', () => {
+  it('scores with the sources that ingest reported down as unknown, not absent', () => {
+    const build = (spec: Parameters<typeof makeIngest>[1]) =>
+      buildOutput({ ingest: makeIngest([makeCve({ id: 'CVE-2026-100009' })], spec), now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://example.test' })
+        .scored[0];
+    const up = build({});
+    expect(up.reasons.map((r) => r.id)).toEqual(expect.arrayContaining(['prior.none', 'x.none']));
+    const down = build({ down: ['kev', 'exploitdb'] });
+    expect(down.reasons.map((r) => r.id)).toEqual(expect.arrayContaining(['prior.unknown', 'x.too_new']));
+    expect(down.reasons.some((r) => r.id === 'prior.none' || r.id === 'x.none')).toBe(false);
+    expect(down.unknowns).toContain('kev and exploitdb could not be loaded this run, so their evidence is unknown, not counted as absent.');
+  });
+});

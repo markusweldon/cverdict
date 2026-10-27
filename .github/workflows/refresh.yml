@@ -1,6 +1,9 @@
 # Hourly data refresh (docs/SPEC.md §4): build the JSON tree from public sources, publish it to the
 # orphan `data` branch, and — when GitHub Pages is set to deploy from GitHub Actions — deploy the
 # site with the fresh data. A watchdog job then checks the data users actually get.
+#
+# Scheduled runs only do work in the canonical repository, or in a copy whose repository variable
+# REFRESH_SCHEDULE is `on` (docs/DEPLOY.md). Run workflow (workflow_dispatch) works everywhere.
 name: refresh-data
 
 on:
@@ -22,19 +25,22 @@ env:
   DATA_BRANCH: data
 
 jobs:
-  data:
-    name: Build and publish data
+  # Installs npm dependencies and runs the pipeline over untrusted upstream data, so it only gets a
+  # read token. Writing happens in the publish job, which runs none of this job's code: a token in
+  # the same job would be reachable from any dependency (hooks, an edited script, runner memory).
+  build:
+    name: Build data
+    # The schedule gate (see the top of this file). Jobs that need this one are skipped with it.
+    if: github.event_name != 'schedule' || github.repository == 'markusweldon/cverdict' || vars.REFRESH_SCHEDULE == 'on'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: write # push the data branch
+      contents: read
       pages: read # read the Pages configuration
     outputs:
       pages-enabled: ${{ steps.pages.outputs.enabled }}
       pages-base: ${{ steps.pages.outputs.base }}
     steps:
-      # The write token is not left in .git/config while dependencies install and the pipeline
-      # processes untrusted data; only the two steps that talk to origin receive it.
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -80,14 +86,9 @@ jobs:
           key: sources-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: sources-
 
+      # The repository is public, so reading the branch needs no token.
       - name: Check out the published data
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          basic=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-          echo "::add-mask::$basic"
-          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.$GITHUB_SERVER_URL/.extraheader" GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic"
-
           status=0
           git ls-remote --exit-code --heads origin "refs/heads/$DATA_BRANCH" >/dev/null || status=$?
           case $status in
@@ -115,6 +116,36 @@ jobs:
           path: .cache/sources
           key: sources-${{ github.run_id }}-${{ github.run_attempt }}
 
+      - name: Upload data
+        uses: actions/upload-artifact@v4
+        with:
+          name: data
+          path: out/
+          retention-days: 1
+          if-no-files-found: error
+
+  # The only job with a write token. It runs no npm and nothing the build job produced except its
+  # data: a fresh checkout supplies scripts/publish-data-branch.sh (git and jq only), and out/
+  # arrives as an artifact.
+  publish:
+    name: Publish data branch
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the data branch
+    steps:
+      # The token is not left in .git/config; only the publish step receives it.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download the built data
+        uses: actions/download-artifact@v4
+        with:
+          name: data
+          path: out
+
       - name: Publish data branch
         env:
           GH_TOKEN: ${{ github.token }}
@@ -124,19 +155,11 @@ jobs:
           export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.$GITHUB_SERVER_URL/.extraheader" GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic"
           bash scripts/publish-data-branch.sh out
 
-      - name: Upload data for Pages
-        if: steps.pages.outputs.enabled == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: data
-          path: out/
-          retention-days: 1
-          if-no-files-found: error
-
+  # Waits for the publish, so Pages never deploys data that failed to reach the data branch.
   pages:
     name: Deploy GitHub Pages
-    needs: data
-    if: needs.data.outputs.pages-enabled == 'true'
+    needs: [build, publish]
+    if: needs.build.outputs.pages-enabled == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -160,7 +183,7 @@ jobs:
 
       - name: Build site
         env:
-          BASE: ${{ needs.data.outputs.pages-base }}
+          BASE: ${{ needs.build.outputs.pages-base }}
         run: npm run build
 
       - name: Download the published data
@@ -169,10 +192,17 @@ jobs:
           name: data
           path: site/dist/data
 
-      - name: Add feeds and SPA fallback
+      - name: Add feeds and page routes
         run: |
           cp -R site/dist/data/feeds site/dist/feeds
-          # Pages serves 404.html for unknown paths; the client-side router takes it from there.
+          # A copy of the app per static route (site/src/router.ts), so /<repo>/kev and friends are
+          # served with status 200 (Pages redirects /kev to /kev/ first).
+          for route in kev batches explore surge method feeds; do
+            mkdir -p "site/dist/$route"
+            cp site/dist/index.html "site/dist/$route/index.html"
+          done
+          # Everything else, /cve/<id> included, gets 404.html: the client-side router renders the
+          # page, but the HTTP status stays 404 (docs/DEPLOY.md).
           cp site/dist/index.html site/dist/404.html
 
       - uses: actions/upload-pages-artifact@v3
@@ -184,10 +214,11 @@ jobs:
 
   # Checks the data users actually get (the branch head), whatever this run's outcome: persistent
   # staleness turns the run red, which notifies the maintainers. The site shows the same age.
+  # Skipped with the rest of the run when the schedule gate skips the build.
   watchdog:
     name: Freshness watchdog
-    needs: data
-    if: always()
+    needs: [build, publish]
+    if: always() && needs.build.result != 'skipped'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

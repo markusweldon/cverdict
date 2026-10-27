@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, daysBetween, monthKey, normalizeIso, normalizeYmd, parseIsoDate, ymd } from '../../src/util/dates';
-import { createLogger } from '../../src/util/log';
-import { clip, normalizeCveId, sanitizeLine, sanitizeText, sanitizeUrl, truncate } from '../../src/util/text';
+import { createLogger, escapeControls } from '../../src/util/log';
+import { clip, excerpt, normalizeCveId, sanitizeLine, sanitizeText, sanitizeUrl, truncate } from '../../src/util/text';
 
 const ch = (code: number) => String.fromCharCode(code);
 const RLO = ch(0x202e); // right-to-left override
@@ -125,5 +125,49 @@ describe('createLogger', () => {
       '2026-10-26T19:30:00.000Z WARN  careful\n',
       '2026-10-26T19:30:00.000Z ERROR broken\n',
     ]);
+  });
+
+  it('keeps every message on one line, so upstream bytes cannot start a workflow command', () => {
+    const lines: string[] = [];
+    const log = createLogger({ write: (l) => lines.push(l), clock: () => new Date('2026-10-26T19:30:00Z') });
+    log.warn('EPSS: unexpected header "cve\r::warning title=Forged::x"');
+    log.error(`KEV: invalid JSON ([\n::error::x]${LINE_SEP}::add-mask::y${ch(0x1b)}[31m)`);
+    expect(lines).toEqual([
+      '2026-10-26T19:30:00.000Z WARN  EPSS: unexpected header "cve\\r::warning title=Forged::x"\n',
+      '2026-10-26T19:30:00.000Z ERROR KEV: invalid JSON ([\\n::error::x]\\u2028::add-mask::y\\u001b[31m)\n',
+    ]);
+    // What a runner sees after splitting on CR, LF and CRLF: no line starts with "::".
+    for (const line of lines.join('').split(/\r\n|\r|\n/)) expect(line.trimStart().startsWith('::')).toBe(false);
+  });
+
+  it('escapeControls leaves tabs and ordinary text alone', () => {
+    expect(escapeControls('a\tb ünï 😀')).toBe('a\tb ünï 😀');
+    expect(escapeControls('x\r\ny\u0000')).toBe('x\\r\\ny\\u0000');
+  });
+});
+
+describe('excerpt', () => {
+  const long = 'Paul Bottinelli of Trail of Bits in collaboration with OpenAI, reported through the coordinated disclosure programme';
+
+  it('keeps the matched span visible, with ellipses where cut', () => {
+    const at = long.indexOf('OpenAI');
+    const out = excerpt(long, at, 6, 80);
+    expect(out).toContain('OpenAI');
+    expect(out.length).toBeLessThanOrEqual(80);
+    expect(out.startsWith('…')).toBe(true);
+    expect(out.endsWith('…')).toBe(true);
+    expect(excerpt(long, 0, 4, 80).startsWith('Paul Bottinelli')).toBe(true);
+    const end = excerpt(long, long.length - 9, 9, 80);
+    expect(end.endsWith('programme')).toBe(true);
+    expect(end.length).toBeLessThanOrEqual(80);
+  });
+
+  it('returns short text unchanged and never splits a surrogate pair', () => {
+    expect(excerpt('Claude', 0, 6, 80)).toBe('Claude');
+    const emoji = `${EMOJI.repeat(60)} Claude ${EMOJI.repeat(60)}`;
+    const out = excerpt(emoji, emoji.indexOf('Claude'), 6, 40);
+    expect(out).toContain('Claude');
+    expect(out.length).toBeLessThanOrEqual(40);
+    expect(out).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/);
   });
 });

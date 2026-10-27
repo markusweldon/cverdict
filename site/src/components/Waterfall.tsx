@@ -48,7 +48,7 @@ function readColors(el: Element) {
     hover: v('--wf-hover'),
     axis: v('--border'),
     label: v('--muted'),
-    cross: v('--faint'),
+    cross: v('--faint-ui'),
     mono: v('--font-mono') || 'monospace',
   };
 }

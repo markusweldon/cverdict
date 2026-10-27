@@ -2,7 +2,7 @@
  * Pure list logic shared by the feed, Explore, batches and the waterfall: tiers at the live knob,
  * search, and re-tiering of default-knob aggregates.
  */
-import { TIERS, tierFor, type Row, type StatsFile, type Tier } from '../../shared/contract';
+import { SIGNAL_MIN_SCORE, TIERS, tierFor, type Row, type StatsFile, type Tier } from '../../shared/contract';
 import { HOUR_MS } from './format';
 import { isWatched } from './state';
 
@@ -12,9 +12,24 @@ export const tierAt = (r: Row, knob: number): Tier => tierFor(r.s, r.x === 1, r.
 export const isPassed = (t: Tier): boolean => t === 'exploited' || t === 'likely';
 export const emptyCounts = (): TierCounts => ({ exploited: 0, likely: 0, watch: 0, quiet: 0 });
 
+/**
+ * Every chip that fired for a row, for filtering (`c` only holds the top four, for display).
+ * Data published before the `r` column existed falls back to `c`.
+ */
+export const rowChips = (r: Row): readonly string[] => (Array.isArray(r.r) ? r.r : r.c);
+export const hasChip = (r: Row, id: string): boolean => rowChips(r).includes(id);
+
+const PUB_MS = new WeakMap<Row, number>();
+/** `pub` as epoch ms, parsed once per row: the feed and the waterfall re-read it on every knob step. */
+export function pubMs(r: Row): number {
+  let t = PUB_MS.get(r);
+  if (t === undefined) PUB_MS.set(r, (t = Date.parse(r.pub)));
+  return t;
+}
+
 export const WORDPRESS_CNAS: readonly string[] = ['Wordfence', 'WPScan', 'Patchstack'];
-export const isWordpress = (r: Row): boolean => WORDPRESS_CNAS.includes(r.cna) || r.c.includes('noise.wordpress');
-export const isKernel = (r: Row): boolean => r.cna === 'Linux' || r.c.includes('noise.kernel');
+export const isWordpress = (r: Row): boolean => WORDPRESS_CNAS.includes(r.cna) || hasChip(r, 'noise.wordpress');
+export const isKernel = (r: Row): boolean => r.cna === 'Linux' || hasChip(r, 'noise.kernel');
 
 export function countTiers(rows: readonly Row[], knob: number): TierCounts {
   const out = emptyCounts();
@@ -37,6 +52,28 @@ export function retier(defaults: TierCounts, signalRows: readonly Row[], knob: n
   return { exploited: defaults.exploited, likely, watch: Math.max(0, defaults.watch + defaults.likely - likely), quiet: defaults.quiet };
 }
 
+/** Rows grouped by batch id. */
+export function groupByBatch(rows: readonly Row[]): Map<string, Row[]> {
+  const m = new Map<string, Row[]>();
+  for (const r of rows) {
+    if (!r.b) continue;
+    const list = m.get(r.b);
+    if (list) list.push(r);
+    else m.set(r.b, [r]);
+  }
+  return m;
+}
+
+/**
+ * A batch's tier counts at `knob`. With every window row loaded (`complete`) its members are
+ * recounted; otherwise its default-knob counts are re-tiered from the signal members, which is
+ * only exact for knob ≥ SIGNAL_MIN_SCORE.
+ */
+export function batchCounts(defaults: TierCounts, members: readonly Row[], knob: number, complete: boolean): { counts: TierCounts; exact: boolean } {
+  if (complete) return { counts: countTiers(members, knob), exact: true };
+  return { counts: retier(defaults, members, knob), exact: knob >= SIGNAL_MIN_SCORE };
+}
+
 export type HourCounts = [exploited: number, likely: number, watch: number, quiet: number];
 
 /**
@@ -46,7 +83,7 @@ export type HourCounts = [exploited: number, likely: number, watch: number, quie
 export function hourlyAt(hourly: StatsFile['hourly'], rows: readonly Row[], knob: number, complete: boolean): HourCounts[] {
   const start = Date.parse(hourly.start);
   const n = hourly.counts.length;
-  const bucket = (r: Row) => Math.floor((Date.parse(r.pub) - start) / HOUR_MS);
+  const bucket = (r: Row) => Math.floor((pubMs(r) - start) / HOUR_MS);
   if (complete) {
     const out: HourCounts[] = Array.from({ length: n }, () => [0, 0, 0, 0]);
     for (const r of rows) {
@@ -107,11 +144,40 @@ export function feedRows(rows: readonly Row[], f: FeedFilter, knob: number, watc
     if (f.hideWordpress && isWordpress(row)) continue;
     if (f.hideKernel && isKernel(row)) continue;
     if (f.hideAi && row.ai === 1) continue;
-    if (f.chip && !row.c.includes(f.chip)) continue;
+    if (f.chip && !hasChip(row, f.chip)) continue;
     if (!matches(row, ts)) continue;
     out.push({ row, tier, watched });
   }
   return out;
+}
+
+const DEFAULT_FEED_TIERS: readonly Tier[] = ['exploited', 'likely'];
+export const DEFAULT_FEED_FILTER: FeedFilter = { tiers: new Set(DEFAULT_FEED_TIERS), query: '', hideWordpress: false, hideKernel: false, hideAi: false, watchOnly: false, chip: null };
+
+/** URL parameters that hold the Today feed filter. */
+export const FEED_PARAMS = ['tier', 'q', 'hide', 'only', 'chip'] as const;
+
+/** The feed filter kept in the URL, so Back (and a shared link) restores it. Missing parameters mean the defaults. */
+export function readFeedFilter(search: URLSearchParams): FeedFilter {
+  const tier = search.get('tier');
+  const hide = (search.get('hide') ?? '').split(',');
+  return {
+    tiers: tier === null ? new Set(DEFAULT_FEED_TIERS) : new Set(tier.split(',').filter((t): t is Tier => (TIERS as readonly string[]).includes(t))),
+    query: search.get('q') ?? '',
+    hideWordpress: hide.includes('wordpress'),
+    hideKernel: hide.includes('kernel'),
+    hideAi: hide.includes('ai'),
+    watchOnly: search.get('only') === 'watchlist',
+    chip: search.get('chip') || null,
+  };
+}
+
+/** The inverse of readFeedFilter, for setQuery (null deletes a parameter). Defaults stay out of the URL. */
+export function feedFilterQuery(f: FeedFilter): Record<(typeof FEED_PARAMS)[number], string | null> {
+  const tiers = TIERS.filter((t) => f.tiers.has(t));
+  const isDefault = tiers.length === DEFAULT_FEED_TIERS.length && DEFAULT_FEED_TIERS.every((t) => f.tiers.has(t));
+  const hide = [f.hideWordpress && 'wordpress', f.hideKernel && 'kernel', f.hideAi && 'ai'].filter(Boolean).join(',');
+  return { tier: isDefault ? null : tiers.join(',') || 'none', q: f.query.trim() || null, hide: hide || null, only: f.watchOnly ? 'watchlist' : null, chip: f.chip };
 }
 
 const TIER_RANK: Readonly<Record<Tier, number>> = { exploited: 3, likely: 2, watch: 1, quiet: 0 };

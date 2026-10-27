@@ -48,7 +48,7 @@ export const CHIPS: readonly ChipDef[] = [
   // E — confirmed exploitation. Any one puts the CVE in the `exploited` tier.
   c('kev.listed', 'E', 'up', EXPLOITED_BONUS, 'kev', 'CISA KEV', 'Listed in CISA Known Exploited Vulnerabilities (or the CISA-ADP KEV block in the CVE record).'),
   c('ssvc.active', 'E', 'up', EXPLOITED_BONUS, 'cisa-adp', 'SSVC: active', 'CISA Vulnrichment SSVC assessment says exploitation is active.'),
-  c('vendor.exploited', 'E', 'up', EXPLOITED_BONUS, 'cvelist', 'Vendor: exploited', 'The CNA’s own CVSS vector says exploitation is happening (v3 E:F/E:H, v4 E:A). VulDB vectors are ignored.'),
+  c('vendor.exploited', 'E', 'up', EXPLOITED_BONUS, 'cvelist', 'Vendor: exploited', 'The CNA’s own CVSS v4 vector says the bug is being attacked (E:A). VulDB vectors are ignored.'),
   c('vendor.itw', 'E', 'up', EXPLOITED_BONUS, 'cvelist', 'Vendor: in the wild', 'The CNA description says the bug is exploited or “may have been exploited” in the wild.'),
   c('kev.ransomware', 'E', 'up', RANSOMWARE_BONUS, 'kev', 'Ransomware', 'CISA marks known use in ransomware campaigns. The flag lags, so its absence means little.'),
 
@@ -59,10 +59,11 @@ export const CHIPS: readonly ChipDef[] = [
   c('epss.high', 'X', 'up', 27, 'epss', 'EPSS ≥ 10%', 'EPSS gives ≥ 10% probability of exploitation activity in the next 30 days (only trusted after 14 days).'),
   c('x.poc', 'X', 'up', 20, 'poc-github', 'PoC on GitHub', 'At least one public proof-of-concept repo that passes basic vetting. Unverified code — may be malware.'),
   c('ssvc.poc', 'X', 'up', 10, 'cisa-adp', 'SSVC: PoC', 'CISA SSVC assessment says a public proof of concept exists.'),
+  c('vendor.functional', 'X', 'up', 24, 'cvelist', 'Vendor: working exploit', 'The CNA’s CVSS v3 vector says functional or autonomous exploit code exists (E:F/E:H). That is weaponization, not proof of attacks: about a quarter of such CVEs reach KEV. VulDB vectors are ignored.'),
   c('vendor.poc', 'X', 'up', 10, 'cvelist', 'Vendor: PoC', 'The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored.'),
   c('epss.mid', 'X', 'up', 8, 'epss', 'EPSS 1–10%', 'EPSS between 1% and 10% (only trusted after 14 days).'),
   c('x.none', 'X', 'down', -14, 'computed', 'No exploit yet', 'Two weeks after publication there is still no public exploit and EPSS is below 1%.'),
-  c('x.too_new', 'X', 'unknown', 0, 'computed', 'Too new', 'Less than 14 days old: exploit feeds and EPSS have not caught up yet.'),
+  c('x.too_new', 'X', 'unknown', 0, 'computed', 'Too new', 'No exploit chip, but absence is not settled: the CVE is less than 14 days old, a PoC repo is too new to vet, or an exploit source could not be loaded this run.'),
 
   // SEV — CVSS base score as published by the CNA (or CISA-ADP when the CNA gave none).
   c('sev.crit_net', 'SEV', 'up', 13, 'cvelist', 'Critical · network', 'CVSS ≥ 9.0 and attack vector Network.'),
@@ -82,6 +83,7 @@ export const CHIPS: readonly ChipDef[] = [
   c('prior.product', 'PRIOR', 'up', 10, 'kev', 'Product in KEV', 'Other CVEs in this exact product are already in CISA KEV. Attackers return to the same targets.'),
   c('prior.vendor', 'PRIOR', 'up', 8, 'kev', 'Vendor in KEV', 'Other products from this vendor are in CISA KEV.'),
   c('prior.none', 'PRIOR', 'down', -6, 'kev', 'Never in KEV', 'Nothing from this vendor has ever been listed in CISA KEV.'),
+  c('prior.unknown', 'PRIOR', 'unknown', 0, 'computed', 'KEV history unknown', 'The record names no vendor, or the KEV catalog could not be loaded this run, so the KEV history check could not run.'),
 
   // NOISE — only applied when there is no exploitation and no exploit artifact. Strongest (most negative) counts.
   c('noise.hobby', 'NOISE', 'down', -20, 'cvelist', 'Tutorial project', 'Student/tutorial code (SourceCodester, code-projects, PHPGurukul, …) that is rarely deployed.'),
@@ -91,7 +93,7 @@ export const CHIPS: readonly ChipDef[] = [
 
   // INFO — context, 0 points.
   c('ai.credit', 'INFO', 'info', 0, 'cvelist', 'AI-credited', 'The CNA credits an AI system or AI lab for the discovery. Information only: AI-found bugs are exploited at about the base rate.'),
-  c('batch', 'INFO', 'info', 0, 'computed', 'Patch-day batch', 'Published with 50+ other CVEs from the same CNA on the same day.'),
+  c('batch', 'INFO', 'info', 0, 'computed', 'Batch release', 'Published with 50+ other CVEs from the same CNA on the same day: a vendor patch day, or a bulk release by an aggregator CNA.'),
   c('kev.due', 'INFO', 'info', 0, 'kev', 'KEV due', 'Federal agencies must remediate by the KEV due date.'),
   c('kev.forensic', 'INFO', 'info', 0, 'kev', 'Forensic triage', 'CISA asks for forensic triage, not just patching (BOD 26-04).'),
   c('sev.adp', 'INFO', 'info', 0, 'cisa-adp', 'CVSS from CISA', 'The CNA gave no CVSS score; the CISA-ADP score is used instead.'),

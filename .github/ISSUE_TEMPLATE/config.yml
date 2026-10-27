@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability
     url: https://github.com/markusweldon/cverdict/security/advisories/new
-    about: Report vulnerabilities in CVErdict privately, not in a public issue.
+    about: Report vulnerabilities in CVErdict privately, not in a public issue. No report form there? SECURITY.md has the fallback.
   - name: Report a problem in a CVE record itself
     url: https://cveform.mitre.org/
     about: Wrong descriptions, affected products or references in an upstream CVE record go to the CVE Program or the CNA that published it.

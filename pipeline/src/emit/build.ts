@@ -97,7 +97,7 @@ function buildMeta({ ingest: ing, window, batches, now, windowStart, windowDays,
     kev_adds_30d: `KEV entries added in the last ${KEV_RECENT_DAYS} days (by dateAdded).`,
     kev_adds_mtd: 'KEV entries added since the start of the current calendar month (UTC).',
     ai_credited_window: 'Window CVEs whose CNA credits name an AI system or AI lab (information only).',
-    batches_window: `Patch-day batches in the window: ${BATCH_MIN}+ CVEs from one CNA on one UTC day.`,
+    batches_window: `Batches in the window (patch days and bulk releases): ${BATCH_MIN}+ CVEs from one CNA on one UTC day.`,
   };
 
   return {
@@ -136,7 +136,8 @@ export interface BuiltOutput {
 /** Score the ingested records and render every output file in memory. Reads only `previous`. */
 export function buildOutput({ ingest: ing, now, windowDays, knob, previous, siteUrl: base }: BuildInput): BuiltOutput {
   const windowStart = new Date(now.getTime() - windowDays * DAY_MS);
-  const enr: Enrichment = { kev: ing.kev, epss: ing.epss, exploits: ing.exploits, prior: buildKevPrior(ing.kev) };
+  const unavailable = new Map(ing.sources.filter((s) => !s.ok).map((s) => [s.id, s.name]));
+  const enr: Enrichment = { kev: ing.kev, epss: ing.epss, exploits: ing.exploits, prior: buildKevPrior(ing.kev), unavailable };
   // A frozen --now may predate records in the clone: those do not exist yet from our point of view.
   const scored = ing.cves.filter((c) => Date.parse(c.published) <= now.getTime()).map((c) => scoreCve(c, enr, { now, knob }));
   const window = scored.filter((s) => s.cve.inWindow);

@@ -6,15 +6,15 @@
   "outputDirectory": "site/dist",
   "rewrites": [
     {
-      "source": "/data/:path*",
-      "destination": "https://raw.githubusercontent.com/markusweldon/cverdict/data/:path*"
+      "source": "/data/:path+",
+      "destination": "https://raw.githubusercontent.com/markusweldon/cverdict/data/:path+"
     },
     {
-      "source": "/feeds/:path*",
-      "destination": "https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/:path*"
+      "source": "/feeds/:file([^/]+\\.(?:xml|ics))",
+      "destination": "https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/:file"
     },
     {
-      "source": "/((?!assets/|data/|feeds/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],

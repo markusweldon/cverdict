@@ -1,8 +1,8 @@
 # Build spec (v0.1)
 
-This is the implementation contract for the project. Brand strings live in `shared/brand.ts`
-(the name is being finalised — never hard-code it; import `BRAND`). The public data contract is
-`shared/contract.ts`; the scoring weights and chip catalogue are `shared/model.ts`. Read all three first.
+This is the implementation contract for the project. Brand strings live in `shared/brand.ts`;
+never hard-code them, import `BRAND`. The public data contract is `shared/contract.ts`; the scoring
+weights and chip catalogue are `shared/model.ts`. Read all three first.
 
 ## 0. Principles
 
@@ -95,27 +95,38 @@ Memory: never hold raw JSON for more than the current record. Expect ~60–120 s
 From `containers.cna` and `containers.adp[]` (ADP with `providerMetadata.shortName === 'CISA-ADP'`):
 - `title` (cna.title), English description (`descriptions[]` lang starting `en`, else first) sanitised:
   strip C0/C1 control chars except `\n`, collapse whitespace, max 1,000 chars.
-- CVSS: prefer CNA `cvssV4_0` > `cvssV3_1` > `cvssV3_0` (> `cvssV2_0` only for display), else CISA-ADP `cvssV3_1`.
+- CVSS: prefer CNA `cvssV4_0` > `cvssV3_1` > `cvssV3_0`, else CISA-ADP `cvssV4_0` > `cvssV3_1` > `cvssV3_0`, else CNA
+  `cvssV2_0` (display only, never scored).
   Parse the vector into a map. Keep `source`.
 - CNA exploit maturity: collect `E` from all CNA vectors (v3: `E:U/P/F/H`; v4: `E:U/P/A`). Ignore when
-  `assignerShortName === 'VulDB'` (it stamps E:P on most vectors).
+  `assignerShortName === 'VulDB'` (it stamps E:P on most vectors). Only v4 `E:A` (attacked) is exploitation
+  (`vendor.exploited`, E family); v3 `E:F`/`E:H` say working exploit code exists, which is weaponization
+  (`vendor.functional`, X family); `E:P` is `vendor.poc`.
 - SSVC from CISA-ADP `metrics[].other` where `type === 'ssvc'`: `content.options[]` is a list of single-key
   objects (`Exploitation`, `Automatable`, `Technical Impact`); values lower-cased. Also `content.version`, `content.timestamp`.
 - ADP KEV block: `metrics[].other.type === 'kev'` → treat as KEV-listed with `content.dateAdded` (fallback source).
 - CWE ids from `problemTypes[].descriptions[].cweId`; affected `{vendor, product, purl?}` (max 10; skip `n/a`).
 - credits text joined; tags (`cna.tags`); references (max 10 URLs, http(s) only).
 - AI credit: first credit value matching (case-insensitive)
-  `\b(claude|anthropic|openai|gpt-?\d|codex|aardvark|big ?sleep|gemini|xbow|zeropath|depthfirst|striga|zerotrail|mythos|glasswing|llm|large language model|agentic|ai[- ](assisted|agent|powered|driven|discovered|found|security|scanner))\b`
-  or a handle ending in `-ai`/`.ai` (e.g. `zerotrail-ai`, `striga.ai`). Store the matched credit (≤ 80 chars).
+  `\b(claude|anthropic|openai|gpt-?\d+(\.\d+)?o?|codex|aardvark|big ?sleep|gemini|xbow|zeropath|depthfirst|striga|zerotrail|mythos|glasswing|llm|large language model|agentic|ai[- ](assisted|agent|powered|driven|discovered|found|security|scanner))\b`
+  or a handle ending in `-ai`/`.ai` (e.g. `zerotrail-ai`, `striga.ai`). Two exclusions: `claude` directly followed by
+  another capitalised word is a person ("Claude Ndanda") unless that word is Opus, Sonnet, Haiku, Code, Security, Fable,
+  Mythos, Agent(s), AI or Anthropic; and `.ai` company domains whose researchers are people (`horizon3.ai`) do not
+  count. Store ≤ 80 chars of the credit around the match, so the matched words are always visible.
 - "In the wild" vendor text: English description matches
   `\b(exploited in the wild|exists in the wild|in the wild|aware of (a )?reports?|may have been exploited|limited,? (and )?(highly )?targeted attacks?|actively exploited|exploitation detected|has been exploited)\b`
-  **and** does not match the negation `\b(no|not|unaware|n't|without)\b[^.]{0,40}\b(exploit|in the wild)` .
+  in at least one sentence that does not also match the negation
+  `(\b(no|not|unaware|without)\b|n['’]t\b)[^.]{0,60}\b(exploit|in the wild)`.
 
 ### Enrichment indexes
 
-- KEV map by CVE id; KEV vendor/product prior: normalise (`lowercase`, strip non-alphanumerics) vendorProject and
-  product; counts by vendor and by vendor+product **excluding the CVE itself**. Match a CVE's affected entries
-  (and, for KEV CVEs, its own KEV vendor/product) against them.
+- KEV map by CVE id; KEV vendor/product prior: canonical vendor tokens (lower-case, accents and parenthesised text
+  dropped, a leading "the" and trailing legal/line-of-business words such as Inc, Corporation, Networks, Systems,
+  Software, Foundation removed, a small alias table for renames), so "Juniper Networks" meets KEV's "Juniper"; the
+  product key drops a leading vendor name ("Apache Tomcat" → tomcat). Counts by vendor and by vendor+product
+  **excluding the CVE itself**. Match a CVE's affected entries (and, for KEV CVEs, its own KEV vendor/product)
+  exactly, else against the longest KEV vendor whose tokens start the name ("Siemens Mobility" → Siemens; whole
+  tokens only, so "Applied Signal" never matches Apple).
 - EPSS map; exploit maps (metasploit modules by CVE, nuclei by CVE, exploitdb by CVE, poc repos by CVE).
 - PoC vetting: drop forks; a repo is **vetted** if `stargazers_count ≥ 2` or it was created ≥ 3 days before now;
   ignore IDs that are not PUBLISHED; `hype` if > 50 repos created within 7 days of the first.
@@ -124,15 +135,18 @@ From `containers.cna` and `containers.adp[]` (ADP with `providerMetadata.shortNa
 
 ```
 age        = days since datePublished
-E chips    = kev.listed | ssvc.active | vendor.exploited | vendor.itw            (any → exploited)
-X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, x.poc 20 (vetted ≥ 1),
-                     ssvc.poc 10, vendor.poc 10, epss.mid 8*
+E chips    = kev.listed | ssvc.active | vendor.exploited (v4 E:A) | vendor.itw  (any → exploited)
+X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24
+                     (v3 E:F/E:H), x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10, epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
-             if none: age ≥ 14 and EPSS < 0.01 (or unscored) → x.none −14; else x.too_new (unknown, 0)
+             if none: age ≥ 14, every exploit source and EPSS loaded this run and no unvetted PoC repo → x.none −14;
+             else x.too_new (unknown, 0)
 SEV        = sev.crit_net 13 (≥9.0 and AV:N) | sev.crit 6 (≥9.0) | sev.high 1 (7–8.9) | sev.low −13 (<7) | sev.none (unknown)
 SSVC       = (ssvc.automatable 6 | ssvc.not_automatable −2) + (ssvc.total 8 | ssvc.partial −6) | ssvc.missing (unknown)
 PRIOR      = prior.product 10 | prior.vendor 8 | prior.none −6
-NOISE      = only if X ≤ 0 and no E: min of noise.hobby −20, noise.disputed −15, noise.wordpress −10, noise.kernel −8
+             | prior.unknown (unknown, 0) when the record names no vendor or KEV is unavailable this run
+NOISE      = only if X ≤ 0, no E, no unvetted PoC repo and every exploit source and EPSS loaded:
+             min of noise.hobby −20, noise.disputed −15, noise.wordpress −10, noise.kernel −8
              hobby: CNA text matches sourcecodester|code-projects|itsourcecode|phpgurukul|campcodes|kashipara|projectworlds
              wordpress: assigner ∈ {Wordfence, WPScan, Patchstack} or text matches /wordpress (plugin|theme)|for wordpress/i
              kernel: assigner = Linux and SSVC technical impact ≠ total
@@ -145,17 +159,20 @@ INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, poc.hype, poc.unv
 
 Chip labels are specific and dated, e.g. `CISA KEV · added Oct 21 · due Oct 24`, `Metasploit: exploit/linux/http/foo (excellent)`,
 `EPSS 14.2% · 99th pct`, `Critical 9.8 · network`, `3 PoC repos (2 vetted) — unverified, may be malware`,
-`Product in KEV (×4)`, `AI-credited: “Claude Opus 5”`, `Part of Microsoft · Oct 13 (1,407)`.
+`Product in KEV (×4)`, `AI-credited: “Claude Opus 5”`, `Part of Microsoft patch day · Oct 13 (1,407)`
+(`bulk release` instead of `patch day` for aggregator CNAs such as VulnCheck or VulDB; names from `shared/cna.ts`).
 `reasons[]` carries every chip that fired (including the ones that lost within a family, with `points: 0`) plus
 unknown chips; `unknowns[]` lists missing evidence in words. Unit-test every chip and the family rules.
+In the row tables, `Row.c` holds up to 4 chip ids for display and `Row.r` every chip id that fired (family losers
+included, unknown-polarity chips excluded) for filtering.
 
 ### Batches, stats, changes
 
 - **Batches:** group window records by (`cna`, publish date UTC). Size ≥ 50 → `Batch`. `families` from the first
   affected product (max 8, with how many passed). `top` = 5 best rows. Each member gets the `batch` info chip
   and `Row.b`.
-- **Stats:** `monthly` from the streaming pass + KEV `dateAdded` months; `daily` for window days (published,
-  passed = exploited+likely at default knob, exploited); `hourly` waterfall buckets across the window
+- **Stats:** `monthly` from the streaming pass + KEV `dateAdded` months; `daily` for the window's full UTC days,
+  then today so far (published, passed = exploited+likely at default knob, exploited); `hourly` waterfall buckets across the window
   (`counts[h] = [exploited, likely, watch, quiet]`); `cnas` top 25 in window; `ai_credits` top 20 strings.
 - **Changes:** compare with `<previous>/v1/index.json` (if present): an item when the tier rose, or a new E/X chip
   appeared. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500.
@@ -176,7 +193,7 @@ feeds/kev.xml       Atom: KEV additions, last 30 days
 feeds/kev-due.ics   iCalendar: one all-day VEVENT per KEV due date in [today-7d, +60d] (UID stable per CVE)
 ```
 
-Budgets (gzip, checked by `validate.ts`; warn at 80%, fail at 150%): meta ≤ 8 KB, signal ≤ 120 KB, index ≤ 700 KB,
+Budgets (gzip, checked by `validate.ts`; warn at 80%, fail at 150%): meta ≤ 8 KB, signal ≤ 120 KB, index ≤ 1 MB,
 each shard ≤ 80 KB, stats ≤ 80 KB, total files ≤ 300. XML/ICS must be escaped properly (no raw CVE text in markup).
 
 ## 3. Site
@@ -247,15 +264,24 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
 
 ## 4. Hosting & automation
 
-- **Data branch.** `refresh.yml` runs hourly (`17 * * * *`) and on dispatch: checkout → `npm ci` → restore
-  `.cache/sources` (actions/cache, key per run, restore-keys prefix) → check out the current `data` branch into
-  `published/` (if it exists) → `npm run pipeline -- --out out --previous published --cache .cache` → save cache →
-  `scripts/publish-data-branch.sh out` (orphan commit, force-push to `data`; skip when content hash unchanged)
-  → if GitHub Pages is enabled with source "GitHub Actions", build the site with `BASE=/<repo>/`, copy `out/` into
-  `site/dist/data/` (and `out/feeds` → `site/dist/feeds`), add `404.html` = `index.html`, deploy with
-  `actions/upload-pages-artifact` + `actions/deploy-pages`.
-- **Vercel.** `vercel.json`: build `npm run build`, output `site/dist`; rewrites `/data/:path*` and `/feeds/:path*`
-  to `https://raw.githubusercontent.com/<repo>/data/...`; SPA fallback to `/index.html`; security headers
+- **Data branch.** `refresh.yml` runs hourly (`17 * * * *`) and on dispatch. Scheduled runs only do work in the
+  canonical repository or when the repository variable `REFRESH_SCHEDULE` is `on`. Jobs:
+  - `build` (`contents: read`, `pages: read`): checkout → `npm ci` → detect Pages → restore `.cache/sources`
+    (actions/cache, key per run, restore-keys prefix) → fetch the current `data` branch without a token into
+    `published/` (if it exists) → `npm run pipeline -- --out out --previous published --cache .cache` → save
+    cache → upload `out/` as an artifact.
+  - `publish` (`contents: write`, the only job with a write token; runs no npm code): fresh checkout → download
+    the artifact → `scripts/publish-data-branch.sh out` (orphan commit, force-push to `data`; skip when the
+    content hash is unchanged). The README it writes reproduces the CVE Terms of Use notice.
+  - `pages` (after `publish`, only if GitHub Pages is enabled with source "GitHub Actions"): build the site with
+    `BASE=/<repo>/`, put the artifact into `site/dist/data/` (and `feeds/` → `site/dist/feeds`), copy
+    `index.html` to `<route>/index.html` for the static routes and to `404.html` for the rest, deploy with
+    `actions/upload-pages-artifact` + `actions/deploy-pages`.
+  - `watchdog`: checks the published `meta.json` for staleness and source health after every run that was not
+    skipped by the schedule gate.
+- **Vercel.** `vercel.json`: build `npm run build`, output `site/dist`; rewrites `/data/:path+` and the feed files
+  `/feeds/*.xml|ics` to `https://raw.githubusercontent.com/<repo>/data/...`, then a last catch-all SPA fallback
+  `/(.*)` → `/index.html` (rewrites apply after static files, so `/feeds` is the Feeds page); security headers
   (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'`).
   Result: zero-config — import the repo in Vercel, and fresh data arrives hourly without redeploys.
 - **CI.** `ci.yml` on push/PR: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  batchKind,
+  batchLabel,
   cnaName,
   cveListUrl,
   fmtAge,
@@ -90,6 +92,13 @@ describe('names and links', () => {
     expect(cnaName('GitHub_M')).toBe('GitHub');
     expect(cnaName('VulnCheck')).toBe('VulnCheck');
     expect(cnaName('someone')).toBe('Someone');
+  });
+
+  it('names batches, calling an aggregator’s big day a bulk release', () => {
+    expect(batchLabel('microsoft-2026-10-13', 'microsoft')).toBe(`Microsoft · ${fmtDate('2026-10-13')}`);
+    expect(batchLabel('odd', 'GitHub_M')).toBe('GitHub');
+    expect(batchKind('microsoft')).toBe('patch-day batch');
+    for (const cna of ['VulnCheck', 'VulDB', 'Patchstack', 'Wordfence', 'WPScan', 'GitHub_M', 'mitre']) expect(batchKind(cna)).toBe('bulk release');
   });
 
   it('joins vendor and product without repeating', () => {

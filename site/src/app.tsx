@@ -9,11 +9,11 @@ import { ShortcutsHelp } from './components/Shortcuts';
 import { ErrorState, Loading } from './components/States';
 import { Toasts } from './components/Toasts';
 import { TooltipLayer } from './components/Tooltip';
-import { data } from './data';
+import { data, reloadFresh } from './data';
 import { fmtDateTime } from './format';
 import { useData } from './hooks';
 import Today from './pages/Today';
-import { href, navigate, onNavigate, savedScroll, startRouter, useLocation, type Route } from './router';
+import { href, navigate, onNavigate, savedScroll, scrollToHash, startRouter, useRoute, type Route } from './router';
 import { keyTargets, knob, overlay } from './state';
 
 interface Lazy<P> {
@@ -181,7 +181,7 @@ function UpdateBanner() {
   return (
     <div class="update" role="status">
       <span>Fresh data from the {fmtDateTime(newer)} run is available.</span>
-      <button type="button" class="btn btn--sm btn--primary" onClick={() => window.location.reload()}>
+      <button type="button" class="btn btn--sm btn--primary" onClick={reloadFresh}>
         <IconRefresh size={12} /> Reload
       </button>
     </div>
@@ -191,18 +191,24 @@ function UpdateBanner() {
 /**
  * Move focus to the new page's h1 so screen readers announce it. Lazy pages and their data
  * arrive a little later, so wait a few frames for the heading before settling for <main>.
+ * `outgoing` is the previous page's heading: it is skipped for one frame, which is enough for the
+ * new route to replace it (a page that stays mounted, e.g. Explore with new filters, keeps it).
  */
-function focusHeading(frames = 90): void {
+function focusHeading(frames = 90, outgoing: Element | null = null): void {
   const h1 = document.querySelector<HTMLElement>('main h1[tabindex]');
-  if (h1 && !document.querySelector('dialog[open]')) h1.focus({ preventScroll: true });
-  else if (frames > 0) requestAnimationFrame(() => focusHeading(frames - 1));
+  if (h1 && h1 !== outgoing && !document.querySelector('dialog[open]')) h1.focus({ preventScroll: true });
+  else if (frames > 0) requestAnimationFrame(() => focusHeading(frames - 1, h1 === outgoing ? null : outgoing));
   else document.getElementById('main')?.focus({ preventScroll: true });
 }
 
 export function App() {
-  const loc = useLocation();
+  const route = useRoute();
   useGlobalKeys();
-  useEffect(() => startRouter(), []);
+  useEffect(() => {
+    const stop = startRouter();
+    if (window.location.hash) scrollToHash(window.location.hash);
+    return stop;
+  }, []);
   useEffect(() => {
     // Warm every page chunk once the first screen is idle.
     const warm = () => LAZY.forEach((p) => void p.preload().catch(() => undefined));
@@ -214,21 +220,24 @@ export function App() {
       onNavigate((l, kind) => {
         overlay.set(null);
         if (kind === 'replace') return;
+        if (kind === 'push') {
+          const outgoing = document.querySelector('main h1[tabindex]');
+          requestAnimationFrame(() => focusHeading(90, outgoing));
+        }
         requestAnimationFrame(() => {
           if (kind === 'pop') window.scrollTo(0, savedScroll());
-          else if (l.hash) document.getElementById(decodeURIComponent(l.hash.slice(1)))?.scrollIntoView();
+          else if (l.hash) scrollToHash(l.hash);
           else window.scrollTo(0, 0);
         });
-        if (kind === 'push') focusHeading();
       }),
     [],
   );
   return (
     <>
-      <Header route={loc.route} />
+      <Header route={route} />
       <UpdateBanner />
       <main id="main" class="main" tabIndex={-1}>
-        <RouteView route={loc.route} />
+        <RouteView route={route} />
       </main>
       <Footer />
       <Palette />

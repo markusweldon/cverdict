@@ -9,6 +9,8 @@ import { KNOB_MAX, KNOB_MIN, TIERS } from '../../shared/contract';
 import { DEFAULT_WINDOW_DAYS } from './config';
 import { formatSizeTable } from './validate';
 import { ValidationFailedError, run, type RunOptions, type RunSummary } from './run';
+import { parseIsoDate } from './util/dates';
+import { escapeControls } from './util/log';
 
 const DEFAULT_OUT = 'site/public/data';
 const DEFAULT_CACHE = '.cache';
@@ -23,7 +25,7 @@ Options:
   --cache <dir>         Cache for last-good downloads and git clones (default: ${DEFAULT_CACHE})
   --cvelist-dir <dir>   Use an existing cvelistV5 git clone (never modified)
   --poc-dir <dir>       Use an existing PoC-in-GitHub git clone (never modified)
-  --now <iso>           Freeze "now", e.g. 2026-10-26T19:30:00Z (default: current time)
+  --now <iso>           Freeze "now", e.g. 2026-10-26T19:30:00Z; no offset means UTC (default: current time)
   --window-days <n>     Window size in days (default: ${DEFAULT_WINDOW_DAYS})
   --knob <n>            Default knob for tiers, ${KNOB_MIN}–${KNOB_MAX} (default: 50)
   --offline             Never use the network; read the cache only
@@ -68,8 +70,9 @@ export function parseCli(argv: string[]): RunOptions | null {
 
   let now: Date | undefined;
   if (values.now !== undefined) {
-    now = new Date(values.now);
-    if (Number.isNaN(now.getTime())) throw new UsageError(`--now is not a valid date: "${values.now}"`);
+    // parseIsoDate reads a missing offset as UTC; `new Date()` would use the host's time zone.
+    now = parseIsoDate(values.now) ?? undefined;
+    if (!now) throw new UsageError(`--now is not an ISO 8601 date: "${values.now}"`);
   }
   const windowDays = int('window-days', values['window-days']);
   if (windowDays < 1) throw new UsageError('--window-days must be at least 1');
@@ -115,7 +118,7 @@ export function formatSummary(s: RunSummary): string {
     ...meta.sources.map(
       (src) =>
         `  ${src.id.padEnd(11)} ${(src.ok ? (src.stale ? 'stale' : 'ok') : 'DOWN').padEnd(6)} ${src.records === null ? '' : n(src.records)}` +
-        (src.error ? `  (${src.error})` : ''),
+        (src.error ? `  (${escapeControls(src.error)})` : ''),
     ),
     '',
     `Output: ${s.out} · ${s.validation.files} files · ${s.validation.warnings.length} warnings · ${(s.durationMs / 1000).toFixed(1)} s`,
@@ -140,7 +143,10 @@ export async function main(argv: string[]): Promise<number> {
     return 0;
   } catch (e) {
     if (e instanceof ValidationFailedError) console.error(formatSizeTable(e.result.sizes));
-    console.error(`\npipeline failed: ${(e as Error).stack ?? String(e)}`);
+    // The message can quote upstream text (git stderr); only the stack frames stay multi-line.
+    const err = e instanceof Error ? e : new Error(String(e));
+    const frames = (err.stack ?? '').split('\n').filter((line) => /^\s+at /.test(line));
+    console.error(`\npipeline failed: ${escapeControls(`${err.name}: ${err.message}`)}${frames.map((f) => `\n${f}`).join('')}`);
     return 1;
   }
 }

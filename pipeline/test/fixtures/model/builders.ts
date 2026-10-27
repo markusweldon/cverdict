@@ -2,7 +2,7 @@
  * Hand-built fixtures for the scoring/emit tests. Independent of ingest: every test states
  * exactly the evidence it cares about on top of a neutral baseline.
  */
-import type { Cvss, ExploitEvidence, SourceStatus } from '../../../../shared/contract';
+import type { Cvss, ExploitEvidence, SourceId, SourceStatus } from '../../../../shared/contract';
 import { buildKevPrior, scoreCve } from '../../../src/score';
 import type { Enrichment, IngestResult, KevCatalog, KevRaw, NormalizedCve, PocRepo, ScoredCve } from '../../../src/types';
 
@@ -91,6 +91,8 @@ export interface EnrichmentSpec {
   nuclei?: Record<string, ExploitEvidence['nuclei']>;
   exploitdb?: Record<string, ExploitEvidence['exploitdb']>;
   poc?: Record<string, PocRepo[]>;
+  /** Sources with no usable copy this run (named after their id). */
+  down?: SourceId[];
 }
 
 export function makeKevCatalog(entries: KevRaw[] = []): KevCatalog {
@@ -113,15 +115,17 @@ export function makeEnrichment(spec: EnrichmentSpec = {}): Enrichment {
       poc: new Map(Object.entries(spec.poc ?? {})),
     },
     prior: buildKevPrior(kev),
+    unavailable: new Map((spec.down ?? []).map((id) => [id, id])),
   };
 }
 
-export const msf = (fullname: string, rank: number | null = 600, type = 'exploit'): ExploitEvidence['metasploit'][number] => ({
+export const msf = (fullname: string, rank: number | null = 600, type = 'exploit', date: string | null = null): ExploitEvidence['metasploit'][number] => ({
   name: fullname.split('/').pop() ?? fullname,
   fullname,
   rank,
   type,
   url: `https://github.com/rapid7/metasploit-framework/blob/master/modules/${fullname}.rb`,
+  date,
 });
 
 export const nucleiTemplate = (id: string, severity: string | null = 'critical'): ExploitEvidence['nuclei'][number] => ({
@@ -187,7 +191,11 @@ export function makeIngest(cves: NormalizedCve[], spec: EnrichmentSpec = {}): In
     kev: enr.kev,
     epss: enr.epss,
     exploits: enr.exploits,
-    sources: [status('cvelist', 414000), status('kev', enr.kev.entries.size)],
+    sources: [
+      status('cvelist', 414000),
+      ...(spec.down?.includes('kev') ? [] : [status('kev', enr.kev.entries.size)]),
+      ...(spec.down ?? []).map((id): SourceStatus => ({ ...status(id, 0), ok: false, stale: true, records: null, error: 'no cached copy' })),
+    ],
     cvelistCommit: 'e9bdac88b661d98022cbecab20ad4a359f9d6634',
   };
 }

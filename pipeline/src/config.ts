@@ -138,7 +138,7 @@ export const BUDGETS = {
   gzipBytes: {
     'v1/meta.json': 8 * 1024,
     'v1/signal.json': 120 * 1024,
-    'v1/index.json': 700 * 1024,
+    'v1/index.json': 1024 * 1024,
     'v1/stats.json': 80 * 1024,
   },
   /** Each `v1/cve/<xx>.json` shard. */

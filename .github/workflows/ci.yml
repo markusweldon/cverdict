@@ -43,5 +43,21 @@ jobs:
       - name: Lint shell scripts
         run: shellcheck scripts/*.sh
 
+      # Publishes mock data to a throwaway local remote: creates the branch, writes the notices the
+      # CVE Terms of Use require, and skips a second publish of the same content.
+      - name: Test the data-branch publisher
+        run: |
+          npx tsx scripts/mock-data.ts "$RUNNER_TEMP/data"
+          remote="$RUNNER_TEMP/publish-test.git"
+          git init --quiet --bare "$remote"
+          git remote add publish-test "$remote"
+          export PUBLISH_REMOTE=publish-test
+          bash scripts/publish-data-branch.sh "$RUNNER_TEMP/data"
+          readme=$(git --git-dir="$remote" show data:README.md)
+          grep -q 'Copyright © 1999-[0-9]\{4\}, The MITRE Corporation' <<<"$readme"
+          grep -q 'MITRE hereby grants you' <<<"$readme"
+          again=$(bash scripts/publish-data-branch.sh "$RUNNER_TEMP/data")
+          grep -q 'nothing to publish' <<<"$again"
+
       - name: Check vercel.json is valid JSON
         run: node -e 'JSON.parse(require("node:fs").readFileSync("vercel.json", "utf8"))'

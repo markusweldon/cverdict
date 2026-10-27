@@ -61,8 +61,13 @@ function monthly(history: History, kev: KevCatalog, now: Date): StatsFile['month
   }));
 }
 
+/**
+ * Full UTC days from the first midnight at or after windowStart, then today so far. The day the
+ * window starts in is left out: only its last hours are in the window, so it would read as a dip.
+ */
 function daily(window: ScoredCve[], windowStart: Date, now: Date): StatsFile['daily'] {
-  const days = new Map(dayRange(windowStart, now).map((date) => [date, { date, published: 0, passed: 0, exploited: 0 }]));
+  const firstDay = new Date(Math.ceil(windowStart.getTime() / DAY_MS) * DAY_MS);
+  const days = new Map(dayRange(firstDay, now).map((date) => [date, { date, published: 0, passed: 0, exploited: 0 }]));
   for (const s of window) {
     const d = days.get(utcDay(s.cve.published));
     if (!d) continue;

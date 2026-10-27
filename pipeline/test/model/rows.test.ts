@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROW_COLS, type CveDetail, type Reason } from '../../../shared/contract';
 import { SCORE_MODEL } from '../../../shared/model';
-import { toDetail, toRow, topChipIds } from '../../src/rows';
+import { firedChipIds, toDetail, toRow, topChipIds } from '../../src/rows';
 import { cvss, daysAgo, makeCve, makeKev, msf, repo, score, ssvc } from '../fixtures/model/builders';
 
 const ID = 'CVE-2026-100001';
@@ -33,6 +33,23 @@ describe('topChipIds', () => {
   });
 });
 
+describe('firedChipIds', () => {
+  it('every chip that fired, family losers and info chips included, unknowns left out', () => {
+    const reasons = [
+      r('kev.listed', 90, 'up', 'E'),
+      r('vendor.itw', 0, 'up', 'E'),
+      r('x.poc', 20, 'up'),
+      r('x.exploitdb', 0, 'up'),
+      r('prior.none', -6, 'down', 'PRIOR'),
+      r('noise.wordpress', 0, 'down', 'NOISE'),
+      r('batch', 0, 'info', 'INFO'),
+      r('ssvc.missing', 0, 'unknown', 'SSVC'),
+      r('x.too_new', 0, 'unknown'),
+    ];
+    expect(firedChipIds(reasons)).toEqual(['kev.listed', 'vendor.itw', 'x.poc', 'x.exploitdb', 'prior.none', 'noise.wordpress', 'batch']);
+  });
+});
+
 describe('toRow', () => {
   it('maps a scored CVE to the compact row', () => {
     const s = score(makeCve({ ...cvss(9.8), ssvc: ssvc('active', 'yes', 'total'), aiCredit: 'Claude' }), {
@@ -60,6 +77,8 @@ describe('toRow', () => {
       b: null,
     });
     expect(row.c).toEqual(['kev.listed', 'x.metasploit', 'sev.crit_net', 'ssvc.total']);
+    // r also has the E and X chips that lost within their family, and the info chips.
+    expect(row.r).toEqual(['kev.listed', 'ssvc.active', 'x.metasploit', 'epss.high', 'sev.crit_net', 'ssvc.total', 'ssvc.automatable', 'prior.none', 'ai.credit', 'kev.due']);
   });
 
   it('flags KEV from the CISA-ADP block and falls back to the description for the title', () => {
@@ -77,6 +96,7 @@ describe('toRow', () => {
     const row = toRow(score(makeCve()));
     expect(row).toMatchObject({ x: 0, w: 0, k: 0, ai: 0, e: null, kd: null, tier: 'quiet' });
     expect(row.c).toEqual(['sev.high', 'x.none', 'prior.none']);
+    expect(row.r).toEqual(['x.none', 'sev.high', 'prior.none']);
   });
 });
 

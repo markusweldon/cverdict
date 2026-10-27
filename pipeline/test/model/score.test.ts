@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, WATCH_FLOOR, tierFor, type Family, type Reason } from '../../../shared/contract';
 import { BASE_POINTS, CHIPS, COLD_START_DAYS, EXPLOITED_FLOOR, chip } from '../../../shared/model';
-import { buildKevPrior, normalizeName, orderReasons } from '../../src/score';
+import { buildKevPrior, kevVendorKey, orderReasons, vendorTokens } from '../../src/score';
 import type { NormalizedCve, ScoredCve } from '../../src/types';
 import {
   NOW,
@@ -84,13 +84,13 @@ describe('E family (confirmed exploitation)', () => {
     expect(s.tier).toBe('exploited');
   });
 
-  it.each([['F'], ['H'], ['A']])('vendor.exploited fires for E:%s', (e) => {
-    const s = score(makeCve({ cnaExploitMaturity: [e] }));
-    expect(byId(s, 'vendor.exploited')!.label).toBe(`Vendor CVSS: exploitation reported (E:${e})`);
+  it('vendor.exploited fires for CVSS v4 E:A', () => {
+    const s = score(makeCve({ cnaExploitMaturity: ['A'] }));
+    expect(byId(s, 'vendor.exploited')!.label).toBe('Vendor CVSS: exploitation reported (E:A)');
     expect(s.tier).toBe('exploited');
   });
 
-  it.each([['U'], ['X'], ['P']])('vendor.exploited does not fire for E:%s', (e) => {
+  it.each([['U'], ['X'], ['P'], ['F'], ['H']])('vendor.exploited does not fire for E:%s', (e) => {
     expect(byId(score(makeCve({ cnaExploitMaturity: [e] })), 'vendor.exploited')).toBeUndefined();
   });
 
@@ -169,6 +169,26 @@ describe('X family (exploit artifacts and prediction)', () => {
     expect(points).toBe(chip(id).points);
     expect(byId(s, 'x.none')).toBeUndefined();
     expect(familyPoints(s, 'X')).toBe(points);
+  });
+
+  it.each([['F'], ['H']])('vendor.functional for CVSS v3 E:%s: weaponization, not exploitation', (e) => {
+    // Fortinet's CVE-2026-106170 shape: v3 E:F, SSVC exploitation none.
+    const s = score(makeCve({ cnaExploitMaturity: [e], ssvc: ssvc('none', 'no', 'partial') }));
+    expect(byId(s, 'vendor.functional')).toMatchObject({ points: 24, family: 'X', label: `Vendor CVSS: working exploit code exists (E:${e})` });
+    expect(s.exploited).toBe(false);
+    expect(s.tier).not.toBe('exploited');
+    expect(s.raw).toBe(15 + 24 + 1 - 8 - 6);
+    expect(s.score).toBe(s.raw);
+  });
+
+  it('vendor.functional outranks vendor.poc; both values listed once', () => {
+    const s = score(makeCve({ cnaExploitMaturity: ['F', 'P', 'H'] }));
+    const x = s.reasons.filter((r) => r.family === 'X');
+    expect(x.map((r) => [r.id, r.points])).toEqual([
+      ['vendor.functional', 24],
+      ['vendor.poc', 0],
+    ]);
+    expect(x[0].label).toBe('Vendor CVSS: working exploit code exists (E:F, E:H)');
   });
 
   it('ssvc.poc and vendor.poc', () => {
@@ -254,11 +274,16 @@ describe('PoC vetting', () => {
     expect(byId(s, 'poc.unvetted')).toBeUndefined();
   });
 
-  it('brand-new unstarred repos are unvetted (info only)', () => {
-    const s = score(makeCve(), { poc: { [ID]: [repo(daysAgo(1)), repo(daysAgo(2), 1)] } });
+  it('brand-new unstarred repos are unvetted (info only) and leave X unsettled, not "no exploit"', () => {
+    const s = score(makeCve({ cna: 'Wordfence' }), { poc: { [ID]: [repo(daysAgo(1)), repo(daysAgo(2), 1)] } });
     expect(byId(s, 'x.poc')).toBeUndefined();
     expect(byId(s, 'poc.unvetted')).toMatchObject({ points: 0, label: '2 new PoC repos, unstarred and < 3 days old — not counted yet' });
-    expect(byId(s, 'x.none')).toBeDefined();
+    expect(byId(s, 'x.none')).toBeUndefined();
+    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Not settled: 2 PoC repos too new to vet' });
+    expect(s.unknowns).toContain('A PoC repo appeared but is not vetted yet: it counts once it is 3 days old or has 2 stars.');
+    // A PoC exists, so NOISE does not apply either.
+    expect(pointsOf(s, 'noise.wordpress')).toBe(0);
+    expect(s.raw).toBe(15 + 1 - 6);
     expect(s.exploits.poc).toMatchObject({ count: 2, vetted: 0, hype: false });
   });
 
@@ -337,18 +362,68 @@ describe('SSVC family', () => {
 });
 
 describe('PRIOR family', () => {
-  it('normalises names', () => {
-    expect(normalizeName('Palo Alto Networks, Inc.')).toBe('paloaltonetworksinc');
-    expect(normalizeName('Café-Soft')).toBe('cafésoft');
+  it.each([
+    ['Juniper Networks', ['juniper']],
+    ['Oracle Corporation', ['oracle']],
+    ['The Apache Software Foundation', ['apache']],
+    ['QNAP Systems Inc.', ['qnap']],
+    ['Palo Alto Networks, Inc.', ['palo', 'alto']],
+    ['TP-Link Systems Inc.', ['tp', 'link']],
+    ['MediaTek, Inc.', ['mediatek']],
+    ['Soliton Systems K.K', ['soliton']],
+    ['Hewlett Packard Enterprise (HPE)', ['hpe']],
+    ['Zimbra', ['synacor']],
+    ['Dassault Systèmes', ['dassault', 'systemes']],
+    ['Systems', ['systems']],
+    ['Café-Soft', ['cafe', 'soft']],
+  ])('vendorTokens(%j) → %j', (name, tokens) => {
+    expect(vendorTokens(name)).toEqual(tokens);
   });
 
-  it('buildKevPrior indexes vendors and vendor|product', () => {
+  it('buildKevPrior indexes canonical vendors and vendor|product, named as CISA spells them', () => {
     const prior = buildKevPrior(
-      makeKevCatalog([makeKev('CVE-2024-1'), makeKev('CVE-2024-2', { product: 'Gadget' }), makeKev('CVE-2024-3', { vendorProject: 'Palo Alto Networks', product: 'PAN-OS' })]),
+      makeKevCatalog([
+        makeKev('CVE-2024-1'),
+        makeKev('CVE-2024-2', { product: 'Gadget' }),
+        makeKev('CVE-2024-3', { vendorProject: 'Palo Alto Networks', product: 'PAN-OS' }),
+        makeKev('CVE-2024-4', { vendorProject: 'QNAP', product: 'QTS' }),
+        makeKev('CVE-2024-5', { vendorProject: 'QNAP Systems', product: 'QTS' }),
+        makeKev('CVE-2024-6', { vendorProject: 'QNAP', product: 'Photo Station' }),
+        makeKev('CVE-2024-7', { vendorProject: 'Apache', product: 'Apache Tomcat' }),
+        makeKev('CVE-2024-8', { vendorProject: 'n8n', product: 'n8n' }),
+      ]),
     );
-    expect([...prior.vendors.get('acme')!]).toEqual(['CVE-2024-1', 'CVE-2024-2']);
-    expect([...prior.products.get('acme|widget')!]).toEqual(['CVE-2024-1']);
-    expect(prior.products.has('paloaltonetworks|panos')).toBe(true);
+    expect([...prior.vendors.get('acme')!.ids]).toEqual(['CVE-2024-1', 'CVE-2024-2']);
+    expect([...prior.products.get('acme|widget')!.ids]).toEqual(['CVE-2024-1']);
+    expect(prior.products.has('paloalto|panos')).toBe(true);
+    expect(prior.vendors.get('qnap')).toMatchObject({ name: 'QNAP', ids: new Set(['CVE-2024-4', 'CVE-2024-5', 'CVE-2024-6']) });
+    expect(prior.products.get('qnap|qts')!.ids.size).toBe(2);
+    // A leading vendor name is not part of the product key, nor said twice in the name.
+    expect(prior.products.get('apache|tomcat')!.name).toBe('Apache Tomcat');
+    expect(prior.products.get('n8n|n8n')!.name).toBe('n8n');
+  });
+
+  it('kevVendorKey: exact canonical match, else a whole-token prefix; never a substring', () => {
+    const prior = buildKevPrior(
+      makeKevCatalog([
+        makeKev('CVE-2024-1', { vendorProject: 'Apple' }),
+        makeKev('CVE-2024-2', { vendorProject: 'Siemens' }),
+        makeKev('CVE-2024-3', { vendorProject: 'Rockwell' }),
+        makeKev('CVE-2024-4', { vendorProject: 'Meta Platforms' }),
+        makeKev('CVE-2024-5', { vendorProject: 'Meta' }),
+      ]),
+    );
+    const key = (name: string) => kevVendorKey(vendorTokens(name), prior);
+    expect(key('Apple Inc.')).toBe('apple');
+    expect(key('Siemens AG')).toBe('siemens');
+    expect(key('Siemens Mobility GmbH')).toBe('siemens');
+    expect(key('Rockwell Automation')).toBe('rockwell');
+    expect(key('Meta Platforms, Inc.')).toBe('metaplatforms');
+    expect(key('Meta Platforms Reality Labs')).toBe('metaplatforms');
+    expect(key('Applied Signal')).toBeNull();
+    expect(key('Pineapple')).toBeNull();
+    expect(key('Siemen')).toBeNull();
+    expect(key('Rock')).toBeNull();
   });
 
   it('prior.product when other CVEs of the product are in KEV', () => {
@@ -356,9 +431,37 @@ describe('PRIOR family', () => {
     expect(byId(s, 'prior.product')).toMatchObject({ points: 10, label: 'Product in KEV (×2): Acme Widget' });
   });
 
-  it('prior.vendor when only other products of the vendor are in KEV', () => {
-    const s = score(makeCve({ affected: [{ vendor: 'ACME', product: 'Sprocket', purl: null }] }), { kev: [makeKev('CVE-2024-1')] });
-    expect(byId(s, 'prior.vendor')).toMatchObject({ points: 8, label: 'Vendor in KEV (×1): ACME' });
+  it('prior.vendor when only other products of the vendor are in KEV (KEV spelling in the label)', () => {
+    const s = score(makeCve({ affected: [{ vendor: 'ACME Corp.', product: 'Sprocket', purl: null }] }), { kev: [makeKev('CVE-2024-1')] });
+    expect(byId(s, 'prior.vendor')).toMatchObject({ points: 8, label: 'Vendor in KEV (×1): Acme' });
+    expect(byId(s, 'prior.vendor')!.url).toContain('search_api_fulltext=Acme');
+  });
+
+  it('matches CNA legal names to KEV short names (Juniper Networks / Junos OS, Oracle Corporation)', () => {
+    const kev = [
+      ...[1, 2, 3].map((i) => makeKev(`CVE-2024-${i}`, { vendorProject: 'Juniper', product: 'Junos OS' })),
+      makeKev('CVE-2024-4', { vendorProject: 'Oracle', product: 'WebLogic Server' }),
+      makeKev('CVE-2024-5', { vendorProject: 'Apache', product: 'Tomcat' }),
+    ];
+    const juniper = score(makeCve({ ...cvss(9.3, 'N', '4.0'), affected: [{ vendor: 'Juniper Networks', product: 'Junos OS', purl: null }] }), { kev });
+    expect(byId(juniper, 'prior.product')).toMatchObject({ points: 10, label: 'Product in KEV (×3): Juniper Junos OS' });
+    expect(byId(juniper, 'prior.none')).toBeUndefined();
+    const oracle = score(makeCve({ affected: [{ vendor: 'Oracle Corporation', product: 'MySQL Server', purl: null }] }), { kev });
+    expect(byId(oracle, 'prior.vendor')).toMatchObject({ points: 8, label: 'Vendor in KEV (×1): Oracle' });
+    const tomcat = score(makeCve({ affected: [{ vendor: 'Apache Software Foundation', product: 'Apache Tomcat', purl: null }] }), { kev });
+    expect(byId(tomcat, 'prior.product')!.label).toBe('Product in KEV (×1): Apache Tomcat');
+    const qnap = score(makeCve({ affected: [{ vendor: 'QNAP Systems Inc.', product: 'QTS', purl: null }] }), {
+      kev: [makeKev('CVE-2024-6', { vendorProject: 'QNAP', product: 'QTS' })],
+    });
+    expect(byId(qnap, 'prior.product')!.label).toBe('Product in KEV (×1): QNAP QTS');
+  });
+
+  it('no false positives across vendors that merely share letters', () => {
+    const kev = [makeKev('CVE-2024-1', { vendorProject: 'Apple', product: 'iOS' }), makeKev('CVE-2024-2', { vendorProject: 'Arm', product: 'Mali' })];
+    for (const vendor of ['Applied Signal', 'Armis', 'Pineapple Software', 'Charm Inc.']) {
+      const s = score(makeCve({ affected: [{ vendor, product: 'iOS', purl: null }] }), { kev });
+      expect(byId(s, 'prior.none')!.label).toBe(`Never in KEV: ${vendor}`);
+    }
   });
 
   it('excludes the CVE itself', () => {
@@ -373,11 +476,43 @@ describe('PRIOR family', () => {
     expect(byId(s, 'prior.product')!.label).toBe('Product in KEV (×1): Zyxel Firewall');
   });
 
-  it('no PRIOR chip and an unknown when no vendor is named', () => {
+  it('prior.unknown (0 points) and an unknown when no vendor is named', () => {
     const s = score(makeCve({ affected: [] }));
-    expect(s.reasons.some((r) => r.family === 'PRIOR')).toBe(false);
+    expect(s.reasons.filter((r) => r.family === 'PRIOR')).toEqual([
+      expect.objectContaining({ id: 'prior.unknown', points: 0, polarity: 'unknown', label: 'No affected vendor named — KEV history not checked' }),
+    ]);
+    expect(s.reasons.at(-1)!.polarity).toBe('unknown');
     expect(s.unknowns).toContain('No affected vendor is named, so KEV history could not be checked.');
     expect(s.raw).toBe(15 - 14 + 1);
+  });
+});
+
+describe('unavailable sources are unknown, not absent', () => {
+  it('KEV down: prior.unknown instead of prior.none, and the unknowns name it', () => {
+    const s = score(makeCve(), { down: ['kev'] });
+    expect(byId(s, 'prior.none')).toBeUndefined();
+    expect(byId(s, 'prior.unknown')).toMatchObject({ points: 0, label: 'kev unavailable this run — KEV history not checked' });
+    expect(s.raw).toBe(15 - 14 + 1);
+    expect(s.unknowns).toContain('kev could not be loaded this run, so its evidence is unknown, not counted as absent.');
+  });
+
+  it('an exploit feed or EPSS down: no x.none, no NOISE; positive evidence from the others still counts', () => {
+    const s = score(makeCve({ cna: 'Wordfence' }), { down: ['exploitdb', 'epss'] });
+    expect(byId(s, 'x.none')).toBeUndefined();
+    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Exploit check incomplete: exploitdb, epss unavailable this run' });
+    expect(pointsOf(s, 'noise.wordpress')).toBe(0);
+    expect(s.raw).toBe(15 + 1 - 6);
+    expect(s.unknowns).toContain('exploitdb and epss could not be loaded this run, so their evidence is unknown, not counted as absent.');
+    expect(s.unknowns).not.toContain('No EPSS score yet.');
+
+    const withPoc = score(makeCve(), { down: ['exploitdb'], poc: { [ID]: [repo(daysAgo(10))] } });
+    expect(pointsOf(withPoc, 'x.poc')).toBe(20);
+  });
+
+  it('cold start keeps its own label and NOISE rule when feeds are down', () => {
+    const s = score(makeCve({ published: daysAgo(3), cna: 'Wordfence' }), { down: ['metasploit'] });
+    expect(byId(s, 'x.too_new')!.label).toBe('Too new: day 3 of 14 — exploit feeds lag');
+    expect(pointsOf(s, 'noise.wordpress')).toBe(0);
   });
 });
 

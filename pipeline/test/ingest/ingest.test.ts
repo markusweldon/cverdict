@@ -111,10 +111,10 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(kept.has('CVE-2026-100174')).toBe(false);
 
     expect(result.history.totalRecords).toBe(18);
-    expect(result.history.published.get('2026-10')).toBe(6);
+    expect(result.history.published.get('2026-10')).toBe(5); // the record published after --now is not counted
     expect(result.history.published.get('2026-09')).toBe(3);
     expect(result.history.published.get('2016-10')).toBe(1);
-    expect(result.history.reserved.get('2026-10')).toBe(5);
+    expect(result.history.reserved.get('2026-10')).toBe(4);
     expect(result.history.rejected.get('2026-08')).toBe(1);
     expect(result.history.rejected.get('2019-02')).toBe(1);
     expect(result.history.rejected.get('2026-10')).toBe(1);

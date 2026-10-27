@@ -15,10 +15,29 @@ import { EmptyState, ErrorState, Loading } from '../components/States';
 import { TierBar, TierIcon } from '../components/Tier';
 import { Waterfall, type Annotation } from '../components/Waterfall';
 import { data } from '../data';
-import { byScore, countTiers, emptyCounts, feedRows, hourlyAt, isPassed, retier, tierAt, type FeedFilter, type TierCounts } from '../filters';
+import {
+  batchCounts,
+  byScore,
+  countTiers,
+  DEFAULT_FEED_FILTER,
+  emptyCounts,
+  FEED_PARAMS,
+  feedFilterQuery,
+  feedRows,
+  groupByBatch,
+  hasChip,
+  hourlyAt,
+  isPassed,
+  pubMs,
+  readFeedFilter,
+  retier,
+  tierAt,
+  type FeedFilter,
+  type TierCounts,
+} from '../filters';
 import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, HOUR_MS, oneIn, plural } from '../format';
-import { useCountUp, useData, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
-import { cveHref, href, navigate } from '../router';
+import { useCountUp, useData, useDebounced, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
+import { cveHref, historyValue, href, navigate, setHistoryValue, setQuery, useLocation } from '../router';
 import { KNOB_PRESETS, knob, previousVisit, useStore, watchlist } from '../state';
 import { TIER_META } from '../tiers';
 
@@ -176,21 +195,42 @@ export default function Today() {
   useKnobUrl();
   const level = useStore(knob);
   const watch = useStore(watchlist);
+  const loc = useLocation();
+  // The feed filter lives in the URL so Back from a CVE restores it; the search box writes it debounced.
+  const filterKey = FEED_PARAMS.map((k) => loc.search.get(k) ?? '').join('|');
+  const filter = useMemo(() => readFeedFilter(loc.search), [filterKey]);
+  const [q, setQ] = useState(filter.query);
+  const debounced = useDebounced(q, 180);
+  useEffect(() => setQuery({ q: debounced.trim() || null }), [debounced]);
+  useEffect(() => {
+    if (filter.query !== debounced.trim()) setQ(filter.query);
+  }, [filter.query]);
+  const setFilter = (next: FeedFilter) => {
+    if (next.query !== q) setQ(next.query);
+    const { q: _typed, ...rest } = feedFilterQuery(next);
+    setQuery(rest);
+  };
+
   const meta = useData(data.meta);
   const signal = useData(data.signal);
   const stats = useData(data.stats);
   const batches = useData(data.batches);
   const kev = useData(data.kev);
   const changes = useData(data.changes);
-  // Every row is needed for knob < 35 (scores 30–34 are not in signal.json) and for watched quiet CVEs.
-  const needIndex = level < SIGNAL_MIN_SCORE || watch.length > 0;
+  // Every row is needed for knob < 35 (scores 30–34 are not in signal.json), for the Watch tier
+  // (scores 25–34) and for watched quiet CVEs.
+  const needIndex = level < SIGNAL_MIN_SCORE || watch.length > 0 || filter.tiers.has('watch');
   const index = useData(needIndex && signal.status === 'ready' ? data.index : null);
   const complete = index.status === 'ready';
   const rows: readonly Row[] = complete ? index.data : signal.status === 'ready' ? signal.data : [];
   const now = useNow(60_000);
 
-  const [filter, setFilter] = useState<FeedFilter>({ tiers: new Set<Tier>(['exploited', 'likely']), query: '', hideWordpress: false, hideKernel: false, hideAi: false, watchOnly: false, chip: null });
-  const [limit, setLimit] = useState(PAGE);
+  // "Show more" survives a trip to a CVE and back, so the restored scroll position still exists.
+  const [limit, setLimit] = useState(() => {
+    const saved = historyValue('feedLimit');
+    return typeof saved === 'number' && saved > PAGE ? saved : PAGE;
+  });
+  useEffect(() => setHistoryValue('feedLimit', limit), [limit]);
   const [sel, setSel] = useState(-1);
 
   const counts = useMemo<TierCounts | null>(() => {
@@ -205,26 +245,43 @@ export default function Today() {
     for (const fr of feedRows(rows, { ...filter, tiers: new Set<Tier>(['exploited', 'likely', 'watch']), watchOnly: false }, level, [])) c[fr.tier]++;
     return c;
   }, [rows, filter, level]);
+  // Without every row, the Watch toggle can only count scores ≥ 35. Unfiltered, the hero's count is
+  // exact; filtered, it is unknown until the index arrives.
+  const narrowed = filter.query.trim() !== '' || filter.hideWordpress || filter.hideKernel || filter.hideAi || filter.chip !== null;
+  const toggleCounts = complete || !counts ? feedCounts : { ...feedCounts, watch: narrowed ? null : counts.watch };
   const visible = feed.slice(0, limit);
-  useEffect(() => setLimit(PAGE), [filter, level]);
-  useEffect(() => setSel(-1), [filter]);
+
+  // Keyboard moves focus the row; hover and tab only mark it. Selecting prefetches the shard so
+  // "c" (copy as ticket) can write to the clipboard without waiting. selRef is the latest
+  // selection, updated synchronously: several key presses can land before a render.
+  const focusNext = useRef(false);
+  const selRef = useRef(-1);
+  const selected = useRef<string | null>(null);
+  const select = (i: number) => {
+    selRef.current = i;
+    selected.current = feed[i]?.row.id ?? null;
+    setSel(i);
+  };
+  // A new filter or knob starts the list over (but remounting on Back keeps the restored limit).
+  const shape = useRef({ filterKey, level });
+  useEffect(() => {
+    if (shape.current.filterKey !== filterKey) select(-1);
+    if (shape.current.filterKey !== filterKey || shape.current.level !== level) setLimit(PAGE);
+    shape.current = { filterKey, level };
+  }, [filterKey, level]);
 
   const hourly = useMemo(() => (stats.status === 'ready' && rows.length > 0 ? hourlyAt(stats.data.hourly, rows, level, complete) : []), [stats, rows, level, complete]);
   const annotations = useMemo(() => (stats.status === 'ready' && batches.status === 'ready' ? annotationsFor(batches.data.batches, stats.data.hourly) : []), [stats, batches]);
+  const batchMembers = useMemo(() => groupByBatch(rows), [rows]);
 
   const generated = meta.status === 'ready' ? Date.parse(meta.data.generated_at) : now;
-  const passed24h = useMemo(() => rows.filter((r) => Date.parse(r.pub) >= generated - DAY_MS && isPassed(tierAt(r, level))).length, [rows, level, generated]);
+  const passed24h = useMemo(() => rows.filter((r) => pubMs(r) >= generated - DAY_MS && isPassed(tierAt(r, level))).length, [rows, level, generated]);
   const kevSoon = kev.status === 'ready' ? kev.data.entries.filter((e) => kevUrgency(e, now) === 'soon').length : null;
   const weekBatches = batches.status === 'ready' ? batches.data.batches.filter((b) => Date.parse(`${b.date}T00:00:00Z`) >= generated - 7 * DAY_MS) : null;
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
 
-  // Keyboard moves focus the row; hover and tab only mark it. Selecting prefetches the shard so
-  // "c" (copy as ticket) can write to the clipboard without waiting.
-  const focusNext = useRef(false);
-  const selected = useRef<string | null>(null);
   useEffect(() => {
     const r = feed[sel]?.row;
-    selected.current = r?.id ?? null;
     if (!r) return;
     if (sel >= limit - 2) setLimit((l) => Math.max(l, sel + PAGE));
     void data.detail(r.id).load().catch(() => undefined);
@@ -239,15 +296,15 @@ export default function Today() {
     move: (d) => {
       if (feed.length === 0) return;
       focusNext.current = true;
-      setSel((s) => Math.min(feed.length - 1, Math.max(0, s + d)));
+      select(Math.min(feed.length - 1, Math.max(0, selRef.current + d)));
     },
-    open: () => feed[sel] && navigate(cveHref(feed[sel].row.id)),
-    watch: () => feed[sel] && watchVendorOf(feed[sel].row),
-    copy: () => feed[sel] && void copyTicket(feed[sel].row.id),
+    open: () => feed[selRef.current] && navigate(cveHref(feed[selRef.current].row.id)),
+    watch: () => feed[selRef.current] && watchVendorOf(feed[selRef.current].row),
+    copy: () => feed[selRef.current] && void copyTicket(feed[selRef.current].row.id),
   });
 
   const onChip = (id: string) => {
-    setFilter((f) => ({ ...f, chip: f.chip === id ? null : id }));
+    setFilter({ ...filter, query: q, chip: filter.chip === id ? null : id });
     document.getElementById('feed')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
@@ -311,14 +368,14 @@ export default function Today() {
               Explore all <IconArrowRight size={12} />
             </a>
           </header>
-          <FilterBar filter={filter} onChange={setFilter} counts={feedCounts} shown={feed.length} />
+          <FilterBar filter={{ ...filter, query: q }} onChange={setFilter} counts={toggleCounts} shown={feed.length} />
           {signal.status !== 'ready' ? (
             <Loading label="Loading the signal" lines={6} height="56px" />
           ) : feed.length === 0 ? (
             <EmptyState
               title="Nothing passes these filters"
               action={
-                <button type="button" class="btn" onClick={() => setFilter({ ...filter, query: '', chip: null, watchOnly: false, tiers: new Set<Tier>(['exploited', 'likely']) })}>
+                <button type="button" class="btn" onClick={() => setFilter({ ...filter, query: '', chip: null, watchOnly: false, tiers: DEFAULT_FEED_FILTER.tiers })}>
                   Reset filters
                 </button>
               }
@@ -327,7 +384,7 @@ export default function Today() {
             </EmptyState>
           ) : (
             <>
-              <div class="rows" key={`${level}-${filter.chip ?? ''}-${[...filter.tiers].join()}`}>
+              <div class="rows" key={`${filter.chip ?? ''}-${[...filter.tiers].join()}`}>
                 {visible.map((fr, i) => (
                   <CveRow
                     key={fr.row.id}
@@ -336,11 +393,11 @@ export default function Today() {
                     knob={level}
                     now={now}
                     watched={fr.watched}
-                    isNew={previousVisit !== null && Date.parse(fr.row.pub) > previousVisit}
+                    isNew={previousVisit !== null && pubMs(fr.row) > previousVisit}
                     selected={i === sel}
                     activeChip={filter.chip}
                     onChip={onChip}
-                    onSelect={() => i !== sel && setSel(i)}
+                    onSelect={() => i !== selRef.current && select(i)}
                   />
                 ))}
               </div>
@@ -387,7 +444,7 @@ export default function Today() {
         <section class="today__batches" aria-labelledby="bat-h">
           <header class="section__head">
             <h2 id="bat-h" class="section__title">
-              <IconLayers size={16} /> Patch-day batches <span class="section__count">largest in {meta.status === 'ready' ? meta.data.window.days : 30} days</span>
+              <IconLayers size={16} /> Batches <span class="section__count">largest in {meta.status === 'ready' ? meta.data.window.days : 30} days</span>
             </h2>
             <a class="section__more" href={href('batches')}>
               All {batches.status === 'ready' ? plural(batches.data.batches.length, 'batch', 'batches') : 'batches'} <IconArrowRight size={12} />
@@ -400,8 +457,9 @@ export default function Today() {
                   .sort((a, b) => b.count - a.count)
                   .slice(0, 6)
                   .map((b) => {
-                    const members = signal.data.filter((r) => r.b === b.id);
-                    return <BatchCard key={b.id} batch={b} counts={retier(b.by_tier, members, level)} pocs={members.filter((r) => r.c.includes('x.poc')).length} topTier={(r) => tierAt(r, level)} compact />;
+                    const members = batchMembers.get(b.id) ?? [];
+                    const { counts: bc, exact } = batchCounts(b.by_tier, members, level, complete);
+                    return <BatchCard key={b.id} batch={b} counts={bc} exact={exact} pocs={members.filter((r) => hasChip(r, 'x.poc')).length} topTier={(r) => tierAt(r, level)} compact />;
                   })}
               </div>
             ) : (

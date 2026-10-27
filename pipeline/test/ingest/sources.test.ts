@@ -102,6 +102,8 @@ describe('EPSS', () => {
     const plain = Buffer.from('#score_date:2026-10-25T12:00:00Z,model_version:v1\ncve,epss,percentile\nCVE-2026-0001,0.1,0.2\n');
     expect(parseEpssBody(plain, LOOSE).value.scoreDate).toBe('2026-10-25');
     expect(() => parseEpssCsv('CVE-2026-0001,0.1,0.2\n')).toThrow(/unexpected header/);
+    // Upstream bytes quoted in the error stay on one line (a lone CR would start a new log line).
+    expect(() => parseEpssCsv('cve,epss\r::warning title=Forged::x,percentile\n')).toThrow(/^EPSS: unexpected header "cve,epss ::warning[^\r\n]*"$/);
     expect(() => parseEpssBody(gzipSync(plain), SANITY)).toThrow(SanityError);
   });
 });
@@ -121,19 +123,20 @@ describe('Metasploit', () => {
       name: '2Wire Cross-Site Request Forgery Password Reset Vulnerability',
       fullname: 'auxiliary/admin/2wire/xslt_password_reset',
       type: 'auxiliary',
+      date: '2007-08-15',
       url: 'https://github.com/rapid7/metasploit-framework/blob/master/modules/auxiliary/admin/2wire/xslt_password_reset.rb',
     });
   });
 
   it('ignores non-CVE references and malformed modules; links to Rapid7 when the path is unusable', () => {
     const { byCve, modules } = parseMetasploit({
-      a: { fullname: 'exploit/x/y', references: ['URL-https://x', 'cve-2026-0001', 'CVE-2026-0001'], path: '../../etc/passwd', rank: 'high' },
+      a: { fullname: 'exploit/x/y', references: ['URL-https://x', 'cve-2026-0001', 'CVE-2026-0001'], path: '../../etc/passwd', rank: 'high', disclosure_date: '2026-02-30' },
       b: { name: 'no fullname' },
       c: 'junk',
     });
     expect(modules).toBe(1);
     expect(byCve.get('CVE-2026-0001')).toEqual([
-      { name: 'exploit/x/y', fullname: 'exploit/x/y', rank: null, type: '', url: 'https://www.rapid7.com/db/modules/exploit/x/y/' },
+      { name: 'exploit/x/y', fullname: 'exploit/x/y', rank: null, type: '', url: 'https://www.rapid7.com/db/modules/exploit/x/y/', date: null },
     ]);
     expect(() => parseMetasploit([])).toThrow(/expected an object/);
   });
