@@ -3,7 +3,7 @@
  * escapeXml(), and only `type="text"` constructs are used, so no markup ever comes from data.
  */
 import { BRAND, REPO_URL } from '../../../shared/brand';
-import type { CveDetail, KevEntry, Tier } from '../../../shared/contract';
+import type { CveDetail, KevEntry, Reason, Tier } from '../../../shared/contract';
 import { topChipIds } from '../rows';
 import { dayLabel } from '../score';
 import { KEV_RECENT_DAYS, PATHS, daysAgo } from './json';
@@ -116,12 +116,19 @@ function latest(entries: AtomEntry[], fallback: string): string {
   return entries.reduce((max, e) => (e.updated > max ? e.updated : max), entries.length ? '' : fallback);
 }
 
-/** When a CVE reached its current state: the newest dated chip that adds points, or publication. */
+/**
+ * Chips whose `at` dates a change of state: counting exploitation or exploit evidence (KEV
+ * dateAdded, SSVC "active"/"poc", first vetted PoC, Exploit-DB). EPSS chips are dated by the
+ * latest daily score, which moves every day, and the SSVC family by CISA's latest re-assessment.
+ */
+const isTransition = (r: Reason) => r.points > 0 && (r.family === 'E' || r.family === 'X') && r.source !== 'epss';
+
+/** When a CVE reached its current state: the newest transition date, or publication. */
 function signalUpdated(d: CveDetail, now: Date): string {
   let t = toTime(d.published);
   if (Number.isNaN(t)) t = now.getTime();
   for (const r of d.reasons) {
-    const at = r.points > 0 && r.at ? toTime(r.at) : NaN;
+    const at = isTransition(r) && r.at ? toTime(r.at) : NaN;
     if (at > t && at <= now.getTime()) t = at;
   }
   return new Date(t).toISOString();

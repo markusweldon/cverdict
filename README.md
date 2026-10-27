@@ -24,24 +24,23 @@ rebuilt hourly by GitHub Actions, so a fork gives you your own copy.
 
 | | |
 |--:|:--|
-| **88.8k** | CVEs published in 2026 through Oct 25: **+78%** on all of 2025[^ours] |
+| **86.5k** | CVEs published in 2026 through Oct 25: **+80%** on all of 2025[^ours] |
 | **4,302 → 14,934** | CVEs per month, January → September 2026[^ours] |
-| **16,009** | new CVEs in the last 30 days[^ours] |
+| **15,790** | new CVEs in the last 30 days. **363** of them (1 in 43) are Exploited or Likely next[^ours] |
 | **26** | CVEs added to [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) in October: one KEV addition for every ~540 new CVEs[^ours] |
-| **1,407** | Microsoft CVE records on Patch Tuesday, Oct 13. **1** exploited ([CVE-2026-96951](https://www.cve.org/CVERecord?id=CVE-2026-96951)), **2** with a public PoC[^ours] |
+| **1,407** | Microsoft CVE records on Patch Tuesday, Oct 13. **1** exploited ([CVE-2026-96951](https://www.cve.org/CVERecord?id=CVE-2026-96951)), **3** with a public PoC repo[^ours] |
 | **Apr 15** | NIST's NVD [stopped enriching most CVEs](https://www.helpnetsecurity.com/2026/04/16/nist-national-vulnerability-database-nvd-enrichment/): only KEV-listed, federal and critical software is still analysed |
-| **23%** | of new CVEs have an EPSS score on day 0[^ours] |
-| **15 → 216** | CVE records crediting AI tools, October 2025 → October 2026 to date[^ours] |
+| **23%** | of new CVEs have an EPSS score on the day they are published[^ours] |
+| **15 → 212** | CVE records crediting AI tools, October 2025 → October 2026 to date[^ours] |
 
-> “AI is creating larger haystacks, but it isn't finding more needles.”
-> — Satnam Narang, Tenable ([iTWire](https://itwire.com/guest-articles/guest-opinion/tenable-patch-tuesday-commentary-september))
+> “…creating larger haystacks, but it isn't finding more needles.”
+> — Satnam Narang, Tenable, on AI-assisted vulnerability discovery ([iTWire](https://itwire.com/guest-articles/guest-opinion/tenable-patch-tuesday-commentary-september))
 
 The needles are still there. CVErdict shows you the few that matter today, and exactly why.
 
 [^ours]: Our counts from [CVEProject/cvelistV5](https://github.com/CVEProject/cvelistV5), CISA KEV and
-    EPSS data as of Oct 26, 2026. CVE totals count records by `datePublished`, including records
-    rejected since; the site's charts count only records still in PUBLISHED state, so they run
-    about 2% lower.
+    EPSS data, from the run of Oct 26, 2026 19:30 UTC (`meta.json` and `stats.json` on the data
+    branch). CVE totals count records in PUBLISHED state by `datePublished`, as the site's charts do.
 
 ## What it does
 
@@ -57,18 +56,25 @@ Every CVE published in the last 30 days, plus every CVE in KEV, gets a score fro
 The **knob** (default 50, range 30–80) sets how much evidence "Likely next" needs. Turn it down to
 see more, up to see less; the page re-tiers live and the URL remembers your setting.
 
-Every score is explained by reason chips, each linked to its source:
+Every score is explained by reason chips, each linked to its source. These are the chips of
+[CVE-2026-88771](https://www.cve.org/CVERecord?id=CVE-2026-88771), a NetScaler ADC remote code
+execution bug, in the Oct 26 run:
 
 ```text
-CISA KEV · added Oct 21 · due Oct 24
-Metasploit: exploit/linux/http/foo (excellent)
-EPSS 14.2% · 99th pct
-Critical 9.8 · network
-3 PoC repos (2 vetted) — unverified, may be malware
-Product in KEV (×4)
-AI-credited: “Claude Opus 5”
-Part of Microsoft · Oct 13 (1,407)
+CISA KEV · added Sep 27 · due Sep 30
+CISA SSVC: exploitation active · Sep 27
+Metasploit: exploit/freebsd/http/citrix_netscaler_cve_2026_88771 (normal)
+EPSS 82.2% · 99th pct
+12 PoC repos (11 vetted) — unverified, may be malware
+Critical 9.5 · network (v4.0)
+CISA SSVC: total technical impact
+CISA SSVC: automatable
+Product in KEV (×5): Citrix NetScaler
 ```
+
+Other CVEs carry chips such as `Vendor CVSS: working exploit code exists (E:F)` (+24: weaponized,
+not yet exploited), context worth 0 points such as `Part of Microsoft patch day · Oct 13 (1,407)`
+or `AI-credited: “Claude Security”`, and unknowns such as `Too new: day 13 of 14 — exploit feeds lag`.
 
 On the site:
 
@@ -82,9 +88,18 @@ On the site:
   volume since 1999), **Method** and **Feeds**.
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
 
-![Today: the noise meter, the signal waterfall and the knob](docs/screenshots/home.png)
+![Today: 15,790 CVEs in, 363 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
 
-![A CVE page: the verdict, the score arithmetic and its reason chips](docs/screenshots/cve.png)
+![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
+
+<details>
+<summary>More screenshots: The surge, and Today on a phone</summary>
+
+| The surge | Today on a phone |
+|---|---|
+| ![The surge: monthly CVE volume since 1999, with KEV additions and AI-credited CVEs](docs/screenshots/surge.png) | ![Today at 390 px wide: the noise meter, the knob and the waterfall](docs/screenshots/mobile.png) |
+
+</details>
 
 ## How scoring works
 
@@ -96,7 +111,8 @@ Any confirmed exploitation adds 75 and floors the score at 90. Within a family o
 chip counts, so three PoCs and a Metasploit module are not four times the evidence. Points are
 roughly 20 · log10 of how much each signal raised the odds of a later KEV listing, shrunk for
 look-ahead bias: +20 points ≈ 10× the odds. EPSS and "no exploit yet" are ignored for the first
-14 days, because the feeds have not caught up.
+14 days, because the feeds have not caught up, and a feed that could not be loaded counts as
+unknown, never as "no exploit".
 
 A real example:
 
@@ -112,6 +128,11 @@ CVE-2026-105016 · Microsoft QUIC Remote Code Execution Vulnerability · day 13
   ───
    50  Likely next at the default knob
 ```
+
+Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing,
+CISA's SSVC *active* and its EPSS score) and re-score all 272 CVEs added to KEV in 2026: **74%**
+still land in Exploited or Likely next, while only **2.3%** of new CVEs do. Treat that as an upper
+bound, since the evidence was collected after the fact. `npm run calibrate` reproduces it.
 
 The full methodology, every chip with its points, the calibration and the known blind spots are in
 [docs/SCORING.md](docs/SCORING.md).
@@ -132,7 +153,8 @@ Only free, public data. Nothing from NVD.
 | [PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub) | Public proof-of-concept repositories per CVE | hourly | CC0-1.0 |
 
 If a source is down, the last good copy is used and marked stale on the site; one failing feed
-never stops a run. Details and required notices: [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+never stops a run. With no copy at all, that source's evidence is shown as unknown, not as absent.
+Details and required notices: [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
 
 ## Open data API
 
@@ -168,15 +190,18 @@ Every file, every field, sharding and the versioning policy: [docs/DATA.md](docs
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/markusweldon/cverdict)
 
 **Vercel, zero config.** Import the repository and deploy. The site is static; `/data/*` and
-`/feeds/*` are rewritten to the `data` branch on raw.githubusercontent.com, so fresh data arrives
-every hour without a redeploy. A fresh clone reads this repository's data until you point the
-rewrites in `vercel.json` at your own.
+the feed files under `/feeds/` are rewritten to the `data` branch on raw.githubusercontent.com, so
+fresh data arrives every hour without a redeploy. A fresh clone reads this repository's data until
+you point the rewrites in `vercel.json` at your own, so it needs no workflow runs of its own.
 
-**GitHub Pages.**
+**GitHub Pages.** The repository must be public, because the refresh workflow reads the `data`
+branch anonymously.
 
 1. Fork the repository and enable Actions on the fork.
 2. Settings → Pages → Source: **GitHub Actions**.
-3. Actions → **refresh-data** → Run workflow. From then on it publishes the data and redeploys
+3. Settings → Secrets and variables → Actions → **Variables**: add `REFRESH_SCHEDULE` = `on`.
+   Copies skip the hourly schedule without it.
+4. Actions → **refresh-data** → Run workflow. From then on it publishes the data and redeploys
    the site every hour.
 
 Renaming, custom domains, the optional `SITE_URL` variable and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
@@ -188,15 +213,16 @@ Requires Node 22.12+, git and about 1 GB of disk.
 
 ```sh
 npm ci
-npx tsx scripts/mock-data.ts   # instant: a deterministic mock dataset in site/public/data
+npm run mock                   # instant: a deterministic mock dataset in site/public/data
 npm run pipeline               # or the real data: the first run clones cvelistV5 (~400 MB), a few minutes
 npm run dev                    # http://localhost:5173
 ```
 
 Both write to `site/public/data/`, which the dev server serves. Useful pipeline flags:
 `--offline` (replay the cache), `--now 2026-10-26T19:30:00Z` (freeze time),
-`--cvelist-dir` / `--poc-dir` (reuse existing clones). `npm test` and `npm run typecheck` run the
-checks CI runs. More in [CONTRIBUTING.md](CONTRIBUTING.md).
+`--cvelist-dir` / `--poc-dir` (reuse existing clones). `npm run calibrate` takes the same flags
+and prints the calibration tables. `npm test` and `npm run typecheck` run the checks CI runs.
+More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 
@@ -236,8 +262,8 @@ checks CI runs. More in [CONTRIBUTING.md](CONTRIBUTING.md).
 Bug reports, data-source proposals and score disputes are all welcome; each has an
 [issue template](https://github.com/markusweldon/cverdict/issues/new/choose). Every CVE page has a
 "Disagree?" button that opens a prefilled one. To change the weights, open a pull request with a
-calibration diff: see [CONTRIBUTING.md](CONTRIBUTING.md). Security issues go through
-[private reporting](SECURITY.md).
+calibration diff (`npm run calibrate` before and after): see [CONTRIBUTING.md](CONTRIBUTING.md).
+Security issues go through [private reporting](SECURITY.md).
 
 ## License
 

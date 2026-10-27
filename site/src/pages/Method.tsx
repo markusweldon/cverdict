@@ -39,7 +39,7 @@ const BLIND_SPOTS: readonly [string, string][] = [
 ];
 
 const ATTRIBUTIONS: readonly [string, string, string][] = [
-  ['CVE List V5', 'https://github.com/CVEProject/cvelistV5', 'CVE® is a trademark of The MITRE Corporation; CVE Terms of Use'],
+  ['CVE List V5', 'https://github.com/CVEProject/cvelistV5', 'CVE Program Terms of Use; MITRE’s notice below'],
   ['CISA KEV and Vulnrichment (ADP)', 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog', 'CC0 1.0; no CISA endorsement implied'],
   ['EPSS', 'https://www.first.org/epss', 'FIRST.org — free use with attribution'],
   ['Metasploit Framework', 'https://github.com/rapid7/metasploit-framework', 'BSD-3-Clause, Rapid7'],
@@ -136,7 +136,7 @@ export default function Method() {
           <code>{FORMULA}</code>
         </pre>
         <p class="muted">
-          Points are roughly 20·log₁₀ of how much each signal raises the odds of a later KEV listing, shrunk for look-ahead bias — so +20 points is about ten times the odds. Patch-day batches are {BATCH_MIN}+ CVEs from one CNA on one UTC day.
+          Points are roughly 20·log₁₀ of how much each signal raises the odds of a later KEV listing, shrunk for look-ahead bias — so +20 points is about ten times the odds. Batches are {BATCH_MIN}+ CVEs from one CNA on one UTC day — a vendor patch day or an aggregator’s bulk release.
         </p>
       </section>
 
@@ -256,6 +256,13 @@ export default function Method() {
             </li>
           ))}
         </ul>
+        {/* The CVE Terms of Use license requires this notice in every copy of CVE text, and this site shows CVE descriptions. */}
+        <p class="muted">
+          Copyright © 1999-{new Date().getUTCFullYear()}, The MITRE Corporation. CVE is a trademark and the CVE logo is a registered trademark of The MITRE Corporation.{' '}
+          <strong>CVE Usage:</strong> MITRE hereby grants you a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly
+          display, publicly perform, sublicense, and distribute Common Vulnerabilities and Exposures (CVE™). Any copy you make for such purposes is authorized provided that you reproduce MITRE's copyright
+          designation and this license in any such copy. <ExtLink href="https://www.cve.org/Legal/TermsOfUse">CVE Terms of Use</ExtLink>
+        </p>
         <p class="muted">
           {BRAND.name} is open source (MIT). <ExtLink href={REPO_URL}>Read the code</ExtLink>, file an issue when a score looks wrong, or fork it to run your own.
         </p>

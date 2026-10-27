@@ -1,8 +1,8 @@
 /** One CVE: verdict, the score arithmetic, every chip with its evidence, facts and references. */
 import type { ComponentChildren } from 'preact';
 import { useEffect } from 'preact/hooks';
-import type { CveDetail, Reason, Tier } from '../../../shared/contract';
-import { BRAND, REPO_URL } from '../../../shared/brand';
+import type { CveDetail, Reason } from '../../../shared/contract';
+import { BRAND } from '../../../shared/brand';
 import { BASE_POINTS } from '../../../shared/model';
 import { absoluteUrl, copyLink, copyTicket } from '../actions';
 import { Chip } from '../components/Chip';
@@ -29,10 +29,11 @@ import { ScoreDial } from '../components/ScoreDial';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 import { TierIcon, TierPill } from '../components/Tier';
 import { data, normalizeCveId } from '../data';
-import { cnaName, cveListUrl, cveOrgUrl, fmtAge, fmtDate, fmtDateTime, fmtPct, signed, vendorProduct } from '../format';
+import { batchKind, batchLabel, cnaName, cveListUrl, cveOrgUrl, fmtAge, fmtDate, fmtDateTime, fmtPct, signed, vendorProduct } from '../format';
 import { useData, useNow, useTitle } from '../hooks';
 import { cveHref, href } from '../router';
 import { keyTargets, knob, normalizeName, toggleWatch, useStore, watchlist } from '../state';
+import { feedbackIssueUrl } from '../ticket';
 import { chipDef, chipTone, detailTier, FAMILY_META, FAMILY_ORDER, SOURCE_NAMES, verdict } from '../tiers';
 
 const MSF_RANK: Readonly<Record<number, string>> = { 600: 'excellent', 500: 'great', 400: 'good', 300: 'normal', 200: 'average', 100: 'low', 0: 'manual' };
@@ -315,7 +316,7 @@ function Facts({ d }: { d: CveDetail }) {
     rows.push([
       'Batch',
       <a href={href(`batches#${d.batch}`)}>
-        <IconLayers size={12} /> {d.batch}
+        <IconLayers size={12} /> {batchLabel(d.batch, d.cna)} <span class="muted">({batchKind(d.cna)})</span>
       </a>,
     ]);
   }
@@ -345,16 +346,6 @@ function downloadJson(d: CveDetail) {
   a.download = `${d.id}.json`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function disagreeUrl(d: CveDetail, tier: Tier, level: number): string {
-  const chips = d.reasons
-    .filter((r) => r.points !== 0)
-    .map((r) => `- ${signed(r.points)} ${r.id}: ${r.label}`)
-    .join('\n');
-  const body = `**CVE:** ${d.id}\n**Our verdict:** ${tier} · score ${d.score.value} at knob ${level} (model ${d.score.model})\n\n**Chips**\n${chips}\n\n**What looks wrong?**\n<!-- Evidence links help most: an advisory, a KEV entry, an exploit, a patch. -->\n`;
-  const q = new URLSearchParams({ title: `Score feedback: ${d.id}`, body, labels: 'score-feedback' });
-  return `${REPO_URL}/issues/new?${q.toString()}`;
 }
 
 function Detail({ d }: { d: CveDetail }) {
@@ -388,7 +379,7 @@ function Detail({ d }: { d: CveDetail }) {
           {d.batch && (
             <>
               {' '}
-              · <a href={href(`batches#${d.batch}`)}>part of a patch-day batch</a>
+              · <a href={href(`batches#${d.batch}`)}>part of a {batchKind(d.cna)}</a>
             </>
           )}
         </p>
@@ -417,7 +408,7 @@ function Detail({ d }: { d: CveDetail }) {
             <a class="btn" href={cveOrgUrl(d.id)} target="_blank" rel="noopener noreferrer nofollow">
               cve.org <IconExternal size={12} />
             </a>
-            <a class="btn btn--ghost" href={disagreeUrl(d, tier, level)} target="_blank" rel="noopener noreferrer nofollow">
+            <a class="btn btn--ghost" href={feedbackIssueUrl(d, tier, level)} target="_blank" rel="noopener noreferrer nofollow">
               Disagree? <IconExternal size={12} />
             </a>
           </div>
@@ -484,8 +475,11 @@ function Detail({ d }: { d: CveDetail }) {
                 {watchNames.map((n) => {
                   const on = watch.includes(normalizeName(n));
                   return (
-                    <button key={n} type="button" class={`btn btn--sm${on ? ' is-on' : ''}`} aria-pressed={on ? 'true' : 'false'} onClick={() => toggleWatch(n)}>
-                      {on ? <IconEyeOff size={14} /> : <IconEye size={14} />} {on ? 'Unwatch' : 'Watch'} {n}
+                    <button key={n} type="button" class={`btn btn--sm${on ? ' is-on' : ''}`} aria-pressed={on ? 'true' : 'false'} onClick={() => toggleWatch(n)} data-tip={n.length > 30 ? n : undefined}>
+                      {on ? <IconEyeOff size={14} /> : <IconEye size={14} />}
+                      <span class="watchbtns__name">
+                        {on ? 'Unwatch' : 'Watch'} {n}
+                      </span>
                     </button>
                   );
                 })}

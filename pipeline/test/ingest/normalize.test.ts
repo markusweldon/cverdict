@@ -292,10 +292,32 @@ describe('findAiCredit', () => {
     expect(findAiCredit(null)).toBeNull();
   });
 
-  it('truncates the stored credit to 80 characters', () => {
+  it('a person named Claude and researchers of a company on a .ai domain are not AI credits', () => {
+    expect(credit('Claude Ndanda (TrixX)', 'Jean-Claude Dupont')).toBeNull();
+    expect(credit('Naveen Sunkavally (Horizon3.ai)', 'Zach Hanley (@hacks_zach) of Horizon3.ai', 'Jimi Sebree working with Horizon3.ai')).toBeNull();
+    // …but the model names still count, as do other .ai handles in the same credit.
+    expect(credit('Claude Opus 5', 'x')).toBe('Claude Opus 5');
+    expect(credit('Claude Code')).toBe('Claude Code');
+    expect(credit('Claude Agents')).toBe('Claude Agents');
+    expect(credit('Claude 3.5 Sonnet')).toBe('Claude 3.5 Sonnet');
+    expect(credit('Claude (Anthropic)')).toBe('Claude (Anthropic)');
+    expect(credit('Claude')).toBe('Claude');
+    expect(credit('Claude Ndanda with Claude Opus 5')).toBe('Claude Ndanda with Claude Opus 5');
+    expect(credit('Jane Roe (Horizon3.ai) and striga.ai')).toBe('Jane Roe (Horizon3.ai) and striga.ai');
+  });
+
+  it('stores at most 80 characters around the match, so the matched term is always visible', () => {
     const out = credit(`Discovered by Claude, ${'and a very long list of collaborators '.repeat(5)}`);
     expect(out?.startsWith('Discovered by Claude')).toBe(true);
     expect(out?.length).toBeLessThanOrEqual(80);
+    const late = credit(
+      'Thanks to Thomas Pornin and Paul Bottinelli of Trail of Bits in collaboration with OpenAI for reporting this issue responsibly.',
+    );
+    expect(late).toContain('in collaboration with OpenAI');
+    expect(late?.length).toBeLessThanOrEqual(80);
+    expect(late?.startsWith('…')).toBe(true);
+    const tail = credit(`${'Reported by a long list of people, '.repeat(4)}using GLM-5.1 from Z.ai`);
+    expect(tail?.endsWith('from Z.ai')).toBe(true);
   });
 });
 

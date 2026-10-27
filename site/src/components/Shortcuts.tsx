@@ -1,5 +1,5 @@
 import { Fragment } from 'preact';
-import { overlay, useStore } from '../state';
+import { closeOverlay, overlay, useStore } from '../state';
 import { isMac } from './Chrome';
 import { Dialog } from './Dialog';
 
@@ -42,11 +42,11 @@ const GROUPS: readonly [string, readonly [string[], string][]][] = [
 export function ShortcutsHelp() {
   const open = useStore(overlay) === 'help';
   return (
-    <Dialog open={open} onClose={() => overlay.set(null)} label="Keyboard shortcuts" class="dialog--help">
+    <Dialog open={open} onClose={() => closeOverlay('help')} label="Keyboard shortcuts" class="dialog--help">
       <div class="help">
         <header class="help__head">
           <h2>Keyboard shortcuts</h2>
-          <button type="button" class="iconbtn" onClick={() => overlay.set(null)} aria-label="Close">
+          <button type="button" class="iconbtn" onClick={() => closeOverlay('help')} aria-label="Close">
             <kbd class="kbd">esc</kbd>
           </button>
         </header>

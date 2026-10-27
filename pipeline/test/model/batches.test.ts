@@ -33,7 +33,7 @@ describe('assignBatches', () => {
     for (const s of scored) {
       expect(s.batch).toBe('microsoft-2026-10-13');
       const chip = s.reasons.find((r) => r.id === 'batch')!;
-      expect(chip).toMatchObject({ label: 'Part of microsoft · Oct 13 (50)', points: 0, polarity: 'info', at: '2026-10-13' });
+      expect(chip).toMatchObject({ label: 'Part of Microsoft patch day · Oct 13 (50)', points: 0, polarity: 'info', at: '2026-10-13' });
       // INFO chips come after scoring families and before unknowns
       const i = s.reasons.indexOf(chip);
       expect(s.reasons.slice(i + 1).every((r) => r.family === 'INFO' || r.polarity === 'unknown')).toBe(true);
@@ -44,7 +44,20 @@ describe('assignBatches', () => {
   it('formats large counts', () => {
     const scored = scoreAll(cohort(1407));
     assignBatches(scored);
-    expect(scored[0].reasons.find((r) => r.id === 'batch')!.label).toBe('Part of microsoft · Oct 13 (1,407)');
+    expect(scored[0].reasons.find((r) => r.id === 'batch')!.label).toBe('Part of Microsoft patch day · Oct 13 (1,407)');
+  });
+
+  it('names the CNA for people and calls aggregator CNAs’ days bulk releases', () => {
+    const label = (cna: string) => {
+      const scored = scoreAll(cohort(BATCH_MIN, { cna, published: '2026-10-26T10:00:00Z' }));
+      assignBatches(scored);
+      return scored[0].reasons.find((r) => r.id === 'batch')!.label;
+    };
+    expect(label('VulnCheck')).toBe('Part of VulnCheck bulk release · Oct 26 (50)');
+    expect(label('GitHub_M')).toBe('Part of GitHub bulk release · Oct 26 (50)');
+    expect(label('Chrome')).toBe('Part of Google Chrome patch day · Oct 26 (50)');
+    expect(label('Linux')).toBe('Part of Linux kernel patch day · Oct 26 (50)');
+    expect(label('juniper')).toBe('Part of Juniper patch day · Oct 26 (50)');
   });
 
   it('is idempotent (no duplicate batch chips)', () => {

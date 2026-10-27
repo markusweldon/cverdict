@@ -74,6 +74,8 @@ function artifactPhrase(r: Reason, d: CveDetail): string {
       return d.epss ? `EPSS ${fmtPct(d.epss.score)} chance of exploitation in 30 days` : 'high EPSS';
     case 'x.poc':
       return `public proof of concept (${d.exploits.poc.vetted} vetted repo${d.exploits.poc.vetted === 1 ? '' : 's'})`;
+    case 'vendor.functional':
+      return 'the vendor’s CVSS vector says a working exploit exists';
     default:
       return CHIP_BY_ID[r.id]?.short ?? r.label;
   }

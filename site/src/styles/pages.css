@@ -351,6 +351,8 @@
 
 .cve__side {
   display: grid;
+  /* Panels never outgrow the column, whatever a vendor calls its product. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -375,6 +377,16 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
+}
+
+.watchbtns .btn {
+  max-width: 100%;
+}
+
+.watchbtns__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .evidence {
@@ -607,7 +619,7 @@
   height: 7px;
   border: 1px solid var(--surface);
   border-radius: 50%;
-  background: var(--faint);
+  background: var(--faint-ui);
 }
 
 .timeline__item:first-child::before {
@@ -1056,7 +1068,7 @@
 }
 
 .chart__cross line {
-  stroke: var(--faint);
+  stroke: var(--faint-ui);
   stroke-width: 1;
 }
 
@@ -1197,6 +1209,7 @@
 
 .ranklist {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   margin-top: 12px;
   counter-reset: rank;
@@ -1251,6 +1264,8 @@
 
 .prose-section {
   display: grid;
+  /* minmax(0, …): long code and URLs scroll or truncate inside the column instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   margin-bottom: 40px;
   scroll-margin-top: calc(var(--header-h) + 16px);
@@ -1258,6 +1273,10 @@
 
 .prose-section > p {
   max-width: 78ch;
+}
+
+.prose-section > p code {
+  overflow-wrap: anywhere;
 }
 
 .steps {
@@ -1507,6 +1526,7 @@
 
 .snippets {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -1774,6 +1794,11 @@
   .row__line {
     flex-wrap: wrap;
     row-gap: 0;
+  }
+
+  /* Virtual-list rows have a fixed height: the ID line stays on one line and the vendor truncates. */
+  .vlist .row__line {
+    flex-wrap: nowrap;
   }
 
   .ticker__item {

@@ -455,7 +455,7 @@ a.chip {
 
 button.chip:hover,
 a.chip:hover {
-  border-color: var(--faint);
+  border-color: var(--faint-ui);
   color: var(--text);
 }
 
@@ -640,6 +640,7 @@ a.chip:hover {
   gap: 4px;
   color: var(--faint);
   font-size: 11.5px;
+  white-space: nowrap;
   transition: color 0.12s;
 }
 
@@ -680,7 +681,7 @@ a.chip:hover {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 2px;
-  background: var(--faint);
+  background: var(--faint-ui);
 }
 
 .score--exploited .score__fill {
@@ -694,7 +695,7 @@ a.chip:hover {
 }
 
 .score--watch .score__fill {
-  background: color-mix(in srgb, var(--watch) 70%, var(--faint));
+  background: color-mix(in srgb, var(--watch) 70%, var(--faint-ui));
 }
 
 .score__knob {
@@ -789,7 +790,7 @@ a.chip:hover {
 }
 
 .knob__tick {
-  stroke: var(--faint);
+  stroke: var(--faint-ui);
   stroke-width: 1.5;
   stroke-linecap: round;
   transition: stroke 0.15s;
@@ -800,7 +801,7 @@ a.chip:hover {
 }
 
 .knob__tick.is-on {
-  stroke: color-mix(in srgb, var(--accent) 75%, var(--faint));
+  stroke: color-mix(in srgb, var(--accent) 75%, var(--faint-ui));
 }
 
 .knob__body {
@@ -1880,7 +1881,7 @@ a.chip:hover {
   font-family: var(--font-mono);
   font-size: 12px;
   text-decoration: line-through;
-  text-decoration-color: var(--faint);
+  text-decoration-color: var(--faint-ui);
 }
 
 /* ── Score dial and ledger ── */
@@ -1904,7 +1905,7 @@ a.chip:hover {
 
 .dial__fill {
   fill: none;
-  stroke: var(--faint);
+  stroke: var(--faint-ui);
   stroke-width: 8;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.6s var(--ease);
@@ -1925,7 +1926,7 @@ a.chip:hover {
 }
 
 .dial__tick line {
-  stroke: var(--faint);
+  stroke: var(--faint-ui);
   stroke-width: 1.5;
 }
 

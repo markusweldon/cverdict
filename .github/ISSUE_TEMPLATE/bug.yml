@@ -7,7 +7,8 @@ body:
     attributes:
       value: |
         Found a security problem? Please report it [privately](https://github.com/markusweldon/cverdict/security/advisories/new)
-        instead of opening an issue. Think a score is wrong? Use the "Disagree with a score" template.
+        instead of opening an issue (no report form there? [SECURITY.md](https://github.com/markusweldon/cverdict/blob/main/SECURITY.md)
+        says how to ask for a private channel without sharing details). Think a score is wrong? Use the "Disagree with a score" template.
 
   - type: textarea
     id: what

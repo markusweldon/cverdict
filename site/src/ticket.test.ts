@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CveDetail } from '../../shared/contract';
-import { mdEscape, ticketMarkdown } from './ticket';
+import { feedbackIssueUrl, mdCode, mdEscape, ticketMarkdown } from './ticket';
 import { detailTier, verdict } from './tiers';
 
 const detail: CveDetail = {
@@ -39,6 +39,41 @@ describe('mdEscape', () => {
     expect(mdEscape('[x](javascript:1) <b>*hi*</b> `c`\nnext')).toBe('\\[x\\](javascript:1) \\<b\\>\\*hi\\*\\</b\\> \\`c\\` next');
     expect(mdEscape('# heading')).toBe('\\# heading');
   });
+
+  it('defuses @mentions with a zero-width space', () => {
+    expect(mdEscape('Never in KEV: Tobias @Saleswonder.biz')).toBe('Never in KEV: Tobias @\u200bSaleswonder.biz');
+    expect(mdEscape('@fastify/jwt')).not.toMatch(/@[a-z]/i);
+  });
+});
+
+describe('mdCode', () => {
+  it('drops backticks and newlines so the span cannot be closed or split', () => {
+    expect(mdCode('a`b\n- c')).toBe('`ab - c`');
+  });
+});
+
+describe('feedbackIssueUrl', () => {
+  const hostile: CveDetail = {
+    ...detail,
+    reasons: [
+      ...detail.reasons,
+      { id: 'prior.none', label: 'Never in KEV: [Official fix](https://evil.example) <!-- @maintainer', polarity: 'down', family: 'PRIOR', points: -6, source: 'kev' },
+    ],
+  };
+  const body = new URL(feedbackIssueUrl(hostile, 'exploited', 50)).searchParams.get('body')!;
+  const chips = body.split('\n').filter((l) => l.startsWith('- '));
+
+  it('quotes every counted chip label as inline code', () => {
+    expect(chips).toContain('- −6 `prior.none`: `Never in KEV: [Official fix](https://evil.example) <!-- @maintainer`');
+    expect(chips).toHaveLength(4);
+    expect(chips.every((l) => /^- \S+ `[a-z._]+`: `[^`]*`$/.test(l))).toBe(true);
+    expect(chips.join()).not.toContain('Too new');
+  });
+
+  it('keeps the template outside the quoted text', () => {
+    expect(body).toMatch(/^\*\*CVE:\*\* CVE-2026-112850\n/);
+    expect(body).toContain('**What looks wrong?**');
+  });
 });
 
 describe('ticketMarkdown', () => {
@@ -72,6 +107,12 @@ describe('verdict', () => {
     expect(verdict(detail, 'exploited', 50)).toEqual({ head: 'Patch now', reason: 'exploited, KEV due Oct 28' });
     expect(verdict({ ...detail, kev: null, score: { ...detail.score, value: 38 } }, 'watch', 50).reason).toBe('score 38: below the knob (50), above the watch floor (25)');
     expect(verdict(detail, 'quiet', 50).reason).toBe('no evidence yet (quiet ≠ safe)');
+  });
+
+  it('names the strongest artifact for Likely, including a vendor-declared working exploit', () => {
+    const functional = { id: 'vendor.functional', label: 'Acme CVSS vector: functional exploit code exists (E:F)', polarity: 'up', family: 'X', points: 24, source: 'cvelist' } as const;
+    const likely = { ...detail, kev: null, reasons: [functional, ...detail.reasons.slice(1)], score: { ...detail.score, value: 62, tier: 'likely' as const } };
+    expect(verdict(likely, 'likely', 50).reason).toBe('the vendor’s CVSS vector says a working exploit exists');
   });
 
   it('re-tiers a detail at another knob', () => {

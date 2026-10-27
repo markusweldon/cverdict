@@ -24,6 +24,7 @@ function row(id: string, o: Partial<Row> = {}): Row {
     k: 0,
     ai: 0,
     c: ['sev.high', 'x.none'],
+    r: ['x.none', 'sev.high'],
     cv: 7.5,
     e: null,
     kd: null,

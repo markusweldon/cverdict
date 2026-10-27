@@ -9,7 +9,8 @@
 #
 # The commit is assembled with plumbing against a temporary index: the working tree, the real
 # index and HEAD are never touched, and nothing is copied. It is pushed through this checkout's
-# own remote, so the credentials that actions/checkout persists (http.extraheader) apply.
+# own remote with whatever credentials git has; refresh.yml hands an http.extraheader to this
+# script's step only, through GIT_CONFIG_* in the environment.
 #
 # Nothing is pushed when the content fingerprint (row index, KEV file and headline counts,
 # ignoring generated_at) matches the branch. The push is a lease on the commit we compared
@@ -98,9 +99,10 @@ commit_fingerprint() {
 # README.md of the data branch. Markdown is generated from the data itself where possible so it
 # cannot drift from what the pipeline emits.
 data_readme() {
-  local repo=$1 scope window
+  local repo=$1 scope window year
   scope=$(jq -r '.scope' "$src/v1/signal.json")
   window=$(jq -r '.window.days' "$src/v1/meta.json")
+  year=$(jq -r '.generated_at[0:4]' "$src/v1/meta.json")
   cat <<EOF
 # Data branch
 
@@ -134,11 +136,32 @@ versioning policy are documented in
 curl -s https://raw.githubusercontent.com/${repo}/${BRANCH}/v1/meta.json | jq .counts
 \`\`\`
 
-## License
+## License and attribution
 
-Scores, tiers and reason chips are dedicated to the public domain (CC0-1.0). Upstream data
-(CVE List, CISA KEV and Vulnrichment, EPSS, exploit feeds) stays under its own terms: see
+Scores, tiers and reason chips are dedicated to the public domain (CC0-1.0). Upstream data in
+these files stays under its own terms:
+
+- **CVE List** (IDs, dates, titles, descriptions, affected products, CVSS, CWE, references): the
+  [CVE Program Terms of Use](https://www.cve.org/Legal/TermsOfUse), whose notice follows.
+- **CISA KEV and Vulnrichment** (KEV entries, SSVC): CC0-1.0. Use of the information does not
+  authorize you to use the CISA Logo or DHS Seal, nor should such use be interpreted as an
+  endorsement by CISA or DHS.
+- **EPSS**: by the [FIRST EPSS SIG](https://www.first.org/epss), free to use with attribution.
+- **Exploit feeds**: identifiers and links only, no exploit code. Metasploit Framework
+  (BSD-3-Clause, © Rapid7, Inc.), Nuclei templates (MIT, © ProjectDiscovery, Inc.), Exploit-DB
+  (GPL-2.0), PoC-in-GitHub (CC0-1.0).
+
+Full notices and license texts:
 [ATTRIBUTIONS.md](https://github.com/${repo}/blob/HEAD/ATTRIBUTIONS.md).
+
+> Copyright © 1999-${year}, The MITRE Corporation. CVE is a trademark and the CVE logo is a
+> registered trademark of The MITRE Corporation.
+>
+> **CVE Usage:** MITRE hereby grants you a perpetual, worldwide, non-exclusive, no-charge,
+> royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly
+> display, publicly perform, sublicense, and distribute Common Vulnerabilities and Exposures
+> (CVE™). Any copy you make for such purposes is authorized provided that you reproduce MITRE's
+> copyright designation and this license in any such copy.
 EOF
 }
 

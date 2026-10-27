@@ -48,7 +48,7 @@ export function parseEpssCsv(text: string): EpssTable & { rows: number } {
       const cve = names.indexOf('cve');
       const epss = names.indexOf('epss');
       const percentile = names.indexOf('percentile');
-      if (cve === -1 || epss === -1 || percentile === -1) throw new Error(`EPSS: unexpected header "${line.slice(0, 80)}"`);
+      if (cve === -1 || epss === -1 || percentile === -1) throw new Error(`EPSS: unexpected header "${sanitizeLine(line, 80)}"`);
       columns = { cve, epss, percentile };
       continue;
     }

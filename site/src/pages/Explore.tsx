@@ -9,7 +9,7 @@ import { EmptyState, ErrorState, Loading } from '../components/States';
 import { TierIcon } from '../components/Tier';
 import { revealRow, VirtualList } from '../components/VirtualList';
 import { data } from '../data';
-import { emptyCounts, matches, terms, tierAt } from '../filters';
+import { emptyCounts, hasChip, matches, terms, tierAt } from '../filters';
 import { cnaName, fmtInt } from '../format';
 import { useData, useDebounced, useKnobUrl, useListController, useMediaQuery, useNow, useSearchTarget, useTitle } from '../hooks';
 import { cveHref, navigate, setQuery, useLocation } from '../router';
@@ -57,19 +57,22 @@ export default function Explore() {
   const debounced = useDebounced(q, 180);
   const [sel, setSel] = useState(-1);
   const focusNext = useRef(false);
+  // The latest selection, updated synchronously: several key presses can land before a render.
+  const selRef = useRef(-1);
   const selected = useRef<string | null>(null);
 
   useEffect(() => setQuery({ q: debounced.trim() || null }), [debounced]);
   useEffect(() => {
-    if (p.q !== debounced) setQ(p.q);
-    // Only follow external URL changes (back/forward, palette links).
+    // Only follow external URL changes (back/forward, palette links). The URL holds the trimmed
+    // query, so a space being typed is not one.
+    if (p.q !== debounced.trim()) setQ(p.q);
   }, [p.q]);
 
   const rows: readonly Row[] = index.status === 'ready' ? index.data : [];
   const base = useMemo(() => {
     const ts = terms(p.q);
     const vendor = p.vendor.toLowerCase();
-    return rows.filter((r) => (!p.cna || r.cna === p.cna) && (!vendor || r.v.toLowerCase() === vendor || r.p.toLowerCase() === vendor) && (!p.chip || r.c.includes(p.chip)) && matches(r, ts));
+    return rows.filter((r) => (!p.cna || r.cna === p.cna) && (!vendor || r.v.toLowerCase() === vendor || r.p.toLowerCase() === vendor) && (!p.chip || hasChip(r, p.chip)) && matches(r, ts));
   }, [rows, p.q, p.cna, p.vendor, p.chip]);
   const tierCounts = useMemo(() => {
     const c = emptyCounts();
@@ -92,12 +95,16 @@ export default function Explore() {
     return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 300);
   }, [rows]);
 
+  const select = (i: number) => {
+    selRef.current = i;
+    selected.current = results[i]?.id ?? null;
+    setSel(i);
+  };
   const signature = `${p.q}|${[...p.tiers].join()}|${p.cna}|${p.vendor}|${p.chip}|${p.sort}|${level}`;
-  useEffect(() => setSel(-1), [signature]);
+  useEffect(() => select(-1), [signature]);
   useEffect(() => {
     if (sel < 0) return;
     revealRow(listRef.current, sel, rowHeight);
-    selected.current = results[sel]?.id ?? null;
     // The row mounts once the list re-renders at the new scroll position; quick presses can land
     // before that frame, so focus whatever is selected by then.
     requestAnimationFrame(() => {
@@ -111,11 +118,11 @@ export default function Explore() {
     move: (d) => {
       if (!results.length) return;
       focusNext.current = true;
-      setSel((s) => Math.min(results.length - 1, Math.max(0, s + d)));
+      select(Math.min(results.length - 1, Math.max(0, selRef.current + d)));
     },
-    open: () => results[sel] && navigate(cveHref(results[sel].id)),
-    watch: () => results[sel] && watchVendorOf(results[sel]),
-    copy: () => results[sel] && void copyTicket(results[sel].id),
+    open: () => results[selRef.current] && navigate(cveHref(results[selRef.current].id)),
+    watch: () => results[selRef.current] && watchVendorOf(results[selRef.current]),
+    copy: () => results[selRef.current] && void copyTicket(results[selRef.current].id),
   });
 
   const toggleTier = (t: Tier) => {
@@ -241,7 +248,7 @@ export default function Explore() {
               selected={i === sel}
               activeChip={p.chip || null}
               onChip={(id) => setQuery({ chip: p.chip === id ? null : id })}
-              onSelect={() => i !== sel && setSel(i)}
+              onSelect={() => i !== selRef.current && select(i)}
             />
           )}
         />

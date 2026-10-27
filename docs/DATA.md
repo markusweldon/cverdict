@@ -20,19 +20,21 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | Path | Type in `contract.ts` | Contents | Size (gzip) |
 |---|---|---|--:|
 | `v1/meta.json` | `Meta` | Run metadata, headline counts with definitions, source health | ~2 KB |
-| `v1/signal.json` | `RowTable` | Window CVEs with score ≥ 35, plus every exploited or weaponized one; score desc, then newest | ~50 KB |
-| `v1/index.json` | `RowTable` | Every CVE published in the window; newest first | ~700 KB |
+| `v1/signal.json` | `RowTable` | Window CVEs with score ≥ 35, plus every exploited or weaponized one; score desc, then newest | ~55 KB |
+| `v1/index.json` | `RowTable` | Every CVE published in the window; newest first | ~720 KB |
 | `v1/cve/<xx>.json` | `CveShard` | Full detail for window CVEs and every KEV CVE; 256 shards | ~25–50 KB each |
-| `v1/batches.json` | `BatchesFile` | Patch-day batches in the window; newest first | ~30 KB |
+| `v1/batches.json` | `BatchesFile` | Batches (patch days and bulk releases) in the window; newest first | ~30 KB |
 | `v1/kev.json` | `KevFile` | KEV entries added in the last 30 days or due from 14 days ago on; newest first | ~4 KB |
 | `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
-| `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~25 KB |
+| `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
 | `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
 
-The **window** is the 30 days before `meta.generated_at` (`meta.window`). Sizes are from a typical
-run; the pipeline fails a run rather than publish files far over budget.
+The **window** is the 30 days before `meta.generated_at` (`meta.window`). Sizes are from the
+2026-10-26 run (15,790 window CVEs); `index.json` grows with CVE volume, about 47 bytes gzip per
+CVE. The pipeline warns near a file's size budget and fails a run rather than publish files far
+over it.
 
 ## Conventions
 
@@ -55,8 +57,10 @@ List files are columnar to stay small: `rows[i][j]` is the value of column `cols
   "schema_version": 1,
   "generated_at": "2026-10-26T19:30:00.000Z",
   "scope": "score >= 35 or exploited/weaponized; published in the last 30 days",
-  "cols": ["id","pub","cna","v","p","t","s","tier","x","w","k","ai","c","cv","e","kd","b"],
-  "rows": [["CVE-2026-107656","2026-10-26T13:45:03Z","fortinet","Fortinet","FortiSandbox","An authentication bypass…",100,"exploited",1,0,0,0,["vendor.exploited","sev.crit_net","prior.product","ssvc.total"],9.6,null,null,null]]
+  "cols": ["id","pub","cna","v","p","t","s","tier","x","w","k","ai","c","r","cv","e","kd","b"],
+  "rows": [["CVE-2026-107656","2026-10-26T13:45:03Z","fortinet","Fortinet","FortiSandbox","An authentication bypass…",76,"likely",0,0,0,0,
+            ["vendor.functional","sev.crit_net","prior.product","ssvc.total"],
+            ["vendor.functional","sev.crit_net","ssvc.total","ssvc.automatable","prior.product"],9.6,null,null,null]]
 }
 ```
 
@@ -73,7 +77,8 @@ List files are columnar to stay small: `rows[i][j]` is the value of column `cols
 | `w` | 0 \| 1 | Weaponized: a Metasploit module or Nuclei template exists |
 | `k` | 0 \| 1 | In CISA KEV |
 | `ai` | 0 \| 1 | The CNA credits an AI system or lab (information only) |
-| `c` | string[] | Up to 4 chip ids, strongest first, positive before negative |
+| `c` | string[] | Up to 4 chip ids for display, strongest first, positive before negative |
+| `r` | string[] | Every chip id that fired, including chips that lost within their family; unknown chips left out. Filter on this, not on `c` |
 | `cv` | number \| null | CVSS base score (CNA first, then CISA-ADP) |
 | `e` | number \| null | EPSS probability, 0–1 |
 | `kd` | string \| null | KEV due date |
@@ -111,7 +116,7 @@ Exploited when `x`; else Likely next when `w` or `s ≥ knob`; else Watch when `
 |---|---|
 | `id` | `cvelist`, `cisa-adp`, `kev`, `epss`, `metasploit`, `nuclei`, `exploitdb`, `poc-github` |
 | `name`, `url`, `license` | What the source is and its terms |
-| `ok` | Usable data was available this run |
+| `ok` | Usable data was available this run. When `false`, scores show that source's evidence as unknown (`prior.unknown`, `x.too_new`), never as absent |
 | `stale` | The live fetch failed and the last good copy was used |
 | `fetched_at` | When that copy was downloaded (for git sources: the upstream commit time) |
 | `upstream_version` | KEV catalog version, EPSS model and date, git commit, … |
@@ -154,8 +159,8 @@ neither in the window nor in KEV is not in any shard. The file is
 | `ssvc` | CISA SSVC `{ exploitation: none\|poc\|active, automatable: yes\|no, technical_impact: partial\|total, version, timestamp }` or `null` |
 | `kev` | `{ date_added, due_date, ransomware: Known\|Unknown, forensic_triage, name, required_action, notes }` or `null` |
 | `epss` | `{ score, percentile, date, model }` or `null` |
-| `exploits` | `metasploit[]` (`name, fullname, rank, type, url`), `nuclei[]` (`path, severity, url`), `exploitdb[]` (`id, verified, url, date`), `poc` (`count, vetted, hype, top[]` with `url, stars, created`) |
-| `ai_credit` | The matched CNA credit text, when it names an AI system or lab |
+| `exploits` | `metasploit[]` (`name, fullname, rank, type, url, date`: the module's disclosure date or `null`), `nuclei[]` (`path, severity, url`), `exploitdb[]` (`id, verified, url, date`), `poc` (`count, vetted, hype, top[]` with `url, stars, created`) |
+| `ai_credit` | Up to 80 characters of the CNA credit around the name of an AI system or lab, or `null` |
 | `tags` | CNA tags such as `disputed`, `unsupported-when-assigned` |
 | `batch` | Batch id or `null` |
 | `score` | `{ value, tier, raw, model }`: `raw` is the score before the exploitation floor and clamping |
@@ -166,7 +171,10 @@ neither in the window nor in KEV is not in any shard. The file is
 
 A `Reason` is `{ id, label, polarity: up|down|info|unknown, family: E|X|SEV|SSVC|PRIOR|NOISE|INFO, points, source, url?, at? }`.
 Chips that lost to a stronger one in their family are included with `points: 0`, so
-`15 + Σ points` reproduces the score. Every chip id is listed in [SCORING.md](SCORING.md#chips-and-points).
+`15 + Σ points` equals `score.raw` for a CVE that is not exploited (`score.value` is that clamped to
+0–100, so the two differ only when `raw` is negative), and equals `score.value` for an exploited
+CVE, whose E chips carry the +75, the floor of 90, the cap and the ransomware bonus. Every chip id
+is listed in [SCORING.md](SCORING.md#chips-and-points).
 
 PoC repository links are third-party, unverified, and may be malware.
 
@@ -194,11 +202,11 @@ description, required_action`, plus `in_window` (the CVE was published in the wi
 
 | Field | Meaning |
 |---|---|
-| `monthly[]` | Every month since 1999: `{ month, published, reserved, rejected, ai, kev_added }`. `reserved` buckets published records by their reservation month |
-| `daily[]` | Each window day, oldest first: `{ date, published, passed, exploited }` |
+| `monthly[]` | Every month since 1999: `{ month, published, reserved, rejected, ai, kev_added }`. `published` counts records in PUBLISHED state by `datePublished`, and `reserved` buckets the same records by their reservation month. `rejected` counts REJECTED records by `datePublished`, else by rejection date (most were never published). `ai` counts published records that credit an AI system or lab |
+| `daily[]` | Each full UTC day of the window, then today so far, oldest first: `{ date, published, passed, exploited }`. The partial day the window starts in is left out |
 | `hourly` | `{ start, hours, counts }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start` |
 | `cnas[]` | Top 25 CNAs in the window: `{ cna, count, passed, no_cvss, ssvc_missing }` |
-| `ai_credits[]` | Top 20 AI credit strings: `{ text, count }` |
+| `ai_credits[]` | Top 20 AI credit excerpts (≤ 80 characters, as in `ai_credit`): `{ text, count }` |
 
 ## `changes.json`
 

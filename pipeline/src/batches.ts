@@ -2,6 +2,7 @@
  * Patch-day batches: (CNA, UTC publish date) groups of at least BATCH_MIN window records.
  * Members get the `batch` info chip and `ScoredCve.batch`; the Batch summary is returned.
  */
+import { cnaName, isBulkCna } from '../../shared/cna';
 import type { Batch, Tier } from '../../shared/contract';
 import { BATCH_MIN, chip } from '../../shared/model';
 import { toRow } from './rows';
@@ -51,7 +52,8 @@ export function assignBatches(scored: ScoredCve[]): Batch[] {
     const { cna, published } = members[0].cve;
     const date = utcDay(published);
     const id = `${slugify(cna)}-${date}`;
-    const label = `Part of ${cna} · ${monthDay(date)} (${formatInt(members.length)})`;
+    const kind = isBulkCna(cna) ? 'bulk release' : 'patch day';
+    const label = `Part of ${cnaName(cna)} ${kind} · ${monthDay(date)} (${formatInt(members.length)})`;
 
     const byTier: Record<Tier, number> = { exploited: 0, likely: 0, watch: 0, quiet: 0 };
     const families = new Map<string, { count: number; passed: number }>();

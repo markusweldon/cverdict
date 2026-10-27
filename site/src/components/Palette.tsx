@@ -8,7 +8,7 @@ import { matches, terms, tierAt } from '../filters';
 import { fmtInt, vendorProduct } from '../format';
 import { useData } from '../hooks';
 import { cveHref, href, navigate } from '../router';
-import { knob, normalizeName, overlay, toast, toggleTheme, toggleWatch, useStore, watchlist } from '../state';
+import { closeOverlay, knob, normalizeName, overlay, toast, toggleTheme, toggleWatch, useStore, watchlist } from '../state';
 import { copyText } from '../ticket';
 import { Dialog } from './Dialog';
 import { IconArrowRight, IconEye, IconKeyboard, IconLayers, IconLink, IconMoon, IconRefresh, IconSearch } from './icons';
@@ -87,7 +87,7 @@ function buildItems(q: string, rows: readonly Row[]): Item[] {
 
 export function Palette() {
   const open = useStore(overlay) === 'palette';
-  const close = () => overlay.set(null);
+  const close = () => closeOverlay('palette');
   return (
     <Dialog open={open} onClose={close} label="Command palette" class="dialog--palette">
       <PaletteBody close={close} />

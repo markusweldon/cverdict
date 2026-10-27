@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Tier } from '../../../shared/contract';
 import { absoluteUrl, copyLink } from '../actions';
-import type { FeedFilter, TierCounts } from '../filters';
+import type { FeedFilter } from '../filters';
 import { fmtInt } from '../format';
 import { useSearchTarget } from '../hooks';
 import { href } from '../router';
@@ -16,7 +16,8 @@ const TOGGLABLE: readonly Tier[] = ['exploited', 'likely', 'watch'];
 interface Props {
   filter: FeedFilter;
   onChange: (next: FeedFilter) => void;
-  counts: TierCounts;
+  /** Rows per tier toggle; null while it cannot be counted yet. */
+  counts: Record<Tier, number | null>;
   shown: number;
 }
 
@@ -38,7 +39,13 @@ export function FilterBar({ filter, onChange, counts, shown }: Props) {
             <button key={t} type="button" class={`seg__btn seg__btn--${t}`} aria-pressed={filter.tiers.has(t) ? 'true' : 'false'} onClick={() => toggleTier(t)}>
               <TierIcon tier={t} size={13} />
               {TIER_META[t].label}
-              <span class="seg__count">{fmtInt(counts[t])}</span>
+              {counts[t] === null ? (
+                <span class="seg__count" data-tip="Counted once every CVE has loaded (turn Watch on)">
+                  …
+                </span>
+              ) : (
+                <span class="seg__count">{fmtInt(counts[t])}</span>
+              )}
             </button>
           ))}
         </div>

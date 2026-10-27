@@ -17,6 +17,8 @@ export function batchSummary(counts: TierCounts, pocs: number): string {
 interface Props {
   batch: Batch;
   counts: TierCounts;
+  /** False while the counts are an estimate (knob < 35 before every row has loaded). */
+  exact?: boolean;
   pocs: number;
   topTier: (r: Row) => Tier;
   compact?: boolean;
@@ -24,7 +26,7 @@ interface Props {
   onToggle?: () => void;
 }
 
-export function BatchCard({ batch, counts, pocs, topTier, compact, expanded, onToggle }: Props) {
+export function BatchCard({ batch, counts, exact = true, pocs, topTier, compact, expanded, onToggle }: Props) {
   const passed = counts.exploited + counts.likely;
   const best = batch.top[0];
   const lead: Tier = counts.exploited ? 'exploited' : counts.likely ? 'likely' : 'quiet';
@@ -39,11 +41,11 @@ export function BatchCard({ batch, counts, pocs, topTier, compact, expanded, onT
       <div class="batch__count">
         <span class="batch__num">{fmtInt(batch.count)}</span>
         <span class="batch__arrow" aria-hidden="true">→</span>
-        <span class={`batch__passed${passed ? ' is-lit' : ''}`}>{fmtInt(passed)}</span>
-        <span class="batch__unit">passed</span>
+        <span class={`batch__passed${passed && exact ? ' is-lit' : ''}`}>{exact ? fmtInt(passed) : '…'}</span>
+        <span class="batch__unit">{exact ? 'passed' : 'counting…'}</span>
       </div>
       <TierBar counts={counts} label={`${batch.count} CVEs: ${(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => `${counts[t]} ${TIER_META[t].label.toLowerCase()}`).join(', ')}`} />
-      <p class="batch__summary">{batchSummary(counts, pocs)}</p>
+      <p class="batch__summary">{exact ? batchSummary(counts, pocs) : 'Loading every CVE…'}</p>
       {!expanded && batch.families.length > 0 && (
         <p class="batch__families">
           {batch.families.slice(0, 3).map((f, i) => (

@@ -113,7 +113,10 @@ export default function Feeds() {
         </h2>
         <div class="snippets">
           <Snippet title="Exploited CVEs right now (curl + jq)" code={`curl -s ${base}signal.json \\\n  | jq -r '.cols as $c | .rows[] | [$c, .] | transpose | map({(.[0]): .[1]}) | add\n           | select(.tier == "exploited") | "\\(.id)  \\(.s)  \\(.v) \\(.p)"'`} />
-          <Snippet title="KEV deadlines in the next 7 days" code={`curl -s ${base}kev.json \\\n  | jq -r --arg d "$(date -u -d '+7 days' +%F)" '.entries[] | select(.due_date <= $d) | "\\(.due_date)  \\(.id)  \\(.vendor) \\(.product)"'`} />
+          <Snippet
+            title="KEV deadlines in the next 7 days"
+            code={`# GNU date; on macOS use: date -u -v+7d +%F\ncurl -s ${base}kev.json \\\n  | jq -r --arg t "$(date -u +%F)" --arg d "$(date -u -d '+7 days' +%F)" \\\n      '.entries[] | select(.due_date >= $t and .due_date <= $d) | "\\(.due_date)  \\(.id)  \\(.vendor) \\(.product)"'`}
+          />
           <Snippet title="Look up one CVE (JavaScript)" code={`${SHARD_JS}\n\nconst id = 'CVE-2026-12345';\nconst shard = await fetch(\`${base}cve/\${shardOf(id)}.json\`).then((r) => r.json());\nconsole.log(shard.items[id]?.reasons);`} />
         </div>
       </section>

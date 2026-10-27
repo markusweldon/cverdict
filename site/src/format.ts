@@ -1,4 +1,5 @@
 /** Pure formatting helpers. Dates are shown in UTC: batches, KEV due dates and the window are UTC days. */
+import { cnaName, isBulkCna } from '../../shared/cna';
 
 const NUMBER = new Intl.NumberFormat('en-US');
 const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
@@ -105,19 +106,16 @@ export function fmtCountdown(ms: number, precise = false): string {
 /** A KEV due date is met by the end of that (UTC) day. */
 export const kevDeadline = (dueDate: string): number => toMs(dueDate) + DAY_MS;
 
-// CNA short names → display names. Unknown names fall back to themselves.
-const CNA_NAMES: Readonly<Record<string, string>> = {
-  microsoft: 'Microsoft', oracle: 'Oracle', GitHub_M: 'GitHub', mitre: 'MITRE', redhat: 'Red Hat', ibm: 'IBM', hpe: 'HPE',
-  adobe: 'Adobe', mozilla: 'Mozilla', juniper: 'Juniper', nvidia: 'NVIDIA', cisco: 'Cisco', apache: 'Apache', eclipse: 'Eclipse',
-  icscert: 'CISA ICS', 'cisa-cg': 'CISA', drupal: 'Drupal', dell: 'Dell', zephyr: 'Zephyr', brocade: 'Brocade', fortinet: 'Fortinet',
-  paloalto: 'Palo Alto Networks', ivanti: 'Ivanti', sap: 'SAP', siemens: 'Siemens', citrix: 'Citrix', f5: 'F5', vmware: 'VMware',
-  atlassian: 'Atlassian', qualcomm: 'Qualcomm', apple: 'Apple', zdi: 'ZDI', twcert: 'TWCERT/CC', jpcert: 'JPCERT/CC',
-  trendmicro: 'Trend Micro', TPLink: 'TP-Link', ProgressSoftware: 'Progress', google: 'Google', huntr_ai: 'huntr',
-  canonical: 'Canonical', debian: 'Debian', suse: 'SUSE', jenkins: 'Jenkins', intel: 'Intel', amd: 'AMD', samsung: 'Samsung',
-  wordfence: 'Wordfence', hashicorp: 'HashiCorp', snyk: 'Snyk', mattermost: 'Mattermost', elastic: 'Elastic', schneider: 'Schneider Electric',
-};
-export function cnaName(cna: string): string {
-  return CNA_NAMES[cna] ?? (/^[a-z]/.test(cna) ? cna.charAt(0).toUpperCase() + cna.slice(1) : cna);
+/** CNA short names → display names ("GitHub_M" → "GitHub"), shared with the pipeline. */
+export { cnaName, isBulkCna };
+
+/** What a CNA's ≥50-record day is called: aggregators publish bulk releases, vendors have patch days. */
+export const batchKind = (cna: string): string => (isBulkCna(cna) ? 'bulk release' : 'patch-day batch');
+
+/** "Microsoft · Oct 13" for batch id "microsoft-2026-10-13". */
+export function batchLabel(batchId: string, cna: string): string {
+  const date = batchId.slice(-10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${cnaName(cna)} · ${fmtDate(date)}` : cnaName(cna);
 }
 
 /** "Fortinet · FortiSandbox"; collapses "Microsoft · Microsoft Exchange" and "Linux · Linux". */

@@ -34,7 +34,7 @@ export type SourceId =
 
 /** One human-readable reason ("chip") explaining a score. */
 export interface Reason {
-  /** Stable chip id, e.g. `kev.listed`, `x.metasploit`. Full list in shared/chips.ts. */
+  /** Stable chip id, e.g. `kev.listed`, `x.metasploit`. Full catalogue in shared/model.ts. */
   id: string;
   /** Full label, e.g. "CISA KEV · added Oct 21 · due Oct 24". Plain text, never HTML. */
   label: string;
@@ -75,8 +75,13 @@ export interface Row {
   k: 0 | 1;
   /** 1 when the CNA credits list matches an AI tool/vendor (information only). */
   ai: 0 | 1;
-  /** Up to 4 chip ids, strongest first (positive chips before negative). */
+  /** Up to 4 chip ids, strongest first (positive chips before negative). For display. */
   c: string[];
+  /**
+   * Every chip id that fired for this CVE (including ones that lost within their family),
+   * excluding unknown-polarity chips. For filtering; order carries no meaning.
+   */
+  r: string[];
   /** CVSS base score, if any (CNA preferred, then CISA-ADP). */
   cv: number | null;
   /** EPSS probability 0-1, if scored. */
@@ -88,7 +93,7 @@ export interface Row {
 }
 
 /** Column order used by columnar files (index.json, signal.json). */
-export const ROW_COLS = ['id', 'pub', 'cna', 'v', 'p', 't', 's', 'tier', 'x', 'w', 'k', 'ai', 'c', 'cv', 'e', 'kd', 'b'] as const satisfies readonly (keyof Row)[];
+export const ROW_COLS = ['id', 'pub', 'cna', 'v', 'p', 't', 's', 'tier', 'x', 'w', 'k', 'ai', 'c', 'r', 'cv', 'e', 'kd', 'b'] as const satisfies readonly (keyof Row)[];
 
 /** Columnar encoding of Row[] — rows[i][j] is the value of column cols[j]. */
 export interface RowTable {
@@ -143,7 +148,7 @@ export interface EpssInfo {
 }
 
 export interface ExploitEvidence {
-  metasploit: { name: string; fullname: string; rank: number | null; type: string; url: string }[];
+  metasploit: { name: string; fullname: string; rank: number | null; type: string; url: string; date: string | null }[];
   nuclei: { path: string; severity: string | null; url: string }[];
   exploitdb: { id: string; verified: boolean; url: string; date: string | null }[];
   poc: {
@@ -306,7 +311,7 @@ export interface StatsFile {
   monthly: { month: string; published: number; reserved: number; rejected: number; ai: number; kev_added: number }[];
   /** Window days, oldest first. */
   daily: { date: string; published: number; passed: number; exploited: number }[];
-  /** Hour buckets across the window for the waterfall: [hourIndex, tierCounts...]. */
+  /** Hour buckets across the window for the waterfall: counts[h] = [exploited, likely, watch, quiet] for hour h after `start`. */
   hourly: { start: string; hours: number; counts: [number, number, number, number][] };
   /** Top CNAs in the window. */
   cnas: { cna: string; count: number; passed: number; no_cvss: number; ssvc_missing: number }[];

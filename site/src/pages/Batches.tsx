@@ -1,10 +1,10 @@
 /** Batches: patch-day cohorts (50+ CVEs from one CNA in one UTC day), with tier bars. */
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import type { Batch, Row } from '../../../shared/contract';
+import { SIGNAL_MIN_SCORE, type Batch } from '../../../shared/contract';
 import { BatchCard } from '../components/BatchCard';
 import { ErrorState, Loading } from '../components/States';
 import { data } from '../data';
-import { emptyCounts, retier, tierAt, type TierCounts } from '../filters';
+import { batchCounts, emptyCounts, groupByBatch, hasChip, tierAt, type TierCounts } from '../filters';
 import { cnaName, DAY_MS, fmtDate, fmtInt, fmtPct, plural } from '../format';
 import { useData, useKnobUrl, useTitle } from '../hooks';
 import { useLocation } from '../router';
@@ -31,6 +31,9 @@ export default function Batches() {
   const loc = useLocation();
   const batches = useData(data.batches);
   const signal = useData(data.signal);
+  // Below knob 35 the signal rows cannot tell which members pass (scores 30–34): count every row.
+  const index = useData(level < SIGNAL_MIN_SCORE || data.index.peek() ? data.index : null);
+  const complete = index.status === 'ready';
   const meta = useData(data.meta);
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set(loc.hash ? [decodeURIComponent(loc.hash.slice(1))] : []));
   const [cna, setCna] = useState('');
@@ -43,17 +46,14 @@ export default function Batches() {
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }));
   }, [loc.hash, batches.status]);
 
-  const members = useMemo(() => {
-    const m = new Map<string, Row[]>();
-    if (signal.status === 'ready') for (const r of signal.data) if (r.b) m.set(r.b, [...(m.get(r.b) ?? []), r]);
-    return m;
-  }, [signal]);
+  const members = useMemo(() => groupByBatch(complete ? index.data : signal.status === 'ready' ? signal.data : []), [complete, index, signal]);
 
   if (batches.status === 'error') return <ErrorState error={batches.error} onRetry={batches.retry} />;
   const list = batches.status === 'ready' ? batches.data.batches : [];
   const cnas = [...new Set(list.map((b) => b.cna))].sort((a, b) => cnaName(a).localeCompare(cnaName(b)));
   const shown = cna ? list.filter((b) => b.cna === cna) : list;
-  const countsOf = (id: string, d: TierCounts) => retier(d, members.get(id) ?? [], level);
+  const countsOf = (id: string, d: TierCounts) => batchCounts(d, members.get(id) ?? [], level, complete).counts;
+  const exact = complete || level >= SIGNAL_MIN_SCORE;
   const total = list.reduce((a, b) => a + b.count, 0);
   const passed = list.reduce((a, b) => {
     const c = countsOf(b.id, b.by_tier);
@@ -77,7 +77,14 @@ export default function Batches() {
           {list.length ? (
             <>
               {plural(list.length, 'batch', 'batches')} in 30 days carried <strong>{fmtInt(total)}</strong> CVEs
-              {windowTotal ? <> ({fmtPct(total / windowTotal)} of the window)</> : null}. At knob {level}, <strong>{fmtInt(passed)}</strong> of them pass — {fmtInt(all.exploited)} exploited.
+              {windowTotal ? <> ({fmtPct(total / windowTotal)} of the window)</> : null}.{' '}
+              {exact ? (
+                <>
+                  At knob {level}, <strong>{fmtInt(passed)}</strong> of them pass — {fmtInt(all.exploited)} exploited.
+                </>
+              ) : (
+                <>At knob {level}, counting which of them pass…</>
+              )}
             </>
           ) : (
             'A batch is 50 or more CVEs from one CNA on one UTC day: Patch Tuesday, Oracle’s CPU, Chrome releases, kernel dumps.'
@@ -118,7 +125,8 @@ export default function Batches() {
                     key={b.id}
                     batch={b}
                     counts={countsOf(b.id, b.by_tier)}
-                    pocs={ms.filter((r) => r.c.includes('x.poc')).length}
+                    exact={exact}
+                    pocs={ms.filter((r) => hasChip(r, 'x.poc')).length}
                     topTier={(r) => tierAt(r, level)}
                     expanded={open.has(b.id)}
                     onToggle={() =>

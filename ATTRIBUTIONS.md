@@ -15,9 +15,9 @@ the data files, such as CVE descriptions and KEV entries, remains under the term
 - **Source:** [CVEProject/cvelistV5](https://github.com/CVEProject/cvelistV5), the official CVE
   Record downloads.
 - **We use and republish:** CVE IDs, dates, CNA names, titles, English descriptions (cut to 1,000
-  characters), affected vendors and products, CVSS vectors, CWE ids, tags, credits that name AI
-  tools, and up to 10 reference URLs per record. CVE records are written by the CNAs that publish
-  them and are reproduced as published.
+  characters), affected vendors and products, CVSS vectors, CWE ids, tags, excerpts (up to 80
+  characters) of credits that name AI tools, and up to 10 reference URLs per record. CVE records
+  are written by the CNAs that publish them and are reproduced as published.
 - **Terms:** [CVE Program Terms of Use](https://www.cve.org/Legal/TermsOfUse). As those terms
   require, MITRE's copyright designation and license are reproduced here:
 
@@ -82,7 +82,7 @@ Carnegie Mellon University.
 - **Source:** [`db/modules_metadata_base.json`](https://github.com/rapid7/metasploit-framework/blob/master/db/modules_metadata_base.json)
   from [rapid7/metasploit-framework](https://github.com/rapid7/metasploit-framework).
 - **We use and republish:** for modules that reference a CVE, the module name, full name, rank,
-  type and a link to its source. No module code.
+  type, disclosure date and a link to its source. No module code.
 - **License:** BSD-3-Clause.
 
 <details>

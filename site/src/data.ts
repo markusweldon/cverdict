@@ -3,7 +3,8 @@
  *
  * Every file is fetched at most once per page load and kept in memory; a failed fetch is evicted
  * so a retry refetches. Row tables are decoded with rowsFromTable; CVE details come from the
- * shard named by shardOf().
+ * shard named by shardOf(). After reloadFresh() the next page load revalidates every file with
+ * the server instead of trusting the browser's HTTP cache.
  */
 import {
   SCHEMA_VERSION,
@@ -64,7 +65,38 @@ export function normalizeCveId(id: string): string | null {
   return CVE_ID_RE.test(n) ? n : null;
 }
 
-export function createDataClient(base: string = DATA_BASE, fetchImpl: typeof fetch = (input, init) => fetch(input, init)): DataClient {
+const REVALIDATE_KEY = `${import.meta.env.BASE_URL}revalidate`;
+
+/**
+ * Reload the page for a newer pipeline run. A plain reload can be served the previous run's
+ * files from the HTTP cache (max-age / stale-while-revalidate), so flag the next load to revalidate.
+ */
+export function reloadFresh(): void {
+  try {
+    sessionStorage.setItem(REVALIDATE_KEY, '1');
+  } catch {
+    // Blocked storage: a plain reload is the best we can do.
+  }
+  window.location.reload();
+}
+
+/** Read and clear the reloadFresh() flag. */
+function takeRevalidateFlag(): boolean {
+  try {
+    const set = sessionStorage.getItem(REVALIDATE_KEY) === '1';
+    sessionStorage.removeItem(REVALIDATE_KEY);
+    return set;
+  } catch {
+    return false;
+  }
+}
+
+export function createDataClient(
+  base: string = DATA_BASE,
+  fetchImpl: typeof fetch = (input, init) => fetch(input, init),
+  /** Revalidate every file with the server (cache: 'no-cache') instead of using fresh cached copies. */
+  revalidate = false,
+): DataClient {
   const pending = new Map<string, Promise<unknown>>();
   const resolved = new Map<string, unknown>();
 
@@ -97,7 +129,7 @@ export function createDataClient(base: string = DATA_BASE, fetchImpl: typeof fet
       load() {
         let p = pending.get(path) as Promise<T> | undefined;
         if (!p) {
-          p = getJson(path).then(parse);
+          p = getJson(path, revalidate ? { cache: 'no-cache' } : undefined).then(parse);
           pending.set(path, p);
           p.then(
             (value) => resolved.set(path, value),
@@ -152,4 +184,4 @@ export function createDataClient(base: string = DATA_BASE, fetchImpl: typeof fet
   };
 }
 
-export const data: DataClient = createDataClient();
+export const data: DataClient = createDataClient(DATA_BASE, undefined, typeof window !== 'undefined' && takeRevalidateFlag());

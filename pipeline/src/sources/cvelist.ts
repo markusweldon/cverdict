@@ -175,13 +175,15 @@ export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise
     const adp = cisaAdpFlags(record);
     if (adp.present) scan.adpRecords++;
 
-    if (meta.state === 'PUBLISHED' && meta.published) {
+    if (meta.state === 'PUBLISHED' && meta.published && meta.published > now) {
+      // Only possible with a frozen --now (or clock skew): leave it out of every count.
+      scan.future++;
+    } else if (meta.state === 'PUBLISHED' && meta.published) {
       bump(history.published, monthKey(meta.published));
       if (meta.reserved) bump(history.reserved, monthKey(meta.reserved));
       if (recordAiCredit(record)) bump(history.ai, monthKey(meta.published));
       const windowed = inWindow(meta.published);
       if (windowed) scan.windowPublished++;
-      else if (meta.published > now) scan.future++;
       if (windowed || adp.kev || kev.ids?.has(meta.id)) {
         const cve = normalizeCve(record, meta, windowed);
         if (cve) {

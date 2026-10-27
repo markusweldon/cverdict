@@ -58,11 +58,20 @@ describe('buildStats', () => {
     expect(stats.monthly).toHaveLength((2026 - 1999) * 12 + 10);
   });
 
-  it('daily: window days with published / passed / exploited', () => {
-    expect(stats.daily).toHaveLength(31);
+  it('daily: full window days (the partial first day left out), then today so far', () => {
+    expect(stats.daily).toHaveLength(30);
+    expect(stats.daily[0]).toEqual({ date: '2026-09-27', published: 0, passed: 0, exploited: 0 });
     expect(stats.daily.at(-1)).toEqual({ date: '2026-10-26', published: 2, passed: 0, exploited: 0 });
     expect(stats.daily.find((d) => d.date === '2026-10-13')).toEqual({ date: '2026-10-13', published: 1, passed: 1, exploited: 1 });
-    expect(stats.daily[0]).toEqual({ date: '2026-09-26', published: 1, passed: 1, exploited: 0 });
+    // CVE-2026-4 was published at 19:44 on Sep 26, inside the window but on its partial first day.
+    expect(stats.daily.some((d) => d.date === '2026-09-26')).toBe(false);
+  });
+
+  it('daily: a window starting at midnight keeps its first day', () => {
+    const start = new Date('2026-09-26T00:00:00Z');
+    const s = buildStats({ history: history(), kev, window, windowStart: start, now: NOW });
+    expect(s.daily[0].date).toBe('2026-09-26');
+    expect(s.daily).toHaveLength(31);
   });
 
   it('hourly: tier counts per hour bucket across the window', () => {

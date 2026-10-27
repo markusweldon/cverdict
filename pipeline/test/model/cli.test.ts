@@ -38,6 +38,19 @@ describe('parseCli', () => {
     });
   });
 
+  it('reads --now without an offset as UTC, whatever the host time zone', () => {
+    const tz = process.env.TZ;
+    process.env.TZ = 'America/New_York';
+    try {
+      expect(parseCli(['--now', '2026-10-26T19:30:00'])!.now!.toISOString()).toBe('2026-10-26T19:30:00.000Z');
+      expect(parseCli(['--now', '2026-10-26'])!.now!.toISOString()).toBe('2026-10-26T00:00:00.000Z');
+      expect(parseCli(['--now', '2026-10-26T15:30:00-04:00'])!.now!.toISOString()).toBe('2026-10-26T19:30:00.000Z');
+    } finally {
+      if (tz === undefined) delete process.env.TZ;
+      else process.env.TZ = tz;
+    }
+  });
+
   it('returns null for --help / -h', () => {
     expect(parseCli(['--help'])).toBeNull();
     expect(parseCli(['-h'])).toBeNull();
@@ -49,6 +62,8 @@ describe('parseCli', () => {
     [['--bogus'], /bogus/],
     [['stray'], /positional|stray/i],
     [['--now', 'yesterday'], /--now/],
+    [['--now', 'Oct 26 2026 19:30'], /--now/],
+    [['--now', '2026-02-30T00:00:00Z'], /--now/],
     [['--window-days', '0'], /--window-days/],
     [['--window-days', '3.5'], /whole number/],
     [['--knob', '20'], /--knob/],
@@ -60,8 +75,8 @@ describe('parseCli', () => {
 });
 
 describe('formatSummary', () => {
-  it('prints counts by tier, the pass rate and the top ids', () => {
-    const summary = {
+  const makeSummary = (sources: unknown[]) =>
+    ({
       out: '/x/site/public/data',
       durationMs: 81234,
       batches: [],
@@ -85,15 +100,24 @@ describe('formatSummary', () => {
           kev_adds_30d: 26,
           batches_window: 12,
         },
-        sources: [{ id: 'epss', ok: true, stale: true, records: 300000, error: 'HTTP 403' }],
+        sources,
       },
-    } as unknown as RunSummary;
-    const text = formatSummary(summary);
+    }) as unknown as RunSummary;
+
+  it('prints counts by tier, the pass rate and the top ids', () => {
+    const text = formatSummary(makeSummary([{ id: 'epss', ok: true, stale: true, records: 300000, error: 'HTTP 403' }]));
     expect(text).toContain('Published in window: 16,000');
     expect(text).toMatch(/exploited\s+20\s+0\.1%/);
     expect(text).toContain('Pass rate (exploited + likely): 2.0% — 1 in 50');
     expect(text).toMatch(/CVE-2026-1001\s+100\s+exploited\s+Microsoft Windows/);
     expect(text).toMatch(/epss\s+stale\s+300,000\s+\(HTTP 403\)/);
     expect(text).toContain('266 files · 1 warnings · 81.2 s');
+  });
+
+  it('keeps upstream text in source errors on one line', () => {
+    const error = 'EPSS: unexpected header "x\r::warning title=Forged::y"';
+    const lines = formatSummary(makeSummary([{ id: 'epss', ok: false, stale: true, records: null, error }])).split(/\r\n|\r|\n/);
+    expect(lines.some((l) => l.trimStart().startsWith('::'))).toBe(false);
+    expect(lines.find((l) => l.includes('Forged'))).toMatch(/epss\s+DOWN.*x\\r::warning/);
   });
 });

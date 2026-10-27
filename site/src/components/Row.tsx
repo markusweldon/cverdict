@@ -1,5 +1,6 @@
 import type { Row, Tier } from '../../../shared/contract';
-import { cnaName, fmtAge, fmtDate, vendorProduct } from '../format';
+import { hasChip, pubMs } from '../filters';
+import { batchKind, batchLabel, cnaName, fmtAge, vendorProduct } from '../format';
 import { cveHref, href } from '../router';
 import { ChipList } from './Chip';
 import { IconEye, IconLayers } from './icons';
@@ -18,11 +19,6 @@ export function ScoreMeter({ score, knob, tier }: { score: number; knob: number;
   );
 }
 
-const batchLabel = (b: string, cna: string) => {
-  const date = b.slice(-10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${cnaName(cna)} · ${fmtDate(date)}` : cnaName(cna);
-};
-
 interface CveRowProps {
   row: Row;
   tier: Tier;
@@ -40,6 +36,9 @@ interface CveRowProps {
 /** One CVE in a list. The whole row is a link; chips and the batch tag sit above it. */
 export function CveRow({ row, tier, knob, now, selected, watched, isNew, activeChip, onChip, onSelect, style }: CveRowProps) {
   const who = vendorProduct(row.v, row.p) || cnaName(row.cna);
+  const top = row.b ? row.c.filter((c) => c !== 'batch') : row.c;
+  // A reason filter also matches chips outside the top four: show the matching one in place of the last.
+  const chips = activeChip && activeChip !== 'batch' && !top.includes(activeChip) && hasChip(row, activeChip) ? [...top.slice(0, 3), activeChip] : top;
   return (
     <article class={`row row--${tier}${selected ? ' is-selected' : ''}`} data-id={row.id} style={style} onPointerEnter={onSelect}>
       <TierPill tier={tier} size="sm" />
@@ -59,9 +58,9 @@ export function CveRow({ row, tier, knob, now, selected, watched, isNew, activeC
         </div>
         <p class="row__title">{row.t}</p>
         <div class="row__meta">
-          <ChipList ids={row.b ? row.c.filter((c) => c !== 'batch') : row.c} onChip={onChip} activeChip={activeChip} tabbable={false} />
+          <ChipList ids={chips} onChip={onChip} activeChip={activeChip} tabbable={false} />
           {row.b && (
-            <a class="row__batch" href={href(`batches#${row.b}`)} tabIndex={-1} data-tip="Part of a patch-day batch (50+ CVEs from one CNA in one day)">
+            <a class="row__batch" href={href(`batches#${row.b}`)} tabIndex={-1} data-tip={`Part of a ${batchKind(row.cna)} (50+ CVEs from one CNA in one day)`}>
               <IconLayers size={12} />
               {batchLabel(row.b, row.cna)}
             </a>
@@ -70,7 +69,7 @@ export function CveRow({ row, tier, knob, now, selected, watched, isNew, activeC
       </div>
       <div class="row__side">
         <ScoreMeter score={row.s} knob={knob} tier={tier} />
-        <time class="row__age" dateTime={row.pub} data-tip={`Published ${new Date(row.pub).toUTCString()}`}>
+        <time class="row__age" dateTime={row.pub} data-tip={`Published ${new Date(pubMs(row)).toUTCString()}`}>
           {fmtAge(row.pub, now)}
         </time>
       </div>

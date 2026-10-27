@@ -25,7 +25,7 @@ import {
   RANSOMWARE_BONUS,
   chip,
 } from '../../shared/model';
-import type { Enrichment, KevCatalog, KevPrior, KevRaw, NormalizedCve, PocRepo, ScoredCve } from './types';
+import type { Enrichment, KevCatalog, KevPrior, KevPriorEntry, KevRaw, NormalizedCve, PocRepo, ScoredCve } from './types';
 import { DAY_MS, addDays, daysBetween, parseIsoDate, ymd } from './util/dates';
 
 /** EPSS bands for epss.high / epss.mid; below EPSS_MID counts as "no exploit signal". */
@@ -49,9 +49,16 @@ const WORDPRESS_CNAS = new Set(['wordfence', 'wpscan', 'patchstack']);
 const WORDPRESS_RE = /wordpress (plugin|theme)|for wordpress/i;
 const KERNEL_CNA = 'linux';
 
-/** v3 E:F / E:H and v4 E:A mean exploitation; E:P means a proof of concept. */
-const VENDOR_EXPLOITED = ['F', 'H', 'A'];
+/**
+ * v4 E:A means attacks are reported; v3 E:F / E:H mean working exploit code exists (weaponization,
+ * not exploitation); E:P means a proof of concept. Only v4 uses A and only v3 uses F/H, so the
+ * flat cnaExploitMaturity list is unambiguous.
+ */
+const VENDOR_EXPLOITED = ['A'];
+const VENDOR_FUNCTIONAL = ['F', 'H'];
 const VENDOR_POC = 'P';
+/** Sources the X family reads; if one is unavailable, "no exploit" cannot be concluded. */
+const X_SOURCES: readonly SourceId[] = ['metasploit', 'nuclei', 'exploitdb', 'poc-github', 'epss'];
 
 const MSF_RANK_NAMES: Record<number, string> = {
   0: 'manual',
@@ -185,27 +192,119 @@ export function orderReasons(reasons: Reason[]): Reason[] {
 
 // ── KEV prior ──────────────────────────────────────────────────────────────────────────────
 
-/** Lower-case and strip everything but letters and digits: "Palo Alto Networks" → "paloaltonetworks". */
-export function normalizeName(s: string): string {
-  return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+/** Trailing tokens naming a legal form or line of business, not the vendor: "QNAP Systems Inc." → qnap. */
+const VENDOR_SUFFIXES = new Set([
+  'corporation', 'corp', 'inc', 'incorporated', 'ltd', 'limited', 'llc', 'co', 'company', 'gmbh', 'ag', 'sa', 'plc', 'kk',
+  'systems', 'networks', 'software', 'foundation', 'technologies', 'technology', 'mobile', 'cloud', 'labs', 'group',
+]);
+/** Renames and alternative names (canonical key → canonical key), for both KEV and CNA spellings. */
+const VENDOR_ALIASES: Readonly<Record<string, string>> = {
+  zimbra: 'synacor',
+  netscaler: 'citrix',
+  zohocorp: 'zoho',
+  manageengine: 'zoho',
+  hewlettpackardenterprise: 'hpe',
+  hewlettpackard: 'hp',
+};
+
+/** Lower-cased, accent-free alphanumeric words; runs of single letters ("K.K.", "S.A.") become one word. */
+function nameTokens(s: string): string[] {
+  const words = s.normalize('NFKD').replace(/\p{M}+/gu, '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const out: string[] = [];
+  let letters = '';
+  for (const w of words) {
+    if (w.length === 1) {
+      letters += w;
+      continue;
+    }
+    if (letters) out.push(letters);
+    letters = '';
+    out.push(w);
+  }
+  if (letters) out.push(letters);
+  return out;
 }
 
+/**
+ * Canonical vendor tokens, so CNA legal names meet CISA's short names: "Juniper Networks" →
+ * [juniper], "The Apache Software Foundation" → [apache], "Hewlett Packard Enterprise (HPE)" → [hpe].
+ */
+export function vendorTokens(name: string): string[] {
+  let tokens = nameTokens(name.replace(/\([^)]*\)/g, ' '));
+  if (tokens.length === 0) tokens = nameTokens(name);
+  if (tokens.length > 1 && tokens[0] === 'the') tokens = tokens.slice(1);
+  while (tokens.length > 1 && VENDOR_SUFFIXES.has(tokens[tokens.length - 1])) tokens = tokens.slice(0, -1);
+  const alias = VENDOR_ALIASES[tokens.join('')];
+  return alias ? [alias] : tokens;
+}
+
+/** Product key under a canonical vendor; a leading vendor name is dropped ("Apache Tomcat" → tomcat). */
+function productKey(product: string, vendor: readonly string[]): string {
+  const tokens = nameTokens(product);
+  const prefixed = tokens.length > vendor.length && vendor.every((t, i) => tokens[i] === t);
+  return (prefixed ? tokens.slice(vendor.length) : tokens).join('');
+}
+
+/**
+ * The KEV vendor a name refers to: the same canonical tokens, else the longest KEV vendor whose
+ * tokens start this name's tokens ("Siemens Mobility" → siemens). Whole tokens only, so "Applied
+ * Signal" never matches "Apple".
+ */
+export function kevVendorKey(tokens: readonly string[], prior: KevPrior): string | null {
+  const exact = tokens.join('');
+  if (prior.vendors.has(exact)) return exact;
+  if (EXACT_ONLY_VENDORS.has(tokens[0])) return null;
+  let best: readonly string[] | null = null;
+  for (const cand of prior.prefixes.get(tokens[0]) ?? []) {
+    if (cand.length < tokens.length && cand.every((t, i) => tokens[i] === t) && cand.length > (best?.length ?? 0)) best = cand;
+  }
+  return best ? best.join('') : null;
+}
+
+/**
+ * KEV vendors whose name is a common first word of unrelated vendors ("Linux Mint", "Progress
+ * Planner"), so they only match exactly.
+ */
+const EXACT_ONLY_VENDORS = new Set(['linux', 'progress']);
+
 export function buildKevPrior(kev: KevCatalog): KevPrior {
-  const vendors = new Map<string, Set<string>>();
-  const products = new Map<string, Set<string>>();
-  const add = (map: Map<string, Set<string>>, key: string, id: string) => {
-    let set = map.get(key);
-    if (!set) map.set(key, (set = new Set()));
-    set.add(id);
+  type Acc = { ids: Set<string>; spellings: Map<string, number>; tokens: string[] };
+  const vendorAcc = new Map<string, Acc>();
+  const productAcc = new Map<string, Acc>();
+  const add = (map: Map<string, Acc>, key: string, spelling: string, id: string, tokens: string[]) => {
+    let acc = map.get(key);
+    if (!acc) map.set(key, (acc = { ids: new Set(), spellings: new Map(), tokens }));
+    acc.ids.add(id);
+    acc.spellings.set(spelling, (acc.spellings.get(spelling) ?? 0) + 1);
   };
   for (const e of kev.entries.values()) {
-    const v = normalizeName(e.vendorProject);
-    if (!v) continue;
-    add(vendors, v, e.cveID);
-    const p = normalizeName(e.product);
-    if (p) add(products, `${v}|${p}`, e.cveID);
+    const tokens = vendorTokens(e.vendorProject);
+    if (tokens.length === 0) continue;
+    const v = tokens.join('');
+    const vendorName = e.vendorProject.trim();
+    const productName = e.product.trim();
+    add(vendorAcc, v, vendorName, e.cveID, tokens);
+    const p = productKey(productName, tokens);
+    // "n8n" + "n8n" reads "n8n"; "Apache" + "Apache Tomcat" reads "Apache Tomcat".
+    const named = productName.toLowerCase().startsWith(vendorName.toLowerCase()) ? productName : `${vendorName} ${productName}`;
+    if (p) add(productAcc, `${v}|${p}`, named, e.cveID, tokens);
   }
-  return { vendors, products };
+  // The most frequent spelling names the entry (first seen on ties).
+  const finish = (acc: Acc): KevPriorEntry => ({
+    name: [...acc.spellings].reduce((a, b) => (b[1] > a[1] ? b : a))[0],
+    ids: acc.ids,
+  });
+  const prefixes = new Map<string, string[][]>();
+  for (const { tokens } of vendorAcc.values()) {
+    const list = prefixes.get(tokens[0]);
+    if (list) list.push(tokens);
+    else prefixes.set(tokens[0], [tokens]);
+  }
+  return {
+    vendors: new Map([...vendorAcc].map(([k, acc]) => [k, { ...finish(acc), tokens: acc.tokens }])),
+    products: new Map([...productAcc].map(([k, acc]) => [k, finish(acc)])),
+    prefixes,
+  };
 }
 
 /** Size of a prior set, not counting the CVE being scored. */
@@ -274,6 +373,8 @@ interface Facts {
   epss: EpssInfo | null;
   exploits: ExploitEvidence;
   poc: PocSummary;
+  /** Unavailable sources (id → name). */
+  unavailable: ReadonlyMap<SourceId, string>;
 }
 
 function gatherFacts(cve: NormalizedCve, enr: Enrichment, now: Date): Facts {
@@ -300,6 +401,7 @@ function gatherFacts(cve: NormalizedCve, enr: Enrichment, now: Date): Facts {
       poc: poc.evidence,
     },
     poc,
+    unavailable: enr.unavailable,
   };
 }
 
@@ -351,7 +453,11 @@ function exploitationCandidates(f: Facts): Reason[] {
   return out;
 }
 
-function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[] } {
+/**
+ * X — exploit artifacts and prediction. `pending` means the absence of an exploit is not
+ * settled (an unvetted PoC exists, or an exploit feed is unavailable), so NOISE must not apply.
+ */
+function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pending: boolean } {
   const { cve, now, exploits, epss } = f;
   const cands: Reason[] = [];
   const info: Reason[] = [];
@@ -417,6 +523,14 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[] } {
     const at = cve.ssvc.timestamp ?? undefined;
     cands.push(reason('ssvc.poc', `CISA SSVC: public PoC${at ? ` · ${dayLabel(at, now)}` : ''}`, { url: cveOrgUrl(cve.id), at }));
   }
+  const functional = cve.cnaExploitMaturity.filter((e) => VENDOR_FUNCTIONAL.includes(e));
+  if (functional.length > 0) {
+    cands.push(
+      reason('vendor.functional', `Vendor CVSS: working exploit code exists (${unique(functional).map((e) => `E:${e}`).join(', ')})`, {
+        url: cveOrgUrl(cve.id),
+      }),
+    );
+  }
   if (cve.cnaExploitMaturity.includes(VENDOR_POC)) {
     cands.push(reason('vendor.poc', 'Vendor CVSS: proof of concept exists (E:P)', { url: cveOrgUrl(cve.id) }));
   }
@@ -429,14 +543,18 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[] } {
     );
   }
 
-  if (cands.length > 0) return { result: strongest(cands, 'max'), info };
-  // Nothing fired: after the cold-start period that is (weak) evidence of absence.
-  if (!f.cold) {
-    const epssText = epss ? `EPSS ${formatPercent(epss.score)}` : 'no EPSS score';
-    const none = reason('x.none', `No public exploit after ${f.day} days · ${epssText}`);
-    return { result: { chips: [none], points: none.points }, info };
-  }
-  return { result: { chips: [reason('x.too_new', `Too new: day ${f.day} of ${COLD_START_DAYS} — exploit feeds lag`)], points: 0 }, info };
+  const down = X_SOURCES.flatMap((id) => f.unavailable.get(id) ?? []);
+  const unvetted = poc.count - poc.vetted;
+  const pending = down.length > 0 || unvetted > 0;
+  if (cands.length > 0) return { result: strongest(cands, 'max'), info, pending };
+  const unknown = (label: string) => ({ result: { chips: [reason('x.too_new', label)], points: 0 }, info, pending });
+  if (f.cold) return unknown(`Too new: day ${f.day} of ${COLD_START_DAYS} — exploit feeds lag`);
+  // Nothing fired after the cold start: (weak) evidence of absence, unless part of the evidence is missing.
+  if (down.length > 0) return unknown(`Exploit check incomplete: ${down.join(', ')} unavailable this run`);
+  if (unvetted > 0) return unknown(`Not settled: ${plural(unvetted, 'PoC repo')} too new to vet`);
+  const epssText = epss ? `EPSS ${formatPercent(epss.score)}` : 'no EPSS score';
+  const none = reason('x.none', `No public exploit after ${f.day} days · ${epssText}`);
+  return { result: { chips: [none], points: none.points }, info, pending };
 }
 
 function severityFamily(f: Facts): { result: FamilyResult; info: Reason[] } {
@@ -474,39 +592,47 @@ function ssvcFamily(f: Facts): FamilyResult {
   return { chips, points: chips.reduce((sum, r) => sum + r.points, 0) };
 }
 
-/** PRIOR — returns null when no vendor is known, so the prior cannot be checked. */
-function priorFamily(f: Facts, prior: KevPrior): FamilyResult | null {
+/** PRIOR — prior.unknown when the KEV catalog is unavailable or no vendor is named. */
+function priorFamily(f: Facts, prior: KevPrior): { result: FamilyResult; vendorNamed: boolean } {
   const { cve } = f;
   const pairs = cve.affected.map((a) => ({ vendor: a.vendor, product: a.product }));
   if (f.kevRaw) pairs.push({ vendor: f.kevRaw.vendorProject, product: f.kevRaw.product });
 
-  let product = { count: 0, name: '' };
-  let vendor = { count: 0, name: '' };
+  let product: { count: number; entry?: KevPriorEntry } = { count: 0 };
+  let vendor: { count: number; entry?: KevPriorEntry } = { count: 0 };
   let firstVendor = '';
   for (const pair of pairs) {
-    const v = normalizeName(pair.vendor);
-    if (!v) continue;
+    const tokens = vendorTokens(pair.vendor);
+    if (tokens.length === 0) continue;
     firstVendor ||= pair.vendor;
-    const p = normalizeName(pair.product);
-    const pc = p ? othersIn(prior.products.get(`${v}|${p}`), cve.id) : 0;
-    if (pc > product.count) product = { count: pc, name: `${pair.vendor} ${pair.product}` };
-    const vc = othersIn(prior.vendors.get(v), cve.id);
-    if (vc > vendor.count) vendor = { count: vc, name: pair.vendor };
+    const key = kevVendorKey(tokens, prior);
+    if (!key) continue;
+    const v = prior.vendors.get(key)!;
+    const vc = othersIn(v.ids, cve.id);
+    if (vc > vendor.count) vendor = { count: vc, entry: v };
+    const p = productKey(pair.product, v.tokens);
+    const pe = p ? prior.products.get(`${key}|${p}`) : undefined;
+    const pc = othersIn(pe?.ids, cve.id);
+    if (pc > product.count) product = { count: pc, entry: pe };
   }
-  if (!firstVendor) return null;
 
   let r: Reason;
-  if (product.count > 0) {
-    r = reason('prior.product', `Product in KEV (×${formatInt(product.count)}): ${product.name}`, { url: kevSearchUrl(product.name) });
-  } else if (vendor.count > 0) {
-    r = reason('prior.vendor', `Vendor in KEV (×${formatInt(vendor.count)}): ${vendor.name}`, { url: kevSearchUrl(vendor.name) });
+  const kevDown = f.unavailable.get('kev');
+  if (kevDown) r = reason('prior.unknown', `${kevDown} unavailable this run — KEV history not checked`);
+  else if (!firstVendor) r = reason('prior.unknown', 'No affected vendor named — KEV history not checked');
+  else if (product.entry) {
+    const { name } = product.entry;
+    r = reason('prior.product', `Product in KEV (×${formatInt(product.count)}): ${name}`, { url: kevSearchUrl(name) });
+  } else if (vendor.entry) {
+    const { name } = vendor.entry;
+    r = reason('prior.vendor', `Vendor in KEV (×${formatInt(vendor.count)}): ${name}`, { url: kevSearchUrl(name) });
   } else {
     r = reason('prior.none', `Never in KEV: ${firstVendor}`);
   }
-  return { chips: [r], points: r.points };
+  return { result: { chips: [r], points: r.points }, vendorNamed: firstVendor !== '' };
 }
 
-/** NOISE candidates; applied only when there is no exploitation and no positive exploit signal. */
+/** NOISE candidates; applied only when there is no exploitation and the X family settled on ≤ 0. */
 function noiseCandidates(f: Facts): Reason[] {
   const { cve } = f;
   const cna = cve.cna.toLowerCase();
@@ -547,16 +673,29 @@ function cveInfoChips(f: Facts): Reason[] {
   return out;
 }
 
-function unknownsFor(f: Facts, priorKnown: boolean): string[] {
+/** "A", "A and B", "A, B and C". */
+function listing(names: readonly string[]): string {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+function unknownsFor(f: Facts, vendorNamed: boolean): string[] {
   const { cve } = f;
   const out: string[] = [];
   if (!cve.cvss) out.push('No CVSS score from the CNA or CISA-ADP.');
   else if (cve.cvss.version === '2.0') out.push('Only a CVSS v2 score exists, which is not used for scoring.');
   if (!cve.ssvc) out.push('No CISA SSVC assessment yet (exploitation, automatable, technical impact).');
-  if (!f.epss) out.push('No EPSS score yet.');
-  else if (f.cold) out.push(`EPSS is not trusted until day ${COLD_START_DAYS}; this CVE is on day ${f.day}.`);
+  if (!f.epss && !f.unavailable.has('epss')) out.push('No EPSS score yet.');
+  else if (f.epss && f.cold) out.push(`EPSS is not trusted until day ${COLD_START_DAYS}; this CVE is on day ${f.day}.`);
   if (f.cold) out.push(`Exploit feeds have not caught up yet (day ${f.day} of ${COLD_START_DAYS}).`);
-  if (!priorKnown) out.push('No affected vendor is named, so KEV history could not be checked.');
+  const { poc } = f.exploits;
+  if (poc.count > 0 && poc.vetted === 0) {
+    out.push(`A PoC repo appeared but is not vetted yet: it counts once it is ${POC_MIN_AGE_DAYS} days old or has ${POC_MIN_STARS} stars.`);
+  }
+  if (!vendorNamed) out.push('No affected vendor is named, so KEV history could not be checked.');
+  const down = [...f.unavailable.values()];
+  if (down.length > 0) {
+    out.push(`${listing(down)} could not be loaded this run, so ${down.length === 1 ? 'its' : 'their'} evidence is unknown, not counted as absent.`);
+  }
   return out;
 }
 
@@ -603,10 +742,10 @@ export function scoreCve(cve: NormalizedCve, enr: Enrichment, opts: { now: Date;
   const ssvc = ssvcFamily(f);
   const prior = priorFamily(f, enr.prior);
   const noiseCands = noiseCandidates(f);
-  const noiseApplies = !exploited && x.result.points <= 0;
+  const noiseApplies = !exploited && x.result.points <= 0 && !x.pending;
   const noise = noiseApplies ? strongest(noiseCands, 'min') : { chips: noiseCands.map((r) => ({ ...r, points: 0 })), points: 0 };
 
-  const raw = BASE_POINTS + x.result.points + sev.result.points + ssvc.points + (prior?.points ?? 0) + noise.points;
+  const raw = BASE_POINTS + x.result.points + sev.result.points + ssvc.points + prior.result.points + noise.points;
 
   let score: number;
   const eChips: Reason[] = [];
@@ -634,7 +773,7 @@ export function scoreCve(cve: NormalizedCve, enr: Enrichment, opts: { now: Date;
     ...x.result.chips,
     ...sev.result.chips,
     ...ssvc.chips,
-    ...(prior?.chips ?? []),
+    ...prior.result.chips,
     ...noise.chips,
     ...kevInfoChips(f),
     ...cveInfoChips(f),
@@ -650,7 +789,7 @@ export function scoreCve(cve: NormalizedCve, enr: Enrichment, opts: { now: Date;
     exploited,
     weaponized,
     reasons,
-    unknowns: unknownsFor(f, prior !== null),
+    unknowns: unknownsFor(f, prior.vendorNamed),
     kev: f.kev,
     epss: f.epss,
     exploits: f.exploits,

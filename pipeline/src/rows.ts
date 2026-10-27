@@ -24,6 +24,11 @@ export function topChipIds(reasons: readonly Reason[], max = ROW_CHIPS): string[
   return [...new Set([...positive, ...info, ...negative].map((r) => r.id))].slice(0, max);
 }
 
+/** Every chip id that fired, family losers included, unknowns left out (Row.r, for filtering). */
+export function firedChipIds(reasons: readonly Reason[]): string[] {
+  return [...new Set(reasons.filter((r) => r.polarity !== 'unknown').map((r) => r.id))];
+}
+
 const bit = (b: boolean): 0 | 1 => (b ? 1 : 0);
 
 /** ISO 8601 UTC without fractional seconds: rows don't need them and they cost ~7% of index.json gzip. */
@@ -50,6 +55,7 @@ export function toRow(s: ScoredCve): Row {
     k: bit(isKevListed(s)),
     ai: bit(cve.aiCredit !== null),
     c: topChipIds(s.reasons),
+    r: firedChipIds(s.reasons),
     cv: cve.cvss?.score ?? null,
     e: s.epss?.score ?? null,
     kd: s.kev?.due_date ?? null,

@@ -9,6 +9,12 @@ Please report privately through GitHub's
 [private vulnerability reporting](https://github.com/markusweldon/cverdict/security/advisories/new)
 (Security tab → **Report a vulnerability**). Do not open a public issue, pull request or discussion.
 
+If that link returns a 404 or there is no **Report a vulnerability** button, private reporting is
+not switched on yet. Open an issue titled
+[Security contact request](https://github.com/markusweldon/cverdict/issues/new?template=bug.yml&title=Security%20contact%20request)
+that contains **no details** of the problem, only that you have something to report. We will turn
+private reporting on and reply in the issue, so you can send the details through it.
+
 Include what you found, where (URL, file or workflow), how to reproduce it, and the impact you
 expect. A proof of concept is welcome; please keep it minimal and harmless.
 

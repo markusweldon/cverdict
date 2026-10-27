@@ -2,7 +2,7 @@
 import type { ExploitEvidence } from '../../../shared/contract';
 import { METASPLOIT, type SanityLimits } from '../config';
 import type { ExploitIndex } from '../types';
-import { normalizeIso } from '../util/dates';
+import { normalizeIso, normalizeYmd } from '../util/dates';
 import type { HttpClient, Parsed } from '../util/http';
 import { asArray, asNumber, asObject, asString, parseJson } from '../util/json';
 import { normalizeCveId, sanitizeLine } from '../util/text';
@@ -40,6 +40,7 @@ export function parseMetasploit(doc: unknown): { byCve: ExploitIndex['metasploit
       rank: asNumber(m.rank),
       type: sanitizeLine(m.type, 32),
       url: MODULE_PATH_RE.test(path) ? `${METASPLOIT.blobBase}${path}` : `https://www.rapid7.com/db/modules/${encodeURI(fullname)}/`,
+      date: normalizeYmd(m.disclosure_date),
     };
     for (const id of ids) pushTo(byCve, id, module);
   }

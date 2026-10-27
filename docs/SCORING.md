@@ -20,8 +20,10 @@ and it knows nothing about your environment.
    not seven.
 4. **Confirmed exploitation dominates.** Once exploitation is confirmed, nothing else matters
    much; the score is floored at 90.
-5. **Unknowns are shown, never imputed.** A missing CVSS, SSVC or EPSS score is an *unknown* chip
-   worth 0 points and listed under "what we could not see". Quiet means no evidence *yet*.
+5. **Unknowns are shown, never imputed.** A missing CVSS score or SSVC assessment, a record that
+   names no vendor and a source that could not be loaded are *unknown* chips worth 0 points, listed
+   under "what we could not see" (a missing EPSS score is listed there too). Quiet means no
+   evidence *yet*.
 6. **Free public data only.** CVE List V5 (CNA and CISA-ADP containers), CISA KEV, EPSS, Metasploit,
    Nuclei, Exploit-DB and PoC-in-GitHub. Nothing from NVD, which stopped enriching most CVEs in
    April 2026.
@@ -30,15 +32,17 @@ and it knows nothing about your environment.
 
 ```text
 age        = days since datePublished
-E chips    = kev.listed | ssvc.active | vendor.exploited | vendor.itw            (any → exploited)
-X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, x.poc 20 (vetted ≥ 1),
-                     ssvc.poc 10, vendor.poc 10, epss.mid 8*
+E chips    = kev.listed | ssvc.active | vendor.exploited (CVSS v4 E:A) | vendor.itw      (any → exploited)
+X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24 (CVSS v3 E:F/E:H),
+                     x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10 (E:P), epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
-             if none: age ≥ 14 and EPSS < 0.01 (or unscored) → x.none −14; else x.too_new (unknown, 0)
+             if none: x.none −14 when age ≥ 14, every exploit source and EPSS loaded, and no unvetted PoC repo;
+                      else x.too_new (unknown, 0)
 SEV        = sev.crit_net 13 (≥9.0 and AV:N) | sev.crit 6 (≥9.0) | sev.high 1 (7–8.9) | sev.low −13 (<7) | sev.none (unknown)
 SSVC       = (ssvc.automatable 6 | ssvc.not_automatable −2) + (ssvc.total 8 | ssvc.partial −6) | ssvc.missing (unknown)
-PRIOR      = prior.product 10 | prior.vendor 8 | prior.none −6
-NOISE      = only if X ≤ 0 and no E: min of noise.hobby −20, noise.disputed −15, noise.wordpress −10, noise.kernel −8
+PRIOR      = prior.product 10 | prior.vendor 8 | prior.none −6 | prior.unknown (no vendor named, or KEV unavailable)
+NOISE      = only if no E, X ≤ 0, no unvetted PoC repo and every exploit source and EPSS loaded:
+             min of noise.hobby −20, noise.disputed −15, noise.wordpress −10, noise.kernel −8
              hobby: CNA text matches sourcecodester|code-projects|itsourcecode|phpgurukul|campcodes|kashipara|projectworlds
              wordpress: assigner ∈ {Wordfence, WPScan, Patchstack} or text matches /wordpress (plugin|theme)|for wordpress/i
              kernel: assigner = Linux and SSVC technical impact ≠ total
@@ -46,31 +50,55 @@ raw        = 15 + X + SEV + SSVC + PRIOR + NOISE
 score      = E ? min(100, max(raw + 75, 90) + (ransomware Known ? 5 : 0)) : clamp(raw, 0, 100)
 weaponized = x.metasploit or x.nuclei present
 tier       = tierFor(score, E, weaponized, knob)          (shared/contract.ts)
-INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, poc.hype, poc.unvetted, tag.eol (0 points)
+INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hype, poc.unvetted, tag.eol (0 points)
 ```
 
 Details that matter when you read a score:
 
-- **The arithmetic always adds up.** `reasons[]` holds every chip that fired, including the ones
-  that lost within their family (shown with `points: 0`). For an exploited CVE, the winning E chip
-  carries exactly `score − raw` (the +75, the floor and the cap), so base + Σ points = score. For
-  other CVEs the sum is `raw`, which is clamped to 0–100 (`score.raw` keeps the unclamped value).
+- **The arithmetic adds up.** `reasons[]` holds every chip that fired, including the ones that
+  lost within their family (shown with `points: 0`). For an exploited CVE, the winning E chip
+  carries `min(100, max(raw + 75, 90)) − raw` (the +75, the floor and the cap) and `kev.ransomware`
+  carries whatever of its +5 still fits under 100, so base + Σ points = score. For every other CVE
+  base + Σ points = `raw` (`score.raw`), and the score is `raw` clamped to 0–100. Without
+  exploitation `raw` is at most 86, so base + Σ points equals the score for every CVE except those
+  with a negative `raw`, which score 0 (5,667 of the 17,526 CVEs in the 2026-10-26 run).
 - **E chips are checked in catalogue order** (KEV, SSVC *active*, vendor CVSS, vendor text); the
   first that fires carries the points. `kev.listed` also fires from the KEV block CISA adds to the
   CVE record itself, so a KEV listing counts even if the KEV download failed.
-- **Vendor exploit maturity** comes from the `E` metric in the CNA's own CVSS vectors: v3 `E:F`/`E:H`
-  and v4 `E:A` mean exploited, `E:P` means a proof of concept. Vectors from VulDB are ignored because
-  it stamps `E:P` on most of them.
-- **Vendor "in the wild" text** is an English-description match for phrases such as *exploited in
-  the wild*, *aware of reports*, *limited, targeted attacks* or *may have been exploited*, unless a
-  negation (*no*, *not*, *unaware*, *without* …) precedes it within 40 characters.
-- **CVSS** prefers the CNA's v4.0, then v3.1, then v3.0; when the CNA gave none, CISA-ADP's v3.1 is
-  used (with the `sev.adp` info chip). A v2-only score is displayed but scores as `sev.none`.
+- **Vendor exploit maturity** comes from the `E` metric in every CVSS v3/v4 vector the CNA itself
+  published. Only v4 `E:A` (attacked) means exploited (`vendor.exploited`). v3 `E:F`/`E:H` say that
+  functional or autonomous exploit code exists, which is weaponization, not attacks, so they give
+  the X chip `vendor.functional` (+24). `E:P` means a proof of concept (`vendor.poc`). Vectors from
+  VulDB are ignored because it stamps `E:P` on most of them.
+- **Vendor "in the wild" text** is an English-description match, sentence by sentence, for phrases
+  such as *exploited in the wild*, *aware of reports*, *limited, targeted attacks* or *may have been
+  exploited*. A sentence does not count when a negation (*no*, *not*, *unaware*, *without* or a
+  *n't* contraction) comes at most 60 characters before *exploit…* or *in the wild* in that same
+  sentence. "There is no evidence that this vulnerability has been exploited in the wild" is
+  negated; a negation in another sentence cancels nothing.
+- **CVSS** prefers the CNA's v4.0, then v3.1, then v3.0. When the CNA gave none of those,
+  CISA-ADP's score is used (v4.0, then v3.1, then v3.0) with the `sev.adp` info chip. A CNA v2-only
+  score is displayed but scores as `sev.none`.
 - **PRIOR** matches every affected vendor/product in the record (and, for KEV CVEs, the KEV entry's
-  own vendor/product) against KEV after normalising names (lower case, letters and digits only).
-  Counts exclude the CVE being scored. A record that names no vendor gets no PRIOR chip at all.
+  own vendor/product) against the KEV catalogue by canonical name. Vendor names are lower-cased and
+  stripped of accents, punctuation, parentheses, a leading *The* and trailing legal-form or
+  line-of-business words (*Inc*, *Corporation*, *Ltd*, *GmbH*, *Systems*, *Networks*, *Software*,
+  *Foundation*, *Technologies* …), and a few renames are aliased (Zimbra → Synacor, NetScaler →
+  Citrix, ManageEngine → Zoho, Hewlett Packard Enterprise → HPE). So "Juniper Networks" meets
+  KEV's "Juniper" and "The Apache Software Foundation" meets "Apache". A name without an exact
+  match falls back to the longest KEV vendor whose words it starts with ("Siemens Mobility" →
+  Siemens), whole words only, so "Applied Signal" never matches Apple. Products are compared within
+  the vendor, with a leading vendor name dropped ("Apache Tomcat" → Tomcat). Counts exclude the CVE
+  being scored. A record that names no vendor gets `prior.unknown` (0), and so does every record
+  when the KEV catalogue could not be loaded.
+- **A missing source is unknown, not absent.** When a source has neither a fresh nor a cached
+  copy, its silence is not evidence. Without KEV, PRIOR is `prior.unknown`. Without Metasploit,
+  Nuclei, Exploit-DB, PoC-in-GitHub or EPSS, a CVE with no exploit chip gets `x.too_new` ("Exploit
+  check incomplete") instead of `x.none`, and NOISE stays off. The CVE page names the missing
+  sources under "what we could not see".
 - **Row chips.** List views carry up to four chip ids per CVE (`Row.c`), strongest first, positive
-  chips before negative ones.
+  chips before negative ones. `Row.r` lists every chip that fired, family losers included and
+  unknowns left out, so filters also find a chip that is not in the top four.
 
 ## Chips and points
 
@@ -84,13 +112,13 @@ Any of the first four puts the CVE in **Exploited**. The first that fires, in th
 |---|---|--:|---|---|
 | `kev.listed` | CISA KEV | +75 | `kev` | Listed in CISA Known Exploited Vulnerabilities (or the CISA-ADP KEV block in the CVE record). |
 | `ssvc.active` | SSVC: active | +75 | `cisa-adp` | CISA Vulnrichment SSVC assessment says exploitation is active. |
-| `vendor.exploited` | Vendor: exploited | +75 | `cvelist` | The CNA’s own CVSS vector says exploitation is happening (v3 E:F/E:H, v4 E:A). VulDB vectors are ignored. |
+| `vendor.exploited` | Vendor: exploited | +75 | `cvelist` | The CNA’s own CVSS v4 vector says the bug is being attacked (E:A). VulDB vectors are ignored. |
 | `vendor.itw` | Vendor: in the wild | +75 | `cvelist` | The CNA description says the bug is exploited or “may have been exploited” in the wild. |
 | `kev.ransomware` | Ransomware | +5 | `kev` | CISA marks known use in ransomware campaigns. The flag lags, so its absence means little. |
 
 ### X — exploit artifacts and prediction
 
-Strongest one counts; the rest are shown with 0.
+Strongest one counts; the rest are shown with 0. `x.too_new` also stands in for `x.none` after the cold start when a PoC repo is still too new to vet or an exploit source could not be loaded.
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
@@ -100,14 +128,15 @@ Strongest one counts; the rest are shown with 0.
 | `epss.high` | EPSS ≥ 10% | +27 | `epss` | EPSS gives ≥ 10% probability of exploitation activity in the next 30 days (only trusted after 14 days). |
 | `x.poc` | PoC on GitHub | +20 | `poc-github` | At least one public proof-of-concept repo that passes basic vetting. Unverified code — may be malware. |
 | `ssvc.poc` | SSVC: PoC | +10 | `cisa-adp` | CISA SSVC assessment says a public proof of concept exists. |
+| `vendor.functional` | Vendor: working exploit | +24 | `cvelist` | The CNA’s CVSS v3 vector says functional or autonomous exploit code exists (E:F/E:H). That is weaponization, not proof of attacks: about a quarter of such CVEs reach KEV. VulDB vectors are ignored. |
 | `vendor.poc` | Vendor: PoC | +10 | `cvelist` | The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored. |
 | `epss.mid` | EPSS 1–10% | +8 | `epss` | EPSS between 1% and 10% (only trusted after 14 days). |
 | `x.none` | No exploit yet | −14 | `computed` | Two weeks after publication there is still no public exploit and EPSS is below 1%. |
-| `x.too_new` | Too new | unknown | `computed` | Less than 14 days old: exploit feeds and EPSS have not caught up yet. |
+| `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: the CVE is less than 14 days old, a PoC repo is too new to vet, or an exploit source could not be loaded this run. |
 
 ### SEV — severity
 
-CVSS base score from the CNA (v4.0 > v3.1 > v3.0), else CISA-ADP v3.1. v2-only scores are shown but not scored.
+CVSS base score from the CNA (v4.0 > v3.1 > v3.0), else CISA-ADP (v4.0 > v3.1 > v3.0). v2-only scores are shown but not scored.
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
@@ -131,17 +160,18 @@ The two decision points are independent, so they add.
 
 ### PRIOR — KEV history of the vendor and product
 
-Counts exclude the CVE itself. No chip when the record names no vendor.
+Counts exclude the CVE itself. `prior.unknown` also covers a run in which the KEV catalogue could not be loaded.
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
 | `prior.product` | Product in KEV | +10 | `kev` | Other CVEs in this exact product are already in CISA KEV. Attackers return to the same targets. |
 | `prior.vendor` | Vendor in KEV | +8 | `kev` | Other products from this vendor are in CISA KEV. |
 | `prior.none` | Never in KEV | −6 | `kev` | Nothing from this vendor has ever been listed in CISA KEV. |
+| `prior.unknown` | KEV history unknown | unknown | `computed` | The record names no vendor, or the KEV catalog could not be loaded this run, so the KEV history check could not run. |
 
 ### NOISE — low-value volume
 
-Only applied when there is no exploitation and the X family is ≤ 0. The most negative one counts.
+Only applied when there is no exploitation and the X family is ≤ 0, and not while the absence of an exploit is still open (an unvetted PoC repo, or an exploit source or EPSS that could not be loaded). It does apply during the cold start. The most negative one counts.
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
@@ -155,7 +185,7 @@ Only applied when there is no exploitation and the X family is ≤ 0. The most n
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
 | `ai.credit` | AI-credited | 0 | `cvelist` | The CNA credits an AI system or AI lab for the discovery. Information only: AI-found bugs are exploited at about the base rate. |
-| `batch` | Patch-day batch | 0 | `computed` | Published with 50+ other CVEs from the same CNA on the same day. |
+| `batch` | Batch release | 0 | `computed` | Published with 50+ other CVEs from the same CNA on the same day: a vendor patch day, or a bulk release by an aggregator CNA. |
 | `kev.due` | KEV due | 0 | `kev` | Federal agencies must remediate by the KEV due date. |
 | `kev.forensic` | Forensic triage | 0 | `kev` | CISA asks for forensic triage, not just patching (BOD 26-04). |
 | `sev.adp` | CVSS from CISA | 0 | `cisa-adp` | The CNA gave no CVSS score; the CISA-ADP score is used instead. |
@@ -193,7 +223,7 @@ bypass the knob entirely.
 ## Cold start
 
 A CVE's first two weeks are the hardest: exploit feeds lag publication by days, and EPSS has little
-to go on (only 23% of new CVEs have an EPSS score on day 0). For the first **14 days** after
+to go on (78 of the 333 CVEs published on 2026-10-26, 23%, had an EPSS score that day). For the first **14 days** after
 publication (`COLD_START_DAYS`):
 
 - EPSS does not score. If a score exists it is shown as the `epss.cold` info chip.
@@ -213,7 +243,9 @@ them are empty, wrong or malware. Before a repository counts:
 - forks are dropped, and records that are not PUBLISHED are ignored;
 - a repository is **vetted** once it has at least 2 stars **or** was created at least 3 days ago;
 - `x.poc` (+20) needs at least one vetted repository. If there are only unvetted ones, the CVE gets
-  the `poc.unvetted` info chip until they age or gain stars;
+  the `poc.unvetted` info chip until they age or gain stars. The question is open meanwhile, so
+  after the cold start such a CVE gets `x.too_new` ("Not settled") instead of `x.none`, and no
+  noise penalty;
 - more than 50 repositories created within 7 days of the first one is **hype** (`poc.hype`, info):
   a measure of attention, not of weaponization, and a common way to spread fake PoCs.
 
@@ -223,8 +255,8 @@ PoC links are always labelled "unverified, may be malware", and the site never r
 
 A large share of the volume is code that is rarely deployed or reports that are contested. Noise
 chips push those down, but **only when there is no exploitation and no positive exploit artifact**
-(the X family is ≤ 0). Any real evidence switches the penalty off. Only the most negative noise
-chip counts.
+(the X family settled on ≤ 0). Any real evidence, or an exploit check that could not finish,
+switches the penalty off. Only the most negative noise chip counts.
 
 | Chip | Points | Fires when |
 |---|--:|---|
@@ -241,19 +273,23 @@ From the run of 2026-10-26 19:30 UTC. Info chips other than EPSS are left out.
 
 ```text
    15  base
+  +24  Vendor CVSS: working exploit code exists (E:F)
    +1  High 8.8 · network (v3.1)
    +8  CISA SSVC: total technical impact
    −2  CISA SSVC: not automatable
   +10  Product in KEV (×174): Microsoft Windows
-    0  Too new: day 13 of 14 — exploit feeds lag
+    0  EPSS 9.8% · 95th pct · day 13 — too new to trust   (info)
   ───
-   32  raw
-  +68  CISA KEV · added Oct 13 · due Oct 16        (raw + 75 = 107, capped at 100)
+   56  raw
+  +44  CISA KEV · added Oct 13 · due Oct 16        (raw + 75 = 131, capped at 100)
     0  CISA SSVC: exploitation active · Oct 8      (lost to KEV within E)
-    0  Vendor CVSS: exploitation reported (E:F)    (lost to KEV within E)
   ───
   100  Exploited
 ```
+
+Microsoft's own vector says `E:F`: working exploit code exists. That is the X chip
+`vendor.functional`, not exploitation: without the KEV listing and CISA's SSVC *active*, this CVE
+would score 56, Likely next.
 
 **CVE-2026-105016** · Microsoft QUIC Remote Code Execution · day 13
 
@@ -281,45 +317,57 @@ to 58; below 1% and with no public exploit, `x.none` (−14) drops it to 36, whi
    +6  CISA SSVC: automatable
    −6  CISA SSVC: partial technical impact
     0  No CNA score; CISA-ADP CVSS 7.5 used        (info)
+    0  No affected vendor named — KEV history not checked   (unknown)
   ───
     2  Quiet
 ```
 
-The record names no vendor, so there is no PRIOR chip, and the CVE page lists that as an unknown.
+The record names no vendor, so PRIOR is `prior.unknown`, worth 0, and the CVE page lists it under
+what we could not see.
 
 ## Calibration
 
-Measured on the data of **2026-10-26**. Treat every number here as an **optimistic upper bound**:
-the evidence was observed in October, after the fact. Exploit modules, PoCs and vendor statements
-for a CVE listed in KEV in March may have appeared only *after* the listing, often because of it.
-This look-ahead bias is why the points were shrunk 15–30% from the raw likelihood ratios, and why
-the recall figures below would be lower in real time.
+Measured with `npm run calibrate` (`scripts/calibrate.ts`, which runs the pipeline's own ingest and
+`scoreCve()`) on the frozen inputs of the **2026-10-26 19:30 UTC** run. Treat every recall number
+here as an **optimistic upper bound**: the evidence was observed in October, after the fact.
+Exploit modules, PoCs and vendor statements for a CVE listed in KEV in March may have appeared only
+*after* the listing, often because of it, and the KEV prior includes listings that came later. This
+look-ahead bias is why the points were shrunk 15–30% from the raw likelihood ratios, and why the
+recall figures below would be lower in real time.
 
-**Selectivity.** In a random sample of newly published CVEs, about **1.9%** pass (Exploited or
-Likely next) at knob 50. That is roughly 1 in 50 instead of all of them.
+**Selectivity.** Of all 15,790 CVEs published in the 30-day window, **363 (2.3%)** pass at knob
+50: 27 Exploited and 336 Likely next. That is 1 in 43 instead of all of them.
 
 **Recall without the answer key.** To see whether the score finds exploited CVEs *before* KEV
-does, the 2026 KEV additions were re-scored with the direct evidence removed: no KEV listing, no
-SSVC *active* and no EPSS. The remaining signals put them in:
+does, all 272 CVEs added to KEV in 2026 were re-scored with the direct evidence removed: their own
+KEV entry and the CISA-ADP KEV block, SSVC *active* (lowered to *poc* when a public exploit
+artifact exists, else *none*; every one of the 272 was *active*, and the choice changes no score)
+and their EPSS score. The KEV prior still comes from the rest of the catalogue. At knob 50 the
+remaining signals put them in:
 
-| Tier (KEV, SSVC *active* and EPSS hidden) | Share of 2026 KEV additions |
-|---|--:|
-| Exploited, via vendor CVSS or vendor text alone | 16.9% |
-| Likely next | 57.7% |
-| Watch | 9.2% |
-| Quiet | 16.2% |
+| Tier (KEV, SSVC *active* and EPSS hidden) | 2026 KEV additions | Share |
+|---|--:|--:|
+| Exploited, on vendor evidence alone (16 description, 12 CVSS v4 `E:A`) | 28 | 10.3% |
+| Likely next | 174 | 64.0% |
+| Watch | 27 | 9.9% |
+| Quiet | 43 | 15.8% |
 
-**Knob sensitivity.** Pass rate on new CVEs against recall of 2026 KEV additions (Exploited +
-Likely next, KEV, SSVC *active* and EPSS hidden):
+**Knob sensitivity.** Pass rate of the window's CVEs against recall of the 2026 KEV additions
+(Exploited + Likely next, with KEV, SSVC *active* and EPSS hidden):
 
 | Knob | New CVEs passing | KEV recall |
 |--:|--:|--:|
-| 45 | 3.2% | 76.8% |
-| **50** (default) | **1.9%** | **74.6%** |
-| 55 | 0.7% | 64.3% |
+| 40 | 4.1% (643) | 77.6% (211) |
+| 45 | 3.0% (468) | 75.7% (206) |
+| **50** (default) | **2.3% (363)** | **74.3% (202)** |
+| 55 | 0.8% (123) | 59.9% (163) |
+| 60 | 0.5% (78) | 58.8% (160) |
 
-The default sits at the knee: going from 50 to 45 adds two-thirds more volume for 2 points of
-recall; going to 55 cuts a further 10 points of recall.
+The default sits at the knee. Going from 50 to 45 adds about 30% more volume for 1.5 points of
+recall (4 more of 272); going to 55 cuts the volume by two-thirds but also 14 points of recall.
+Much of that step is the cold start: 238 window CVEs score exactly 50 or 52. All 58 Likely-next
+CVEs of Microsoft's Oct 13 batch score 50, most with the pattern of CVE-2026-105016 above (critical
+network bug, SSVC total and automatable, a vendor with KEV history, too new for EPSS).
 
 ## Known blind spots
 
@@ -334,9 +382,10 @@ recall; going to 55 cuts a further 10 points of recall.
 - **WordPress premium plugins.** The WordPress noise penalty assumes small install bases. Popular
   premium plugins and themes with large installed bases are demoted until exploit evidence appears
   (which then switches the penalty off).
-- **Name matching.** The KEV prior compares normalised vendor and product names. CNAs spell
-  products inconsistently, so a prior can be missed (no bonus) or, for umbrella vendors, matched
-  too broadly.
+- **Name matching.** The KEV prior compares canonical vendor and product names. CNAs spell
+  products inconsistently, so a prior can be missed (no bonus) or matched too broadly: the
+  whole-word prefix fallback reads "Progress Planner" as Progress and "Linux Mint" as Linux, and an
+  umbrella vendor's KEV history covers all of its products.
 - **Text heuristics are English.** The "in the wild" pattern and the noise patterns read the English
   description only.
 
@@ -350,9 +399,10 @@ A change to either is a new score model.
 1. Open an issue first if the change is large, with the reasoning and the evidence behind it.
 2. In the pull request, bump `SCORE_MODEL` (minor version for re-weighting, major for a new family
    or a changed rule) and update the unit tests and this document.
-3. Include a **calibration diff** on the same frozen inputs (`npm run pipeline -- --offline --now <same instant>`):
-   the tier counts from `meta.json` before and after, the pass rate and KEV recall at knobs 45, 50
-   and 55 measured as above, and the 20 CVEs whose tier moved the most, with their chips.
+3. Include a **calibration diff**: the output of `npm run calibrate -- --offline --now <same instant>`
+   before and after the change (tiers and pass rate at knobs 40–60, KEV recall measured as above,
+   the largest batch), plus the 20 CVEs whose tier moved the most, with their chips (compare two
+   `npm run pipeline -- --offline --now <same instant>` outputs).
 4. Explain what the change gets wrong as well as what it gets right. A weight that only helps
    look-ahead (evidence that appears after exploitation is known) will be declined.
 

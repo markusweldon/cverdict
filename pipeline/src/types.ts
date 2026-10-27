@@ -10,6 +10,7 @@ import type {
   ExploitEvidence,
   KevInfo,
   Reason,
+  SourceId,
   SourceStatus,
   Ssvc,
   Tier,
@@ -141,10 +142,19 @@ export interface IngestResult {
   cvelistCommit: string | null;
 }
 
-/** KEV prior: normalised vendor → KEV CVE ids, and "vendor|product" → KEV CVE ids. */
+/** KEV CVE ids sharing one canonical vendor (or vendor + product), and how CISA spells it. */
+export interface KevPriorEntry {
+  /** Most frequent KEV spelling, e.g. "Juniper" or "Juniper Junos OS". */
+  name: string;
+  ids: Set<string>;
+}
+
+/** KEV prior keyed by canonical vendor ("juniper") and "vendor|product" ("juniper|junosos"). */
 export interface KevPrior {
-  vendors: Map<string, Set<string>>;
-  products: Map<string, Set<string>>;
+  vendors: Map<string, KevPriorEntry & { tokens: string[] }>;
+  products: Map<string, KevPriorEntry>;
+  /** First canonical token → token lists of the KEV vendors starting with it (prefix fallback). */
+  prefixes: Map<string, string[][]>;
 }
 
 export interface Enrichment {
@@ -152,6 +162,11 @@ export interface Enrichment {
   epss: EpssTable;
   exploits: ExploitIndex;
   prior: KevPrior;
+  /**
+   * Sources with neither a live nor a cached copy this run (id → display name). Their silence is
+   * not evidence: scoring emits unknown chips instead of "never in KEV" / "no exploit".
+   */
+  unavailable: ReadonlyMap<SourceId, string>;
 }
 
 export interface ScoredCve {

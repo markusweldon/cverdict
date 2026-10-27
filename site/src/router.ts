@@ -63,13 +63,14 @@ export const cveHref = (id: string): string => href(`cve/${id}`);
 
 /**
  * Whether a link should be handled by the router: same origin, inside the base path, and not a
- * static file (data/, feeds/, anything with an extension).
+ * static file (under data/, feeds/ or assets/, anything with an extension). Bare /feeds is the
+ * Feeds page.
  */
 export function isAppUrl(url: URL, origin: string, base: string = BASE): boolean {
   if (url.origin !== origin) return false;
   const path = appPath(url.pathname, base);
   if (path === null) return false;
-  return !/^(data|feeds|assets)(\/|$)/.test(path) && !/\.[a-z0-9]+$/i.test(path);
+  return !/^(data|feeds|assets)\//.test(path) && !/\.[a-z0-9]+$/i.test(path);
 }
 
 // ── live location ──
@@ -112,6 +113,13 @@ export function useLocation(): Location {
   const [loc, setLoc] = useState(currentLocation);
   useEffect(() => onNavigate((l) => setLoc(l)), []);
   return loc;
+}
+
+/** The current route only: unlike useLocation, query and hash changes (the knob, filters) do not re-render. */
+export function useRoute(): Route {
+  const [at, setAt] = useState(() => ({ path: currentLocation().path, route: currentLocation().route }));
+  useEffect(() => onNavigate((l) => setAt((prev) => (prev.path === l.path ? prev : { path: l.path, route: l.route }))), []);
+  return at.route;
 }
 
 /** Navigate inside the app. `to` is an absolute path (already including the base) or a full URL. */
@@ -157,7 +165,13 @@ export function startRouter(): () => void {
     e.preventDefault();
     if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
       history.replaceState(history.state, '', url.hash);
-      document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView({ block: 'start' });
+      const target = document.getElementById(decodeURIComponent(url.hash.slice(1)));
+      target?.scrollIntoView({ block: 'start' });
+      // Native fragment navigation moves focus too (Skip to content, the Method contents).
+      if (target) {
+        if (!target.hasAttribute('tabindex')) target.tabIndex = -1;
+        target.focus({ preventScroll: true });
+      }
       emit('replace');
       return;
     }
@@ -174,6 +188,31 @@ export function startRouter(): () => void {
 
 /** Scroll position saved for the current history entry (set on push, read on pop). */
 export function savedScroll(): number {
-  const y = (history.state as { scrollY?: unknown } | null)?.scrollY;
+  const y = historyValue('scrollY');
   return typeof y === 'number' ? y : 0;
+}
+
+/** A value a page stored on the current history entry (survives Back/Forward, not new visits). */
+export function historyValue(key: string): unknown {
+  return (history.state as Record<string, unknown> | null)?.[key];
+}
+
+export function setHistoryValue(key: string, value: unknown): void {
+  if (historyValue(key) !== value) history.replaceState({ ...(history.state ?? {}), [key]: value }, '');
+}
+
+/**
+ * Scroll to the element a URL hash names. Lazy pages and their data render it a little later, so
+ * keep looking for a few frames.
+ */
+export function scrollToHash(hash: string, frames = 90): void {
+  let id = hash.slice(1);
+  try {
+    id = decodeURIComponent(id);
+  } catch {
+    // Keep the raw id.
+  }
+  const el = id ? document.getElementById(id) : null;
+  if (el) el.scrollIntoView({ block: 'start' });
+  else if (id && frames > 0) requestAnimationFrame(() => scrollToHash(hash, frames - 1));
 }

@@ -58,6 +58,28 @@ export function truncate(text: string, maxLength: number): string {
   return `${head.trimEnd()}…`;
 }
 
+/**
+ * At most `maxLength` characters of `text` around `text.slice(index, index + length)`, marked
+ * with "…" where cut (at a nearby word break when there is one), so that span is always visible.
+ */
+export function excerpt(text: string, index: number, length: number, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  const room = maxLength - 2; // both ellipses
+  const snap = Math.floor(maxLength / 5);
+  let start = Math.max(0, Math.min(index - Math.floor((room - length) / 2), text.length - room));
+  let end = Math.min(text.length, start + room);
+  const space = text.indexOf(' ', start);
+  if (start > 0 && text[start - 1] !== ' ' && space !== -1 && space < index && space - start < snap) start = space + 1;
+  const back = text.lastIndexOf(' ', end);
+  if (end < text.length && text[end] !== ' ' && back >= index + length && end - back < snap) end = back;
+  // Never split a surrogate pair.
+  if (isLowSurrogate(text.charCodeAt(start))) start++;
+  if (end < text.length && isLowSurrogate(text.charCodeAt(end))) end--;
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
+}
+
+const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff;
+
 /** An absolute http(s) URL in canonical form, or null. Rejects credentials and other schemes. */
 export function sanitizeUrl(value: unknown, maxLength = 2048): string | null {
   if (typeof value !== 'string') return null;
