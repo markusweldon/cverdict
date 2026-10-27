@@ -1,0 +1,72 @@
+name: Propose a data source
+description: A free, public feed that would make scores more accurate.
+title: 'Data source: '
+labels: [data-source]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CVErdict only uses data that anyone can fetch for free, without an account or API key,
+        under a license that allows republishing derived data. The full checklist is in
+        [CONTRIBUTING.md](https://github.com/markusweldon/cverdict/blob/main/CONTRIBUTING.md#adding-a-data-source).
+
+  - type: input
+    id: name
+    attributes:
+      label: Source
+      placeholder: Example Exploit Feed
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: Download URL
+      description: The machine-readable file or endpoint, not a web page.
+      placeholder: https://example.org/feed.json
+    validations:
+      required: true
+
+  - type: textarea
+    id: signal
+    attributes:
+      label: What signal does it add?
+      description: |
+        Which family it would feed (exploitation, exploit artifacts, prior, noise, info) and what it
+        knows that our current sources do not. Numbers help: how many CVEs in the last 30 days it
+        covers, and how many days before CISA KEV it typically lists them.
+    validations:
+      required: true
+
+  - type: input
+    id: license
+    attributes:
+      label: License or terms of use
+      description: Link to them. Derived data must be redistributable.
+      placeholder: CC0-1.0 — https://example.org/LICENSE
+    validations:
+      required: true
+
+  - type: input
+    id: cadence
+    attributes:
+      label: Update cadence and format
+      placeholder: Hourly · JSON · ~3 MB
+    validations:
+      required: true
+
+  - type: textarea
+    id: reliability
+    attributes:
+      label: Fallback and sanity check
+      description: Is there a mirror? What would a broken or truncated download look like (for example "fewer than 2,000 entries")? Any rate limits?
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Requirements
+      options:
+        - label: Free to download without an account, API key or payment.
+          required: true
+        - label: The license allows republishing data derived from it, with attribution if required.
+          required: true

@@ -1,0 +1,81 @@
+name: Disagree with a score
+description: A CVE is in the wrong tier, or a reason chip is wrong or missing. Evidence beats opinion.
+title: 'Score: '
+labels: [scoring]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for checking our work. Every score is a sum of reason chips, explained in the
+        [methodology](https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md).
+        The most useful reports point at **public evidence we missed** or **a chip that fired wrongly**.
+
+        Please do not paste exploit code or links to non-public exploits. For a vulnerability in
+        CVErdict itself, use [private reporting](https://github.com/markusweldon/cverdict/security/advisories/new) instead.
+
+  # Field ids are part of the prefill contract used by the site's "Disagree?" button
+  # (?template=disagree-with-a-score.yml&cve=…&tier=…&score=…&model=…). Keep them stable.
+  - type: input
+    id: cve
+    attributes:
+      label: CVE ID
+      placeholder: CVE-2026-12345
+    validations:
+      required: true
+
+  - type: input
+    id: tier
+    attributes:
+      label: Current tier
+      description: As shown on the CVE page. Filled in for you by the "Disagree?" button.
+      placeholder: likely
+    validations:
+      required: true
+
+  - type: input
+    id: score
+    attributes:
+      label: Current score
+      placeholder: '62'
+
+  - type: input
+    id: model
+    attributes:
+      label: Score model
+      description: Shown on the method page and in meta.json (score_model).
+      placeholder: v0.1.0
+
+  - type: dropdown
+    id: expected
+    attributes:
+      label: What do you think it should be?
+      options:
+        - Exploited — there is evidence of exploitation in the wild
+        - Likely next — exploitation looks imminent
+        - Watch — worth keeping an eye on
+        - Quiet — this is noise
+        - The tier is right, but a chip is wrong or missing
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Your reasoning and evidence
+      description: |
+        Which chips are wrong or missing, and why. Link public sources: vendor advisories, threat
+        intelligence reports, exploit modules, KEV or EUVD entries, honeypot or scanner telemetry.
+      placeholder: |
+        The vendor advisory (link) confirms limited targeted exploitation since Oct 20, but the
+        CVE record does not say so, so no E chip fired.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I read the CVE page's "unknowns" — my point is not only evidence we already list as missing.
+        - label: Everything I cite is public, and I included no exploit code.
+          required: true

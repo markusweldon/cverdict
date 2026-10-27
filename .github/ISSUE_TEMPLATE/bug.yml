@@ -1,0 +1,56 @@
+name: Bug report
+description: Something on the site, in the data or in the pipeline is broken.
+title: 'Bug: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Found a security problem? Please report it [privately](https://github.com/markusweldon/cverdict/security/advisories/new)
+        instead of opening an issue. Think a score is wrong? Use the "Disagree with a score" template.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where?
+      options:
+        - Website
+        - JSON API or feeds
+        - Pipeline or GitHub Actions workflow
+        - Self-hosted deployment (Vercel or GitHub Pages)
+        - Documentation
+    validations:
+      required: true
+
+  - type: input
+    id: link
+    attributes:
+      label: Page, file or CVE
+      placeholder: https://cverdict.vercel.app/cve/CVE-2026-12345
+
+  - type: input
+    id: data-age
+    attributes:
+      label: Data version
+      description: The data age shown on the site, or generated_at from v1/meta.json.
+      placeholder: 2026-10-26T19:17:00Z
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and OS (site), or Node version and command (pipeline)
+      placeholder: Firefox 144 on macOS 26 · or · Node 22.12, npm run pipeline -- --offline
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or console output
+      render: text

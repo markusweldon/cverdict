@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# Publish a pipeline output tree to the orphan data branch of this repository.
+#
+#   scripts/publish-data-branch.sh [--dry-run] <dir>
+#
+# <dir> is the pipeline's --out root (v1/…, feeds/…). The branch always holds exactly one
+# parentless commit, so the repository does not accumulate ~60 MB of JSON per hour; old data
+# commits become unreachable and are garbage-collected by GitHub.
+#
+# The commit is assembled with plumbing against a temporary index: the working tree, the real
+# index and HEAD are never touched, and nothing is copied. It is pushed through this checkout's
+# own remote, so the credentials that actions/checkout persists (http.extraheader) apply.
+#
+# Nothing is pushed when the content fingerprint (row index, KEV file and headline counts,
+# ignoring generated_at) matches the branch. The push is a lease on the commit we compared
+# against, so a concurrent publisher can never be silently overwritten. Works on the very
+# first run, when the branch does not exist yet.
+#
+# Environment (all optional):
+#   DATA_BRANCH     branch to publish to (default: data)
+#   PUBLISH_REMOTE  remote to push to (default: origin)
+#   GITHUB_*        set by GitHub Actions; used for links in the commit message and README
+set -euo pipefail
+
+readonly BRANCH="${DATA_BRANCH:-data}"
+readonly REMOTE="${PUBLISH_REMOTE:-origin}"
+# Files that must exist in <dir>; the first three also make up the change fingerprint.
+readonly REQUIRED=(v1/index.json v1/kev.json v1/meta.json v1/signal.json)
+
+# Data commits are machine-made: default to the Actions bot identity unless the caller set one.
+export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-github-actions[bot]}"
+export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-$GIT_AUTHOR_NAME}"
+export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-$GIT_AUTHOR_EMAIL}"
+
+log() { printf 'publish-data-branch: %s\n' "$*"; }
+die() { printf 'publish-data-branch: error: %s\n' "$*" >&2; exit 1; }
+usage() { printf 'usage: %s [--dry-run] <dir>\n' "${0##*/}" >&2; exit "${1:-2}"; }
+
+dry_run=false
+case "${1:-}" in
+  --dry-run) dry_run=true; shift ;;
+  -h | --help) usage 0 ;;
+esac
+[[ $# -eq 1 ]] || usage
+
+command -v git >/dev/null || die 'git is required'
+command -v jq >/dev/null || die 'jq is required'
+
+[[ -d $1 ]] || die "not a directory: $1"
+src=$(cd -- "$1" && pwd -P)
+for f in "${REQUIRED[@]}"; do
+  [[ -s $src/$f ]] || die "$src does not look like pipeline output: $f is missing or empty"
+done
+
+# Operate on the repository this script belongs to, wherever it is called from.
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+git_dir=$(git rev-parse --absolute-git-dir)
+
+work=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/publish-data.XXXXXX")
+trap 'rm -rf -- "$work"' EXIT
+
+# owner/repo for links: from Actions, else parsed from a GitHub remote URL.
+repo_slug() {
+  if [[ -n ${GITHUB_REPOSITORY:-} ]]; then
+    printf '%s\n' "$GITHUB_REPOSITORY"
+    return
+  fi
+  local url
+  url=$(git remote get-url "$REMOTE")
+  url=${url%.git}
+  case "$url" in
+    https://github.com/*) printf '%s\n' "${url#https://github.com/}" ;;
+    git@github.com:*) printf '%s\n' "${url#git@github.com:}" ;;
+    *) printf 'OWNER/REPO\n' ;;
+  esac
+}
+
+# Change fingerprint of a data tree. generated_at differs on every run and is ignored; any other
+# change to the rows, the KEV file or the headline counts produces a new fingerprint.
+fingerprint() {
+  local dir=$1
+  {
+    jq -cS 'del(.generated_at)' "$dir/v1/index.json" &&
+      jq -cS 'del(.generated_at)' "$dir/v1/kev.json" &&
+      jq -cS '.counts' "$dir/v1/meta.json"
+  } | git hash-object --stdin
+}
+
+# Fingerprint of a published commit; fails when it lacks any of the fingerprinted files.
+commit_fingerprint() {
+  local dir="$work/published"
+  mkdir -p "$dir"
+  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json | tar -x -C "$dir" || return 1
+  fingerprint "$dir"
+}
+
+# README.md of the data branch. Markdown is generated from the data itself where possible so it
+# cannot drift from what the pipeline emits.
+data_readme() {
+  local repo=$1 scope window
+  scope=$(jq -r '.scope' "$src/v1/signal.json")
+  window=$(jq -r '.window.days' "$src/v1/meta.json")
+  cat <<EOF
+# Data branch
+
+Machine-generated data for [${repo}](https://github.com/${repo}). The \`refresh-data\` workflow
+rebuilds it every hour and force-pushes it as a single commit without history: do not commit
+here, and do not pin old commits — they are garbage-collected.
+
+## JSON API (schema v1)
+
+Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
+
+| Path | Contents |
+|---|---|
+| \`v1/meta.json\` | Run metadata: ${window}-day window, headline counts with definitions, score model, source health |
+| \`v1/signal.json\` | Rows worth a look (${scope}); columnar |
+| \`v1/index.json\` | Every CVE published in the last ${window} days; columnar |
+| \`v1/cve/<xx>.json\` | Full per-CVE detail with every reason chip; \`<xx>\` is the FNV-1a shard of the CVE ID |
+| \`v1/batches.json\` | Patch-day batches: 50+ CVEs from one CNA on one day |
+| \`v1/kev.json\` | Recent CISA KEV additions and upcoming due dates |
+| \`v1/stats.json\` | Monthly history since 1999, daily and hourly counts, top CNAs, AI credits |
+| \`v1/changes.json\` | Escalations (tier went up, or new exploit evidence) in the last 7 days |
+| \`feeds/signal.xml\` | Atom: newest Exploited and Likely-next CVEs |
+| \`feeds/kev.xml\` | Atom: KEV additions |
+| \`feeds/kev-due.ics\` | iCalendar: KEV remediation due dates |
+
+Every JSON file carries \`schema_version\` and \`generated_at\`. Fields, sharding and the
+versioning policy are documented in
+[docs/DATA.md](https://github.com/${repo}/blob/HEAD/docs/DATA.md).
+
+\`\`\`sh
+curl -s https://raw.githubusercontent.com/${repo}/${BRANCH}/v1/meta.json | jq .counts
+\`\`\`
+
+## License
+
+Scores, tiers and reason chips are dedicated to the public domain (CC0-1.0). Upstream data
+(CVE List, CISA KEV and Vulnrichment, EPSS, exploit feeds) stays under its own terms: see
+[ATTRIBUTIONS.md](https://github.com/${repo}/blob/HEAD/ATTRIBUTIONS.md).
+EOF
+}
+
+commit_message() {
+  jq -r '"Data \(.generated_at)\n\n\(.counts.window_published) CVEs in the \(.window.days)-day window, \(.counts.window_passed) exploited or likely next; score model \(.score_model)."' "$src/v1/meta.json"
+  printf '\nSource: %s\n' "$(git rev-parse HEAD)"
+  if [[ -n ${GITHUB_RUN_ID:-} ]]; then
+    printf 'Run: %s/%s/actions/runs/%s\n' "${GITHUB_SERVER_URL:-https://github.com}" "$(repo_slug)" "$GITHUB_RUN_ID"
+  fi
+}
+
+# Current tip of the branch on the remote ("" when it does not exist yet).
+remote_tip=''
+status=0
+git ls-remote --exit-code --heads "$REMOTE" "refs/heads/$BRANCH" >/dev/null || status=$?
+case $status in
+  0)
+    # Data commits are parentless, so this transfers one commit's objects and no history.
+    git fetch --quiet --no-tags "$REMOTE" "refs/heads/$BRANCH"
+    remote_tip=$(git rev-parse --verify 'FETCH_HEAD^{commit}')
+    ;;
+  2) log "$REMOTE has no $BRANCH branch yet; it will be created" ;;
+  *) die "could not list $REMOTE (git ls-remote exited with $status)" ;;
+esac
+
+local_fp=$(fingerprint "$src")
+if [[ -n $remote_tip ]]; then
+  if remote_fp=$(commit_fingerprint "$remote_tip") && [[ $remote_fp == "$local_fp" ]]; then
+    log "content unchanged since ${remote_tip:0:12}; nothing to publish"
+    exit 0
+  fi
+fi
+
+# Build the tree from <dir> plus the generated files, using a throwaway index.
+export GIT_INDEX_FILE="$work/index"
+git -C "$src" --git-dir="$git_dir" --work-tree="$src" add --all --force -- .
+readme_blob=$(data_readme "$(repo_slug)" | git hash-object -w --stdin)
+git update-index --add --cacheinfo "100644,$readme_blob,README.md"
+# Vercel would otherwise build a preview deployment of this branch on every push.
+vercel_blob=$(printf '{ "git": { "deploymentEnabled": false } }\n' | git hash-object -w --stdin)
+git update-index --add --cacheinfo "100644,$vercel_blob,vercel.json"
+tree=$(git write-tree)
+unset GIT_INDEX_FILE
+
+commit=$(commit_message | git commit-tree "$tree")
+files=$(git ls-tree -r --name-only "$commit" | wc -l | tr -d ' ')
+
+if $dry_run; then
+  log "dry run: built ${commit:0:12} ($files files); not pushing to $REMOTE/$BRANCH"
+  exit 0
+fi
+
+# An empty expected value means "the branch must not exist yet".
+git push --quiet --force-with-lease="refs/heads/$BRANCH:$remote_tip" "$REMOTE" "$commit:refs/heads/$BRANCH"
+log "published ${commit:0:12} ($files files) to $REMOTE/$BRANCH"
