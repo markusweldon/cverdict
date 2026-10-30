@@ -438,7 +438,8 @@ export async function syncShallowClone(spec: CloneSpec): Promise<SyncedClone> {
 
 /** Clone into a temporary sibling directory so a half-finished clone never looks usable. */
 async function cloneFresh(spec: CloneSpec): Promise<{ dir: string; commit: string }> {
-  const tmp = `${spec.dir}.tmp-${process.pid}`;
+  // Absolute, because git runs with the parent as cwd and would resolve a relative target twice.
+  const tmp = path.resolve(`${spec.dir}.tmp-${process.pid}`);
   await rm(tmp, { recursive: true, force: true });
   await mkdir(path.dirname(spec.dir), { recursive: true });
   try {
