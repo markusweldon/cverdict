@@ -128,6 +128,18 @@ describe('syncShallowClone', () => {
     expect(await syncShallowClone({ ...spec, offline: true })).toEqual({ dir, commit: second, stale: true, error: null });
   });
 
+  it('clones into a relative cache directory (as CI passes --cache .cache)', async () => {
+    const root = tempDir();
+    const origin = path.join(root, 'origin');
+    const first = commitFiles(origin, { 'a.txt': '1' });
+    const dir = path.relative(process.cwd(), path.join(root, 'cache', 'git', 'repo'));
+    expect(path.isAbsolute(dir)).toBe(false);
+    const spec = { remote: `file://${origin}`, branch: 'main', dir, offline: false, log: captureLogger(), timeoutMs: 60_000, accept };
+
+    expect(await syncShallowClone(spec)).toEqual({ dir, commit: first, stale: false, error: null });
+    expect(readdirSync(dir)).toEqual(['.git']);
+  });
+
   it('keeps the previous commit when the new one fails the sanity check', async () => {
     const root = tempDir();
     const origin = path.join(root, 'origin');
