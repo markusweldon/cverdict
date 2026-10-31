@@ -98,7 +98,7 @@ summary shows the published data's age and the health of every source.
 
 | Setting | Where | Default | Purpose |
 |---|---|---|---|
-| `SITE_URL` | Settings → Secrets and variables → Actions → **Variables** | the Pages URL when Pages is on, else `https://<slug>.vercel.app` | Public site URL used for links inside the Atom and iCalendar feeds. Set it when you use Vercel with a custom domain |
+| `SITE_URL` | Settings → Secrets and variables → Actions → **Variables** | the Pages URL when Pages is on, else `BRAND.siteUrl` from `shared/brand.ts` | Public site URL used for links inside the Atom and iCalendar feeds. Set it when you use Vercel with a custom domain |
 | `REFRESH_SCHEDULE` | same | off | `on` makes the hourly schedule run in a fork or copy. Scheduled runs only do work in `markusweldon/cverdict` (the check at the top of `refresh.yml`) or when this is `on`, so copies that only host the site, like the one the Vercel button creates, spend no Actions minutes. **Run workflow** works regardless |
 
 There are no secrets to set. The workflow only uses the built-in `GITHUB_TOKEN`:

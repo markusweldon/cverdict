@@ -32,7 +32,7 @@ Options:
   -h, --help            Show this help
 
 Environment:
-  SITE_URL              Public site URL used in feed links (default: https://${BRAND.slug}.vercel.app)
+  SITE_URL              Public site URL used in feed links (default: ${BRAND.siteUrl})
 `;
 
 export class UsageError extends Error {}

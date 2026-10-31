@@ -109,7 +109,7 @@ describe('run', () => {
 
 describe('siteUrl', () => {
   it('defaults to the brand deployment and normalises SITE_URL', () => {
-    expect(siteUrl({})).toBe(`https://${BRAND.slug}.vercel.app`);
+    expect(siteUrl({})).toBe(BRAND.siteUrl);
     expect(siteUrl({ SITE_URL: ' https://example.org/triage/ ' })).toBe('https://example.org/triage');
     expect(() => siteUrl({ SITE_URL: 'javascript:alert(1)' })).toThrow(/http/);
     expect(() => siteUrl({ SITE_URL: 'not a url' })).toThrow();
