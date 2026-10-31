@@ -12,6 +12,8 @@ export const BRAND = {
   repo: 'markusweldon/cverdict',
   /** Branch the hourly workflow publishes data to. */
   dataBranch: 'data',
+  /** Public site; feed links point here unless SITE_URL is set. */
+  siteUrl: 'https://cverdict-psi.vercel.app',
 } as const;
 
 export const REPO_URL = `https://github.com/${BRAND.repo}`;

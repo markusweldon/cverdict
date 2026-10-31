@@ -47,9 +47,9 @@ export class ValidationFailedError extends Error {
   }
 }
 
-/** Public site base for feed links: $SITE_URL, else the default Vercel deployment. */
+/** Public site base for feed links: $SITE_URL, else BRAND.siteUrl. */
 export function siteUrl(env: NodeJS.ProcessEnv = process.env): string {
-  const raw = env.SITE_URL?.trim() || `https://${BRAND.slug}.vercel.app`;
+  const raw = env.SITE_URL?.trim() || BRAND.siteUrl;
   const url = new URL(raw);
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(`SITE_URL must be http(s): ${raw}`);
   return url.href.replace(/\/+$/, '');

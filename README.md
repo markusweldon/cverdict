@@ -4,7 +4,7 @@
 
 ### Every CVE gets a verdict. Every verdict comes with receipts.
 
-[**Live site**](https://cverdict.vercel.app) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
+[**Live site**](https://cverdict-psi.vercel.app) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
 
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)
 [![refresh-data](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml)
