@@ -28,7 +28,9 @@ npm run dev                    # http://localhost:5173
 | `npm run build` | Production build into `site/dist` (`BASE=/repo/` for a sub-path) |
 | `npm run preview` | Serve the production build |
 | `npm test` | All unit tests (vitest) |
-| `npm run typecheck` | `tsc --noEmit` over shared, pipeline and site |
+| `npm run typecheck` | `tsc --noEmit` over shared, pipeline, site and mcp |
+| `npm run -s mcp` | The MCP server over stdio, from source ([mcp/README.md](mcp/README.md)); `-s` keeps npm's banner off stdout |
+| `npm run build:mcp` | The MCP server as one file, `mcp/dist/cverdict-mcp.mjs` |
 
 Pipeline flags that make iteration fast:
 
@@ -43,9 +45,10 @@ Pipeline flags that make iteration fast:
 shared/     contract.ts (public data types), model.ts (chips and points), shard.ts, brand.ts
 pipeline/   src/ (sources → normalize → score → batches/stats/changes → emit → validate), test/
 site/       the Vite + Preact single-page app
+mcp/        the read-only MCP server for AI agents: src/, test/, the cverdict-mcp package files
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md
 .github/    ci.yml, refresh.yml (hourly data), issue templates
-scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts
+scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts, mcp-measure.ts
 ```
 
 [docs/SPEC.md](docs/SPEC.md) is the implementation contract; read it before larger changes.
@@ -53,7 +56,8 @@ scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts
 ## Ground rules for code
 
 - TypeScript, strict, ESM. The only runtime dependency is `preact`; the pipeline uses Node
-  built-ins only. Propose a new dependency in an issue first.
+  built-ins only. The MCP server's SDK and `zod` are exact-pinned dev dependencies that its bundle
+  inlines; only `mcp/` imports them. Propose a new dependency in an issue first.
 - **CVE text is hostile.** Render it as text only: no `innerHTML`, no `dangerouslySetInnerHTML`.
   Only link `http(s)` URLs, with `rel="noopener noreferrer nofollow"`. Escape everything that goes
   into XML or iCalendar.
@@ -65,7 +69,7 @@ scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts
 
 ## Tests
 
-Tests live in `pipeline/test/`, and next to the code in `shared/` and `site/src/` as `*.test.ts`. They run with vitest:
+Tests live in `pipeline/test/` and `mcp/test/`, and next to the code in `shared/` and `site/src/` as `*.test.ts`. They run with vitest:
 
 ```sh
 npm test                                   # everything
@@ -74,7 +78,10 @@ npx vitest run pipeline/test/model/score.test.ts
 
 Every chip and every family rule must have a unit test. Fixtures in `pipeline/test/fixtures/` are small,
 realistic CVE records, including ones with XSS payloads; add one whenever you fix a parsing bug.
-CI runs `npm run typecheck`, `npm test`, `npm run build` and `shellcheck` on every pull request.
+CI runs `npm run typecheck`, `npm test`, `npm run build`, `npm run build:mcp` with a smoke test of
+the MCP bundle on mock data, `shellcheck` and the data-branch publisher test on every pull request.
+A change to the MCP tools' output should also pass `npx tsx scripts/mcp-measure.ts`, which checks
+the largest possible answers on the live data against the 20,000-token budget.
 
 ## Proposing a scoring change
 

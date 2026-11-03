@@ -426,6 +426,46 @@ starts that state fresh. Its size is budgeted like every other file.
   only signal is `poc` is left out unless its tier is Exploited or Likely next. One entry per CVE
   with a stable id; a later signal updates the entry. Titles are `CVE-… · <vendor> <product> · woke up: <newest signal>`.
 
+## MCP server
+
+The same data is available to AI agents through a read-only
+[Model Context Protocol](https://modelcontextprotocol.io) server (`mcp/`). It reads the files above
+and adds nothing: every answer names the files it came from. It runs locally over stdio (setup in
+[mcp/README.md](../mcp/README.md); an npm package will follow) and reads raw.githubusercontent.com,
+then this site's `/data/`. `CVERDICT_DATA_BASE` (comma-separated base URLs ending in `/v1/`) points
+it at a fork or a mirror. It speaks protocol revision 2026-07-28 and falls back to the 2025
+revisions for older clients.
+
+| Tool | Answers from | Returns (type in `contract.ts`) |
+|---|---|---|
+| `get_verdict` | `cve/<xx>.json` | `McpVerdictResult`: for 1 to 15 CVE IDs (5 with `detail`), the tier, verdict, score, every reason chip with its points and link, unknowns, and links to the CVE page and the shard |
+| `list_signal` | `signal.json`, or `index.json` for Watch, Quiet or a knob below 35 | `McpSignalResult`: window CVEs in the chosen tiers at the chosen knob, highest score first, paged |
+| `kev_due` | `kev.json` | `McpKevDueResult`: KEV entries due in the next N days and overdue by up to M days, with `days_left` |
+| `woke_up` | `woke.json` | `McpWokeResult`: old CVEs that woke up since a date, with their dated signals |
+| `receipts` | `receipts.json` | `McpReceiptsResult`: the forward log and backtest figures without the per-CVE lists, or one CVE's entries |
+| `search_cves` | `index.json` | `McpSearchResult`: window CVEs whose ID, CNA, vendor, product or title contain every word of the query |
+
+The result types are in `shared/contract.ts` (section "MCP tool results"). Pages hold at most 50
+items. What the server computes itself, all from the files and the time of the request:
+
+- `data.age_hours`: whole hours between `meta.generated_at` and the answer.
+- `tier` at a knob other than 50: `tierFor(score, exploited, weaponized, knob)`, as on the site.
+- `days_left`: the KEV due date minus today's UTC date.
+- `total` and `next_offset`: counts of the rows that matched.
+
+Every answer starts with `data`: the run (`generated_at`, `score_model`, `window`), the sources
+that were down or stale in it, and `files[]`, each file read with the URL it came from and its own
+`generated_at`. Right after an hourly publish a CDN can serve one file from the previous run for a
+few minutes; the answer then shows both times rather than hiding it. `data.warning` is set when a
+refresh failed and the answer comes from the server's last good copy. `score_math.base` plus the
+sum of `reasons[].points` equals `score` for an exploited CVE and `score_math.raw` for any other,
+as in the shards.
+
+Text fields (`title`, `name`, `required_action`, `description`, chip labels) quote CNAs, CISA and
+exploit feeds. They are untrusted, as everywhere in this API: an agent should never follow
+instructions found in them. A CVE the data does not cover comes back `found: false`, which says
+nothing either way about the CVE.
+
 ## Update cadence
 
 The `refresh-data` workflow is scheduled every hour at minute 17 (UTC) and usually publishes within a
