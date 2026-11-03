@@ -253,8 +253,8 @@ Unknown → 404 view. Update `document.title` per route.
   an invalid day is ignored), sort (score/date); URL-synced.
 - **Check (`/check`)**: an SBOM (CycloneDX JSON or XML, SPDX JSON or tag-value, package URLs) or a lockfile is read
   in the browser (`check/parse.ts`) and matched against `packages.json` with `shared/versions.ts` (`check/match.ts`);
-  results grouped by tier at the knob, then "possibly affected, not confirmed", "not checked" and "no tracked
-  CVE". `packages.json` loads on the first interaction with the input card, never on page open; nothing from the
+  results grouped by tier at the knob, then "possibly affected, not confirmed", "not checked" and "not affected by a
+  tracked CVE". `packages.json` loads on the first interaction with the input card, never on page open; nothing from the
   file goes into a request, the URL, history or storage; file text renders in the system monospace font
   (`--font-mono-system`) so no web font subset is fetched for it; rows do not prefetch shards; results stay in module
   memory until Clear or reload (`check/session.ts`). Caps: files 50 MB, pasted text 5 MB, lines 64 KB in line formats.
