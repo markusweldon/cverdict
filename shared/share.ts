@@ -276,11 +276,20 @@ export function shareHead({ origin, detail: d, generatedAt }: { origin: string; 
  * both markers comes back unchanged.
  */
 export function injectHead(html: string, head: string): string {
+  const block = shareBlock(html);
+  if (!block) return html;
+  return `${html.slice(0, block[0] + SHARE_START.length)}\n    ${head}\n    ${html.slice(block[1])}`;
+}
+
+/** Where the share block's start and end markers are: a start marker with an end marker after it. */
+function shareBlock(html: string): [number, number] | null {
   const a = html.indexOf(SHARE_START);
   const b = a < 0 ? -1 : html.indexOf(SHARE_END, a + SHARE_START.length);
-  if (a < 0 || b < 0) return html;
-  return `${html.slice(0, a + SHARE_START.length)}\n    ${head}\n    ${html.slice(b)}`;
+  return a < 0 || b < 0 ? null : [a, b];
 }
+
+/** True when injectHead() can fill `html`; both markers somewhere in it is not enough. */
+export const hasShareBlock = (html: string): boolean => shareBlock(html) !== null;
 
 /** A stand-in page for when the built index.html cannot be loaded: the site card and a link. */
 export function minimalTemplate(origin: string): string {

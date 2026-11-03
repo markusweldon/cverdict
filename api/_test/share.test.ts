@@ -237,8 +237,9 @@ describe('api/share', () => {
     }
   });
 
-  it('caps the template at 64 KB and needs both markers in it', async () => {
-    for (const page of [`${TEMPLATE}${' '.repeat(70 * 1024)}`, '<html><head><title>no markers</title></head></html>']) {
+  it('caps the template at 64 KB and needs both markers in it, in order', async () => {
+    const reversed = '<html><head><!--share:end--><title>x</title><!--share:start--></head></html>';
+    for (const page of [`${TEMPLATE}${' '.repeat(70 * 1024)}`, '<html><head><title>no markers</title></head></html>', reversed]) {
       const f = fakeFetch({ [TEMPLATE_URL]: html(page), [rawUrl(ID)]: json(shard) });
       const res = await createShareHandler({ fetch: f.fn, env: {} })(req(`id=${ID}`));
       const body = await res.text();
