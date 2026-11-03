@@ -107,6 +107,26 @@ describe('checkComponents', () => {
     expect(check('module x\nrequire github.com/klauspost/compress v1.20.2\n', 'go.mod').cves).toEqual([]);
   });
 
+  it('reports a lowercased golang package URL as possibly affected when the advisory names a path inside it in other letter case', () => {
+    // A real key shape: github.com/luskaner/ageLANServer/server, a path inside a mixed-case module.
+    const file = testIndex();
+    file.packages.Go!['github.com/luskaner/ageLANServer/server'] = [['CVE-2026-50007', 'GHSA-qqqq-rrrr-ssss', [['>=0', '<9.0.0']]]];
+    const hit = (...list: string[]) =>
+      checkComponents(parse(list.join('\n')), file).cves.flatMap((c) => c.packages.map((p) => [c.row.id, p.name, c.affected, p.unchecked, p.named]));
+    const named = 'github.com/luskaner/ageLANServer/server';
+    expect(hit('pkg:golang/github.com/luskaner/ageLANServer@v1.2.0')).toEqual([['CVE-2026-50007', 'github.com/luskaner/ageLANServer', false, 'go-package', named]]);
+    expect(hit('pkg:golang/github.com/luskaner/agelanserver@v1.2.0')).toEqual([['CVE-2026-50007', 'github.com/luskaner/agelanserver', false, 'go-package', named]]);
+    // Both spellings in one file: each is reported.
+    expect(hit('pkg:golang/github.com/luskaner/ageLANServer@v1.2.0', 'pkg:golang/github.com/luskaner/agelanserver@v1.2.0').map((h) => h[1])).toEqual([
+      'github.com/luskaner/ageLANServer',
+      'github.com/luskaner/agelanserver',
+    ]);
+    // The path itself, lowercased, is a module of the file: it owns its advisories, the parent does not.
+    expect(hit('pkg:golang/github.com/luskaner/agelanserver@v1.2.0', 'pkg:golang/github.com/luskaner/agelanserver/server@v1.2.0')).toEqual([
+      ['CVE-2026-50007', 'github.com/luskaner/agelanserver/server', false, 'name-case', named],
+    ]);
+  });
+
   it('lists packages of an ecosystem without data as not checked, never as clean', () => {
     const r = check('pkg:nuget/CefSharp.Common@85.0.0\npkg:deb/debian/libc6@2.36\npkg:rpm/bash@5\n');
     expect(r.cves).toEqual([]);
