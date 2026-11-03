@@ -1,6 +1,6 @@
 /**
  * Edge cases of the Receipts forward log and backtest, written apart from the builder's tests:
- * gap totals past the kept list, listings a run can see but not record, UTC day maths, corrupt and
+ * gap totals past the kept list, listings a run can see but not record, Eastern day maths, corrupt and
  * missing state, the retention boundary, KEV evidence in the backtest, and the receipts.json budget
  * over five years of listings.
  */
@@ -11,7 +11,7 @@ import { SCORE_MODEL } from '../../../shared/model';
 import { evidenceAsOf, kevAsOf, runBacktest, SIGNALS, type BacktestInputs } from '../../src/backtest';
 import { BUDGETS } from '../../src/config';
 import { buildOutput } from '../../src/emit/build';
-import { decodeLog, encodeLog, forwardReceipts, hourOf, LOG_RETENTION_DAYS, outcomeOf, updateLog, type LogEntry, type ReceiptsLog } from '../../src/receipts';
+import { decodeLog, encodeLog, forwardReceipts, isEligible, minuteOf, LOG_RETENTION_DAYS, outcomeOf, updateLog, type LogEntry, type ReceiptsLog } from '../../src/receipts';
 import { toRow } from '../../src/rows';
 import { buildKevPrior } from '../../src/score';
 import { parseState } from '../../src/state';
@@ -59,11 +59,14 @@ describe('forward log: listings and flags', () => {
     expect(undated.exploited).toBe(true);
     let log = updateLog(null, [undated], catalog(), T0).log;
     expect(log.entries.get(ID)!.flags.cverdict).toBeNull();
+    // Every method is held alike: a CVSS 7 flag in that run would otherwise count as before.
+    const undatedHigh = score(windowCve('CVE-2026-100003', T0, { ...cvss(9.8), adpKev: { dateAdded: null, reference: null } }));
+    expect(updateLog(null, [undatedHigh], catalog(), T0).log.entries.get('CVE-2026-100003')!.flags).toEqual({ cverdict: null, cvss7: null, epss10: null });
     // The catalog dates it the next day: the CVErdict flag comes with the listing, so it does not count.
     const listed = makeKev(ID, { dateAdded: ymd(at(24)) });
     log = updateLog(log, [score(windowCve(ID, T0), { kev: [listed] })], catalog([listed]), at(24)).log;
     const e = log.entries.get(ID)!;
-    expect(e.kev).toEqual({ added: ymd(at(24)), seen: hourOf(at(24)) });
+    expect(e.kev).toEqual({ added: ymd(at(24)), seen: minuteOf(at(24)) });
     expect(outcomeOf(e.flags.cverdict, e.kev!).outcome).toBe('after');
     // A catalog entry dated after the run (a frozen --now) is not a flag either.
     const future = makeKev('CVE-2026-100002', { dateAdded: ymd(at(72)) });
@@ -84,16 +87,49 @@ describe('forward log: listings and flags', () => {
     expect(f.listed).toBe(2);
   });
 
-  it('measures lead time in whole UTC days, whatever the hour of the flag', () => {
-    const kev = { added: '2026-11-05', seen: hourOf(new Date('2026-11-05T18:00:00Z')) };
-    // Flagged 23:00 UTC on the 3rd and 00:00 UTC on the 4th: 2 and 1 days.
-    expect(outcomeOf(hourOf(new Date('2026-11-03T23:59:00Z')), kev)).toMatchObject({ outcome: 'earlier', lead: 2 });
-    expect(outcomeOf(hourOf(new Date('2026-11-04T00:00:00Z')), kev)).toMatchObject({ outcome: 'earlier', lead: 1 });
+  it('measures lead time in whole US Eastern days (the KEV date), whatever the time of the flag', () => {
+    const kev = { added: '2026-11-05', seen: minuteOf(new Date('2026-11-05T18:00:00Z')) };
+    // EST (UTC−5): 04:59 UTC on the 4th is still the 3rd in Washington, 05:00 is the 4th.
+    expect(outcomeOf(minuteOf(new Date('2026-11-04T04:59:00Z')), kev)).toMatchObject({ outcome: 'earlier', lead: 2 });
+    expect(outcomeOf(minuteOf(new Date('2026-11-04T05:00:00Z')), kev)).toMatchObject({ outcome: 'earlier', lead: 1 });
     // On the listing day, by a run before the one that saw it: 0 days, apart from earlier.
-    expect(outcomeOf(hourOf(new Date('2026-11-05T17:59:00Z')), kev)).toMatchObject({ outcome: 'same_day', lead: 0 });
+    expect(outcomeOf(minuteOf(new Date('2026-11-05T17:59:00Z')), kev)).toMatchObject({ outcome: 'same_day', lead: 0 });
     // In the run that saw the listing, or after the listing day, even before that run: after.
     expect(outcomeOf(kev.seen, kev).outcome).toBe('after');
-    expect(outcomeOf(hourOf(new Date('2026-11-06T01:00:00Z')), { added: '2026-11-05', seen: hourOf(new Date('2026-11-06T09:00:00Z')) })).toMatchObject({ outcome: 'after', lead: null });
+    expect(outcomeOf(minuteOf(new Date('2026-11-06T06:00:00Z')), { added: '2026-11-05', seen: minuteOf(new Date('2026-11-06T09:00:00Z')) })).toMatchObject({ outcome: 'after', lead: null });
+  });
+
+  it('compares instants when runs come twice an hour, and the US Eastern day at midnight UTC', () => {
+    // Seen and flagged at 10:17, listing first seen at 10:47 the same hour: seen first, flagged first.
+    const listed = makeKev(ID, { dateAdded: '2026-11-05' });
+    const cve = windowCve(ID, new Date('2026-11-04T12:00:00Z'), cvss(9.8));
+    let log = updateLog(null, [score(cve)], catalog(), new Date('2026-11-05T10:17:00Z')).log;
+    log = updateLog(log, [score(cve, { kev: [listed] })], catalog([listed]), new Date('2026-11-05T10:47:00Z')).log;
+    const e = log.entries.get(ID)!;
+    expect(isEligible(e)).toBe(true);
+    expect(outcomeOf(e.flags.cvss7, e.kev!)).toMatchObject({ outcome: 'same_day', lead: 0 });
+    // First seen at 00:17 UTC on the 6th, which is still the 5th in Washington, then listed that
+    // (Eastern) day: seen before the listing, not "listed before we saw it".
+    let late = updateLog(null, [score(cve)], catalog(), new Date('2026-11-06T00:17:00Z')).log;
+    late = updateLog(late, [score(cve, { kev: [listed] })], catalog([listed]), new Date('2026-11-06T02:47:00Z')).log;
+    const l = late.entries.get(ID)!;
+    expect(isEligible(l)).toBe(true);
+    expect(outcomeOf(l.flags.cvss7, l.kev!)).toMatchObject({ outcome: 'same_day', lead: 0 });
+    const f = forwardReceipts(late, catalog([listed]), new Map(), new Date('2026-11-06T02:47:00Z'), 30);
+    expect(f.uncounted).toEqual([]);
+    expect(f.eligible).toBe(1);
+  });
+
+  it('logs only canonical CVE IDs, so a leading-zero ID cannot wipe the log on the next run', () => {
+    const odd = 'CVE-2026-01234';
+    let log = updateLog(null, [score(windowCve(odd, T0)), score(windowCve('CVE-2026-1234', T0))], catalog(), T0).log;
+    expect([...log.entries.keys()]).toEqual(['CVE-2026-1234']);
+    const back = decodeLog(JSON.parse(JSON.stringify(encodeLog(log))));
+    expect(back).not.toBeNull();
+    log = updateLog(back, [score(windowCve(odd, T0)), score(windowCve('CVE-2026-1234', T0))], catalog(), at(1)).log;
+    const again = decodeLog(JSON.parse(JSON.stringify(encodeLog(log))));
+    expect(again?.entries.size).toBe(1);
+    expect(again?.runs).toBe(2);
   });
 
   it('keeps an entry seen exactly 400 days ago and prunes it an hour later', () => {
@@ -179,10 +215,10 @@ describe('budgets', () => {
     for (let i = 0; i < 1750; i++) {
       const id = `CVE-2026-${200000 + i * 7}`;
       const added = ymd(new Date(T0.getTime() + Math.floor((i * 5 * 365) / 1750) * 86_400_000 + 86_400_000));
-      const seen = hourOf(T0) + i * 25;
+      const seen = minuteOf(T0) + i * 25;
       kevs.push(makeKev(id, { dateAdded: added }));
       rows.set(id, realRow(id, new Date(seen * 3_600_000).toISOString()));
-      if (i % 10 < 4) entries.set(id, { seen, flags: { cverdict: i % 3 ? seen + 2 : null, cvss7: seen, epss10: i % 2 ? null : seen + 30 }, kev: { added, seen: hourOf(`${added}T20:00:00Z`) } });
+      if (i % 10 < 4) entries.set(id, { seen, flags: { cverdict: i % 3 ? seen + 2 : null, cvss7: seen, epss10: i % 2 ? null : seen + 30 }, kev: { added, seen: minuteOf(`${added}T20:00:00Z`) } });
     }
     const log: ReceiptsLog = { since: T0.toISOString(), last: now.toISOString(), runs: 40_000, gaps: [], gapTotal: { n: 0, hours: 0 }, entries, pruned: { n: 900_000, cverdict: 9000, cvss7: 400_000, epss10: 3000 } };
     const forward = forwardReceipts(log, catalog(kevs), rows, now, 30);
