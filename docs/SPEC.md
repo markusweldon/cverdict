@@ -218,7 +218,10 @@ Unknown → 404 view. Update `document.title` per route.
 - **Today (`/`)**: (1) ticker strip (published 24h · passed 24h · KEV due ≤72h · batches this week · data age); (2) hero
   noise meter: big mono numbers counting up — "14,281 CVEs in 30 days → 312 worth your time" with a % and
   "1 in N"; (3) **signal waterfall**: Canvas spectrogram of the window (x = hour, stacked ticks; quiet ticks dim
-  grey, passed ticks glow in tier colour; hover tooltip with hour + counts; re-colours live as the knob turns);
+  grey, passed ticks glow in tier colour; hover tooltip with hour + counts; re-colours live as the knob turns;
+  a column opens Explore for the UTC day it starts on (`/explore?day=YYYY-MM-DD&sort=score`): click, or Enter on
+  the focused chart (`role="slider"`, arrow keys pick a column); on touch the first tap selects and the tooltip's
+  "See Oct 13" link opens it; spike labels link to their batch card on `/batches`);
   (4) the **knob**: rotary control (`role="slider"`, arrow keys ±5, presets Tight 60 / Default 50 / Wide 40),
   URL param `?knob=`; (5) signal feed: rows (tier pill, mono CVE ID, vendor · product, title, top chips, score, age,
   batch tag); filter bar (tier, vendor search, hide WordPress / kernel / AI toggles, watchlist); (6) batch cards
@@ -231,7 +234,8 @@ Unknown → 404 view. Update `document.title` per route.
 - **KEV clock (`/kev`)**: due within 72h / overdue (≤7d) / this month; live countdowns; ransomware & forensic flags; ICS link.
 - **Batches (`/batches`)**: cohort cards with tier bars; expand to families and top CVEs.
 - **Explore (`/explore`)**: all window CVEs; virtualised list (render only visible rows); search (ID/vendor/product/title),
-  filters (tier, CNA, vendor, chip), sort (score/date); URL-synced.
+  filters (tier, CNA, vendor, chip, publish day `?day=YYYY-MM-DD` shown as a removable "Published Oct 13" chip;
+  an invalid day is ignored), sort (score/date); URL-synced.
 - **The surge (`/surge`)**: monthly published since 1999 (SVG area/line, log toggle, Published/Reserved toggle),
   KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status

@@ -16,6 +16,7 @@ import { TierBar, TierIcon } from '../components/Tier';
 import { Waterfall, type Annotation } from '../components/Waterfall';
 import { WokeCard } from '../components/WokeCard';
 import { data } from '../data';
+import { exploreDayHref } from '../drill';
 import {
   batchCounts,
   byScore,
@@ -194,7 +195,9 @@ function annotationsFor(batches: readonly Batch[], hourly: { start: string; coun
           peak = day + h * HOUR_MS;
         }
       }
-      return { at: peak, label: list.filter((b) => b.count >= 300).slice(0, 2).map((b) => `${cnaName(b.cna)} ${fmtInt(b.count)}`).join(' + ') || `${cnaName(list[0].cna)} ${fmtInt(list[0].count)}` };
+      const named = list.filter((b) => b.count >= 300).slice(0, 2);
+      // Each name links to its card on /batches (the card's id is the batch id).
+      return { at: peak, parts: (named.length ? named : list.slice(0, 1)).map((b) => ({ text: `${cnaName(b.cna)} ${fmtInt(b.count)}`, href: href(`batches#${b.id}`) })) };
     });
 }
 
@@ -364,6 +367,7 @@ export default function Today() {
               start={Date.parse(stats.data.hourly.start)}
               annotations={annotations}
               onBinHours={setBinHours}
+              dayHref={(day) => exploreDayHref(day, level)}
               summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely at knob ${level}.`}
             />
           ) : (
