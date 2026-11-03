@@ -89,7 +89,7 @@ On the site:
   an evidence timeline, the facts (CVSS vector, SSVC, EPSS, KEV, affected products) and
   "Copy as ticket". A CVE link shared in Slack, X, LinkedIn, Mastodon, Discord or a messenger
   shows its verdict and score in the preview, with an image for its tier.
-- **Woke up**: CVEs published more than 30 days ago that gained exploitation evidence in the last
+- **Woke Up**: CVEs published more than 30 days ago that gained exploitation evidence in the last
   30 days: a CISA KEV listing, an EPSS jump, or their first public exploit of any kind (an
   Exploit-DB entry, Metasploit module, Nuclei template, or a PoC repo on GitHub that is at least
   3 days old or has 2 stars; the code is not checked). The 30-day views cannot see them, yet many
@@ -98,14 +98,14 @@ On the site:
   more" and "EPSS 10% or more", with lead times, alert volume and every hit and miss. The live
   record notes each run, to the minute, from the day it started; a backtest of the last 180 days
   is shown apart and marked as hindsight.
-- **Check**: drop an SBOM (CycloneDX, SPDX or a list of package URLs) or a lockfile (npm, yarn,
+- **Check Deps**: drop an SBOM (CycloneDX, SPDX or a list of package URLs) or a lockfile (npm, yarn,
   pnpm, pip, Poetry, uv, Pipenv, Go, Cargo, Bundler, Composer, NuGet or Gradle) and see which of
   the CVEs CVErdict tracks affect your package versions, grouped by verdict, each with the advisory,
   its affected range and the fixed version. The file is read in your browser and never uploaded:
   the page downloads one public file, the same for everyone. It knows only the tracked CVEs, so it
   is not a full audit.
-- **KEV clock**, **Batches**, **Explore** (every window CVE, searchable, filterable by publish
-  day), **The surge** (monthly volume since 1999), **Method** and **Feeds**.
+- **KEV Clock**, **Batches**, **Explore** (every window CVE, searchable, filterable by publish
+  day), **The Surge** (monthly volume since 1999), **Method** and **Feeds & API**.
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
 
 ![Today: 15,790 CVEs in, 363 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
@@ -113,11 +113,11 @@ On the site:
 ![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
 
 <details>
-<summary>More screenshots: The surge, and Today on a phone</summary>
+<summary>More screenshots: The Surge, and Today on a phone</summary>
 
-| The surge | Today on a phone |
+| The Surge | Today on a phone |
 |---|---|
-| ![The surge: monthly CVE volume since 1999, with KEV additions and AI-credited CVEs](docs/screenshots/surge.png) | ![Today at 390 px wide: the noise meter, the knob and the waterfall](docs/screenshots/mobile.png) |
+| ![The Surge: monthly CVE volume since 1999, with KEV additions and AI-credited CVEs](docs/screenshots/surge.png) | ![Today at 390 px wide: the noise meter, the knob and the waterfall](docs/screenshots/mobile.png) |
 
 </details>
 
@@ -179,7 +179,7 @@ Only free, public data. Nothing from NVD.
 | [Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) | Templates that reference a CVE | hourly | MIT |
 | [Exploit-DB](https://gitlab.com/exploit-database/exploitdb) | Entries that reference a CVE (IDs and links only) | every 6 h | GPL-2.0 |
 | [PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub) | Public proof-of-concept repositories per CVE | hourly | CC0-1.0 |
-| [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions affected by the tracked CVEs, for the Check page only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
+| [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions affected by the tracked CVEs, for the Check Deps page only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
 
 If a source is down, the last good copy is used and marked stale on the site; one failing feed
 never stops a run. With no copy at all, that source's evidence is shown as unknown, not as absent.
@@ -213,7 +213,7 @@ Feeds: [Atom: Exploited + Likely next](https://raw.githubusercontent.com/markusw
 [iCalendar: KEV due dates](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev-due.ics)
 (also served from the site under `/feeds/`). `woke.json` lists the old CVEs that woke up,
 `receipts.json` holds the Receipts figures with every hit and miss, and `packages.json` the package
-versions the tracked CVEs affect, which the Check page compares with your file.
+versions the tracked CVEs affect, which the Check Deps page compares with your file.
 
 Every file, every field, sharding and the versioning policy: [docs/DATA.md](docs/DATA.md).
 

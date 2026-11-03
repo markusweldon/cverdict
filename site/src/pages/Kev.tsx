@@ -1,4 +1,4 @@
-/** KEV clock: CISA Known Exploited Vulnerabilities deadlines with live countdowns. */
+/** KEV Clock: CISA Known Exploited Vulnerabilities deadlines with live countdowns. */
 import type { KevEntry } from '../../../shared/contract';
 import { copyLink } from '../actions';
 import { IconCalendar, IconCopy, IconRss } from '../components/icons';
@@ -71,7 +71,7 @@ function KevRow({ e }: { e: KevEntry }) {
 }
 
 export default function Kev() {
-  useTitle('KEV clock');
+  useTitle('KEV Clock');
   const kev = useData(data.kev);
   const now = useNow(1000);
   const ics = new URL(`${FEEDS_BASE}kev-due.ics`, window.location.origin).href;
@@ -81,7 +81,7 @@ export default function Kev() {
       <header class="page__head">
         <p class="eyebrow">CISA Known Exploited Vulnerabilities</p>
         <h1 class="page__title" tabIndex={-1}>
-          KEV clock
+          KEV Clock
         </h1>
         <p class="page__lede">Confirmed exploitation with a federal deadline. Listing usually lags the first attacks — not in KEV ≠ not exploited.</p>
         <div class="page__actions">

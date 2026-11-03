@@ -1,4 +1,4 @@
-/** Woke up: CVEs published before the 30-day window that gained exploitation evidence in it. */
+/** Woke Up: CVEs published before the 30-day window that gained exploitation evidence in it. */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { WAKE_KINDS, type WakeKind, type WokeFile, type WokeItem } from '../../../shared/contract';
 import { copyTicket, watchVendorOf, copyLink } from '../actions';
@@ -36,7 +36,7 @@ function Notes({ woke }: { woke: WokeFile }) {
 }
 
 export default function Woke() {
-  useTitle('Woke up');
+  useTitle('Woke Up');
   useKnobUrl();
   const level = useStore(knob);
   const loc = useLocation();
@@ -89,7 +89,7 @@ export default function Woke() {
       <header class="page__head">
         <p class="eyebrow">Old CVEs, new evidence</p>
         <h1 class="page__title" tabIndex={-1}>
-          Woke up
+          Woke Up
         </h1>
         <p class="page__lede">
           CVEs published more than 30 days ago that gained exploitation evidence in the last 30 days. The other views only show new CVEs, but attackers keep going after old ones.

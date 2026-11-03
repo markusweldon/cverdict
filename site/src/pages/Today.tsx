@@ -1,4 +1,4 @@
-/** Today: the noise meter, knob, waterfall, signal feed, batches, KEV clock and what changed. */
+/** Today: the noise meter, knob, waterfall, signal feed, batches, KEV Clock and what changed. */
 import { Fragment } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, SIGNAL_MIN_SCORE, type Batch, type Meta, type Row, type Tier } from '../../../shared/contract';
@@ -429,7 +429,7 @@ export default function Today() {
         <aside class="today__side" aria-label="Deadlines and changes">
           <section class="panel" aria-labelledby="kev-h">
             <header class="panel__head">
-              <h2 id="kev-h" class="panel__title">KEV clock</h2>
+              <h2 id="kev-h" class="panel__title">KEV Clock</h2>
               <a class="section__more" href={href('kev')}>
                 All deadlines <IconArrowRight size={12} />
               </a>

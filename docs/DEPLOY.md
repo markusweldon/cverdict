@@ -203,7 +203,7 @@ There are no secrets to set. The workflow only uses the built-in `GITHUB_TOKEN`:
 
 GitHub starts scheduled workflows when it has capacity, not on the minute. Busy times delay or drop
 runs, and in practice the hourly schedule often runs only every few hours. Your data is then hours
-old, and the Woke up and Receipts logs record gaps instead of hourly runs.
+old, and the Woke Up and Receipts logs record gaps instead of hourly runs.
 
 For a run every hour, let a free external timer start the workflow through GitHub's API. The
 workflow already accepts these runs (`workflow_dispatch`, the same as **Run workflow**), and they
@@ -302,7 +302,7 @@ means `REFRESH_SCHEDULE` is not set to `on`.
 cannot read private repositories), and remember that raw.githubusercontent.com caches files for up
 to 5 minutes.
 
-**The Check page says the package index is not published yet.** The `data` branch is from a run
+**The Check Deps page says the package index is not published yet.** The `data` branch is from a run
 before `v1/packages.json` existed; the next run publishes it. When it says some ecosystems are
 stale, OSV.dev could not be reached and the last copy was used; the watchdog warns about it and
 fails the run once it lasts 48 hours. An ecosystem that has never had a copy (every dump rejected,
@@ -335,14 +335,14 @@ and it adds no function. It reads the data branch on raw.githubusercontent.com, 
 fails falls back to the site's `/data/` rewrite, which costs the same static CDN requests as a page
 view.
 
-The Check page (`/check`) adds no function either: the file is matched in the browser. A visit
+The Check Deps page (`/check`) adds no function either: the file is matched in the browser. A visit
 costs the same static requests as any page, and `v1/packages.json` (about 120 KB gzip) is fetched
 through the `/data/` rewrite only when the visitor touches the input, once per visit;
 `robots.txt` keeps crawlers off it. On the GitHub side, the OSV.dev copy behind it lives in the
 existing `.cache/sources` Actions cache (about 1.7 MB). A normal run spends 1 to 3 s on it; once
 a week, or after the cache is evicted, a full download of about 300 MB adds about 10 s.
 
-After the first deploy with the Check page, run this twice within a minute; the second answer
+After the first deploy with the Check Deps page, run this twice within a minute; the second answer
 should say `x-vercel-cache: HIT`, which means the CDN, not GitHub, serves the file:
 
 ```sh

@@ -1587,10 +1587,11 @@
 
 /* ── Responsive ── */
 
-/* Ten nav links need about 1,210 px on one row at full padding: tighten them first. */
+/* Ten nav links and the search text fit on one row down to about 1,241 px (22 px spare at the
+   narrowest). Below that the search button keeps only its icon and shortcut. */
 @media (max-width: 1240px) {
-  .nav__link {
-    padding: 0 8px;
+  .searchbtn__text {
+    display: none;
   }
 }
 
@@ -1625,15 +1626,11 @@
   .surge__grid {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .searchbtn__text {
-    display: none;
-  }
 }
 
 /* The header wraps the nav onto its own scrolling row before the links can run under the
-   search button. Ten tightened links without the search text fit down to 1,121 px. */
-@media (max-width: 1120px) {
+   search button. Ten links without the search text fit on one row down to 1,161 px. */
+@media (max-width: 1160px) {
   .top__inner {
     flex-wrap: wrap;
     height: auto;

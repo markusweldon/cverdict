@@ -100,7 +100,7 @@ export const VERDICT: Readonly<Record<Tier, string>> = {
 /** Messages the server answers with. Failures come back as tool results with isError: true. */
 export const MCP_MSG = {
   notFound:
-    "Not in CVErdict's data: it was published before the 30-day window and is not in CISA KEV or Woke up, or it has no published record. That says nothing either way about the CVE.",
+    "Not in CVErdict's data: it was published before the 30-day window and is not in CISA KEV or Woke Up, or it has no published record. That says nothing either way about the CVE.",
   notCveId: 'Not a CVE ID. Expected CVE-YYYY-NNNN.',
   detailTooMany: (max: number) => `detail: true takes at most ${max} IDs; ask again in groups of ${max}.`,
   tooManyWords: (max: number) => `query takes at most ${max} words.`,

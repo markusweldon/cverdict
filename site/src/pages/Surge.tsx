@@ -1,4 +1,4 @@
-/** The surge: CVE volume since 1999, the window day by day, and who publishes it. */
+/** The Surge: CVE volume since 1999, the window day by day, and who publishes it. */
 import { useMemo, useState } from 'preact/hooks';
 import type { StatsFile } from '../../../shared/contract';
 import { ErrorState, Loading } from '../components/States';
@@ -278,7 +278,7 @@ function Tiles({ stats, ytd }: { stats: StatsFile; ytd: number }) {
 }
 
 export default function Surge() {
-  useTitle('The surge');
+  useTitle('The Surge');
   const stats = useData(data.stats);
   const meta = useData(data.meta);
   const cnas = useMemo(() => (stats.status === 'ready' ? stats.data.cnas : []), [stats]);
@@ -288,7 +288,7 @@ export default function Surge() {
       <header class="page__head">
         <p class="eyebrow">Volume since 1999</p>
         <h1 class="page__title" tabIndex={-1}>
-          The surge
+          The Surge
         </h1>
         <p class="page__lede">CVE volume tripled in a year while exploitation stayed rare. Most of the growth is long-tail software, WordPress plugins and kernel bug-fixes — volume is not risk.</p>
       </header>

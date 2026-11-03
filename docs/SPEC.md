@@ -240,13 +240,13 @@ Unknown → 404 view. Update `document.title` per route.
   (4) the **knob**: rotary control (`role="slider"`, arrow keys ±5, presets Tight 60 / Default 50 / Wide 40),
   URL param `?knob=`; (5) signal feed: rows (tier pill, mono CVE ID, vendor · product, title, top chips, score, age,
   batch tag); filter bar (tier, vendor search, hide WordPress / kernel / AI toggles, watchlist); (6) batch cards
-  ("Microsoft · Oct 13 · 1,407 → 1 exploited · 2 PoC · 58 likely"); (7) KEV clock strip; (8) "what changed" list.
+  ("Microsoft · Oct 13 · 1,407 → 1 exploited · 2 PoC · 58 likely"); (7) KEV Clock strip; (8) "what changed" list.
 - **CVE (`/cve/:id`)**: verdict line ("Patch now — exploited, KEV due Oct 29" / "Likely next — Metasploit module" /
   "Watch" / "Quiet — no evidence yet (quiet ≠ safe)"); score dial with the arithmetic (base + each chip = total);
   chips grouped by family with sources and links; unknowns; evidence timeline; facts table (CNA, CVSS vector, CWE,
   affected, SSVC, EPSS, KEV); references; buttons: Copy as ticket (Markdown), Copy link, JSON, cve.org, "Disagree?"
   (GitHub issue link prefilled).
-- **KEV clock (`/kev`)**: due within 72h / overdue (≤7d) / this month; live countdowns; ransomware & forensic flags; ICS link.
+- **KEV Clock (`/kev`)**: due within 72h / overdue (≤7d) / this month; live countdowns; ransomware & forensic flags; ICS link.
 - **Batches (`/batches`)**: cohort cards with tier bars; expand to families and top CVEs.
 - **Explore (`/explore`)**: all window CVEs; virtualised list (render only visible rows); search (ID/vendor/product/title),
   filters (tier, CNA, vendor, chip, publish day `?day=YYYY-MM-DD` shown as a removable "Published Oct 13" chip;
@@ -259,7 +259,7 @@ Unknown → 404 view. Update `document.title` per route.
   (`--font-mono-system`) so no web font subset is fetched for it; rows do not prefetch shards; results stay in module
   memory until Clear or reload (`check/session.ts`). Caps: files 50 MB, pasted text 5 MB, lines 64 KB in line formats.
   The chunk is not warmed on other pages.
-- **The surge (`/surge`)**: monthly published since 1999 (SVG area/line, log toggle, Published/Reserved toggle),
+- **The Surge (`/surge`)**: monthly published since 1999 (SVG area/line, log toggle, Published/Reserved toggle),
   KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status
   from `meta.sources` (fresh/stale), blind spots ("Not in KEV ≠ not exploited", "exposure is yours"), attributions.
