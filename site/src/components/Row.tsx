@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import type { Row, Tier } from '../../../shared/contract';
 import { hasChip, pubMs } from '../filters';
 import { batchKind, batchLabel, cnaName, fmtAge, vendorProduct } from '../format';
@@ -32,10 +33,12 @@ interface CveRowProps {
   onChip?: (id: string) => void;
   onSelect?: () => void;
   style?: Record<string, string>;
+  /** Extra line under the chips (the woke-up signals). */
+  note?: ComponentChildren;
 }
 
 /** One CVE in a list. The whole row is a link; chips and the batch tag sit above it. */
-export function CveRow({ row, tier, knob, now, selected, watched, isNew, activeChip, onChip, onSelect, style }: CveRowProps) {
+export function CveRow({ row, tier, knob, now, selected, watched, isNew, activeChip, onChip, onSelect, style, note }: CveRowProps) {
   const who = vendorProduct(row.v, row.p) || cnaName(row.cna);
   const top = row.b ? row.c.filter((c) => c !== 'batch') : row.c;
   // A reason filter also matches chips outside the top four: show the matching one in place of the last.
@@ -73,6 +76,7 @@ export function CveRow({ row, tier, knob, now, selected, watched, isNew, activeC
             </a>
           )}
         </div>
+        {note && <div class="row__note">{note}</div>}
       </div>
       <div class="row__side">
         <ScoreMeter score={row.s} knob={knob} tier={tier} />

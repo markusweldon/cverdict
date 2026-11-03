@@ -14,6 +14,7 @@ export const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(
 const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
   { name: 'today', path: '', label: 'Today' },
   { name: 'kev', path: 'kev', label: 'KEV clock' },
+  { name: 'woke', path: 'woke', label: 'Woke up' },
   { name: 'batches', path: 'batches', label: 'Batches' },
   { name: 'explore', path: 'explore', label: 'Explore' },
   { name: 'surge', path: 'surge', label: 'The surge' },

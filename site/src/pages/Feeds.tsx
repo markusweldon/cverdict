@@ -19,6 +19,7 @@ const JSON_FILES: readonly [string, string][] = [
   ['kev.json', 'CISA KEV entries added in 30 days or due from 14 days ago, with our score.'],
   ['stats.json', 'Monthly volume since 1999, daily window counts, hourly waterfall buckets, top CNAs.'],
   ['changes.json', 'Escalations from the last 7 days of hourly runs.'],
+  ['woke.json', 'Old CVEs (published before the window) that gained exploit evidence in the last 30 days, with the dated signals.'],
 ];
 
 const SHARD_JS = `// FNV-1a 32-bit of the upper-cased ID, mod ${SHARD_COUNT}, as two hex digits.
@@ -89,6 +90,7 @@ export default function Feeds() {
         <ul class="endpoints">
           <UrlRow url={`${feeds}signal.xml`} label="Signal (Atom)" note="The newest 100 Exploited and Likely-next CVEs." icon={<IconRss size={16} />} />
           <UrlRow url={`${feeds}kev.xml`} label="KEV additions (Atom)" note="CISA KEV entries added in the last 30 days." icon={<IconRss size={16} />} />
+          <UrlRow url={`${feeds}woke.xml`} label="Woke up (Atom)" note="Old CVEs that gained exploit evidence in the last 30 days: a KEV listing, a first exploit, or an EPSS jump." icon={<IconRss size={16} />} />
           <UrlRow url={`${feeds}kev-due.ics`} label="KEV due dates (iCalendar)" note="One all-day event per deadline, from a week ago to 60 days out. Subscribe from any calendar app." icon={<IconCalendar size={16} />} />
         </ul>
       </section>

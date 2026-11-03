@@ -18,6 +18,7 @@ import {
   type Row,
   type RowTable,
   type StatsFile,
+  type WokeFile,
 } from '../../shared/contract';
 import { CVE_ID_RE, shardOf } from '../../shared/shard';
 
@@ -53,6 +54,8 @@ export interface DataClient {
   readonly batches: Loader<BatchesFile>;
   readonly kev: Loader<KevFile>;
   readonly changes: Loader<ChangesFile>;
+  /** Old CVEs that woke up (404 on data published before woke.json existed). */
+  readonly woke: Loader<WokeFile>;
   /** The CVE's full record, or null when it is not in our data (outside the window and not in KEV). */
   detail(id: string): Loader<CveDetail | null>;
   /** generated_at of the newest meta.json, bypassing every cache (null when unreachable). */
@@ -159,6 +162,7 @@ export function createDataClient(
     batches: resource<BatchesFile>('batches.json', json),
     kev: resource<KevFile>('kev.json', json),
     changes: resource<ChangesFile>('changes.json', json),
+    woke: resource<WokeFile>('woke.json', json),
     detail(id) {
       const norm = normalizeCveId(id);
       if (!norm) return { key: `cve:?${id}`, peek: () => null, load: () => Promise.resolve(null) };

@@ -10,6 +10,7 @@ import { ExtLink } from '../components/ExtLink';
 import {
   IconAlert,
   IconArrowLeft,
+  IconClock,
   IconCopy,
   IconDown,
   IconDownload,
@@ -35,6 +36,7 @@ import { cveHref, href } from '../router';
 import { keyTargets, knob, normalizeName, toggleWatch, useStore, watchlist } from '../state';
 import { feedbackIssueUrl } from '../ticket';
 import { chipDef, chipTone, detailTier, FAMILY_META, FAMILY_ORDER, SOURCE_NAMES, verdict } from '../tiers';
+import { wakeSentence } from '../woke';
 
 const MSF_RANK: Readonly<Record<number, string>> = { 600: 'excellent', 500: 'great', 400: 'good', 300: 'normal', 200: 'average', 100: 'low', 0: 'manual' };
 
@@ -385,6 +387,16 @@ function Detail({ d }: { d: CveDetail }) {
         </p>
       </header>
 
+      {d.woke && (
+        <p class="cve__woke">
+          <IconClock size={14} />
+          <span>
+            {wakeSentence(d.woke)}{' '}
+            <a href={href('woke')}>Old CVEs that woke up</a>
+          </span>
+        </p>
+      )}
+
       <div class={`verdict verdict--${tier}`} role="status">
         <TierIcon tier={tier} size={18} />
         <p class="verdict__text">
@@ -498,7 +510,7 @@ function OutsideWindow({ id }: { id: string }) {
   return (
     <div class="notice">
       <EmptyState heading title={`${id} is outside the 30-day window`}>
-        We keep every CVE published in the last 30 days plus everything in CISA KEV. Older or unknown records are not scored here — that says nothing about whether they matter.
+        We keep every CVE published in the last 30 days, everything in CISA KEV, and old CVEs that gained exploit evidence in the last 30 days. Other records are not scored here — that says nothing about whether they matter.
       </EmptyState>
       <div class="notice__links">
         <a class="btn" href={cveOrgUrl(id)} target="_blank" rel="noopener noreferrer nofollow">
