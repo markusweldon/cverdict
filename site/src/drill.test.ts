@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { binDay, binRange, binsOf, dayInWindow, dayOf, dayStart, dayTotal, exploreDayHref, hoursPerBin, onDay, parseDay } from './drill';
+import { binDay, binRange, binsOf, dayInWindow, dayOf, dayStart, dayTotal, exploreDayHref, hoursPerBin, onDay, parseDay, placeLabels } from './drill';
 import { DAY_MS, fmtDate, HOUR_MS } from './format';
 
 const at = (iso: string) => Date.parse(iso);
@@ -145,5 +145,23 @@ describe('drill-down edge cases', () => {
     expect(hoursPerBin(721, -5, 3)).toBe(1);
     expect(hoursPerBin(0, 400, 3)).toBe(1);
     expect(hoursPerBin(721, 1, 3)).toBe(2163);
+  });
+});
+
+describe('waterfall spike labels', () => {
+  it('places the biggest first, drops collisions, and returns the rest left to right for Tab', () => {
+    // As on Today at 1440 px: callers pass the biggest spike first.
+    const labels = [
+      { item: 'Microsoft 1,407', x: 463, w: 90 },
+      { item: 'Oracle 1,076 + Chrome 353', x: 772, w: 160 },
+      { item: 'near Oracle', x: 700, w: 60 },
+      { item: 'Chrome 247', x: 174, w: 70 },
+      { item: 'Apple 324', x: 1100, w: 60 },
+    ];
+    const placed = placeLabels(labels, 1120);
+    expect(placed.map((p) => p.item)).toEqual(['Chrome 247', 'Microsoft 1,407', 'Oracle 1,076 + Chrome 353', 'Apple 324']);
+    // Kept inside the chart, pinned to the right edge when it touches it.
+    expect(placed[3]).toEqual({ item: 'Apple 324', left: 1060, right: true });
+    expect(placed[0]).toEqual({ item: 'Chrome 247', left: 139, right: false });
   });
 });

@@ -10,7 +10,7 @@
 import { Fragment } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Tier } from '../../../shared/contract';
-import { binDay, binRange, binsOf, dayStart, dayTotal, hoursPerBin, type Bin } from '../drill';
+import { binDay, binRange, binsOf, dayStart, dayTotal, hoursPerBin, placeLabels, type Bin } from '../drill';
 import type { HourCounts } from '../filters';
 import { fmtDate, fmtInt, HOUR_MS, DAY_MS, plural } from '../format';
 import { prefersReducedMotion } from '../hooks';
@@ -129,20 +129,14 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     ctx.font = `10px ${getComputedStyle(wrap.current).getPropertyValue('--font-mono').trim() || 'monospace'}`;
     const colW = width / bins.length;
     const barW = Math.max(1, colW - (colW >= 3 ? 1 : 0.5));
-    const out: Placed[] = [];
-    const taken: [number, number][] = [];
-    // Biggest first (callers pass them in that order); skip any that would collide.
+    const labels: { item: Annotation; x: number; w: number }[] = [];
+    // Biggest first (callers pass them in that order), so a collision drops the smaller one.
     for (const a of annotations) {
       const i = Math.floor((a.at - start) / HOUR_MS / per);
       if (i < 0 || i >= bins.length) continue;
-      const x = i * colW + barW / 2;
-      const w = Math.ceil(ctx.measureText(a.parts.map((p) => p.text).join(' + ')).width);
-      const lx = Math.min(width - w, Math.max(0, x - w / 2));
-      if (taken.some(([l, r]) => lx < r + 10 && lx + w > l - 10)) continue;
-      taken.push([lx, lx + w]);
-      out.push({ a, left: lx, right: lx + w >= width - 1 });
+      labels.push({ item: a, x: i * colW + barW / 2, w: Math.ceil(ctx.measureText(a.parts.map((p) => p.text).join(' + ')).width) });
     }
-    return out;
+    return placeLabels(labels, width).map(({ item, left, right }) => ({ a: item, left, right }));
   }, [annotations, bins.length, per, width, start, mode]);
 
   useEffect(() => {

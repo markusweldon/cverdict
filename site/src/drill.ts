@@ -85,3 +85,21 @@ export function exploreDayHref(day: string, knob: number = KNOB_DEFAULT): string
   if (knob !== KNOB_DEFAULT) q.set('knob', String(knob));
   return `${href('explore')}?${q.toString()}`;
 }
+
+/**
+ * Spike labels on the waterfall: `x` is the column's centre and `w` the label's width (px). Each
+ * is centred on its column and kept inside the chart, in the order given (biggest first), and one
+ * that would come within 10 px of a placed label is left out. Returned left to right, so the
+ * links' Tab order follows the screen. `right` marks a label that touches the right edge.
+ */
+export function placeLabels<T>(labels: readonly { item: T; x: number; w: number }[], width: number): { item: T; left: number; right: boolean }[] {
+  const out: { item: T; left: number; right: boolean }[] = [];
+  const taken: [number, number][] = [];
+  for (const { item, x, w } of labels) {
+    const left = Math.min(width - w, Math.max(0, x - w / 2));
+    if (taken.some(([l, r]) => left < r + 10 && left + w > l - 10)) continue;
+    taken.push([left, left + w]);
+    out.push({ item, left, right: left + w >= width - 1 });
+  }
+  return out.sort((p, q) => p.left - q.left);
+}
