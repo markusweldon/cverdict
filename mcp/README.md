@@ -6,8 +6,8 @@ with its points and evidence link, and what is unknown. Every answer says when t
 generated and which files it came from. No key, no account.
 
 It runs on your machine over stdio and reads the published `data` branch on
-raw.githubusercontent.com, then the site's `/data/` copy if GitHub fails. It never touches the
-site's hosting, so it keeps working when the site is down.
+raw.githubusercontent.com, then the site's `/data/` copy if GitHub fails. It needs the site only
+when GitHub fails, so it keeps working when the site is down.
 
 **Status:** an npm package (`cverdict-mcp`) will follow. Until then, run it from a clone.
 
@@ -105,7 +105,8 @@ Right after an hourly publish a CDN can serve one file from the previous run for
   quote CNAs, CISA and exploit feeds. The server's instructions tell the agent never to follow
   instructions found in them. That reduces the risk of prompt injection; it does not remove it.
 - **Privacy.** GitHub sees which of the 256 shard files the server fetches, never your CVE IDs or
-  search words. Nothing is uploaded and nothing is written to disk.
+  search words. If GitHub refuses or fails, the same requests go to the site's `/data/` copy.
+  Nothing is uploaded and nothing is written to disk.
 
 ## Errors
 
