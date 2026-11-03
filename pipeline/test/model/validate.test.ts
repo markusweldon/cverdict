@@ -3,12 +3,13 @@ import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION, rowsFromTable, type CveShard, type Meta, type ReceiptsFile, type RowTable, type WokeFile, type WokeItem } from '../../../shared/contract';
+import { SCHEMA_VERSION, rowsFromTable, type CveShard, type Meta, type PackagesFile, type ReceiptsFile, type RowTable, type WokeFile, type WokeItem } from '../../../shared/contract';
 import { BUDGETS } from '../../src/config';
 import { shardOf } from '../../../shared/shard';
 import { buildOutput } from '../../src/emit/build';
 import { PATHS, SHARD_NAMES, writeFiles } from '../../src/emit/json';
 import { formatSizeTable, validateOutput } from '../../src/validate';
+import { emptyOsvData, type OsvCopy, type OsvData, type OsvLite } from '../../src/sources/osv';
 import type { Logger } from '../../src/types';
 import { detectWakes } from '../../src/woke';
 import { NOW, cohort, daysAgo, makeCve, makeIngest, makeKev, makeKevCatalog, msf, repo } from '../fixtures/model/builders';
@@ -39,7 +40,21 @@ const wake = detectWakes({
   previous: null,
   previousAt: null,
 });
-const built = buildOutput({ ingest: makeIngest(cves, { ...spec, poc: pocs, wake }), now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://example.test' });
+// OSV mirror: Log4Shell (KEV, not in the window), a window CVE in npm and PyPI, and an untracked CVE.
+const copy = (records: OsvLite[]): OsvCopy => ({ full_sync_at: NOW.toISOString(), zip_etag: null, cursor: NOW.toISOString(), fetched_at: NOW.toISOString(), records });
+const osv: OsvData = emptyOsvData('no copy');
+osv.mirror.ecosystems = {
+  Maven: copy([['GHSA-jfh8-c2jp-5v3q', '2026-10-01T00:00:00Z', ['CVE-2021-44228'], [['org.apache.logging.log4j:log4j-core', [['>=2.13.0', '<2.15.0'], ['>=2.0-beta9', '<2.3.1']]]]]]),
+  npm: copy([
+    ['GHSA-aaaa-bbbb-cccc', '2026-10-25T00:00:00Z', ['CVE-2026-100001', 'CVE-2099-0001'], [['left-pad', [['>=0', '<1.3.1']], ['0.0.0-x']]]],
+    ['GHSA-zzzz-zzzz-zzzz', '2026-10-25T00:00:00Z', ['CVE-2015-9999'], [['untracked', [['>=0', '<1.0.0']]]]],
+  ]),
+  PyPI: copy([['PYSEC-2026-1', '2026-10-25T00:00:00Z', ['CVE-2026-100001'], [['Django_Foo', [['>=1.0', '<2.0']]]]]]),
+};
+for (const eco of ['Maven', 'npm', 'PyPI'] as const) {
+  osv.statuses[eco] = { ok: true, stale: false, fetched_at: NOW.toISOString(), modified: NOW.toISOString(), advisories: osv.mirror.ecosystems[eco]!.records.length, error: null };
+}
+const built = buildOutput({ ingest: makeIngest(cves, { ...spec, poc: pocs, wake, osv }), now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://example.test' });
 
 let dir: string;
 beforeEach(async () => {
@@ -60,8 +75,8 @@ describe('validateOutput', () => {
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
     expect(result.ok).toBe(true);
-    // 9 JSON files (incl. woke.json and state.json), the shards, 4 feeds.
-    expect(result.files).toBe(10 + SHARD_NAMES.length + 4);
+    // 11 JSON files (incl. woke.json, receipts.json, state.json, packages.json), the shards, 4 feeds.
+    expect(result.files).toBe(11 + SHARD_NAMES.length + 4);
     expect(lines[0]).toMatch(/^file\s+bytes\s+gzip\s+budget\s+status$/);
     expect(lines.some((l) => l.startsWith('v1/index.json'))).toBe(true);
     expect(lines.some((l) => l.startsWith('v1/cve/*.json (256'))).toBe(true);
@@ -94,7 +109,8 @@ describe('validateOutput', () => {
     const shard = read<CveShard>(path);
     delete shard.items[id];
     write(path, shard);
-    expect(validateOutput(dir).errors).toEqual([`1 index rows have no detail shard entry (first: ${id})`]);
+    // That CVE is also named in packages.json, whose row now has no detail either.
+    expect(validateOutput(dir).errors).toEqual([`1 index rows have no detail shard entry (first: ${id})`, `${PATHS.packages}: 1 cves rows have no detail shard entry (first: ${id})`]);
   });
 
   it('catches a detail stored in the wrong shard', () => {
@@ -202,7 +218,44 @@ describe('validateOutput', () => {
 
   it('enforces the file count limit', () => {
     for (let i = 0; i < 40; i++) write(`v1/extra-${i}.txt`, 'x');
-    expect(validateOutput(dir).errors).toContain(`${270 + 40} files emitted; the limit is 300`);
+    expect(validateOutput(dir).errors).toContain(`${271 + 40} files emitted; the limit is 300`);
+  });
+
+  it('builds packages.json from the OSV mirror with the index rows of the CVEs it names', () => {
+    const p = read<PackagesFile>(PATHS.packages);
+    expect(rowsFromTable(p.cves).map((r) => r.id)).toEqual(['CVE-2021-44228', 'CVE-2026-100001']);
+    expect(Object.keys(p.packages)).toEqual(['npm', 'PyPI', 'Maven']);
+    expect(p.packages.npm).toEqual({ 'left-pad': [['CVE-2026-100001', 'GHSA-aaaa-bbbb-cccc', [['>=0', '<1.3.1']], ['0.0.0-x']]] });
+    expect(Object.keys(p.packages.PyPI!)).toEqual(['django-foo']);
+    expect(p.sources.map((s) => [s.ecosystem, s.ok, s.advisories, s.matched])).toEqual([
+      ['npm', true, 2, 1], ['PyPI', true, 1, 1], ['Maven', true, 1, 1], ['Go', false, 0, 0],
+      ['crates.io', false, 0, 0], ['RubyGems', false, 0, 0], ['Packagist', false, 0, 0], ['NuGet', false, 0, 0],
+    ]);
+    const index = new Map(read<RowTable>(PATHS.index).rows.map((r) => [r[0], JSON.stringify(r)]));
+    expect(JSON.stringify(p.cves.rows[1])).toBe(index.get('CVE-2026-100001'));
+  });
+
+  it('checks every packages.json entry, its attribution and its rows', () => {
+    const p = read<PackagesFile>(PATHS.packages);
+    const check = (change: (f: PackagesFile) => void): string[] => {
+      const f = structuredClone(p);
+      change(f);
+      write(PATHS.packages, f);
+      return validateOutput(dir).errors.filter((e) => e.startsWith(PATHS.packages));
+    };
+    expect(check(() => {})).toEqual([]);
+    expect(check((f) => void (f.packages.npm!['left-pad'][0][1] = 'OSV-2020-111'))[0]).toContain('OSV-2020-111 is from a database the attribution does not list');
+    expect(check((f) => void (f.packages.npm!['left-pad'][0][2] = [['>=0', '< 1.3.1']]))[0]).toContain('has a malformed range');
+    expect(check((f) => void (f.packages.npm!['left-pad'][0][3] = ['1.0\u0007']))[0]).toContain('has malformed versions');
+    expect(check((f) => void (f.packages.PyPI = { Django_Foo: f.packages.PyPI!['django-foo'] }))[0]).toContain('is not in packageKey() form');
+    expect(check((f) => void (f.attribution = f.attribution.filter((a) => !a.notice)))).toContain(`${PATHS.packages}: attribution does not match shared/packages.ts ATTRIBUTION`);
+    expect(check((f) => void (f.packages.Go = { x: f.packages.npm!['left-pad'] }))).toContain(`${PATHS.packages}: packages has Go, which is not an ecosystem with a copy`);
+    expect(check((f) => void (f.cves.rows[1][6] = 99))).toContain(`${PATHS.packages}: 1 cves rows differ from their index.json row (first: CVE-2026-100001)`);
+    expect(check((f) => void f.cves.rows.pop())).toContain(`${PATHS.packages}: 1 CVEs named in packages have no row in cves (first: CVE-2026-100001)`);
+    expect(check((f) => void ((f.packages.npm = {}), (f.packages.PyPI = {})))).toContain(`${PATHS.packages}: 1 cves rows are not named in packages (first: CVE-2026-100001)`);
+    expect(check((f) => void (f.sources = f.sources.slice(1)))).toContain(`${PATHS.packages}: sources must list every ecosystem once, in PACKAGE_ECOSYSTEMS order`);
+    unlinkSync(join(dir, PATHS.packages));
+    expect(validateOutput(dir).errors).toContain(`missing ${PATHS.packages}`);
   });
 });
 

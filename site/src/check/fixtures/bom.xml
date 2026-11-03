@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" serialNumber="urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79" version="1">
+  <metadata>
+    <component type="application" bom-ref="app"><name>shop</name><version>1.0.0</version></component>
+  </metadata>
+  <components>
+    <component type="library" bom-ref="pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1?type=jar">
+      <group>org.apache.logging.log4j</group><name>log4j-core</name><version>2.14.1</version>
+      <purl>pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1?type=jar</purl>
+    </component>
+    <component type="library" bom-ref="pkg:npm/%40pkgr/core@0.2.8">
+      <name>core</name><version>0.2.8</version>
+      <purl>pkg:npm/&#64;pkgr/core@0.2.8</purl>
+    </component>
+    <component type="library" bom-ref="webp">
+      <name>webp</name><version>0.2.6</version>
+      <purl>pkg:cargo/webp@0.2.6?a=1&amp;b=2</purl>
+      <components>
+        <component type="library"><name>libwebp-sys</name><version>0.9.5</version><purl>pkg:cargo/libwebp-sys@0.9.5</purl></component>
+      </components>
+    </component>
+    <component type="library"><name>vendored-thing</name><version>3.1</version></component>
+  </components>
+  <dependencies>
+    <dependency ref="pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1?type=jar"/>
+    <dependency ref="pkg:npm/%40pkgr/core@0.2.8"><dependency ref="webp"/></dependency>
+  </dependencies>
+</bom>

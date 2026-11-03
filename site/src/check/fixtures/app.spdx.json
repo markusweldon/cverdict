@@ -1,0 +1,7 @@
+{"spdxVersion": "SPDX-2.3", "SPDXID": "SPDXRef-DOCUMENT", "name": "app",
+ "packages": [
+  {"SPDXID": "SPDXRef-1", "name": "log4j-core", "versionInfo": "2.14.1", "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"}]},
+  {"SPDXID": "SPDXRef-2", "name": "xstream", "versionInfo": "1.4.18", "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:maven/com.thoughtworks.xstream/xstream@1.4.18"}]},
+  {"SPDXID": "SPDXRef-3", "name": "libc6", "versionInfo": "2.36", "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:deb/debian/libc6@2.36"}]},
+  {"SPDXID": "SPDXRef-4", "name": "internal-tool", "versionInfo": "1.0"}
+ ]}

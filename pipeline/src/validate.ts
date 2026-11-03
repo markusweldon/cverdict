@@ -6,6 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import {
+  PACKAGE_ECOSYSTEMS,
   ROW_COLS,
   SCHEMA_VERSION,
   SIGNAL_MIN_SCORE,
@@ -15,6 +16,7 @@ import {
   type KevFile,
   type MethodScore,
   type Meta,
+  type PackagesFile,
   type ReceiptsFile,
   RECEIPT_METHODS,
   type Row,
@@ -22,7 +24,9 @@ import {
   type WokeFile,
   WAKE_KINDS,
 } from '../../shared/contract';
+import { ADVISORY_ID_RE, ATTRIBUTION, advisoryDatabase, packageKey } from '../../shared/packages';
 import { CVE_ID_RE, shardOf } from '../../shared/shard';
+import { COMPARATORS, parseEvent } from '../../shared/versions';
 import { backtestProblems } from './backtest';
 import { PATHS, SHARD_NAMES } from './emit/json';
 import { BUDGETS } from './config';
@@ -43,6 +47,7 @@ const REQUIRED = [
   PATHS.woke,
   PATHS.state,
   PATHS.receipts,
+  PATHS.packages,
   PATHS.signalFeed,
   PATHS.kevFeed,
   PATHS.kevDueIcs,
@@ -244,6 +249,7 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
 
   checkWoke(json, details, index ? new Set(index.map((r) => r.id)) : null, errors);
   checkReceipts(json, errors);
+  checkPackages(json, details, index, errors, warnings);
 
   const kev = json.get(PATHS.kev) as KevFile | undefined;
   if (kev && Array.isArray(kev.entries)) {
@@ -314,6 +320,94 @@ function checkReceipts(json: Map<string, JsonObject>, errors: string[]): void {
   if (!f.gap_total || !Number.isInteger(f.gap_total.n) || f.gap_total.n < f.gaps.length || !(f.gap_total.hours >= 0)) err('forward.gap_total is invalid');
   if (r.backtest === null) return;
   for (const problem of backtestProblems(r.backtest)) err(problem);
+}
+
+/** What compactRecord writes: no whitespace, no control characters, at most 128 characters. */
+const EVENT_RE = /^(?:(?:>=|<=|<)[^\s\u0000-\u001f\u007f-\u009f]{1,128}|\?[a-z_]{1,32}=[^\s\u0000-\u001f\u007f-\u009f]{0,128})$/;
+const VERSION_RE = /^[^\s\u0000-\u001f\u007f-\u009f]{1,128}$/;
+
+/**
+ * packages.json: one source per ecosystem, packages only for ecosystems with a copy, every entry
+ * well-formed with an advisory from a database the attribution lists (and the attribution is the
+ * one in shared/packages.ts, notices included), package keys in packageKey() form, and exactly one
+ * row per CVE named, equal to its index.json row and backed by a detail shard.
+ */
+function checkPackages(json: Map<string, JsonObject>, details: Set<string>, index: Row[] | null, errors: string[], warnings: string[]): void {
+  const doc = json.get(PATHS.packages) as PackagesFile | undefined;
+  if (!doc) return;
+  const err = (msg: string): void => void errors.push(`${PATHS.packages}: ${msg}`);
+  if (JSON.stringify(doc.attribution) !== JSON.stringify(ATTRIBUTION)) err('attribution does not match shared/packages.ts ATTRIBUTION');
+  const attribution = Array.isArray(doc.attribution) ? doc.attribution : [];
+  if (!Array.isArray(doc.sources) || doc.sources.map((s) => s?.ecosystem).join() !== PACKAGE_ECOSYSTEMS.join()) return err('sources must list every ecosystem once, in PACKAGE_ECOSYSTEMS order');
+  for (const s of doc.sources) {
+    if (typeof s.ok !== 'boolean' || typeof s.stale !== 'boolean' || !Number.isInteger(s.advisories) || !Number.isInteger(s.matched) || s.matched < 0 || s.matched > s.advisories) {
+      err(`sources.${s.ecosystem} is invalid`);
+    }
+  }
+  const packages = asObject(doc.packages);
+  if (!packages) return err('packages is not an object');
+  const okEcos = new Set(doc.sources.filter((s) => s.ok).map((s) => s.ecosystem));
+  const named = new Set<string>();
+  const bad: string[] = [];
+  const unparsed = new Map<string, number>();
+  for (const [eco, pkgs] of Object.entries(packages)) {
+    if (!(PACKAGE_ECOSYSTEMS as readonly string[]).includes(eco) || !okEcos.has(eco as (typeof PACKAGE_ECOSYSTEMS)[number])) {
+      err(`packages has ${eco}, which is not an ecosystem with a copy`);
+      continue;
+    }
+    const e = eco as (typeof PACKAGE_ECOSYSTEMS)[number];
+    const byKey = asObject(pkgs);
+    if (!byKey) {
+      err(`packages.${eco} is not an object`);
+      continue;
+    }
+    for (const [key, entries] of Object.entries(byKey)) {
+      if (packageKey(e, key) !== key) bad.push(`${eco} key "${key.slice(0, 60)}" is not in packageKey() form`);
+      if (!Array.isArray(entries) || entries.length === 0) {
+        bad.push(`${eco} ${key.slice(0, 60)} has no entries`);
+        continue;
+      }
+      for (const entry of entries as unknown[]) {
+        const [cve, advisory, ranges, versions] = Array.isArray(entry) ? entry : [];
+        const where = `${eco} ${key.slice(0, 60)}`;
+        if (!Array.isArray(entry) || entry.length < 3 || entry.length > 4) bad.push(`${where}: an entry has the wrong shape`);
+        else if (typeof cve !== 'string' || !CVE_ID_RE.test(cve)) bad.push(`${where}: invalid CVE id`);
+        else if (typeof advisory !== 'string' || !ADVISORY_ID_RE.test(advisory)) bad.push(`${where}: invalid advisory id`);
+        else if (!advisoryDatabase(advisory, attribution)) bad.push(`${where}: ${advisory} is from a database the attribution does not list`);
+        else if (!Array.isArray(ranges) || !ranges.every((r) => Array.isArray(r) && r.length > 0 && r.every((ev) => typeof ev === 'string' && EVENT_RE.test(ev)))) bad.push(`${where}: ${advisory} has a malformed range`);
+        else if (versions !== undefined && !(Array.isArray(versions) && versions.length > 0 && versions.every((v) => typeof v === 'string' && VERSION_RE.test(v)))) bad.push(`${where}: ${advisory} has malformed versions`);
+        else if (ranges.length === 0 && versions === undefined) bad.push(`${where}: ${advisory} has neither ranges nor versions`);
+        else {
+          named.add(cve);
+          const c = COMPARATORS[e];
+          const unreadable = (ranges as string[][]).filter((r) => r.some((ev) => {
+            const p = parseEvent(ev);
+            return !p || (p.op !== '?' && p.v !== '0' && c.parse(p.v) === null);
+          })).length;
+          if (unreadable > 0) unparsed.set(eco, (unparsed.get(eco) ?? 0) + unreadable);
+        }
+      }
+    }
+  }
+  if (bad.length > 0) err(`${bad.length} bad entries (first: ${bad[0]})`);
+  for (const [eco, n] of unparsed) warnings.push(`${PATHS.packages}: ${n} ${eco} ranges have a bound shared/versions.ts cannot compare (shown as "version not checked")`);
+
+  const rows = readRows(`${PATHS.packages} cves`, asObject(doc.cves) ?? undefined, errors);
+  if (!rows) return;
+  const rowIds = rows.map((r) => r.id);
+  if (new Set(rowIds).size !== rowIds.length) err('cves has duplicate rows');
+  const unnamed = rowIds.filter((id) => !named.has(id));
+  if (unnamed.length > 0) err(`${unnamed.length} cves rows are not named in packages (first: ${unnamed[0]})`);
+  const rowSet = new Set(rowIds);
+  const missing = [...named].filter((id) => !rowSet.has(id));
+  if (missing.length > 0) err(`${missing.length} CVEs named in packages have no row in cves (first: ${missing[0]})`);
+  const noDetail = rowIds.filter((id) => !details.has(id));
+  if (noDetail.length > 0) err(`${noDetail.length} cves rows have no detail shard entry (first: ${noDetail[0]})`);
+  if (index) {
+    const indexRows = new Map(index.map((r) => [r.id, JSON.stringify(ROW_COLS.map((c) => r[c]))]));
+    const differ = rows.filter((r) => indexRows.has(r.id) && indexRows.get(r.id) !== JSON.stringify(ROW_COLS.map((c) => r[c])));
+    if (differ.length > 0) err(`${differ.length} cves rows differ from their index.json row (first: ${differ[0].id})`);
+  }
 }
 
 function checkMeta(meta: Meta, index: Row[], json: Map<string, JsonObject>, errors: string[], warnings: string[]): void {

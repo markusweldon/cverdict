@@ -1,0 +1,1 @@
+{"version": 1, "dependencies": {"net8.0": {"CefSharp.Common": {"type": "Direct", "requested": "[85.0.0, )", "resolved": "85.0.0"}, "MyLib": {"type": "Project"}}}}

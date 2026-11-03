@@ -30,6 +30,8 @@ export type SourceId =
   | 'nuclei'
   | 'exploitdb'
   | 'poc-github'
+  /** OSV.dev advisories behind v1/packages.json. Never feeds a score, chip or unknown. */
+  | 'osv'
   | 'computed';
 
 /** One human-readable reason ("chip") explaining a score. */
@@ -607,6 +609,67 @@ export interface ReceiptsFile {
   forward: ForwardReceipts;
   /** Null until the first backtest has run. */
   backtest: BacktestReceipts | null;
+}
+
+/** Package ecosystems in v1/packages.json, named as OSV.dev names them. */
+export type PackageEcosystem = 'npm' | 'PyPI' | 'Maven' | 'Go' | 'crates.io' | 'RubyGems' | 'Packagist' | 'NuGet';
+export const PACKAGE_ECOSYSTEMS: readonly PackageEcosystem[] = ['npm', 'PyPI', 'Maven', 'Go', 'crates.io', 'RubyGems', 'Packagist', 'NuGet'];
+
+/**
+ * One advisory saying that versions of a package are affected by a tracked CVE.
+ *
+ * `ranges`: one array of events per OSV range. Each event is a string: ">=V" (introduced),
+ * "<V" (fixed), "<=V" (last_affected). ">=0" means from the first release. An event of any other
+ * kind is written "?kind=V"; a range with one cannot be evaluated ("unknown"). The pipeline also
+ * writes the ranges ["?git=unknown"] (only GIT ranges upstream) and ["?versions=capped"] (more
+ * than 1,000 listed versions), so those cases read as "not checked", never as "not affected".
+ * `versions` (optional): versions the advisory lists as affected that its ranges do not cover or
+ * that cannot be compared. They match as exact strings.
+ */
+export type PackageAffect = [cve: string, advisory: string, ranges: string[][], versions?: string[]];
+
+/** Advisory data for one ecosystem in this run. */
+export interface PackageSourceStatus {
+  ecosystem: PackageEcosystem;
+  /** A copy was available (fresh or cached). When false, the ecosystem has no `packages` entry. */
+  ok: boolean;
+  /** The live update failed and the last good copy was used. */
+  stale: boolean;
+  /** When the copy was last brought up to date with OSV.dev. */
+  fetched_at: string | null;
+  /** Newest OSV `modified` time applied to the copy. */
+  modified: string | null;
+  /** OSV records of this ecosystem in the copy that name at least one CVE (tracked or not). */
+  advisories: number;
+  /** Of those, the records that name a CVE in `cves`. */
+  matched: number;
+  error: string | null;
+}
+
+/** An upstream advisory database whose data is in v1/packages.json. */
+export interface PackageAttribution {
+  name: string;
+  url: string;
+  license: string;
+  /** Advisory ID prefixes from this database, e.g. ["GHSA"]. Records with other prefixes are not published. */
+  prefixes: string[];
+  /** Notice text a licence requires to travel with copies (the Drupal MIT notice), or null. */
+  notice: string | null;
+}
+
+/** v1/packages.json: which package versions the tracked CVEs affect, for the in-browser check. */
+export interface PackagesFile {
+  schema_version: number;
+  generated_at: string;
+  /** Which CVEs are covered, and what is kept, in words. */
+  scope: string;
+  attribution: PackageAttribution[];
+  /** One per PACKAGE_ECOSYSTEMS entry, in that order. */
+  sources: PackageSourceStatus[];
+  /** Every CVE named in `packages`, one row each, with the same columns and values as index.json. */
+  cves: { cols: typeof ROW_COLS; rows: unknown[][] };
+  /** Ecosystem → package key (packageKey() in shared/packages.ts) → affects, by CVE then advisory. */
+  packages: Partial<Record<PackageEcosystem, Record<string, PackageAffect[]>>>;
 }
 
 /** Tier for a score at a given knob. Shared so the site and pipeline always agree. */

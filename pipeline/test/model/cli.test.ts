@@ -109,6 +109,18 @@ describe('formatSummary', () => {
         forward: { since: '2026-10-01T00:17:00.000Z', runs: 600, listed: 12, eligible: 5, methods: [{ method: 'cverdict', before: 3 }] },
         backtest: { computed_at: '2026-10-25T00:17:00.000Z', sets: [{ key: 'recent', n: 80, strict: [{ method: 'cverdict', before: 40 }] }] },
       },
+      packages: {
+        cves: { rows: [['CVE-2021-44228'], ['CVE-2026-1001'], ['CVE-2026-1002']] },
+        packages: {
+          npm: { lodash: [['CVE-2026-1001', 'GHSA-a'], ['CVE-2026-1002', 'GHSA-b']] },
+          Maven: { 'org.apache.logging.log4j:log4j-core': [['CVE-2021-44228', 'GHSA-c']], 'x:y': [['CVE-2021-44228', 'GHSA-c']] },
+        },
+        sources: [
+          { ecosystem: 'npm', ok: true, stale: false, fetched_at: '2026-10-26T19:20:00.000Z' },
+          { ecosystem: 'Maven', ok: true, stale: true, fetched_at: '2026-10-25T19:20:00.000Z' },
+          { ecosystem: 'PyPI', ok: false, stale: true, fetched_at: null },
+        ],
+      },
     }) as unknown as RunSummary;
 
   it('prints counts by tier, the pass rate and the top ids', () => {
@@ -121,6 +133,7 @@ describe('formatSummary', () => {
     expect(text).toMatch(/CVE-2026-1001\s+100\s+exploited\s+Microsoft Windows/);
     expect(text).toMatch(/epss\s+stale\s+300,000\s+\(HTTP 403\)/);
     expect(text).toContain('266 files · 1 warnings · 81.2 s');
+    expect(text).toContain('Packages: 3 packages, 3 CVEs (npm 2, Maven 1), OSV copy from 2026-10-25T19:20:00.000Z · stale: Maven · not checked: PyPI');
   });
 
   it('keeps upstream text in source errors on one line', () => {

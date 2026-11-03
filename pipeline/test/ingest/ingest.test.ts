@@ -1,15 +1,27 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { EPSS, KEV, SANITY, type SanityLimits } from '../../src/config';
+import { PACKAGE_ECOSYSTEMS } from '../../../shared/contract';
+import { EPSS, KEV, OSV, SANITY, type SanityLimits } from '../../src/config';
 import { ingestWith } from '../../src/ingest';
 import type { RunContext } from '../../src/types';
 import { addDays } from '../../src/util/dates';
 import { HttpClient, type FetchLike } from '../../src/util/http';
+import { buildZip } from '../fixtures/zip';
 import { captureLogger, FIXTURES, recordPath, repoWithClone, tempDir, type CapturedLogger } from './helpers';
 
 const NOW = new Date('2026-10-26T19:30:00Z');
-const LIMITS: SanityLimits = { ...SANITY, cvelistRecords: 10, kevEntries: 1, epssRows: 1, metasploitModules: 1, nucleiTemplates: 1, exploitdbRows: 1, pocFiles: 1 };
+const LIMITS: SanityLimits = {
+  ...SANITY,
+  cvelistRecords: 10,
+  kevEntries: 1,
+  epssRows: 1,
+  metasploitModules: 1,
+  nucleiTemplates: 1,
+  exploitdbRows: 1,
+  pocFiles: 1,
+  osvRecords: Object.fromEntries(PACKAGE_ECOSYSTEMS.map((e) => [e, 0])) as SanityLimits['osvRecords'],
+};
 
 const fixtureFile = (name: string) => readFileSync(path.join(FIXTURES, name));
 
@@ -66,7 +78,14 @@ function upstream(kevDelayMs = 0): Record<string, Route> {
   const edb = `${fixtureFile('exploitdb-sample.csv').toString()}99999,exploits/php/webapps/99999.py,"StarTraining 3.8.1 - IDOR",2026-10-01,x,webapps,java,,2026-10-02,2026-10-02,0,CVE-2026-100878,\n`;
   const ymd = (d: Date) => d.toISOString().slice(0, 10);
   const ok = (body: string | Buffer) => () => new Response(typeof body === 'string' ? body : new Uint8Array(body), { status: 200 });
+  // One OSV dump for every ecosystem; only npm keeps its record (the package is in npm).
+  const osvZip = buildZip([
+    { name: 'GHSA-aaaa-bbbb-cccc.json', data: JSON.stringify({ id: 'GHSA-aaaa-bbbb-cccc', modified: '2026-10-20T00:00:00Z', aliases: ['CVE-2026-110447'], affected: [{ package: { ecosystem: 'npm', name: 'collabora-client' }, ranges: [{ type: 'SEMVER', events: [{ introduced: '0' }, { fixed: '2.0.0' }] }] }] }) },
+    { name: 'MAL-2026-1.json', data: '{}' },
+  ]);
+  const osv = Object.fromEntries(PACKAGE_ECOSYSTEMS.map((eco) => [`${OSV.base}/${encodeURIComponent(eco)}/all.zip`, ok(osvZip)]));
   return {
+    ...osv,
     [KEV.urls[0]]: () => new Response('Forbidden', { status: 403 }),
     [KEV.urls[1]]: () => new Promise<Response>((resolve) => setTimeout(() => resolve(ok(JSON.stringify(kev))()), kevDelayMs)),
     [EPSS.current]: () => new TypeError('fetch failed'),
@@ -146,7 +165,7 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     );
 
     const status = Object.fromEntries(result.sources.map((s) => [s.id, s]));
-    expect(result.sources.map((s) => s.id)).toEqual(['cvelist', 'cisa-adp', 'kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'poc-github']);
+    expect(result.sources.map((s) => s.id)).toEqual(['cvelist', 'cisa-adp', 'kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'poc-github', 'osv']);
     expect(result.sources.every((s) => s.ok && !s.stale && s.license.length > 0 && s.error === null)).toBe(true);
     expect(status.cvelist).toMatchObject({ records: 18, upstream_version: cvelist.commit });
     expect(status['cisa-adp'].records).toBe(13);
@@ -154,6 +173,9 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(status.epss).toMatchObject({ url: EPSS.daily('2026-10-25'), records: 8, upstream_version: 'v2026.06.15 2026-10-26' });
     expect(status['poc-github']).toMatchObject({ records: 2, upstream_version: poc.commit });
     expect(status.cvelist.fetched_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(status.osv).toMatchObject({ records: 1, upstream_version: '2026-10-20T00:00:00Z' });
+    expect(result.osv.mirror.ecosystems.npm?.records).toEqual([['GHSA-aaaa-bbbb-cccc', '2026-10-20T00:00:00Z', ['CVE-2026-110447'], [['collabora-client', [['>=0', '<2.0.0']]]]]]);
+    expect(PACKAGE_ECOSYSTEMS.map((e) => result.osv.statuses[e].advisories)).toEqual([1, 0, 0, 0, 0, 0, 0, 0]);
   });
 
   it('finds catalog-only KEV records even when the catalog arrives after the pass', async () => {
@@ -189,7 +211,7 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const { ctx, http, log } = setup({ routes: {} });
     const result = await ingestWith(ctx, { cvelistDir: cvelist.clone, pocDir: path.join(tempDir(), 'missing') }, { http, limits: LIMITS });
     const failed = result.sources.filter((s) => !s.ok).map((s) => s.id);
-    expect(failed).toEqual(['kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'poc-github']);
+    expect(failed).toEqual(['kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'poc-github', 'osv']);
     // Without the KEV catalog, only the window and CISA-ADP KEV blocks decide what is kept.
     expect(result.cves.some((c) => c.id === 'CVE-2026-37106')).toBe(false);
     expect(result.cves.some((c) => c.id === 'CVE-2026-58644')).toBe(true);

@@ -12,7 +12,7 @@ https://cverdict-psi.vercel.app/data/v1/meta.json
 ```
 
 Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from upstream sources
-(CVE descriptions, KEV entries, EPSS scores) stay under their own terms: see
+(CVE descriptions, KEV entries, EPSS scores, package advisories) stay under their own terms: see
 [ATTRIBUTIONS.md](../ATTRIBUTIONS.md).
 
 ## Files
@@ -29,6 +29,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
+| `v1/packages.json` | `PackagesFile` | Package versions affected by the CVEs that have a detail shard (window, KEV, woke up), from OSV.dev advisories, with each CVE's row | ~120 KB |
 | `v1/state.json` | — | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
@@ -118,14 +119,18 @@ Exploited when `x`; else Likely next when `w` or `s ≥ knob`; else Watch when `
 
 | Field | Meaning |
 |---|---|
-| `id` | `cvelist`, `cisa-adp`, `kev`, `epss`, `metasploit`, `nuclei`, `exploitdb`, `poc-github` |
+| `id` | `cvelist`, `cisa-adp`, `kev`, `epss`, `metasploit`, `nuclei`, `exploitdb`, `poc-github`, `osv` |
 | `name`, `url`, `license` | What the source is and its terms |
-| `ok` | Usable data was available this run. When `false`, scores show that source's evidence as unknown (`prior.unknown`, `x.too_new`), never as absent |
+| `ok` | Usable data was available this run. When `false`, scores show that source's evidence as unknown (`prior.unknown`, `x.too_new`), never as absent. `osv` is the exception: it only feeds `packages.json`, never a score, so its health never changes a CVE |
 | `stale` | The live fetch failed and the last good copy was used |
 | `fetched_at` | When that copy was downloaded (for git sources: the upstream commit time) |
 | `upstream_version` | KEV catalog version, EPSS model and date, git commit, … |
 | `records` | Number of records parsed |
 | `error` | Why the fetch failed, if it did |
+
+`osv` sums up eight ecosystems (their own health is in `packages.json` `sources[]`): `ok` when at
+least one has a copy, `stale` when any is stale or has none, `fetched_at` the oldest copy's time,
+`records` the advisories in the copies.
 
 ## `cve/<xx>.json` and sharding
 
@@ -400,6 +405,57 @@ curl -s $BASE/receipts.json | jq -r '.forward | "since \(.since): \(.eligible) c
 # Backtest misses for CVErdict, with what had to be left out
 curl -s $BASE/receipts.json | jq -r '.backtest.items[] | select(.strict.cverdict | not) | [.id, .kev_added, (.left_out | join(","))] | @tsv'
 ```
+
+## `packages.json`
+
+Which package versions the CVEs in the data are known to affect, for checking an SBOM or a
+lockfile. It covers the CVEs that have a detail shard (the window, every KEV CVE and every CVE in
+`woke.json`) and eight ecosystems: npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist and NuGet.
+The data comes from [OSV.dev](https://osv.dev) (GitHub Advisory Database, PyPI Advisory Database,
+Go Vulnerability Database, RustSec, Drupal security advisories); only advisory IDs, package names
+and version ranges are kept. The site's Check page matches a file against it in the browser.
+
+| Field | Meaning |
+|---|---|
+| `scope` | Which CVEs are covered, in words |
+| `attribution[]` | `{ name, url, license, prefixes, notice }` for each advisory database; only advisories with these ID prefixes are included. `notice` is license text that must travel with copies of the file (the Drupal advisories' MIT notice) |
+| `sources[]` | One per ecosystem, in the order above: `{ ecosystem, ok, stale, fetched_at, modified, advisories, matched, error }`. `advisories` counts the ecosystem's OSV records that name any CVE, `matched` those that name one in `cves`, `modified` is the newest OSV change applied. When `ok` is false the ecosystem has no entry in `packages`: its packages were not checked, which is not the same as not affected |
+| `cves` | `{ cols, rows }`: one row per CVE named in `packages`, the same columns and values as `index.json` |
+| `packages` | `{ <ecosystem>: { <package key>: [cve, advisory, ranges, versions?][] } }`, keys sorted, entries by CVE then advisory |
+
+Package keys: PyPI names are normalised per PEP 503 (lower case, runs of `-`, `_`, `.` become
+`-`); crates.io names are lower case with `_` as `-`; NuGet and Packagist names are lower case;
+npm names, Go module paths, Maven `group:artifact` and RubyGems names are as published. A key
+can be any string, `__proto__` included, so look it up as an own property.
+
+`ranges` holds one array per OSV range. Events are strings: `>=V` introduced, `<V` fixed, `<=V`
+last affected; `>=0` means from the first release. To test a version, sort a range's events by
+version and walk them in order: a `>=` event at or below the version turns "affected" on, a `<`
+event at or below it or a `<=` event below it turns it off. The version is affected when any range
+ends with it on. Versions compare with the ecosystem's own ordering (SemVer for npm, crates.io and
+Go, PEP 440 for PyPI, and the RubyGems, NuGet, Maven and Composer orderings);
+[`shared/versions.ts`](../shared/versions.ts) implements them. `versions` lists versions the
+advisory names as affected that its ranges do not cover; they match exactly. Events of other kinds
+are written `?kind=V`: treat that range as unknown (a version is affected if another range says
+so, otherwise it is unknown, not unaffected). Three such markers are written on purpose:
+`?git=unknown` (the advisory gives only git commit ranges), `?versions=capped` (more than 1,000
+listed versions) and `?ranges=capped` (more than 64 ranges).
+
+```sh
+# Which tracked CVEs name lodash, with the advisory and the ranges
+curl -s $BASE/packages.json | jq -r '.packages.npm.lodash[]? | [.[0], .[1], (.[2] | map(join(" ")) | join(" | "))] | @tsv'
+# Per ecosystem: is the copy fresh, and how many advisories name a tracked CVE?
+curl -s $BASE/packages.json | jq -r '.sources[] | [.ecosystem, (if .ok | not then "not checked" elif .stale then "stale" else "ok" end), .matched] | @tsv'
+```
+
+Not covered: CVEs without a detail shard, advisories without a CVE ID, other ecosystems (deb, rpm,
+apk, containers) and other advisory databases.
+
+How it is kept up to date: the pipeline keeps a compact copy of the OSV records of the eight
+ecosystems that name a CVE in its cache. Every run reads the newest lines of each ecosystem's
+`modified_id.csv` and fetches the records that changed; every 7 days, or when there is no copy, it
+reads the full `all.zip` dump instead. When OSV.dev cannot be reached, each ecosystem keeps its
+last copy and is marked `stale`.
 
 ## `state.json` (internal)
 

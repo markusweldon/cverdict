@@ -3,7 +3,7 @@
  * and output budgets. Brand strings come from shared/brand.ts.
  */
 import { BRAND, REPO_URL } from '../../shared/brand';
-import type { SourceId } from '../../shared/contract';
+import type { PackageEcosystem, SourceId } from '../../shared/contract';
 
 export const USER_AGENT = `${BRAND.slug}-pipeline (+${REPO_URL})`;
 
@@ -109,6 +109,75 @@ export const POC: GitSourceConfig = {
   cloneDir: 'poc',
 };
 
+/**
+ * OSV.dev advisories behind v1/packages.json (pipeline/src/sources/osv.ts). A compact mirror of
+ * the eight ecosystems lives in `<cache>/sources/`; each run brings it up to date from the
+ * `modified_id.csv` heads, and every 7 days from the full `all.zip` dumps. OSV never feeds a
+ * score: it is in meta.sources for its health only (NON_SCORING_SOURCES in emit/build.ts).
+ */
+export interface OsvConfig {
+  info: SourceInfo;
+  base: string;
+  isAllowedHost: (host: string) => boolean;
+  mirrorFile: string;
+  fullSyncMs: number;
+  csvHeadBytes: number;
+  csvMaxBytes: number;
+  csvOverlapMs: number;
+  maxChangedIds: number;
+  concurrency: number;
+  budgetMs: number;
+  max404: number;
+  limits: { zipBytes: number; zipTimeoutMs: number; zipRetryDelaysMs: readonly number[]; recordBytes: number };
+  maxExtraVersions: number;
+  maxRanges: number;
+  maxEvents: number;
+  maxNameLength: number;
+}
+
+export const OSV: OsvConfig = {
+  info: {
+    id: 'osv',
+    name: 'OSV.dev advisories',
+    home: 'https://osv.dev',
+    license:
+      "Each database's own: GitHub Advisory Database, PyPI Advisory Database and Go Vulnerability Database CC-BY-4.0, RustSec CC0-1.0, Drupal MIT (see packages.json attribution); only advisory IDs, package names and version ranges are kept",
+  },
+  /** The bucket as OSV.dev's data documentation names it: `<base>/<ecosystem>/all.zip`. */
+  base: 'https://storage.googleapis.com/osv-vulnerabilities',
+  /** Hosts a response may come from after redirects. */
+  isAllowedHost: (host: string) => host === 'storage.googleapis.com' || host.endsWith('.storage.googleapis.com'),
+  /** Cache file under `<cache>/sources/`. */
+  mirrorFile: 'osv-mirror.json.gz',
+  /** Re-read the full dump of an ecosystem this often. */
+  fullSyncMs: 7 * 24 * 3_600_000,
+  /** First `modified_id.csv` range request; doubled until the cursor is reached, up to csvMaxBytes. */
+  csvHeadBytes: 16 * 1024,
+  csvMaxBytes: 1024 * 1024,
+  /** Changes are re-read from this long before the cursor (re-applying a record is harmless). */
+  csvOverlapMs: 2 * 3_600_000,
+  /** More changed records than this in one run: read the full dump instead. */
+  maxChangedIds: 2_000,
+  /** Record downloads in flight, across all ecosystems. */
+  concurrency: 8,
+  /** The whole OSV step, all ecosystems; past it every ecosystem keeps its cached copy. */
+  budgetMs: 5 * 60_000,
+  /** This many 404s for changed records in one run look like an upstream fault: nothing is removed. */
+  max404: 20,
+  limits: {
+    zipBytes: 1024 * 1024 * 1024,
+    zipTimeoutMs: 240_000,
+    /** Retries of an all.zip download (one). */
+    zipRetryDelaysMs: [5_000],
+    recordBytes: 1024 * 1024,
+  },
+  /** Per affected package of one advisory. */
+  maxExtraVersions: 1_000,
+  maxRanges: 64,
+  maxEvents: 64,
+  maxNameLength: 300,
+};
+
 /** Minimum upstream sizes; anything smaller is treated as a broken download. */
 export interface SanityLimits {
   cvelistRecords: number;
@@ -120,6 +189,13 @@ export interface SanityLimits {
   nucleiTemplates: number;
   exploitdbRows: number;
   pocFiles: number;
+  /**
+   * OSV records kept (non-withdrawn, with a CVE alias and a package of the ecosystem) in a full
+   * dump: about half of the 2026-11-03 counts. A dump below its floor, or below
+   * osvMinRatioOfCached of the cached copy, is rejected and the cached copy kept.
+   */
+  osvRecords: Readonly<Record<PackageEcosystem, number>>;
+  osvMinRatioOfCached: number;
 }
 
 export const SANITY: SanityLimits = {
@@ -131,6 +207,8 @@ export const SANITY: SanityLimits = {
   nucleiTemplates: 2_000,
   exploitdbRows: 40_000,
   pocFiles: 5_000,
+  osvRecords: { npm: 3_000, PyPI: 6_500, Maven: 3_500, Go: 4_000, 'crates.io': 800, RubyGems: 500, Packagist: 3_000, NuGet: 500 },
+  osvMinRatioOfCached: 0.9,
 };
 
 /** Gzip size budgets for emitted files (checked by validate.ts): warn at 80 %, fail at 150 %. */
@@ -147,6 +225,8 @@ export const BUDGETS = {
     'v1/changes.json': 32 * 1024,
     'v1/woke.json': 64 * 1024,
     'v1/receipts.json': 64 * 1024,
+    /** Measured 122 KB gzip on 2026-11-03 (1,365 CVEs, 807 packages). Raise it before splitting the file. */
+    'v1/packages.json': 256 * 1024,
     /**
      * Internal carry-forward state (state.ts), read only by the pipeline: woke tracking (~25 KB)
      * plus the Receipts forward log. With times in minutes the log costs about 2.5 bytes gzip per

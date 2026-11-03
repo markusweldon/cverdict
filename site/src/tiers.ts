@@ -31,6 +31,7 @@ export const SOURCE_NAMES: Readonly<Record<SourceId, string>> = {
   nuclei: 'Nuclei',
   exploitdb: 'Exploit-DB',
   'poc-github': 'PoC-in-GitHub',
+  osv: 'OSV.dev',
   computed: 'Computed',
 };
 

@@ -79,8 +79,9 @@ repo_slug() {
 }
 
 # Change fingerprint of a data tree. generated_at differs on every run and is ignored, as are the
-# woke.json bounds that move with it; any other change to the rows, the KEV file, the headline
-# counts, the woke-up list, the receipts or the carried state produces a new fingerprint. The state
+# woke.json bounds that move with it and the per-ecosystem fetch times in packages.json; any other
+# change to the rows, the KEV file, the headline counts, the woke-up list, the receipts, the package
+# advisories or the carried state produces a new fingerprint. The state
 # must be published whenever it changes, or the next run would forget what this one saw first.
 # The Receipts log in it records every run (its last run and run count), so in practice every
 # successful run is published.
@@ -92,16 +93,18 @@ fingerprint() {
       jq -cS '.counts' "$dir/v1/meta.json" &&
       if [[ -f $dir/v1/woke.json ]]; then jq -cS 'del(.generated_at, .since, .published_before)' "$dir/v1/woke.json"; fi &&
       if [[ -f $dir/v1/receipts.json ]]; then jq -cS 'del(.generated_at)' "$dir/v1/receipts.json"; fi &&
+      if [[ -f $dir/v1/packages.json ]]; then jq -cS 'del(.generated_at) | .sources |= map(del(.fetched_at))' "$dir/v1/packages.json"; fi &&
       if [[ -f $dir/v1/state.json ]]; then jq -cS 'del(.generated_at)' "$dir/v1/state.json"; fi
   } | git hash-object --stdin
 }
 
 # Fingerprint of a published commit; fails when it lacks any of the fingerprinted files, so a
-# branch from before woke.json, receipts.json and state.json existed is always republished.
+# branch from before woke.json, receipts.json, state.json and packages.json existed is always
+# republished.
 commit_fingerprint() {
   local dir="$work/published"
   mkdir -p "$dir"
-  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json v1/woke.json v1/receipts.json v1/state.json | tar -x -C "$dir" || return 1
+  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json v1/woke.json v1/receipts.json v1/state.json v1/packages.json | tar -x -C "$dir" || return 1
   fingerprint "$dir"
 }
 
@@ -135,6 +138,7 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 | \`v1/changes.json\` | Escalations (tier went up, or new exploit evidence) in the last 7 days |
 | \`v1/woke.json\` | Old CVEs (published before the window) that gained exploitation evidence in the last 30 days |
 | \`v1/receipts.json\` | Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV (forward log and hindsight backtest) |
+| \`v1/packages.json\` | Package versions the CVEs with a detail shard affect, from OSV.dev advisories, with each CVE's row (for the in-browser SBOM check) |
 | \`v1/state.json\` | Internal state carried between runs; unstable, do not build on it |
 | \`feeds/signal.xml\` | Atom: newest Exploited and Likely-next CVEs |
 | \`feeds/kev.xml\` | Atom: KEV additions |
@@ -165,6 +169,11 @@ these files stays under its own terms:
 - **Exploit feeds**: identifiers and links only, no exploit code. Metasploit Framework
   (BSD-3-Clause, © Rapid7, Inc.), Nuclei templates (MIT, © ProjectDiscovery, Inc.), Exploit-DB
   (GPL-2.0), PoC-in-GitHub (CC0-1.0).
+- **Package advisories** in \`v1/packages.json\`, through [OSV.dev](https://osv.dev): GitHub Advisory
+  Database (CC-BY-4.0), PyPI Advisory Database (CC-BY-4.0), Go Vulnerability Database (CC-BY-4.0),
+  RustSec Advisory Database (CC0-1.0) and Drupal security advisories (MIT, Copyright (c) 2025
+  Ackama; the full notice is in the file's \`attribution\` and in ATTRIBUTIONS.md). Only advisory
+  IDs, package names and version ranges are kept, for the CVEs this data covers.
 
 Full notices and license texts:
 [ATTRIBUTIONS.md](https://github.com/${repo}/blob/HEAD/ATTRIBUTIONS.md).
@@ -178,6 +187,11 @@ Full notices and license texts:
 > (CVE™). Any copy you make for such purposes is authorized provided that you reproduce MITRE's
 > copyright designation and this license in any such copy.
 EOF
+  # Notices that must travel with copies of packages.json (the Drupal advisories' MIT license),
+  # taken from the file itself, whose attribution validate.ts checks against shared/packages.ts.
+  if [[ -f $src/v1/packages.json ]]; then
+    jq -r '.attribution[] | select(.notice != null) | "\n### \(.name) (\(.license))\n\n```text\n\(.notice)\n```"' "$src/v1/packages.json"
+  fi
 }
 
 commit_message() {

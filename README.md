@@ -97,6 +97,12 @@ On the site:
   more" and "EPSS 10% or more", with lead times, alert volume and every hit and miss. The live
   record notes each run, to the minute, from the day it started; a backtest of the last 180 days
   is shown apart and marked as hindsight.
+- **Check**: drop an SBOM (CycloneDX, SPDX or a list of package URLs) or a lockfile (npm, yarn,
+  pnpm, pip, Poetry, uv, Pipenv, Go, Cargo, Bundler, Composer, NuGet or Gradle) and see which of
+  the CVEs CVErdict tracks affect your package versions, grouped by verdict, each with the advisory,
+  its affected range and the fixed version. The file is read in your browser and never uploaded:
+  the page downloads one public file, the same for everyone. It knows only the tracked CVEs, so it
+  is not a full audit.
 - **KEV clock**, **Batches**, **Explore** (every window CVE, searchable, filterable by publish
   day), **The surge** (monthly volume since 1999), **Method** and **Feeds**.
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
@@ -172,6 +178,7 @@ Only free, public data. Nothing from NVD.
 | [Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) | Templates that reference a CVE | hourly | MIT |
 | [Exploit-DB](https://gitlab.com/exploit-database/exploitdb) | Entries that reference a CVE (IDs and links only) | every 6 h | GPL-2.0 |
 | [PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub) | Public proof-of-concept repositories per CVE | hourly | CC0-1.0 |
+| [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions affected by the tracked CVEs, for the Check page only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
 
 If a source is down, the last good copy is used and marked stale on the site; one failing feed
 never stops a run. With no copy at all, that source's evidence is shown as unknown, not as absent.
@@ -203,8 +210,9 @@ Feeds: [Atom: Exploited + Likely next](https://raw.githubusercontent.com/markusw
 [Atom: KEV additions](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev.xml) ·
 [Atom: old CVEs that woke up](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/woke.xml) ·
 [iCalendar: KEV due dates](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev-due.ics)
-(also served from the site under `/feeds/`). `woke.json` lists the old CVEs that woke up, and
-`receipts.json` holds the Receipts figures with every hit and miss.
+(also served from the site under `/feeds/`). `woke.json` lists the old CVEs that woke up,
+`receipts.json` holds the Receipts figures with every hit and miss, and `packages.json` the package
+versions the tracked CVEs affect, which the Check page compares with your file.
 
 Every file, every field, sharding and the versioning policy: [docs/DATA.md](docs/DATA.md).
 
@@ -280,7 +288,6 @@ More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **v2**
 
-- **SBOM drop**: drop a CycloneDX or SPDX file and see your components in the signal, entirely in the browser.
 - **Browser extension** that puts the verdict next to any CVE ID on the web.
 - **MSRC exploitability index** as a chip for Microsoft CVEs.
 - **EUVD cross-check** against ENISA's EU Vulnerability Database.
@@ -299,6 +306,9 @@ More in [CONTRIBUTING.md](CONTRIBUTING.md).
 - **Upstream errors flow through.** Descriptions, product names and CVSS vectors are as the CNA
   published them.
 - **PoC links are unverified third-party code** and may be malware. Never run one outside a lab.
+- **Check is not a scanner.** It knows only the tracked CVEs that an advisory ties to a package
+  version, in eight ecosystems. "Affected" means the version is inside the advisory's range, not
+  that your code reaches the vulnerable part.
 
 ## Contributing
 
