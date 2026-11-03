@@ -204,6 +204,8 @@ export async function listSignal(call: DataCall, a: SignalArgs, now: number): Pr
 export interface KevDueArgs {
   within_days?: number;
   overdue_days?: number;
+  limit?: number;
+  offset?: number;
 }
 
 export async function kevDue(call: DataCall, a: KevDueArgs, now: number): Promise<McpKevDueResult> {
@@ -212,23 +214,23 @@ export async function kevDue(call: DataCall, a: KevDueArgs, now: number): Promis
   const today = day(now);
   const from = day(Date.parse(today) - (a.overdue_days ?? 7) * DAY_MS);
   const to = day(Date.parse(today) + (a.within_days ?? 7) * DAY_MS);
-  const items = kev.entries
-    .filter((e) => e.due_date >= from && e.due_date <= to)
-    .sort((x, y) => x.due_date.localeCompare(y.due_date) || x.id.localeCompare(y.id))
-    .map((e) => ({
-      id: e.id,
-      vendor: e.vendor,
-      product: e.product,
-      name: oneLine(e.name),
-      date_added: e.date_added,
-      due_date: e.due_date,
-      days_left: Math.round((Date.parse(e.due_date) - Date.parse(today)) / DAY_MS),
-      ransomware: e.ransomware,
-      forensic_triage: e.forensic_triage,
-      required_action: oneLine(e.required_action),
-      score: e.score,
-    }));
-  return { data: await dataBlock(call, now), today_utc: today, from, to, catalog_version: kev.catalog_version, total: items.length, items };
+  const due = kev.entries.filter((e) => e.due_date >= from && e.due_date <= to).sort((x, y) => x.due_date.localeCompare(y.due_date) || x.id.localeCompare(y.id));
+  // Paged like every other list: kev.json may hold a few hundred entries after a large CISA batch.
+  const p = page(due, a.offset, a.limit ?? LIMITS.page);
+  const items = p.items.map((e) => ({
+    id: e.id,
+    vendor: e.vendor,
+    product: e.product,
+    name: oneLine(e.name),
+    date_added: e.date_added,
+    due_date: e.due_date,
+    days_left: Math.round((Date.parse(e.due_date) - Date.parse(today)) / DAY_MS),
+    ransomware: e.ransomware,
+    forensic_triage: e.forensic_triage,
+    required_action: oneLine(e.required_action),
+    score: e.score,
+  }));
+  return { data: await dataBlock(call, now), today_utc: today, from, to, catalog_version: kev.catalog_version, ...p, items };
 }
 
 // ── woke_up ─────────────────────────────────────────────────────────────────────────────────

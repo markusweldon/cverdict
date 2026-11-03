@@ -440,7 +440,7 @@ revisions for older clients.
 |---|---|---|
 | `get_verdict` | `cve/<xx>.json` | `McpVerdictResult`: for 1 to 15 CVE IDs (5 with `detail`), the tier, verdict, score, every reason chip with its points and link, unknowns, and links to the CVE page and the shard |
 | `list_signal` | `signal.json`, or `index.json` for Watch, Quiet or a knob below 35 | `McpSignalResult`: window CVEs in the chosen tiers at the chosen knob, highest score first, paged |
-| `kev_due` | `kev.json` | `McpKevDueResult`: KEV entries due in the next N days and overdue by up to M days, with `days_left` |
+| `kev_due` | `kev.json` | `McpKevDueResult`: KEV entries due in the next N days and overdue by up to M days, with `days_left`, paged |
 | `woke_up` | `woke.json` | `McpWokeResult`: old CVEs that woke up since a date, with their dated signals |
 | `receipts` | `receipts.json` | `McpReceiptsResult`: the forward log and backtest figures without the per-CVE lists, or one CVE's entries |
 | `search_cves` | `index.json` | `McpSearchResult`: window CVEs whose ID, CNA, vendor, product or title contain every word of the query |

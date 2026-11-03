@@ -53,6 +53,8 @@ const SCHEMAS = {
   kev_due: z.object({
     within_days: z.number().int().min(0).max(LIMITS.withinDays).optional().describe(`Due today or in the next N days, 0 to ${LIMITS.withinDays}. Default 7.`),
     overdue_days: z.number().int().min(0).max(LIMITS.overdueDays).optional().describe(`Also overdue by up to N days, 0 to ${LIMITS.overdueDays}. Default 7.`),
+    limit: limit(LIMITS.page),
+    offset,
   }),
   woke_up: z.object({
     since: date('Woke up on or after this UTC date or date-time. Default: 7 days before the data was generated.'),

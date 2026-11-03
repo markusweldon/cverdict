@@ -68,7 +68,7 @@ export const MCP_TOOLS: readonly { name: McpToolName; title: string; description
   {
     name: 'kev_due',
     title: 'CISA KEV due dates',
-    description: 'CISA KEV entries whose remediation due date is in the next within_days days (default 7), plus those overdue by up to overdue_days (default 7). Days are UTC calendar days.' + UNTRUSTED,
+    description: 'CISA KEV entries whose remediation due date is in the next within_days days (default 7), plus those overdue by up to overdue_days (default 7), soonest first, 50 per page. Days are UTC calendar days.' + UNTRUSTED,
   },
   {
     name: 'woke_up',
