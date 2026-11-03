@@ -407,9 +407,11 @@ starts that state fresh. Its size is budgeted like every other file.
 
 ## Update cadence
 
-The `refresh-data` workflow runs every hour at minute 17 (UTC) and usually publishes within a few
-minutes. raw.githubusercontent.com caches files for up to 5 minutes, and the site's `/data/` path
-adds a short CDN cache, so expect data at most about 75 minutes old. When nothing changed since
+The `refresh-data` workflow is scheduled every hour at minute 17 (UTC) and usually publishes within a
+few minutes of starting. GitHub often starts scheduled runs late or skips them, so runs can be a few
+hours apart; [DEPLOY.md](DEPLOY.md#reliable-hourly-refresh) shows how to start it every hour from an
+external timer. raw.githubusercontent.com caches files for up to 5 minutes, and the site's `/data/` path
+adds a short CDN cache, so with hourly runs expect data at most about 75 minutes old. When nothing changed since
 the previous run, nothing is published and the files keep the earlier `generated_at`; the Receipts
 log records every run, though, so in practice every successful run publishes. When a run fails,
 the previous data stays up. Always check `meta.generated_at` and `meta.sources[].stale`

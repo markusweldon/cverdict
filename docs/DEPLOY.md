@@ -2,9 +2,11 @@
 
 CVErdict is a static site plus a JSON data branch. Two pieces run independently:
 
-- **Data**: the `refresh-data` workflow (`.github/workflows/refresh.yml`) runs every hour at minute
-  17, builds the data from public sources and force-pushes it to the `data` branch. In a fork or
-  copy, the hourly schedule is off until you opt in (see [Configuration](#configuration)).
+- **Data**: the `refresh-data` workflow (`.github/workflows/refresh.yml`) is scheduled every hour at
+  minute 17. It builds the data from public sources and force-pushes it to the `data` branch. In a
+  fork or copy, the hourly schedule is off until you opt in (see [Configuration](#configuration)).
+  GitHub often runs the schedule late, so for a run every hour see
+  [Reliable hourly refresh](#reliable-hourly-refresh).
 - **Site**: a Vite build of `site/`, hosted on Vercel or GitHub Pages, that reads the data.
 
 No servers, databases, accounts or API keys are involved, and nothing needs secrets.
@@ -56,7 +58,7 @@ data branch is updated.
 The site is then at `https://<owner>.github.io/<repo>/`.
 
 Pages has no rewrites, so the job copies `index.html` into a folder per page (`kev/`, `woke/`,
-`batches/`, `explore/`, `surge/`, `method/`, `feeds/`), which are served with status 200. CVE pages
+`receipts/`, `batches/`, `explore/`, `surge/`, `method/`, `feeds/`), which are served with status 200. CVE pages
 (`/cve/<id>`) are served from a copy at `404.html`: they work in a browser, but with HTTP status 404,
 so crawlers, link previews and uptime checks treat them as missing. For CVE links you want to share,
 prefer Vercel.
@@ -110,6 +112,78 @@ There are no secrets to set. The workflow only uses the built-in `GITHUB_TOKEN`:
   only `scripts/publish-data-branch.sh` from a fresh checkout, and gets the build output as an
   artifact.
 - `pages` gets `pages: write` + `id-token: write`.
+
+## Reliable hourly refresh
+
+GitHub starts scheduled workflows when it has capacity, not on the minute. Busy times delay or drop
+runs, and in practice the hourly schedule often runs only every few hours. Your data is then hours
+old, and the Woke up and Receipts logs record gaps instead of hourly runs.
+
+For a run every hour, let a free external timer start the workflow through GitHub's API. The
+workflow already accepts these runs (`workflow_dispatch`, the same as **Run workflow**), and they
+work in a fork or copy even without `REFRESH_SCHEDULE`. Keep the GitHub schedule as it is: if the
+timer stops, the schedule still runs, just less reliably.
+
+The steps below use [cron-job.org](https://cron-job.org), which is free. Replace `OWNER/REPO` with
+your repository and `main` with its default branch.
+
+### 1. Create a token for this one repository
+
+GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** →
+Generate new token.
+
+- **Token name**: for example `cverdict-refresh`.
+- **Expiration**: pick a date and put it in your calendar. When the token expires, the timer stops
+  working and you are back to GitHub's schedule.
+- **Repository access**: *Only select repositories*, and pick just `OWNER/REPO`.
+- **Permissions** → Repository permissions → **Actions: Read and write**. Leave everything else at
+  *No access*. GitHub adds *Metadata: Read-only* by itself; that is required and fine.
+
+Copy the token. In that one repository it can start, cancel and re-run workflows, turn them on or
+off, and read or delete their run logs, artifacts and caches. It cannot read or change code, and it cannot read secrets.
+
+### 2. Check that the token works
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' -X POST \
+  -H 'Accept: application/vnd.github+json' \
+  -H 'Authorization: Bearer <token>' \
+  -H 'X-GitHub-Api-Version: 2022-11-28' \
+  https://api.github.com/repos/OWNER/REPO/actions/workflows/refresh.yml/dispatches \
+  -d '{"ref":"main"}'
+```
+
+`204` means it worked: a new run appears under Actions → refresh-data, marked
+*workflow_dispatch*. `401` means the token is wrong or expired. `403` or `404` means the token does
+not have Actions write access to this repository, or the repository or branch name is wrong.
+
+### 3. Set up the timer
+
+At cron-job.org, sign up and choose **Create cronjob**:
+
+- **URL**: `https://api.github.com/repos/OWNER/REPO/actions/workflows/refresh.yml/dispatches`
+- **Execution schedule**: every hour, at minute 47. That is half an hour away from the schedule's
+  minute 17, so when both fire, the runs are spread out.
+- **Advanced** → **Request method**: `POST`.
+- **Advanced** → **Headers**:
+  - `Accept: application/vnd.github+json`
+  - `Authorization: Bearer <token>`
+  - `X-GitHub-Api-Version: 2022-11-28`
+  - `Content-Type: application/json`
+- **Advanced** → **Request body**: `{"ref":"main"}`
+- **Notifications**: turn on the email for failed runs, so an expired token does not go unnoticed.
+
+Save, then use **Test run** and check for a `204` and a new run in Actions.
+
+### What to expect
+
+- The timer and the schedule can both start a run in the same hour. Runs queue rather than
+  overlap (the workflow's `concurrency` group), and each one takes about 5 minutes of free Actions
+  time in a public repository.
+- If the token leaks, the worst anyone can do with it is start, cancel or turn off runs and delete
+  run logs, artifacts or caches. Revoke it under Developer settings → Fine-grained tokens and make a new one.
+- The **Freshness watchdog** still fails a run when the published data is more than 3 hours old, so
+  a broken timer shows up in Actions as well as in cron-job.org's email.
 
 ## Troubleshooting
 
