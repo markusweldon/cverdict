@@ -34,6 +34,12 @@ export function testIndex(overrides: { down?: string[] } = {}): PackagesFile {
         stdlib: [['CVE-2026-111943', 'GO-2026-6809', [['>=0', '<1.21.11'], ['>=1.22.0-0', '<1.22.4']]]],
         'code.gitea.io/gitea': [['CVE-2026-60004', 'GO-2026-6433', [['>=1.17.0']]]],
         'example.com/replaced': [['CVE-2026-53999', 'GO-2026-5373', [['>=0', '<0.58.0']]]],
+        // Real keys: a module path with capitals, and an advisory that names a package path.
+        'github.com/OpenListTeam/OpenList/v4': [['CVE-2026-102663', 'GHSA-p6ph-3jx2-3337', [['>=0', '<4.2.4']]]],
+        'github.com/klauspost/compress/zstd': [['CVE-2026-116591', 'GHSA-fpmh-frq8-7rj8', [['>=0', '<1.20.2']]]],
+        'github.com/klauspost/compress': [['CVE-2026-50007', 'GHSA-qqqq-rrrr-ssss', [['>=0', '<1.10.0']]]],
+        'example.com/nested/sub': [['CVE-2026-50007', 'GHSA-qqqq-rrrr-ssss', [['>=0', '<9.0.0']]]],
+        'example.com/major/v2/pkg': [['CVE-2026-50007', 'GHSA-qqqq-rrrr-ssss', [['>=0', '<9.0.0']]]],
       },
       Packagist: {
         'moodle/moodle': [['CVE-2026-50001', 'GHSA-aaaa-bbbb-cccc', [['>=4.1.0', '<4.1.5']], ['v4.0.0-beta']]],
@@ -74,6 +80,9 @@ export function testIndex(overrides: { down?: string[] } = {}): PackagesFile {
     row('CVE-2026-50005', 10, 0, 0, '2026-10-15T00:00:00Z', 'example', 'bad-id'),
     row('CVE-2026-50006', 10, 0, 0, '2026-10-16T00:00:00Z', 'example', 'capped'),
     row('CVE-2022-0609', 100, 1, 0, '2022-04-12T00:00:00Z', 'Google', 'Chrome'),
+    row('CVE-2026-102663', 0, 0, 0, '2026-10-12T18:49:23Z', 'OpenListTeam', 'OpenList'),
+    row('CVE-2026-116591', 10, 0, 0, '2026-10-26T21:54:33Z', 'klauspost', 'compress'),
+    row('CVE-2026-50007', 10, 0, 0, '2026-10-17T00:00:00Z', 'example', 'go-paths'),
   ];
   return {
     schema_version: SCHEMA_VERSION,

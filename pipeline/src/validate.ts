@@ -390,7 +390,7 @@ function checkPackages(json: Map<string, JsonObject>, details: Set<string>, inde
     }
   }
   if (bad.length > 0) err(`${bad.length} bad entries (first: ${bad[0]})`);
-  for (const [eco, n] of unparsed) warnings.push(`${PATHS.packages}: ${n} ${eco} ranges have a bound shared/versions.ts cannot compare (shown as "version not checked")`);
+  for (const [eco, n] of unparsed) warnings.push(`${PATHS.packages}: ${n} ${eco} ranges have a bound shared/versions.ts cannot compare (shown as "possibly affected")`);
 
   const rows = readRows(`${PATHS.packages} cves`, asObject(doc.cves) ?? undefined, errors);
   if (!rows) return;

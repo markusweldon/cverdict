@@ -22,8 +22,12 @@ export interface AdvisoryHit {
   fixedIn: string | null;
 }
 
-/** Why a package is only possibly affected. */
-export type UncheckedReason = NoVersionReason | 'version' | 'range';
+/**
+ * Why a package is only possibly affected. For Go: 'name-case', the advisory names the module
+ * with other capital letters (package URLs are often lowercased, Go paths are case-sensitive);
+ * 'go-package', the advisory names a path inside the module (a package, or a nested module).
+ */
+export type UncheckedReason = NoVersionReason | 'version' | 'range' | 'name-case' | 'go-package';
 
 export interface PackageHit {
   eco: PackageEcosystem;
@@ -31,6 +35,8 @@ export interface PackageHit {
   version: string | null;
   /** null: affected. */
   unchecked: UncheckedReason | null;
+  /** For 'name-case' and 'go-package': the package as the advisory names it. */
+  named?: string;
   advisories: AdvisoryHit[];
 }
 
@@ -92,6 +98,47 @@ function fixedIn(eco: PackageEcosystem, version: string, ranges: readonly (reado
 
 const isAffect = (a: unknown): a is PackageAffect => Array.isArray(a) && typeof a[0] === 'string' && typeof a[1] === 'string' && Array.isArray(a[2]);
 
+interface Lookup {
+  /** The package key as the index writes it. */
+  key: string;
+  list: readonly PackageAffect[];
+  /** null: the exact key. */
+  reason: 'name-case' | 'go-package' | null;
+}
+
+const GO_MAJOR = /^v[0-9]+$/;
+
+/**
+ * Go paths an advisory names that may belong to a module in the file: the same path in other
+ * letter case, and paths inside the module. A path belongs to the longest module of the file that
+ * is a prefix of it (Go's rule), never across a /vN major-version element, which starts another
+ * module. Built once per check from the file's own Go modules.
+ */
+function goLookups(go: ReadonlyMap<string, PackageAffect[]>, modules: ReadonlySet<string>): { lower: Map<string, Lookup[]>; inside: Map<string, Lookup[]> } {
+  const lower = new Map<string, Lookup[]>();
+  const inside = new Map<string, Lookup[]>();
+  const add = (m: Map<string, Lookup[]>, k: string, l: Lookup) => {
+    const list = m.get(k);
+    if (list) list.push(l);
+    else m.set(k, [l]);
+  };
+  for (const [key, list] of go) {
+    if (!Array.isArray(list)) continue;
+    add(lower, key.toLowerCase(), { key, list, reason: 'name-case' });
+    if (modules.has(key)) continue;
+    const parts = key.split('/');
+    for (let i = parts.length - 1; i > 0; i--) {
+      if (GO_MAJOR.test(parts[i])) break;
+      const owner = parts.slice(0, i).join('/');
+      if (modules.has(owner)) {
+        add(inside, owner, { key, list, reason: 'go-package' });
+        break;
+      }
+    }
+  }
+  return { lower, inside };
+}
+
 /** Check every package of `parsed` against the index. Pure: no I/O. */
 export function checkComponents(parsed: Parsed, file: PackagesFile): CheckResult {
   const rows = new Map(rowsFromTable(file.cves).map((r) => [r.id, r]));
@@ -108,6 +155,11 @@ export function checkComponents(parsed: Parsed, file: PackagesFile): CheckResult
     const k = [c.eco ?? `~${c.type ?? ''}`, c.eco ? packageKey(c.eco, c.name) : c.name, c.version ?? '', c.skip ?? c.noVersion ?? ''].join('\u0000');
     if (!distinct.has(k)) distinct.set(k, c);
   }
+
+  const goIndex = index.get('Go');
+  const goModules = new Set<string>();
+  for (const c of distinct.values()) if (c.eco === 'Go' && !c.skip) goModules.add(packageKey('Go', c.name));
+  const go = goIndex ? goLookups(goIndex, goModules) : null;
 
   const notChecked = new Map<string, NotCheckedGroup>();
   const skip = (reason: NotCheckedReason, c: Component, eco?: PackageEcosystem) => {
@@ -133,29 +185,47 @@ export function checkComponents(parsed: Parsed, file: PackagesFile): CheckResult
       continue;
     }
     const key = packageKey(eco, c.name);
-    const list = pkgs.get(key) ?? [];
-    const perCve = new Map<string, { affected: AdvisoryHit[]; unchecked: AdvisoryHit[] }>();
-    for (const a of list) {
-      if (!isAffect(a)) continue;
-      const [cve, id, ranges, versions = []] = a;
-      const verdict = matchAffect(eco, c.version, ranges, versions);
-      if (verdict === 'not_affected') continue;
-      let e = perCve.get(cve);
-      if (!e) perCve.set(cve, (e = { affected: [], unchecked: [] }));
-      const listed = c.version !== null && versions.includes(c.version);
-      const hit: AdvisoryHit = { id, ranges, versions, listed, fixedIn: verdict === 'affected' && c.version !== null && !listed ? fixedIn(eco, c.version, ranges) : null };
-      (verdict === 'affected' ? e.affected : e.unchecked).push(hit);
+    const found: unknown = pkgs.get(key);
+    const exact = Array.isArray(found) ? (found as PackageAffect[]) : undefined;
+    const lookups: Lookup[] = exact ? [{ key, list: exact, reason: null }] : [];
+    if (eco === 'Go' && go) {
+      // A lowercased package URL of a mixed-case module: only when the exact path has no entry.
+      if (!exact) lookups.push(...(go.lower.get(key.toLowerCase()) ?? []));
+      lookups.push(...(go.inside.get(key) ?? []));
+    }
+    // A CVE the exact path names keeps the exact path's answer, "not affected" included.
+    const named = new Set((exact ?? []).filter(isAffect).map((a) => a[0]));
+    const perCve = new Map<string, { affected: AdvisoryHit[]; unchecked: AdvisoryHit[]; via: Lookup }>();
+    for (const via of lookups) {
+      for (const a of via.list) {
+        if (!isAffect(a)) continue;
+        const [cve, id, ranges, versions = []] = a;
+        if (via.reason && named.has(cve)) continue;
+        const verdict = matchAffect(eco, c.version, ranges, versions);
+        if (verdict === 'not_affected') continue;
+        let e = perCve.get(cve);
+        if (e && e.via !== via) continue;
+        if (!e) perCve.set(cve, (e = { affected: [], unchecked: [], via }));
+        const listed = c.version !== null && versions.includes(c.version);
+        const hit: AdvisoryHit = { id, ranges, versions, listed, fixedIn: verdict === 'affected' && c.version !== null && !listed ? fixedIn(eco, c.version, ranges) : null };
+        (verdict === 'affected' ? e.affected : e.unchecked).push(hit);
+      }
     }
     const id = `${eco}\u0000${key}\u0000${c.version ?? ''}`;
     let any = false;
     for (const [cve, e] of perCve) {
       if (!rows.has(cve)) continue;
       any = true;
-      const affected = e.affected.length > 0;
-      const unchecked: UncheckedReason | null = affected ? null : (c.noVersion ?? (c.version !== null && COMPARATORS[eco].parse(c.version) === null ? 'version' : 'range'));
+      const inRange = e.affected.length > 0;
+      const affected = inRange && e.via.reason === null;
+      const unchecked: UncheckedReason | null = affected
+        ? null
+        : (e.via.reason ?? c.noVersion ?? (c.version !== null && COMPARATORS[eco].parse(c.version) === null ? 'version' : 'range'));
       let hits = byCve.get(cve);
       if (!hits) byCve.set(cve, (hits = []));
-      hits.push({ eco, name: c.name, version: c.version, unchecked, advisories: affected ? e.affected : e.unchecked });
+      const hit: PackageHit = { eco, name: c.name, version: c.version, unchecked, advisories: inRange ? e.affected : e.unchecked };
+      if (e.via.reason) hit.named = e.via.key;
+      hits.push(hit);
       (affected ? affectedKeys : possibleKeys).add(id);
     }
     if (!any) clean.push(c);
