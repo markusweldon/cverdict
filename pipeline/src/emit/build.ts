@@ -5,6 +5,7 @@
  */
 import {
   KNOB_DEFAULT,
+  NON_SCORING_SOURCES,
   SCHEMA_VERSION,
   SIGNAL_MIN_SCORE,
   TIERS,
@@ -14,7 +15,6 @@ import {
   type ReceiptsFile,
   type PackagesFile,
   type Row,
-  type SourceId,
   type Tier,
   type WokeFile,
 } from '../../../shared/contract';
@@ -40,11 +40,8 @@ const TOP_SUMMARY = 10;
 
 const isPassed = (t: Tier) => t === 'exploited' || t === 'likely';
 
-/**
- * Sources in meta.sources whose data never feeds a score, chip, unknown or the backtest. Their
- * outages must not change any CVE's output, so they are left out of Enrichment.unavailable.
- */
-export const NON_SCORING_SOURCES: ReadonlySet<SourceId> = new Set<SourceId>(['osv']);
+/** Their outages must not change any CVE's output, so they are left out of Enrichment.unavailable. */
+export { NON_SCORING_SOURCES };
 const byNewest = (a: ScoredCve, b: ScoredCve) => b.cve.published.localeCompare(a.cve.published) || a.cve.id.localeCompare(b.cve.id);
 const inSignal = (s: ScoredCve) => s.score >= SIGNAL_MIN_SCORE || s.exploited || s.weaponized;
 

@@ -104,7 +104,7 @@ export const CVE = {
 };
 
 const sources = (o: Partial<Record<string, Partial<SourceStatus>>> = {}): SourceStatus[] =>
-  (['cvelist', 'kev', 'epss', 'exploitdb'] as const).map((id) => ({ id, name: id, url: 'https://example.test', ok: true, stale: false, fetched_at: GEN, upstream_version: null, records: 1, error: null, license: 'x', ...o[id] }));
+  (['cvelist', 'kev', 'epss', 'exploitdb', 'osv'] as const).map((id) => ({ id, name: id, url: 'https://example.test', ok: true, stale: false, fetched_at: GEN, upstream_version: null, records: 1, error: null, license: 'x', ...o[id] }));
 
 export function meta(o: Partial<Meta> = {}): Meta {
   return {
@@ -115,7 +115,8 @@ export function meta(o: Partial<Meta> = {}): Meta {
     window: { from: new Date(Date.parse(GEN) - 30 * DAY).toISOString(), to: GEN, days: 30 },
     counts: {} as Meta['counts'],
     definitions: {},
-    sources: sources({ exploitdb: { stale: true }, epss: { ok: false, stale: true } }),
+    // osv down: it feeds no verdict, so answers must not list it.
+    sources: sources({ exploitdb: { stale: true }, epss: { ok: false, stale: true }, osv: { ok: false, stale: true } }),
     ...o,
   };
 }

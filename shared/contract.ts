@@ -34,6 +34,13 @@ export type SourceId =
   | 'osv'
   | 'computed';
 
+/**
+ * Sources in meta.sources whose data never feeds a score, chip, unknown or the backtest (only their
+ * own file). Their health explains nothing about a verdict, so the pipeline and the MCP server's
+ * `data.sources_down`/`sources_stale` leave them out.
+ */
+export const NON_SCORING_SOURCES: ReadonlySet<SourceId> = new Set<SourceId>(['osv']);
+
 /** One human-readable reason ("chip") explaining a score. */
 export interface Reason {
   /** Stable chip id, e.g. `kev.listed`, `x.metasploit`. Full catalogue in shared/model.ts. */
