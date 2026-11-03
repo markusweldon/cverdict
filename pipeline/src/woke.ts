@@ -38,6 +38,8 @@
  * A CVE that was already in CISA KEV before the period never "wakes up": it was awake already.
  * Evidence only counts when it arrived after the CVE had left the window (published more than
  * the window's length earlier), so nothing joins the feed merely by ageing out of the window.
+ * Evidence from while it was still in the window counts as older evidence: a KEV listing then
+ * keeps the CVE out, and after an exploit artifact then no later artifact is its first.
  */
 import {
   SCHEMA_VERSION,
@@ -427,11 +429,17 @@ export function buildWoke(scored: readonly ScoredCve[], wake: WakeDetection, now
     // Exploit-DB, EPSS) compare the day.
     const leftAt = published + windowMs;
     const leftWindow = ymd(new Date(leftAt));
-    const signals = (wake.signals.get(s.cve.id) ?? []).filter((x) => (DATE_ONLY.test(x.at) ? x.at >= leftWindow : Date.parse(x.at) >= leftAt));
-    if (!signals.length) continue;
-    // Already in KEV before the period: it was awake already, newer evidence is not news.
+    const late = (x: WakeSignal) => (DATE_ONLY.test(x.at) ? x.at >= leftWindow : Date.parse(x.at) >= leftAt);
+    // Already in KEV before the period, or while it was still in the window: it was awake
+    // already, newer evidence is not news.
     const listed = normalizeYmd(s.kev?.date_added ?? s.cve.adpKev?.dateAdded);
-    if (listed && listed < sinceDay) continue;
+    if (listed && (listed < sinceDay || listed < leftWindow)) continue;
+    // An exploit artifact from while it was still in the window is older evidence (detectWakes
+    // only sees evidence from before the period): no later artifact is its first.
+    const all = wake.signals.get(s.cve.id) ?? [];
+    const hadArtifact = all.some((x) => !late(x) && ARTIFACT_KINDS.has(x.kind));
+    const signals = all.filter((x) => late(x) && !(hadArtifact && ARTIFACT_KINDS.has(x.kind)));
+    if (!signals.length) continue;
     const info: WokeInfo = { at: signals.reduce((max, x) => (Date.parse(x.at) > Date.parse(max) ? x.at : max), signals[0].at), signals };
     s.woke = info;
     items.push({ id: s.cve.id, ...info, row: toRow(s), s });

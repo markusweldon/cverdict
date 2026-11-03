@@ -270,8 +270,10 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
   restarts from a baseline, so jumps from the pause are not all dated on the day it resumes.
 - Evidence only counts when it arrived after the CVE was already older than the window, so a CVE
   does not join the list by ageing out of the window. Signals with a time (`poc`, first-seen
-  kinds) are compared to the minute; date-only ones (`kev`, `exploitdb`, `epss`) by UTC day. A CVE that was in KEV before the period is
-  left out: it never fell asleep.
+  kinds) are compared to the minute; date-only ones (`kev`, `exploitdb`, `epss`) by UTC day. A CVE
+  that was in KEV before the period, or while it was still in the window, is left out: it never
+  fell asleep. After an exploit artifact from while it was still in the window, no later artifact
+  counts as its first.
 - `label` is our own plain text, written to read after "Woke up Oct 30:" (e.g. `added to CISA KEV`).
   `url` links the evidence where a stable link exists (KEV catalog search, Exploit-DB entry,
   Metasploit module, Nuclei template, the PoC-in-GitHub index file, the FIRST EPSS time series).
