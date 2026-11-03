@@ -23,6 +23,7 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 ```
 shared/            contract.ts  model.ts  shard.ts  brand.ts   (imported by both sides; no Node/DOM APIs)
                    verdict.ts  share.ts  share-images.ts        (verdict words and link-preview tags; .js imports)
+                   versions.ts  packages.ts  mcp.ts             (version ranges and package keys; MCP copy)
 api/               share.ts   (Vercel Function for link-preview bots; tests in api/_test/)
 tools/og/          render.mjs (renders site/public/og/*.png by hand; own package.json and lockfile)
 pipeline/
@@ -31,18 +32,18 @@ pipeline/
     run.ts                 orchestration (fetch → stream CVE list → enrich → score → emit → validate)
     config.ts              URLs, timeouts, window size, budgets
     util/                  http.ts (fetch w/ timeout+retry+cache), git.ts (clone, ls-tree, cat-file --batch),
-                           csv.ts (RFC 4180), text.ts (sanitise/truncate), dates.ts, log.ts
-    sources/               cvelist.ts  kev.ts  epss.ts  metasploit.ts  nuclei.ts  exploitdb.ts  poc.ts
+                           csv.ts (RFC 4180), text.ts (sanitise/truncate), dates.ts, log.ts, zip.ts (bounded ZIP64)
+    sources/               cvelist.ts  kev.ts  epss.ts  metasploit.ts  nuclei.ts  exploitdb.ts  poc.ts  osv.ts
     normalize.ts           CVE v5 JSON → NormalizedCve (internal type)
     score.ts               NormalizedCve + Enrichment → { score, tier, reasons, unknowns }
-    batches.ts  stats.ts  changes.ts
+    batches.ts  stats.ts  changes.ts  woke.ts  receipts.ts  packages.ts
     emit/                  json.ts  atom.ts  ics.ts
     validate.ts            schema/budget/sanity checks on the emitted tree
   test/                    vitest; fixtures/ with small real-looking records (incl. XSS payloads)
 site/
   index.html  vite.config.ts  public/ (favicon.svg, robots.txt; data/ is gitignored, written by the pipeline)
   src/       main.tsx  app.tsx  router.ts  data.ts  state.ts  format.ts
-             components/  pages/  styles/
+             components/  pages/  styles/  check/ (SBOM and lockfile parsers, matching, session)
 .github/workflows/  ci.yml  refresh.yml
 mcp/                read-only MCP server for AI agents (stdio), reading the published files
   src/                     data.ts (bounded, cached reads)  tools.ts (the six tools)  server.ts (factory)  stdio.ts

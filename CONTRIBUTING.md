@@ -43,7 +43,8 @@ Pipeline flags that make iteration fast:
 
 ```text
 shared/     contract.ts (public data types), model.ts (chips and points), shard.ts, brand.ts,
-            verdict.ts and share.ts (verdict words and link-preview tags)
+            verdict.ts and share.ts (verdict words and link-preview tags),
+            versions.ts and packages.ts (version ranges and package keys for the Check page)
 api/        share.ts: the Vercel Function for link-preview bots (tests in api/_test/)
 pipeline/   src/ (sources → normalize → score → batches/stats/changes → emit → validate), test/
 site/       the Vite + Preact single-page app
