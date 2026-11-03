@@ -1,0 +1,3 @@
+{"_readme": ["This file locks the dependencies"], "content-hash": "abc",
+ "packages": [{"name": "drupal/core", "version": "8.5.0"}, {"name": "craftcms/cms", "version": "5.5.1"}, {"name": "acme/thing", "version": "dev-main"}],
+ "packages-dev": [{"name": "components/jquery", "version": "v3.5.0"}]}

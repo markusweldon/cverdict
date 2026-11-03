@@ -1,0 +1,31 @@
+SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: shop
+DocumentNamespace: https://example.com/spdx/shop-1.0.0
+Creator: Tool: hand-written
+Created: 2026-11-03T00:00:00Z
+
+PackageName: log4j-core
+SPDXID: SPDXRef-Package-1
+PackageVersion: 2.14.1
+PackageDownloadLocation: NOASSERTION
+ExternalRef: PACKAGE-MANAGER purl pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1
+PackageComment: <text>A comment over several lines.
+ExternalRef: PACKAGE-MANAGER purl pkg:npm/not-a-real-ref@1.0.0
+</text>
+
+PackageName: actionview
+SPDXID: SPDXRef-Package-2
+PackageVersion: 5.2.1
+ExternalRef: PACKAGE_MANAGER purl pkg:gem/actionview@5.2.1
+
+PackageName: zlib
+SPDXID: SPDXRef-Package-3
+PackageVersion: 1.2.13-r0
+ExternalRef: PACKAGE-MANAGER purl pkg:apk/alpine/zlib@1.2.13-r0?arch=x86_64
+
+PackageName: in-house
+SPDXID: SPDXRef-Package-4
+PackageVersion: 0.1
+PackageDownloadLocation: NOASSERTION

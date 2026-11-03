@@ -1,0 +1,4 @@
+# This is a Gradle generated file for dependency locking.
+com.thoughtworks.xstream:xstream:1.4.17=compileClasspath,runtimeClasspath
+org.apache.logging.log4j:log4j-core:2.17.1=runtimeClasspath
+empty=annotationProcessor
