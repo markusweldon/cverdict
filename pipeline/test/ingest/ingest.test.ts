@@ -183,8 +183,10 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const fast = setup();
     const slow = setup({ routes: upstream(500) });
     const deps = (s: typeof fast) => ({ http: s.http, limits: LIMITS });
-    const a = await ingestWith(fast.ctx, { cvelistDir: cvelist.clone }, deps(fast));
-    const b = await ingestWith(slow.ctx, { cvelistDir: cvelist.clone }, deps(slow));
+    // A missing PoC directory: without one, ingest would clone PoC-in-GitHub over the network.
+    const noPoc = path.join(tempDir(), 'missing');
+    const a = await ingestWith(fast.ctx, { cvelistDir: cvelist.clone, pocDir: noPoc }, deps(fast));
+    const b = await ingestWith(slow.ctx, { cvelistDir: cvelist.clone, pocDir: noPoc }, deps(slow));
     const ids = (r: typeof a) => r.cves.map((c) => `${c.id}:${c.inWindow}`).sort();
     expect(ids(b)).toEqual(ids(a));
     expect(b.cves.find((c) => c.id === 'CVE-2026-37106')?.inWindow).toBe(false);
@@ -221,13 +223,15 @@ describe('ingestWith (end to end on tiny repositories)', () => {
 
   it('fails when the CVE List cannot be read, or has fewer records than the sanity minimum', async () => {
     const { ctx, http } = setup();
-    await expect(ingestWith(ctx, { cvelistDir: tempDir() }, { http, limits: LIMITS })).rejects.toThrow(/git rev-parse/);
-    await expect(ingestWith(ctx, { cvelistDir: path.join(tempDir(), 'nope') }, { http, limits: LIMITS })).rejects.toThrow(/is not a directory/);
+    // A missing PoC directory: without one, ingest would clone PoC-in-GitHub over the network.
+    const pocDir = path.join(tempDir(), 'missing');
+    await expect(ingestWith(ctx, { cvelistDir: tempDir(), pocDir }, { http, limits: LIMITS })).rejects.toThrow(/git rev-parse/);
+    await expect(ingestWith(ctx, { cvelistDir: path.join(tempDir(), 'nope'), pocDir }, { http, limits: LIMITS })).rejects.toThrow(/is not a directory/);
 
     const cvelist = cvelistRepo();
     const again = setup();
     await expect(
-      ingestWith(again.ctx, { cvelistDir: cvelist.clone }, { http: again.http, limits: { ...LIMITS, cvelistRecords: 1000 } }),
+      ingestWith(again.ctx, { cvelistDir: cvelist.clone, pocDir }, { http: again.http, limits: { ...LIMITS, cvelistRecords: 1000 } }),
     ).rejects.toThrow(/only 18 CVE records/);
   });
 });
