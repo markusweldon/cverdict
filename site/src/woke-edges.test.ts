@@ -33,6 +33,12 @@ describe('woke helpers at the edges', () => {
     expect(wokeWithin(items, now, 7).map((i) => i.id)).toEqual(['CVE-2021-0001']);
   });
 
+  it('keeps a date-only signal from the boundary day, which may be any time that day', () => {
+    const now = Date.parse('2026-11-03T06:50:00Z');
+    const items = [item('CVE-2021-0001', '2026-10-27'), item('CVE-2021-0002', '2026-10-26'), item('CVE-2021-0003', '2026-10-27T06:49:00Z')];
+    expect(wokeWithin(items, now, 7).map((i) => i.id)).toEqual(['CVE-2021-0001']);
+  });
+
   it('reports the latest tracking start when the kinds started at different times', () => {
     expect(trackingNote({ metasploit: '2026-11-01T00:00:00Z', nuclei: '2026-11-03T02:30:00Z', epss: '2026-11-02T00:00:00Z' }).since).toBe('2026-11-03T02:30:00Z');
     expect(trackingNote({ metasploit: null, nuclei: null, epss: null })).toEqual({ since: null, tracked: [], untracked: ['Metasploit modules', 'Nuclei templates', 'EPSS jumps'] });
