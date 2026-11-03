@@ -35,6 +35,7 @@ export const PATHS = {
   woke: 'v1/woke.json',
   state: 'v1/state.json',
   receipts: 'v1/receipts.json',
+  packages: 'v1/packages.json',
   shard: (name: string) => `v1/cve/${name}.json`,
   signalFeed: 'feeds/signal.xml',
   kevFeed: 'feeds/kev.xml',

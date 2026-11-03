@@ -5,6 +5,7 @@
 import type { Cvss, ExploitEvidence, SourceId, SourceStatus } from '../../../../shared/contract';
 import { buildKevPrior, scoreCve } from '../../../src/score';
 import type { Enrichment, IngestResult, KevCatalog, KevRaw, NormalizedCve, PocRepo, ScoredCve } from '../../../src/types';
+import { emptyOsvData, type OsvData } from '../../../src/sources/osv';
 import { EMPTY_WOKE_STATE, type WakeDetection } from '../../../src/woke';
 
 export const NOW = new Date('2026-10-26T19:30:00Z');
@@ -99,6 +100,8 @@ export interface EnrichmentSpec {
   down?: SourceId[];
   /** Wake detection result handed to buildOutput (default: nothing woke up). */
   wake?: WakeDetection;
+  /** OSV.dev mirror for packages.json (default: no ecosystem has a copy). */
+  osv?: OsvData;
 }
 
 export function makeKevCatalog(entries: KevRaw[] = []): KevCatalog {
@@ -204,5 +207,6 @@ export function makeIngest(cves: NormalizedCve[], spec: EnrichmentSpec = {}): In
     ],
     cvelistCommit: 'e9bdac88b661d98022cbecab20ad4a359f9d6634',
     wake: spec.wake ?? { signals: new Map(), state: EMPTY_WOKE_STATE, tracking: { metasploit: null, nuclei: null, epss: null }, skipped: [], notes: [] },
+    osv: spec.osv ?? emptyOsvData(),
   };
 }

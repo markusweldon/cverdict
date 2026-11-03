@@ -17,6 +17,7 @@ import type {
   WokeInfo,
 } from '../../shared/contract';
 
+import type { OsvData } from './sources/osv';
 import type { LoadedState } from './state';
 import type { BacktestInputs, BacktestPlan } from './backtest';
 import type { WakeDetection } from './woke';
@@ -42,6 +43,8 @@ export interface IngestOptions {
   cvelistDir?: string;
   /** Use this existing PoC-in-GitHub clone instead of cloning/fetching (never modified). */
   pocDir?: string;
+  /** Read OSV.dev dumps from `<osvDir>/<ecosystem>.zip` instead of downloading them. */
+  osvDir?: string;
   /** State carried from the previous run (state.ts); missing means a fresh start. */
   previousState?: LoadedState;
   /** Refresh the hindsight backtest this run (backtest.ts); omitted on normal runs. */
@@ -176,6 +179,8 @@ export interface IngestResult {
   cvelistCommit: string | null;
   /** Wake signals found in the full source indexes, and the next woke state (woke.ts). */
   wake: WakeDetection;
+  /** The OSV.dev mirror behind v1/packages.json, with each ecosystem's health. Never scored. */
+  osv: OsvData;
   /** Backtest inputs, present when the run refreshes the backtest (backtest.ts). */
   backtest?: BacktestInputs;
 }
