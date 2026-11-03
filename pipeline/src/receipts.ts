@@ -8,8 +8,8 @@
  *   epss10    the EPSS score is 0.1 or more (only once EPSS has scored the CVE).
  * When a logged CVE appears in CISA KEV (at any age), the KEV dateAdded and the time of the run
  * that first saw the listing are recorded. Runs can come twice an hour, so times are kept to the
- * minute, and "before" compares those instants. KEV dates are US Eastern days, so the day of a
- * run time is taken in that zone when it is compared with one.
+ * minute, and "before" compares those instants. KEV gives a date without a time, read as a US
+ * Eastern day (CISA's time zone), so the day of a run time is taken in that zone to compare.
  *
  * A CVE is watched while it is in the window: a method that flags it only later is not counted, for
  * every method alike. Entries without a KEV listing are pruned after LOG_RETENTION_DAYS (their
@@ -76,7 +76,7 @@ export interface ReceiptsLog {
 const emptyPruned = (): ReceiptsLog['pruned'] => ({ n: 0, cverdict: 0, cvss7: 0, epss10: 0 });
 export const minuteOf = (d: Date | string): number => Math.floor((typeof d === 'string' ? Date.parse(d) : d.getTime()) / MINUTE_MS);
 export const minuteIso = (m: number): string => new Date(m * MINUTE_MS).toISOString();
-/** CISA dates KEV listings by its own (US Eastern) day. */
+/** KEV dateAdded has no time; it is read as a day in CISA's own (US Eastern) time zone. */
 const ET_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
 /** The US Eastern day (YYYY-MM-DD) of a log time, to compare with a KEV dateAdded. */
 export const etDay = (m: number): string => ET_DAY.format(new Date(m * MINUTE_MS));
