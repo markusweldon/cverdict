@@ -15,6 +15,7 @@ export type Route =
   | { name: 'receipts' }
   | { name: 'batches' }
   | { name: 'explore' }
+  | { name: 'check' }
   | { name: 'surge' }
   | { name: 'method' }
   | { name: 'feeds' }
@@ -27,6 +28,7 @@ const STATIC: Readonly<Record<string, Route['name']>> = {
   receipts: 'receipts',
   batches: 'batches',
   explore: 'explore',
+  check: 'check',
   surge: 'surge',
   method: 'method',
   feeds: 'feeds',

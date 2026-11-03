@@ -1587,6 +1587,13 @@
 
 /* ── Responsive ── */
 
+/* Ten nav links need about 1,210 px on one row at full padding: tighten them first. */
+@media (max-width: 1240px) {
+  .nav__link {
+    padding: 0 8px;
+  }
+}
+
 @media (max-width: 1180px) {
   .today__grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1619,17 +1626,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .nav__link {
-    padding: 0 8px;
-  }
-
   .searchbtn__text {
     display: none;
   }
 }
 
 /* The header wraps the nav onto its own scrolling row before the links can run under the
-   search button. Nine links need about 1,100 px on one row. */
+   search button. Ten tightened links without the search text fit down to 1,121 px. */
 @media (max-width: 1120px) {
   .top__inner {
     flex-wrap: wrap;
@@ -2248,4 +2251,351 @@
   gap: 4px 12px;
   margin: 4px 0 6px;
   font-size: 12.5px;
+}
+
+/* ── Check (SBOM and lockfiles) ── */
+
+.page--check .fineprint {
+  max-width: 920px;
+}
+
+/* Anything read from the user's file. Never a web font: see --font-mono-system. */
+.user-text {
+  font-family: var(--font-mono-system);
+  font-variant-numeric: normal;
+  font-feature-settings: normal;
+  overflow-wrap: anywhere;
+}
+
+.check__card {
+  display: grid;
+  gap: 10px;
+  max-width: 920px;
+}
+
+/* The whole card is the drop target; dragging a file over it changes the border colour only. */
+.check__card.is-drag {
+  border-color: var(--accent);
+}
+
+.check__drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 16px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r);
+  background: var(--bg);
+}
+
+.check__card.is-drag .check__drop {
+  border-color: var(--accent);
+}
+
+.check__droptitle {
+  font-weight: 600;
+}
+
+/* The file input is visually hidden inside its label; show the keyboard focus on the label. */
+.check__pick:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.check__pick {
+  cursor: pointer;
+}
+
+.check__file {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.check__label {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.check__paste {
+  width: 100%;
+  min-height: 132px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.check__paste:focus {
+  border-color: var(--b-accent);
+}
+
+:root[data-theme='light'] .check__paste:focus {
+  border-color: var(--accent);
+}
+
+.check__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.check__limits {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.check__privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 82ch;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.check__privacy .icon {
+  margin-top: 3px;
+  color: var(--accent);
+}
+
+.check__status {
+  min-height: 20px;
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.check__status p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.check__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  max-width: 920px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--b-exploited);
+  border-radius: var(--r);
+  background: var(--t-exploited);
+  font-size: 13px;
+}
+
+.check__error p {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.check__error .icon {
+  color: var(--ink-exploited);
+}
+
+.check__results {
+  margin: 8px 0 28px;
+}
+
+.check__summary {
+  max-width: 82ch;
+  margin: 8px 0 10px;
+  font-size: 14px;
+}
+
+.check__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 12px;
+}
+
+.check__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.check__count--possible {
+  color: var(--muted);
+}
+
+.check__notes {
+  display: grid;
+  gap: 4px;
+  max-width: 82ch;
+  margin-bottom: 16px;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.check__notes .icon {
+  color: var(--ink-watch);
+}
+
+.check__groupnote {
+  margin: -4px 0 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* Above the row's full-size link, so advisory links stay reachable. */
+.checkpk {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+.checkpk__pkg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.checkpk__name {
+  color: var(--text);
+}
+
+.checkpk__ver {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.checkpk__eco {
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.checkpk__why {
+  color: var(--ink-watch);
+}
+
+.checkpk__advs {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--border);
+  list-style: none;
+  color: var(--muted);
+}
+
+.checkpk__advs li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.checkpk__adv {
+  margin-right: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.check__more {
+  margin-top: 16px;
+}
+
+.check__more summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.check__skip {
+  margin-top: 10px;
+}
+
+.check__skipwhy {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.check__names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+.check__names li {
+  min-width: 0;
+}
+
+.check__coverage {
+  display: grid;
+  gap: 8px;
+  max-width: 920px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.check__coverage p {
+  max-width: 82ch;
+  color: var(--muted);
+}
+
+.check__coverage strong {
+  color: var(--text);
+}
+
+.check__warn {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.check__warn .icon {
+  flex: none;
+  color: var(--ink-watch);
+}
+
+.check__accepted {
+  max-width: 920px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+.check__accepted summary {
+  cursor: pointer;
+}
+
+.check__accepted ul {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.check__accepted .check__cmds {
+  padding-left: 0;
+  list-style: none;
+}
+
+.check__cmds code {
+  overflow-wrap: anywhere;
+  color: var(--text);
 }
