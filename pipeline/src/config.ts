@@ -142,6 +142,9 @@ export const BUDGETS = {
     'v1/signal.json': 120 * 1024,
     'v1/index.json': 1024 * 1024,
     'v1/stats.json': 80 * 1024,
+    'v1/batches.json': 96 * 1024,
+    'v1/kev.json': 32 * 1024,
+    'v1/changes.json': 32 * 1024,
     'v1/woke.json': 64 * 1024,
     'v1/receipts.json': 64 * 1024,
     /**
@@ -149,6 +152,9 @@ export const BUDGETS = {
      * which grows to ~200,000 CVEs over its 400-day retention (~230 KB gzip in a realistic simulation).
      */
     'v1/state.json': 640 * 1024,
+    'feeds/signal.xml': 64 * 1024,
+    'feeds/kev.xml': 32 * 1024,
+    'feeds/kev-due.ics': 32 * 1024,
     'feeds/woke.xml': 64 * 1024,
   },
   /** Each `v1/cve/<xx>.json` shard. */
