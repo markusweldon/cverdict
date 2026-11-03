@@ -145,7 +145,8 @@ const len = (s: string) => Array.from(s).length;
 const sentence = (s: string) => s.replace(/[.\s]+$/, '');
 
 /**
- * The description: verdict, subject, KEV row, exploits row, up to 2 reasons and "As of <run>",
+ * The description: verdict (without the KEV due date, which the KEV row gives), subject, KEV row,
+ * exploits row, up to 2 reasons and "As of <run>",
  * joined with ". ". Reasons go first, then the exploits row, then the subject shrinks, until it
  * fits DESCRIPTION_MAX. Without `generatedAt` (the CVE page before meta.json loads) the run time
  * is left out.
@@ -154,7 +155,10 @@ export function shareDescription(d: CveDetail, tier: Tier, knob: number, generat
   const run = fmtRunTime(generatedAt);
   const refYear = generatedAt && run ? new Date(Date.parse(generatedAt)).getUTCFullYear() : new Date().getUTCFullYear();
   const v = verdict(d, tier, knob, refYear);
-  const head = cleanText(`${v.head}: ${v.reason}`, 90);
+  // The KEV row carries the listing and the due date: the head does not repeat them, which leaves
+  // room for the exploits row.
+  const kevListed = d.kev !== null || d.reasons.some((r) => r.id === 'kev.listed');
+  const head = cleanText(`${v.head}: ${tier === 'exploited' && kevListed ? 'exploited' : v.reason}`, 90);
   const kev = kevText(d, refYear).row;
   const tail = run ? [`As of ${run}`] : [];
   let subject = shareSubject(d);

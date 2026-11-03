@@ -49,11 +49,11 @@ describe('preview text', () => {
     const expected: Record<string, [string, string]> = {
       EXPLOITED_KEV: [
         'CVE-2026-109618: Exploited, score 100',
-        'Patch now: exploited, KEV due Oct 29. PHP Group · PHP. CISA KEV: added Oct 26, due Oct 29. Public exploits: Nuclei 1, Exploit-DB 1, 729 vetted PoC repos (unverified code). As of Nov 3, 2026 06:50 UTC.',
+        'Patch now: exploited. PHP Group · PHP. CISA KEV: added Oct 26, due Oct 29. Public exploits: Nuclei 1, Exploit-DB 1, 729 vetted PoC repos (unverified code). As of Nov 3, 2026 06:50 UTC.',
       ],
       EXPLOITED_RANSOMWARE: [
         'CVE-2013-2551: Exploited, score 100',
-        'Patch now: exploited, KEV due Apr 18, 2022. Published by MITRE. CISA KEV: added Mar 28, 2022, due Apr 18, 2022, known ransomware use. No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.',
+        'Patch now: exploited. Published by MITRE. CISA KEV: added Mar 28, 2022, due Apr 18, 2022, known ransomware use. No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.',
       ],
       EXPLOITED_SSVC: ['CVE-2026-110001: Exploited, score 90', 'Patch now: CISA SSVC says exploitation is active. Microsoft Exchange Server. CISA KEV: not listed. No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.'],
       EXPLOITED_VENDOR: [
@@ -62,7 +62,7 @@ describe('preview text', () => {
       ],
       EXPLOITED_ADP_KEV: [
         'CVE-2026-110002: Exploited, score 90',
-        'Patch now: exploited, listed in CISA KEV. PHP Group · PHP. CISA KEV: added Nov 2 (per the CVE record). No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.',
+        'Patch now: exploited. PHP Group · PHP. CISA KEV: added Nov 2 (per the CVE record). No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.',
       ],
       LIKELY_MSF: ['CVE-2026-93680: Likely next, score 84', 'Likely next: Metasploit module. IBM · Langflow OSS. CISA KEV: not listed. Public exploits: Metasploit 1, 1 vetted PoC repo (unverified code). Critical 9.8 · network. As of Nov 3, 2026 06:50 UTC.'],
       LIKELY_NUCLEI: [
@@ -132,7 +132,21 @@ describe('preview text', () => {
     const long = { ...F.EXPLOITED_KEV, affected: [{ vendor: 'V'.repeat(60), product: 'P'.repeat(80), purl: null }] };
     const text = desc(long);
     expect(cps(text)).toBeLessThanOrEqual(DESCRIPTION_MAX);
-    expect(text).toMatch(/^Patch now: exploited, KEV due Oct 29\. V{60} · P+… CISA KEV: added Oct 26, due Oct 29\. As of Nov 3, 2026 06:50 UTC\.$/);
+    expect(text).toMatch(/^Patch now: exploited\. V{60} · P+… CISA KEV: added Oct 26, due Oct 29\. As of Nov 3, 2026 06:50 UTC\.$/);
+  });
+
+  it('gives the KEV due date once, in the KEV row, which leaves room for the exploits row', () => {
+    const sophos = {
+      ...F.EXPLOITED_RANSOMWARE,
+      affected: [{ vendor: 'Sophos', product: 'Sophos Web Appliance', purl: null }],
+      kev: { ...F.EXPLOITED_RANSOMWARE.kev!, date_added: '2023-11-16', due_date: '2023-12-07', ransomware: 'Unknown' },
+      exploits: { ...F.EXPLOITED_KEV.exploits, poc: { ...F.EXPLOITED_KEV.exploits.poc, vetted: 3 } },
+    };
+    const text = desc(sophos);
+    expect(text).toBe('Patch now: exploited. Sophos Web Appliance. CISA KEV: added Nov 16, 2023, due Dec 7, 2023. Public exploits: Nuclei 1, Exploit-DB 1, 3 vetted PoC repos (unverified code). As of Nov 3, 2026 06:50 UTC.');
+    expect(text.split('Dec 7, 2023').length).toBe(2);
+    // The CVE page and the ticket keep the date in the verdict.
+    expect(verdict(sophos, 'exploited', KNOB_DEFAULT, 2026).reason).toBe('exploited, KEV due Dec 7, 2023');
   });
 
   it('writes no em dash anywhere, even for invalid dates and a non-finite EPSS score', () => {
@@ -165,7 +179,6 @@ describe('preview text', () => {
     vi.setSystemTime(new Date('2027-01-02T00:00:00Z'));
     const december = { ...F.EXPLOITED_KEV, kev: { ...F.EXPLOITED_KEV.kev!, date_added: '2026-12-27', due_date: '2026-12-30' } };
     const text = shareDescription(december, 'exploited', KNOB_DEFAULT, '2026-12-31T23:10:00Z');
-    expect(text).toContain('KEV due Dec 30.');
     expect(text).toContain('CISA KEV: added Dec 27, due Dec 30.');
     expect(text).not.toContain('2026, due');
     expect(text).toMatch(/As of Dec 31, 2026 23:10 UTC\.$/);
