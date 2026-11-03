@@ -300,7 +300,10 @@ any age, the run records its `dateAdded` and the hour it first saw the listing.
 
 - **Flagged before the listing** means flagged by a run earlier than the one that first saw the
   listing, on or before the KEV `dateAdded`. A flag that came with the listing (the `kev.listed`
-  chip, or EPSS reacting to it) is never "before". Same definition for every method.
+  chip, or EPSS reacting to it) is never "before". Same definition for every method. When a run can
+  see a listing it cannot record (a CISA-ADP KEV block without a date), no CVErdict flag is recorded
+  until the listing is. A same-day flag can still come from CISA's own update to the record made as
+  it lists the CVE (for example SSVC exploitation "active"), which is one reason it is counted apart.
 - **Counted** (`eligible`): KEV additions dated from the `since` day on, for CVEs the log saw in an
   earlier run, on or before the listing date. The rest are in `uncounted`: `older` (the CVE was not
   in the log, because it was published before the window when the log could have seen it; Woke up
@@ -310,14 +313,16 @@ any age, the run records its `dateAdded` and the hour it first saw the listing.
 - **Alert volume** (`volume`): out of every CVE the log has watched, how many each method flagged at
   least once. CVEs still in the window can still be flagged, so these shares can rise a little.
 - The log starts with the first run that keeps it (`since`) and never fills in anything before.
-  Times are the run's hour, rounded down. `gaps` lists pauses of more than 3 hours between runs.
+  Times are the run's hour, rounded down. `gaps` lists the most recent 50 pauses of more than 3
+  hours between runs; `gap_total` counts all of them.
   A missing or unreadable log starts a new one with a new `since`.
 - CVEs without a KEV listing leave the log 400 days after they were first seen (their counts stay
   in `volume`); CVEs with one stay.
 
 | Field | Meaning |
 |---|---|
-| `since`, `last`, `runs`, `gaps[]` | First and last run of the log, how many runs, pauses `{ from, to }` of more than 3 hours |
+| `since`, `last`, `runs`, `gaps[]` | First and last run of the log, how many runs, the most recent 50 pauses `{ from, to }` of more than 3 hours |
+| `gap_total` | `{ n, hours }`: every such pause since `since`, and their length in hours |
 | `watch_days` | How long each CVE is watched (the window, 30 days) |
 | `listed`, `eligible` | KEV additions since `since`, and how many of them are counted |
 | `methods[]`, `volume[]` | One `MethodScore` and one `AlertVolume` per method |
@@ -343,25 +348,26 @@ Neither uses the listing.
 | Other KEV listings (the vendor and product prior) | Only listings dated before the listing day |
 | EPSS | The archived EPSS file of the day before (`epss_date`); left out when it cannot be loaded |
 | Exploit-DB | Entries with `date_added` (else `date_published`) before the listing day |
-| PoC repos | Repos created before the listing day; strict vets them by age only (3 days old by then), as star counts are only known for today |
+| PoC repos | Repos created before the listing day; strict vets them by age only (3 days old by then), as star counts are only known for today. A repo may have gained its exploit code after it was created |
 | Metasploit | Counted when a module's `mod_time` is before the listing day (it existed); other modules only in `upper` |
 | Nuclei | No dates: only in `upper` |
-| CISA SSVC automatable and technical impact | Counted when the assessment is timestamped before the listing day; else only in `upper` |
+| CISA SSVC automatable and technical impact | Counted when CISA's container has not changed since the listing day, or the assessment is timestamped before the day before the listing. CISA often stamps the assessment it rewrites for a listing with the day before (17 of the 139 listings in the 2026-11-03 backtest, against 20 over the 29 days before that), so that day cannot vouch for it. Else only in `upper` |
 | CISA SSVC exploitation (`poc`, `active`) | Counted only when CISA has not changed its container since the listing day. CISA updates this value when it lists a CVE and often dates it the day before, so the timestamp cannot vouch for it. In `upper`, an `active` that cannot be shown to predate the listing is lowered to `poc` (a public exploit exists) or `none` |
 | CNA CVSS, CVSS exploit maturity, "exploited in the wild" text | Counted when the CNA has not changed its container since the listing day (`providerMetadata.dateUpdated`); else only in `upper` |
 | CISA-ADP CVSS | The same test on CISA's container |
-| Vendor and product names, tags, descriptions | Today's record |
+| Vendor and product names, tags, descriptions | Today's record, in both variants (`treatment: today`): no earlier text can be read |
 
 | Field | Meaning |
 |---|---|
 | `hindsight` | Always `true` |
-| `computed_at` | When it was computed. The hourly pipeline carries it forward and recomputes it once it is 7 days old |
+| `computed_at` | When it was computed. The hourly pipeline carries it forward and recomputes it once it is 7 days old, a day after a run that could not load some EPSS files, and whenever the carried copy is from another score model or does not add up |
+| `score_model` | Score model it was computed with |
 | `from`, `to`, `days`, `listed` | The KEV `dateAdded` range (inclusive), its length, and how many additions it holds |
 | `excluded[]` | `{ code, reason, ids }` left out of every figure: `no_record` (no PUBLISHED CVE record) and `not_public` (published on or after the listing day, so no method could flag it before) |
 | `sets[]` | `{ key, n, strict, upper }`: `recent` (published at most `old_years` = 2 years before the listing) and `old`, each with one `MethodScore` per method and variant. `earlier` equals `before`, `same_day` is 0 and `lead` is `null`: the backtest says yes or no, it does not measure lead time |
 | `volume` | `{ from, n, methods }`: of the CVEs published from `from` on, how many each method flags with today's evidence (hindsight too). `null` when it was not measured |
-| `signals[]` | `{ key, label, treatment: time_matched \| hindsight \| excluded, note, affected }`: how each kind of evidence was used, and for how many CVEs it was left out (or set aside) |
-| `epss_missing[]` | Days whose EPSS file could not be loaded |
+| `signals[]` | `{ key, label, treatment: time_matched \| hindsight \| excluded \| today, note, affected }`: how each kind of evidence was used, and for how many CVEs it was left out (or set aside; for `today`, every CVE) |
+| `epss_missing[]` | Days whose EPSS file could not be loaded. For those CVEs CVErdict treats EPSS as unknown and `epss10` counts them as not flagged |
 | `items[]` | Per CVE, newest listing first: `{ id, kev_added, published, old, strict, upper, score, chips, cvss, epss, epss_date, left_out, row }`. `strict` and `upper` map each method to `true`/`false`; `score` and `chips` are CVErdict's strict score; `left_out` lists the `signals` keys the strict score had to leave out |
 | `command` | How to reproduce it: `npm run backtest` (`scripts/backtest.ts`) |
 

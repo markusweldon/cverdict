@@ -479,6 +479,8 @@ export interface ForwardReceipts {
   runs: number;
   /** Stretches of more than 3 hours without a run (the most recent 50), oldest first. */
   gaps: { from: string; to: string }[];
+  /** Every such stretch since `since`, not only the most recent 50: how many, and their hours in all. */
+  gap_total: { n: number; hours: number };
   /** Each CVE is watched while it is in the window (its first `watch_days` days, or from `since`). */
   watch_days: number;
   /** KEV additions dated from the `since` day to today. */
@@ -502,12 +504,14 @@ export interface BacktestSignal {
    * `time_matched`: only evidence dated before the listing day is used. `hindsight`: the source has
    * no usable date, so the strict scores leave it out and `upper` uses today's value.
    * `excluded`: never used, because it is the listing itself or follows from it.
+   * `today`: used as it is today in both variants, because no earlier version can be read
+   * (vendor and product names, tags, description text).
    */
-  treatment: 'time_matched' | 'hindsight' | 'excluded';
+  treatment: 'time_matched' | 'hindsight' | 'excluded' | 'today';
   note: string;
   /**
    * Backtest CVEs this touched: for `hindsight` signals, how many the strict scores had to leave
-   * out; for `excluded` ones, how many it was set aside or lowered for.
+   * out; for `excluded` ones, how many it was set aside or lowered for; for `today` ones, every CVE.
    */
   affected: number;
 }
@@ -552,6 +556,11 @@ export interface BacktestReceipts {
   hindsight: true;
   /** When the backtest was computed (it is refreshed about weekly). */
   computed_at: string;
+  /**
+   * Score model the backtest ran with (absent in copies written before this field existed). A copy
+   * from another model is recomputed, never carried forward.
+   */
+  score_model?: string;
   /** KEV dateAdded range, inclusive. */
   from: string;
   to: string;

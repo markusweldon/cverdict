@@ -10,6 +10,7 @@ function forward(o: Partial<ForwardReceipts> = {}): ForwardReceipts {
     last: '2026-12-01T03:00:00.000Z',
     runs: 600,
     gaps: [],
+    gap_total: { n: 0, hours: 0 },
     watch_days: 30,
     listed: 0,
     eligible: 0,

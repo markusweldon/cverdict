@@ -8,11 +8,13 @@
  *   time-matched  KEV prior (other listings before the cutoff), EPSS (the archived file of the day
  *                 before), Exploit-DB (date_added), PoC repos (created_at; vetted by age at the
  *                 cutoff), Metasploit modules whose earliest mod_time is before the cutoff, CISA
- *                 SSVC assessments timestamped before the cutoff, and the CNA (or CISA-ADP)
- *                 container when it has not changed since the cutoff.
+ *                 SSVC automatable and technical impact timestamped before the day before the
+ *                 listing, and the CNA (or CISA-ADP) container when it has not changed since the
+ *                 cutoff.
  *   hindsight     everything else that has no usable date: Nuclei templates, other Metasploit
- *                 modules, PoC star counts, SSVC assessed on or after the listing day, the SSVC
- *                 exploitation value in a changed container, CNA and CISA-ADP containers changed since. The strict scores leave these out (as
+ *                 modules, PoC star counts, SSVC stamped on the day before the listing or later,
+ *                 the SSVC exploitation value in a changed container, CNA and CISA-ADP containers
+ *                 changed since. The strict scores leave these out (as
  *                 unknown, never as absent); the `upper` variant ("with undated evidence") uses
  *                 today's values. Undated evidence is mostly exploits, so `upper` is usually higher,
  *                 but it is not a guaranteed bound (a low CVSS or a partial-impact SSVC costs points).
@@ -20,7 +22,9 @@
  *                 the listing), and in `upper` an SSVC "exploitation: active" that cannot be
  *                 shown to predate the listing (lowered to poc or none, as in scripts/calibrate.ts).
  *
- * Vendor and product names, tags and descriptions come from today's record in both variants.
+ *   today         vendor and product names, tags and descriptions: today's record in both
+ *                 variants (the earlier text cannot be read). They name the product for the KEV
+ *                 prior and mark noise; the page lists them as used as they are today.
  * The backtest only says whether each method would have flagged the CVE before the listing; it
  * does not estimate lead times (that needs the day each method first flagged it, which only the
  * forward log records).
@@ -44,6 +48,7 @@ import {
   type Row,
   type SourceId,
 } from '../../shared/contract';
+import { SCORE_MODEL } from '../../shared/model';
 import { EPSS, type SanityLimits } from './config';
 import { CVSS_LINE, EPSS_LINE } from './receipts';
 import { firedChipIds } from './rows';
@@ -119,10 +124,50 @@ export interface BacktestDecision {
   note: string;
 }
 
-/** Refresh when there is no previous backtest, or it is older than BACKTEST_REFRESH_DAYS (or from the future). */
+/**
+ * What is wrong with a backtest object, if anything: its figures must match its items, and every
+ * listing must be in a set or an exclusion. validate.ts runs it on every output; a carried copy that
+ * fails it is recomputed instead (so a stricter build never gets stuck on an older copy).
+ */
+export function backtestProblems(b: BacktestReceipts): string[] {
+  const out: string[] = [];
+  if (!b || b.hindsight !== true || !Array.isArray(b.items) || !Array.isArray(b.sets)) return ['backtest is not marked as hindsight or is incomplete'];
+  const total = b.sets.reduce((a, s) => a + s.n, 0);
+  const excluded = (b.excluded ?? []).reduce((a, e) => a + (Array.isArray(e?.ids) ? e.ids.length : 0), 0);
+  if (total !== b.items.length || total + excluded !== b.listed) out.push(`backtest sets (${total}) and exclusions (${excluded}) do not add up to ${b.listed} listings`);
+  for (const s of b.sets) {
+    const items = b.items.filter((i) => i.old === (s.key === 'old'));
+    for (const m of RECEIPT_METHODS) {
+      for (const variant of ['strict', 'upper'] as const) {
+        const score = Array.isArray(s[variant]) ? s[variant].find((x) => x.method === m) : undefined;
+        const hits = items.filter((i) => i[variant]?.[m]).length;
+        if (!score || score.n !== s.n || score.before !== hits || score.lead !== null) out.push(`backtest ${s.key}.${variant}.${m} does not match its items`);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Carry the previous backtest while it is younger than BACKTEST_REFRESH_DAYS. Refresh when there is
+ * none, when it is from the future, from another score model or inconsistent, and a day after a
+ * refresh that could not load some EPSS files (those CVEs would otherwise count as EPSS misses for
+ * a week).
+ */
 export function decideBacktest(previous: BacktestReceipts | null, now: Date, force = false): BacktestDecision {
   const age = previous ? now.getTime() - Date.parse(previous.computed_at) : NaN;
-  if (previous && !force && age >= 0 && age < BACKTEST_REFRESH_DAYS * DAY_MS) {
+  const why = !previous
+    ? null
+    : force
+      ? 'forced'
+      : !(age >= 0 && age < BACKTEST_REFRESH_DAYS * DAY_MS)
+        ? `computed ${previous.computed_at}`
+        : previous.score_model !== SCORE_MODEL
+          ? `score model ${previous.score_model ?? 'unknown'}, now ${SCORE_MODEL}`
+          : Array.isArray(previous.epss_missing) && previous.epss_missing.length > 0 && age >= DAY_MS
+            ? `${previous.epss_missing.length} EPSS days missing`
+            : backtestProblems(previous)[0] ?? null;
+  if (previous && why === null) {
     return { carried: previous, plan: null, note: `backtest carried forward (computed ${previous.computed_at})` };
   }
   const reuse: BacktestPlan['reuse'] = new Map();
@@ -139,7 +184,7 @@ export function decideBacktest(previous: BacktestReceipts | null, now: Date, for
   return {
     carried: null,
     plan: { volumeFrom: addDays(now, -BACKTEST_DAYS), reuse, skip },
-    note: previous ? `backtest refresh (previous computed ${previous.computed_at}; ${reuse.size} EPSS values reused)` : 'backtest refresh (no previous backtest)',
+    note: previous ? `backtest refresh (previous: ${why}; ${reuse.size} EPSS values reused)` : 'backtest refresh (no previous backtest)',
   };
 }
 
@@ -216,7 +261,12 @@ export const SIGNALS: readonly Omit<BacktestSignal, 'affected'>[] = [
   { key: 'kev_prior', label: 'Other KEV listings for the vendor or product', treatment: 'time_matched', note: 'Only listings dated before the listing day.' },
   { key: 'epss', label: 'EPSS', treatment: 'time_matched', note: 'The archived EPSS file from the day before. Left out when that file could not be loaded.' },
   { key: 'exploitdb', label: 'Exploit-DB', treatment: 'time_matched', note: 'Entries added before the listing day.' },
-  { key: 'poc', label: 'PoC repos on GitHub', treatment: 'time_matched', note: 'Repos created before the listing day. Repos deleted since cannot be seen.' },
+  {
+    key: 'poc',
+    label: 'PoC repos on GitHub',
+    treatment: 'time_matched',
+    note: 'Repos created before the listing day. A repo may have gained its exploit code later, and repos deleted since cannot be seen.',
+  },
   {
     key: 'poc_stars',
     label: 'PoC star counts',
@@ -234,7 +284,7 @@ export const SIGNALS: readonly Omit<BacktestSignal, 'affected'>[] = [
     key: 'ssvc',
     label: 'CISA SSVC automatable and technical impact',
     treatment: 'hindsight',
-    note: 'Counted when CISA dated the assessment before the listing day. A later one counts only with undated evidence: the earlier version cannot be read.',
+    note: 'Counted when CISA dated the assessment at least two days before the listing, or has not changed its part of the record since. CISA often dates the update it makes for a listing with the day before, so a later date counts only with undated evidence.',
   },
   {
     key: 'ssvc_exploitation',
@@ -253,6 +303,12 @@ export const SIGNALS: readonly Omit<BacktestSignal, 'affected'>[] = [
     label: 'CISA-ADP CVSS (when the CNA gave none)',
     treatment: 'hindsight',
     note: 'Counted when CISA has not changed its part of the record since the listing day. Otherwise only with undated evidence.',
+  },
+  {
+    key: 'record_text',
+    label: 'Vendor and product names, tags and description',
+    treatment: 'today',
+    note: 'Used as they read today in every figure, because the earlier text cannot be read. They name the product for the KEV history check and mark likely noise, such as WordPress plugins and disputed CVEs.',
   },
 ];
 
@@ -312,9 +368,11 @@ export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsO
   if (strict && allRepos.some((r) => r.stars > 0)) leftOut.push('poc_stars');
 
   // SSVC. The timestamp dates the assessment, but CISA changes the exploitation value when it lists
-  // a CVE (often stamping the day before), and only today's container can be read. So the
-  // exploitation value is time-matched only when CISA's container is unchanged since the cutoff;
-  // automatable and technical impact are time-matched by the timestamp.
+  // a CVE, and only today's container can be read. So the exploitation value is time-matched only
+  // when CISA's container is unchanged since the cutoff. Automatable and technical impact are
+  // time-matched by the timestamp, which must be before the day before the listing: CISA often
+  // stamps the assessment it rewrites at the listing with the day before (a clear spike in the
+  // data), so a stamp on that day cannot be told apart from the listing.
   let ssvc = cve.ssvc;
   const adpDated = before(cve.adpUpdated, cutoffMs);
   if (ssvc && !adpDated) {
@@ -322,7 +380,7 @@ export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsO
       const artifact = metasploit.length + nuclei.length + exploitdb.length + repos.filter((r) => !r.fork).length > 0;
       return artifact ? 'poc' : 'none';
     };
-    if (strict && !before(ssvc.timestamp, cutoffMs)) {
+    if (strict && !before(ssvc.timestamp, cutoffMs - DAY_MS)) {
       ssvc = null;
       leftOut.push('ssvc');
     } else if (strict && (ssvc.exploitation === 'active' || ssvc.exploitation === 'poc')) {
@@ -487,6 +545,7 @@ export function runBacktest({ now, kev, cves, enr, inputs, scored, rows }: Backt
   return {
     hindsight: true,
     computed_at: now.toISOString(),
+    score_model: SCORE_MODEL,
     from,
     to: ymd(now),
     days: BACKTEST_DAYS,
@@ -503,7 +562,7 @@ export function runBacktest({ now, kev, cves, enr, inputs, scored, rows }: Backt
     sets,
     volume: period.length > 0 ? { from: new Date(volumeFrom).toISOString(), n: period.length, methods: volume } : null,
     // The listing and today's EPSS are set aside for every CVE in the backtest.
-    signals: SIGNALS.map((s) => ({ ...s, affected: s.key === 'kev' || s.key === 'epss_today' ? items.length : (affected.get(s.key) ?? 0) })),
+    signals: SIGNALS.map((s) => ({ ...s, affected: s.key === 'kev' || s.key === 'epss_today' || s.treatment === 'today' ? items.length : (affected.get(s.key) ?? 0) })),
     epss_missing: [...epssMissing].sort(),
     items,
     command: BACKTEST_COMMAND,

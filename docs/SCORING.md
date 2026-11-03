@@ -389,18 +389,19 @@ published on or after its listing day, 1 without a published record):
 
 | Published up to 2 years before the listing (120) | Flagged before KEV (strict) | With undated evidence |
 |---|--:|--:|
-| CVErdict | 42 (35.0%) | 84 (70.0%) |
+| CVErdict | 37 (30.8%) | 84 (70.0%) |
 | CVSS 7 or more | 65 (54.2%) | 108 (90.0%) |
 | EPSS 10% or more | 17 (14.2%) | 17 (14.2%) |
 
 For the 19 CVEs published more than 2 years before their listing: CVErdict 15 (17 with undated
 evidence), CVSS 7 or more 3 (19), EPSS 10% or more 12. Over the same 180 days, with today's evidence, CVErdict
-flags 2.6% of the 68,198 new CVEs, CVSS 7 or more 52.2% and EPSS 10% or more 0.2%.
+flags 2.6% of the 68,169 new CVEs, CVSS 7 or more 52.2% and EPSS 10% or more 0.2%.
 
 The strict figures are unflattering for CVErdict, and for a known reason: CISA rewrites its part of
 the CVE record when it lists a CVE, so the strict variant cannot use CISA's SSVC exploitation value
-or CISA-ADP CVSS for almost any of these CVEs, and a CNA record changed after the listing loses its
-CVSS too. CVSS 7 or more catches more of these CVEs before KEV, at twenty times the alert volume.
+or CISA-ADP CVSS for almost any of these CVEs, nor an SSVC assessment stamped on the day before the
+listing (CISA often dates its listing update that way), and a CNA record changed after the listing
+loses its CVSS too. CVSS 7 or more catches more of these CVEs before KEV, at twenty times the alert volume.
 The forward log is the measurement that settles it.
 
 ## Known blind spots

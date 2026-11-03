@@ -49,7 +49,8 @@ export function forwardHeadline(f: ForwardReceipts): string[] {
   const first = `Since ${since}: CISA added ${plural(f.eligible, 'CVE')} we had already seen to KEV.`;
   if (!cv || cv.before === 0) return [first, `CVErdict flagged none of ${f.eligible === 1 ? 'it' : 'them'} first.`];
   const sameDay = cv.same_day > 0 ? ` (${fmtInt(cv.same_day)} of them on the listing day)` : '';
-  const median = cv.lead ? `, a median of ${days(cv.lead.median)} ${cv.lead.median === 1 ? 'day' : 'days'} earlier` : '';
+  // A median of 0 days is a same-day majority: the same-day count below says it in plain words.
+  const median = cv.lead && cv.lead.median > 0 ? `, a median of ${days(cv.lead.median)} ${cv.lead.median === 1 ? 'day' : 'days'} earlier` : '';
   return [first, `CVErdict flagged ${fmtInt(cv.before)} of ${f.eligible === 1 ? 'it' : 'them'} first${median}${sameDay}.`];
 }
 
