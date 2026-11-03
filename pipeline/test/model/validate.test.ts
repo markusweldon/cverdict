@@ -246,6 +246,7 @@ describe('validateOutput', () => {
     expect(check(() => {})).toEqual([]);
     expect(check((f) => void (f.packages.npm!['left-pad'][0][1] = 'OSV-2020-111'))[0]).toContain('OSV-2020-111 is from a database the attribution does not list');
     expect(check((f) => void (f.packages.npm!['left-pad'][0][2] = [['>=0', '< 1.3.1']]))[0]).toContain('has a malformed range');
+    expect(check((f) => void (f.packages.npm!['left-pad'][0][3] = ['1.0\u0007']))[0]).toContain('has malformed versions');
     expect(check((f) => void (f.packages.PyPI = { Django_Foo: f.packages.PyPI!['django-foo'] }))[0]).toContain('is not in packageKey() form');
     expect(check((f) => void (f.attribution = f.attribution.filter((a) => !a.notice)))).toContain(`${PATHS.packages}: attribution does not match shared/packages.ts ATTRIBUTION`);
     expect(check((f) => void (f.packages.Go = { x: f.packages.npm!['left-pad'] }))).toContain(`${PATHS.packages}: packages has Go, which is not an ecosystem with a copy`);
