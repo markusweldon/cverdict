@@ -312,7 +312,7 @@ function Backtest({ b }: { b: BacktestReceipts }) {
           </li>
         )}
         <li>Alert volume uses today's evidence, so it is hindsight too. It shows how many CVEs each rule would ask you to patch.</li>
-        <li>The backtest only says yes or no. It does not measure lead time: that needs the hour each method first flagged a CVE, which only the live record has.</li>
+        <li>The backtest only says yes or no. It does not measure lead time: that needs the time each method first flagged a CVE, which only the live record has.</li>
         <li>
           Left out of every figure: {b.excluded.length === 0 ? 'nothing.' : b.excluded.map((e) => <Excluded key={e.code} e={e} />)}
           {b.epss_missing.length > 0 &&
@@ -477,12 +477,15 @@ export default function Receipts() {
           How often CVErdict flagged a CVE before CISA confirmed it as exploited, next to two common rules: patch everything with a CVSS score of 7 or more, and patch everything with an EPSS score of 10% or
           more. The misses are listed too.
         </p>
-        <nav class="toc" aria-label="On this page">
-          <a href="#live">The live record</a>
-          <a href="#how">How this is measured</a>
-          <a href="#backtest">Backtest (hindsight)</a>
-          <a href="#cves">Every CVE</a>
-        </nav>
+        {/* Kept while loading (no layout shift); without data none of its targets exist. */}
+        {receipts.status !== 'error' && (
+          <nav class="toc" aria-label="On this page">
+            <a href="#live">The live record</a>
+            <a href="#how">How this is measured</a>
+            <a href="#backtest">Backtest (hindsight)</a>
+            <a href="#cves">Every CVE</a>
+          </nav>
+        )}
         <div class="page__actions">
           <a class="btn btn--ghost" href={json} target="_blank" rel="noopener noreferrer">
             <IconCode size={14} /> JSON
