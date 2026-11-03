@@ -81,19 +81,21 @@ describe('log encoding', () => {
     expect(readSection(parseState('{"schema_version":1'), RECEIPTS_SECTION)).toBeNull();
   });
 
-  it('keeps a 400-day log of 200,000 CVEs within the state.json budget', () => {
-    // Realistic shape: ~520 new CVEs a day, spread over 400 days of runs about every 30 minutes
-    // (at a jittered minute); half cross CVSS 7 on the first run, 2% are flagged within the
-    // window, 0.2% cross EPSS 10% after a few days. Times are minutes.
+  it('keeps a 400-day log at October 2026 volume under the state.json warning level', () => {
+    // Realistic shape: ~560 new CVEs a day (225,000 over 400 days), spread over runs about every
+    // 30 minutes (at a jittered minute); half cross CVSS 7 on the first run, 2% are flagged within
+    // the window, 0.2% cross EPSS 10% after a few days. Times are minutes, about 2.5 bytes gzip
+    // per CVE.
+    const N = 225_000;
     const entries = new Map<string, LogEntry>();
     const m0 = minuteOf(T0);
     const runAt = (run: number) => run * 30 + Math.floor(rand() * 12);
     let seq = 10000;
     let state = 12345;
     const rand = () => ((state = (state * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
-    for (let i = 0; i < 200_000; i++) {
+    for (let i = 0; i < N; i++) {
       seq += 1 + Math.floor(rand() * 3);
-      const seen = m0 + runAt(Math.floor((i / 200_000) * LOG_RETENTION_DAYS * 48 + rand() * 12));
+      const seen = m0 + runAt(Math.floor((i / N) * LOG_RETENTION_DAYS * 48 + rand() * 12));
       const r = rand();
       entries.set(`CVE-${seq > 190000 ? 2027 : 2026}-${seq}`, {
         seen,
@@ -107,9 +109,9 @@ describe('log encoding', () => {
     }
     const log: ReceiptsLog = { since: T0.toISOString(), last: T0.toISOString(), runs: 9600, gaps: [], gapTotal: { n: 0, hours: 0 }, entries, pruned: { n: 0, cverdict: 0, cvss7: 0, epss10: 0 } };
     const gz = gzipSync(JSON.stringify(encodeLog(log))).length;
-    // Woke tracking uses ~25 KB of the same file.
-    expect(gz + 30 * 1024).toBeLessThan(BUDGETS.gzipBytes['v1/state.json']);
-    expect(decodeLog(JSON.parse(JSON.stringify(encodeLog(log))))!.entries.size).toBe(200_000);
+    // Woke tracking uses ~25 KB of the same file. A run warns from warnRatio of the budget on.
+    expect((gz + 30 * 1024) / BUDGETS.gzipBytes['v1/state.json']).toBeLessThan(BUDGETS.warnRatio);
+    expect(decodeLog(JSON.parse(JSON.stringify(encodeLog(log))))!.entries.size).toBe(N);
   });
 });
 
