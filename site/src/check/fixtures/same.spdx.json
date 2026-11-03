@@ -1,0 +1,12 @@
+{"spdxVersion": "SPDX-2.3", "SPDXID": "SPDXRef-DOCUMENT", "name": "order-service",
+ "creationInfo": {"created": "2026-11-03T00:00:00Z", "creators": ["Tool: hand-written"]},
+ "documentDescribes": ["SPDXRef-order-service"],
+ "packages": [
+  {"SPDXID": "SPDXRef-order-service", "name": "com.example:order-service", "versionInfo": "1.4.0", "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:maven/com.example/order-service@1.4.0?type=jar"}]},
+  {"SPDXID": "SPDXRef-1", "name": "log4j-core", "versionInfo": "2.14.1", "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"}]},
+  {"SPDXID": "SPDXRef-2", "name": "log4j-api", "versionInfo": "2.14.1", "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:maven/org.apache.logging.log4j/log4j-api@2.14.1"}]},
+  {"SPDXID": "SPDXRef-3", "name": "com.example/internal-utils", "versionInfo": "0.3.0-SNAPSHOT"},
+  {"SPDXID": "SPDXRef-4", "name": "libssl3", "versionInfo": "3.0.11-1~deb12u2", "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:deb/debian/libssl3@3.0.11-1~deb12u2?arch=amd64&distro=debian-12"}]}
+ ],
+ "relationships": [{"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES", "relatedSpdxElement": "SPDXRef-order-service"}]
+}

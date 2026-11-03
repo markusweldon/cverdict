@@ -27,6 +27,7 @@ describe('fixtures (one per format, detected from the file name)', () => {
         'PyPI:жук@0.1',
         'crates.io:thạch@2.0.0',
         'PyPI:brotli@1.1.0',
+        '?:shop !no-purl',
         '?:no-purl-lib !no-purl',
         '?:broken !bad-purl',
         '?:debian !no-purl',
@@ -34,7 +35,11 @@ describe('fixtures (one per format, detected from the file name)', () => {
         'Maven:org.apache.logging.log4j:log4j-api@2.14.1',
       ],
     ],
-    ['bom.xml', 'cyclonedx-xml', ['Maven:org.apache.logging.log4j:log4j-core@2.14.1', 'npm:@pkgr/core@0.2.8', 'crates.io:webp@0.2.6', 'crates.io:libwebp-sys@0.9.5']],
+    [
+      'bom.xml',
+      'cyclonedx-xml',
+      ['?:shop !no-purl', 'Maven:org.apache.logging.log4j:log4j-core@2.14.1', 'npm:@pkgr/core@0.2.8', 'crates.io:webp@0.2.6', 'crates.io:libwebp-sys@0.9.5', '?:vendored-thing !no-purl'],
+    ],
     ['app.spdx.json', 'spdx-json', ['Maven:org.apache.logging.log4j:log4j-core@2.14.1', 'Maven:com.thoughtworks.xstream:xstream@1.4.18', 'deb:debian/libc6 !ecosystem', '?:internal-tool !no-purl']],
     ['app.spdx3.json', 'spdx-json', ['PyPI:brotli@1.1.0', 'Maven:com.thoughtworks.xstream:xstream@1.4.17']],
     ['app.spdx', 'spdx-tag', ['Maven:org.apache.logging.log4j:log4j-core@2.14.1', 'RubyGems:actionview@5.2.1', 'apk:alpine/zlib !ecosystem', '?:in-house !no-purl']],
@@ -77,16 +82,44 @@ describe('fixtures (one per format, detected from the file name)', () => {
   it('reads a real CycloneDX SBOM of this repository (cyclonedx-npm 6.0.1)', () => {
     const p = parse(fixture('cverdict.cdx.json'), 'bom.json');
     expect(p.format).toBe('cyclonedx-json');
-    expect(p.components.length).toBe(163);
-    expect(new Set(p.components.map((c) => `${c.name}@${c.version}`)).size).toBe(162);
+    // The 162 dependencies, one listed twice, and the SBOM's subject.
+    expect(p.components.length).toBe(164);
+    expect(new Set(p.components.map((c) => `${c.name}@${c.version}`)).size).toBe(163);
+    expect(p.components.filter((c) => c.name === 'cverdict').map((c) => c.version)).toEqual(['0.1.0']);
     expect(p.components.every((c) => c.eco === 'npm' && c.version && !c.skip)).toBe(true);
   });
 
   it('notes what it could not read', () => {
-    expect(read(fixture('bom.xml')).notes).toEqual(['2 of 6 components have no package URL and were not checked.']);
+    expect(read(fixture('bom.xml')).notes).toEqual([]);
     expect(read(fixture('purls.txt')).notes).toEqual(['Ignored a line that is not a package URL.']);
     expect(read(fixture('requirements.txt')).notes).toEqual(['A line includes another requirements file (-r or -c). Check that file too.']);
     expect(read(fixture('go.sum')).notes).toEqual([GO_SUM_NOTE]);
+  });
+});
+
+describe('one SBOM in three formats', () => {
+  it('gives the same packages as CycloneDX JSON, CycloneDX XML and SPDX JSON: the subject in, tools and build components out', () => {
+    const want = [
+      'Maven:com.example:order-service@1.4.0',
+      'Maven:org.apache.logging.log4j:log4j-core@2.14.1',
+      'Maven:org.apache.logging.log4j:log4j-api@2.14.1',
+      '?:com.example/internal-utils !no-purl',
+      'deb:debian/libssl3 !ecosystem',
+    ].sort();
+    for (const file of ['same.cdx.json', 'same.cdx.xml', 'same.spdx.json']) {
+      const r = read(fixture(file), file);
+      expect([file, [...r.items].sort(), r.notes]).toEqual([file, want, []]);
+    }
+  });
+
+  it('reads CycloneDX XML fields of the component itself, never of its license, supplier or a comment', () => {
+    const xml =
+      '<bom xmlns="http://cyclonedx.org/schema/bom/1.6"><components><component><supplier><name>Acme</name></supplier><name>a</name><licenses><license><name>MIT</name></license></licenses>' +
+      '<version>1.0.0</version></component><!-- <component><name>hidden</name></component> --><component/><component><name>b<b>bold</b></name></component></components></bom>';
+    expect(read(xml).items).toEqual(['?:a !no-purl', '?:(no name) !no-purl']);
+    // An unclosed comment or a file cut off mid-way ends the reading; what came before is kept.
+    expect(read('<bom xmlns="http://cyclonedx.org/schema/bom/1.6"><components><component><purl>pkg:npm/x@1.0.0</purl></component><!-- <component>').items).toEqual(['npm:x@1.0.0']);
+    expect(read('<bom xmlns="http://cyclonedx.org/schema/bom/1.6"><components><component><purl>pkg:npm/y@2.0.0</purl>').items).toEqual(['npm:y@2.0.0']);
   });
 });
 
