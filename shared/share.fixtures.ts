@@ -73,7 +73,7 @@ export const EXPLOITED_KEV = detail({
     r('ssvc.active', 'CISA SSVC: exploitation active · Oct 21', 'E', 0),
     r('x.nuclei', 'Nuclei template (http · critical): scannable at scale', 'X', 30),
     r('x.exploitdb', 'Exploit-DB 52704 (verified) · Oct 22', 'X', 0),
-    r('x.poc', '746 PoC repos (729 vetted) — unverified, may be malware', 'X', 0),
+    r('x.poc', '746 PoC repos (729 vetted) \u2014 unverified, may be malware', 'X', 0),
     r('sev.crit_net', 'Critical 9.2 · network (v4.0)', 'SEV', 13),
     r('ssvc.total', 'CISA SSVC: total technical impact', 'SSVC', 8),
     r('ssvc.not_automatable', 'CISA SSVC: not automatable', 'SSVC', -2, 'down'),
@@ -122,7 +122,7 @@ export const LIKELY_MSF = detail({
   affected: [{ vendor: 'IBM', product: 'Langflow OSS', purl: null }],
   exploits: { ...noExploits(), metasploit: [msf], poc: { count: 1, vetted: 1, hype: false, top: [] } },
   score: { value: 84, tier: 'likely', raw: 84, model: 'v0.1.0' },
-  reasons: [r('x.metasploit', 'Metasploit: exploit/multi/http/langflow_rce (excellent)', 'X', 34), r('x.poc', '1 PoC repo (1 vetted) — unverified, may be malware', 'X', 0), r('sev.crit_net', 'Critical 9.8 · network', 'SEV', 13)],
+  reasons: [r('x.metasploit', 'Metasploit: exploit/multi/http/langflow_rce (excellent)', 'X', 34), r('x.poc', '1 PoC repo (1 vetted) \u2014 unverified, may be malware', 'X', 0), r('sev.crit_net', 'Critical 9.8 · network', 'SEV', 13)],
 });
 
 export const LIKELY_NUCLEI = detail({
@@ -149,7 +149,7 @@ export const LIKELY_POC = detail({
   affected: [{ vendor: 'ordasoft.com', product: 'OrdaSoft Joomla CCK', purl: null }],
   exploits: { ...noExploits(), poc: { count: 2, vetted: 2, hype: false, top: [] } },
   score: { value: 56, tier: 'likely', raw: 56, model: 'v0.1.0' },
-  reasons: [r('x.poc', '2 PoC repos (2 vetted) — unverified, may be malware', 'X', 20), r('sev.crit_net', 'Critical 9.3 · network (v4.0)', 'SEV', 13)],
+  reasons: [r('x.poc', '2 PoC repos (2 vetted) \u2014 unverified, may be malware', 'X', 20), r('sev.crit_net', 'Critical 9.3 · network (v4.0)', 'SEV', 13)],
 });
 
 export const LIKELY_FUNCTIONAL = detail({
@@ -167,7 +167,7 @@ export const LIKELY_EPSS = detail({
   epss: { score: 0.34113, percentile: 0.97, date: '2026-11-02', model: 'v2026.06.15' },
   exploits: { ...noExploits(), poc: { count: 1, vetted: 1, hype: false, top: [] } },
   score: { value: 69, tier: 'likely', raw: 69, model: 'v0.1.0' },
-  reasons: [r('epss.high', 'EPSS 34.1% · 97th pct', 'X', 27), r('x.poc', '1 PoC repo (1 vetted) — unverified, may be malware', 'X', 0), r('sev.crit_net', 'Critical 9.8 · network', 'SEV', 13)],
+  reasons: [r('epss.high', 'EPSS 34.1% · 97th pct', 'X', 27), r('x.poc', '1 PoC repo (1 vetted) \u2014 unverified, may be malware', 'X', 0), r('sev.crit_net', 'Critical 9.8 · network', 'SEV', 13)],
 });
 
 export const LIKELY_SCORE = detail({
@@ -204,7 +204,7 @@ export const QUIET_POC = detail({
   exploits: { ...noExploits(), poc: { count: 1, vetted: 1, hype: false, top: [] } },
   score: { value: 24, tier: 'quiet', raw: 24, model: 'v0.1.0' },
   reasons: [
-    r('x.poc', '1 PoC repo (1 vetted) — unverified, may be malware', 'X', 20, 'up', '2026-10-30T21:26:52.000Z'),
+    r('x.poc', '1 PoC repo (1 vetted) \u2014 unverified, may be malware', 'X', 20, 'up', '2026-10-30T21:26:52.000Z'),
     r('sev.low', 'Medium 5.3 · network (v4.0)', 'SEV', -13, 'down'),
     r('ssvc.not_automatable', 'CISA SSVC: not automatable', 'SSVC', -2, 'down'),
     r('ssvc.partial', 'CISA SSVC: partial technical impact', 'SSVC', -6, 'down'),
@@ -225,11 +225,11 @@ export const QUIET_CJK = detail({
 export const HOSTILE = detail({
   id: 'CVE-2026-99999',
   cna: 'evil<cna>',
-  affected: [{ vendor: '"><script>alert(1)</script>‮gnp.exe​ $& $\' $`', product: `${'漏洞 产品 😀 '.repeat(40)}\u0007`, purl: null }],
+  affected: [{ vendor: '"><script>alert(1)</script>\u202Egnp.exe\u200B $& $\' $`', product: `${'漏洞 产品 😀 '.repeat(40)}\u0007`, purl: null }],
   epss: { score: Number.NaN, percentile: Number.NaN, date: 'not a date', model: '' },
   kev: { ...kev('2026-02-30'), date_added: 'yesterday' },
   score: { value: 77, tier: 'exploited', raw: 77, model: 'v0.1.0' },
-  reasons: [r('kev.listed', 'CISA KEV', 'E', 13), r('prior.product', 'Product in KEV (×2): </title><script>x</script> \u0007bell — dash', 'PRIOR', 10)],
+  reasons: [r('kev.listed', 'CISA KEV', 'E', 13), r('prior.product', 'Product in KEV (×2): </title><script>x</script> \u0007bell \u2014 dash', 'PRIOR', 10)],
 });
 
 /** A minimal shard file around some records. */

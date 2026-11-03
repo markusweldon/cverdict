@@ -137,11 +137,11 @@ describe('preview text', () => {
   it('writes no em dash anywhere, even for invalid dates and a non-finite EPSS score', () => {
     const odd = { ...F.LIKELY_EPSS, epss: { score: Number.POSITIVE_INFINITY, percentile: 0, date: 'x', model: '' }, kev: { ...F.EXPLOITED_KEV.kev!, date_added: '2026-13-01', due_date: '' } };
     for (const d of [...ALL.map(([, x]) => x), odd]) {
-      for (const text of [desc(d), head(d), desc(d, 60)]) expect(text).not.toContain('—');
+      for (const text of [desc(d), head(d), desc(d, 60)]) expect(text).not.toContain('\u2014');
     }
     expect(desc(odd)).toContain('Likely next: score 69 clears the default knob (50).');
     expect(desc(odd)).toContain('CISA KEV: listed.');
-    expect(genericHead(F.ORIGIN) + notInDataHead(F.ORIGIN, 'CVE-2019-0001') + minimalTemplate(F.ORIGIN)).not.toContain('—');
+    expect(genericHead(F.ORIGIN) + notInDataHead(F.ORIGIN, 'CVE-2019-0001') + minimalTemplate(F.ORIGIN)).not.toContain('\u2014');
   });
 
   it('traces every number to the record, the run time or the published constants', () => {
@@ -202,10 +202,10 @@ describe('verdict helpers', () => {
 describe('cleanText and escapeHtml', () => {
   it('removes controls, zero-width and bidi characters, and collapses whitespace', () => {
     expect(cleanText('a\u0007b\tc\n\u0085d', 50)).toBe('a b c d');
-    expect(cleanText('Mi​cro‍soft﻿ ⁠Corp', 50)).toBe('Microsoft Corp');
-    expect(cleanText('‮gnp.exe‬ ⁦x⁩', 50)).toBe('gnp.exe x');
+    expect(cleanText('Mi\u200Bcro\u200Dsoft\uFEFF \u2060Corp', 50)).toBe('Microsoft Corp');
+    expect(cleanText('\u202Egnp.exe\u202C \u2066x\u2069', 50)).toBe('gnp.exe x');
     expect(cleanText('lone \uD800 high', 50)).toBe('lone high');
-    expect(cleanText('a — b—c', 50)).toBe('a, b-c');
+    expect(cleanText('a \u2014 b\u2014c', 50)).toBe('a, b-c');
   });
 
   it('cuts by code point, never inside a surrogate pair', () => {
@@ -216,7 +216,7 @@ describe('cleanText and escapeHtml', () => {
   });
 
   it('caps a 1 MB input before any regex work', () => {
-    const big = `${' ​'.repeat(500_000)}x`;
+    const big = `${' \u200B'.repeat(500_000)}x`;
     const t0 = performance.now();
     expect(cleanText(big, 60)).toBe('');
     expect(cleanText(`x${'y'.repeat(1_000_000)}`, 60)).toHaveLength(60);
@@ -270,7 +270,7 @@ describe('shareHead', () => {
     const h = head(F.HOSTILE);
     expect(h).not.toMatch(/<script/i);
     expect(h).not.toContain('"><');
-    expect(h).not.toMatch(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​‮]/);
+    expect(h).not.toMatch(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B\u202E]/);
     // Only <title>, <meta> and <link rel="canonical"> come out, and every attribute is quoted.
     for (const el of h.match(/<[^>]+>/g) ?? []) expect(el).toMatch(/^<(title|\/title|meta (property|name)="[a-z_:0-9]+" content="[^"<>]*" \/|link rel="canonical" href="[^"<>]*" \/)>$/);
     expect(cps(tag(h, 'name', 'description')[0])).toBeLessThanOrEqual(DESCRIPTION_MAX);
@@ -450,7 +450,7 @@ describe('share images', () => {
       expect(png.subarray(12, 16).toString('latin1')).toBe('IHDR');
       expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([SHARE_IMAGE_WIDTH, SHARE_IMAGE_HEIGHT]);
       expect(png.length).toBeLessThan(120_000);
-      expect(img.alt).not.toContain('—');
+      expect(img.alt).not.toContain('\u2014');
     }
   });
 });
