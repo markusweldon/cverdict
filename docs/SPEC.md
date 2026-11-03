@@ -44,7 +44,7 @@ site/
   index.html  vite.config.ts  public/ (favicon.svg, robots.txt; data/ is gitignored, written by the pipeline)
   src/       main.tsx  app.tsx  router.ts  data.ts  state.ts  format.ts
              components/  pages/  styles/  check/ (SBOM and lockfile parsers, matching, session)
-.github/workflows/  ci.yml  refresh.yml
+.github/workflows/  ci.yml  refresh.yml  release-mcp.yml
 mcp/                read-only MCP server for AI agents (stdio), reading the published files
   src/                     data.ts (bounded, cached reads)  tools.ts (the six tools)  server.ts (factory)  stdio.ts
   test/                    vitest: fake-fetch unit, protocol and spawn tests; smoke.ts (CI, on mock data)
@@ -325,3 +325,6 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
   ESM, `npm test`, `npm run build` and a check of the built share block, `npm run build:mcp` and an MCP smoke test of
   the bundle on mock data (`mcp/test/smoke.ts`), `shellcheck`, the data-branch publisher test and the `vercel.json`
   JSON check.
+- **MCP releases.** `release-mcp.yml` on a tag `mcp-v<version>`: a read-only job checks the tag against
+  `mcp/package.json`, runs the typecheck, the MCP tests and the smoke test, and packs the bundle; a second job, which
+  runs none of that code, publishes the tarball to npm through trusted publishing (OIDC, with provenance).

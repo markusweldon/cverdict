@@ -9,7 +9,32 @@ It runs on your machine over stdio and reads the published `data` branch on
 raw.githubusercontent.com, then the site's `/data/` copy if GitHub fails. It needs the site only
 when GitHub fails, so it keeps working when the site is down.
 
-**Status:** an npm package (`cverdict-mcp`) will follow. Until then, run it from a clone.
+## Install
+
+Node 22.12 or later. The package is [`cverdict-mcp`](https://www.npmjs.com/package/cverdict-mcp)
+on npm: one file, no runtime dependencies, published from GitHub Actions with provenance.
+
+```sh
+# Claude Code
+claude mcp add cverdict -- npx -y cverdict-mcp
+```
+
+Other clients take an `mcpServers` entry (key names vary by client):
+
+```json
+{
+  "mcpServers": {
+    "cverdict": {
+      "command": "npx",
+      "args": ["-y", "cverdict-mcp"]
+    }
+  }
+}
+```
+
+On Windows, clients that cannot start `npx` directly take `"command": "cmd"` and
+`"args": ["/c", "npx", "-y", "cverdict-mcp"]`. `npx -y` runs the newest version; pin one with
+`cverdict-mcp@0.1.0`.
 
 ## Run it from a clone
 
@@ -149,9 +174,20 @@ The SDK (`@modelcontextprotocol/server`) and `zod` are exact-pinned dev dependen
 repository and are bundled into `dist/cverdict-mcp.mjs`, so the package has no runtime
 dependencies. The site never imports them: `shared/mcp.ts` holds the copy both use.
 
-Publishing later (owner): remove `"private": true` from `mcp/package.json`, then, in a GitHub
-Actions job with `permissions: id-token: write` (npm only makes provenance in CI), run
-`npm ci` and `npm run build:mcp` at the root and `npm publish --provenance` in `mcp/`.
+## Releasing
+
+Maintainers only. Set `version` in `mcp/package.json` and `MCP_SERVER.version` in `shared/mcp.ts`
+to the new version (a test keeps them equal), commit, and push a tag `mcp-v<version>`, for example
+`git tag mcp-v0.1.1 && git push origin mcp-v0.1.1`. The release workflow
+([`.github/workflows/release-mcp.yml`](../.github/workflows/release-mcp.yml)) checks that the tag
+matches the version, runs the MCP tests and the smoke test, packs the bundle and publishes it to
+npm through trusted publishing, with provenance. No npm token is stored anywhere.
+
+One-time setup: the first version is published by hand (`npm run build:mcp` at the root, then
+`npm login` and `npm publish` in `mcp/`). Then on npmjs.com, package `cverdict-mcp` → Settings →
+Trusted publishing → GitHub Actions: owner `markusweldon`, repository `cverdict`, workflow
+`release-mcp.yml`, no environment. Under Publishing access, choose to require two-factor
+authentication and disallow tokens.
 
 ## License
 

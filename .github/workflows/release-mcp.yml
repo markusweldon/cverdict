@@ -1,0 +1,107 @@
+# Publishes the MCP server (mcp/) to npm as cverdict-mcp when a tag mcp-v<version> is pushed.
+#
+# npm trusted publishing: npm accepts a short-lived token from this workflow instead of a stored
+# npm token, and adds provenance (which commit and workflow built the package). Set it up once on
+# npmjs.com, package cverdict-mcp → Settings → Trusted publishing → GitHub Actions, with this
+# repository and the workflow file name release-mcp.yml (mcp/README.md, "Releasing").
+#
+# The build job runs npm ci, the tests and the bundler with a read-only token and no id-token. The
+# publish job runs none of that code: it only downloads the packed tarball and publishes it, so no
+# dependency ever runs where an npm publish token can be minted.
+name: release-mcp
+
+on:
+  push:
+    tags: ['mcp-v*']
+
+concurrency:
+  group: release-mcp
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  build:
+    name: Check and pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The tag names the version: mcp-v0.1.1 publishes 0.1.1, and only if package.json says so.
+      - name: Check the tag against the package version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(jq -r .version mcp/package.json)
+          if [ "$TAG" != "mcp-v$version" ]; then
+            echo "::error::tag $TAG does not match mcp/package.json version $version (expected mcp-v$version)"
+            exit 1
+          fi
+
+      - run: npm run typecheck
+
+      - name: MCP tests
+        run: npx vitest run mcp/test
+
+      - name: Build the MCP server
+        run: npm run build:mcp
+
+      - name: MCP smoke test
+        run: |
+          npx tsx scripts/mock-data.ts "$RUNNER_TEMP/mcp-data"
+          npx tsx mcp/test/smoke.ts mcp/dist/cverdict-mcp.mjs "$RUNNER_TEMP/mcp-data"
+
+      - name: Pack
+        id: pack
+        working-directory: mcp
+        run: |
+          tarball=$(npm pack --silent --pack-destination "$RUNNER_TEMP/pkg")
+          tar -tzf "$RUNNER_TEMP/pkg/$tarball"
+          echo "tarball=$tarball" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mcp-package
+          path: ${{ runner.temp }}/pkg/${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mcp-package
+          path: pkg
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@11.21.1
+
+      - name: Publish
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: npm publish "pkg/$TARBALL" --access public

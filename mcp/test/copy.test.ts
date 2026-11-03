@@ -64,11 +64,15 @@ describe('package and docs', () => {
   const pkg = JSON.parse(read('mcp/package.json'));
   const root = JSON.parse(read('package.json'));
 
-  it('prepares cverdict-mcp without publishing it', () => {
+  it('is publishable as cverdict-mcp, with what npm provenance and the MCP Registry check', () => {
     expect(pkg.name).toBe(MCP_SERVER.npm);
     expect(pkg.name).toBe('cverdict-mcp');
     expect(pkg.version).toBe(MCP_SERVER.version);
-    expect(pkg.private).toBe(true);
+    expect(pkg.private).toBeUndefined();
+    // Provenance requires the repository to be the one the release workflow runs in.
+    expect(pkg.repository).toEqual({ type: 'git', url: 'git+https://github.com/markusweldon/cverdict.git', directory: 'mcp' });
+    // The MCP Registry checks that the npm package names the server it lists.
+    expect(pkg.mcpName).toBe(MCP_SERVER.name);
     expect(pkg.bin).toEqual({ 'cverdict-mcp': 'dist/cverdict-mcp.mjs' });
     expect(pkg.files).toEqual(['dist', 'LICENSE', 'LICENSE-THIRD-PARTY', 'README.md']);
     expect(pkg.dependencies).toBeUndefined();
