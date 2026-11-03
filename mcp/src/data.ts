@@ -2,10 +2,11 @@
  * Reads the published data tree (shared/contract.ts) for the MCP tools.
  *
  * - Bases are tried in order (the data branch on raw.githubusercontent.com, then the site's /data/
- *   rewrite). A 404 is final; 429 and 403 move that base to the back for 10 minutes; network
- *   errors, timeouts, refused redirects, 5xx and malformed files fall through to the next base.
+ *   rewrite). A 404 is final; 429, 403 and timeouts move that base to the back for 10 minutes;
+ *   network errors, refused redirects, 5xx and malformed files fall through to the next base.
  * - Every tool call runs under one deadline (10 s); each attempt must answer with headers within
- *   4 s. Bodies are capped at 24 MB decoded, which also stops a compression bomb from a mirror.
+ *   4 s, and its body must not pause for 4 s. Bodies are capped at 24 MB decoded, which also stops
+ *   a compression bomb from a mirror.
  * - Files are checked before use: schema_version, generated_at, and the exact ROW_COLS of row
  *   tables, so no `__proto__` column can reach rowFromColumns.
  * - Parsed files are cached per pipeline run. meta.json is refetched after 300 s (raw and the site
@@ -131,26 +132,41 @@ function why(e: unknown): string {
 class AttemptTimeout extends Error {}
 class Deadline extends Error {}
 
-/** Reads a body up to `max` decoded bytes, cancelling the stream past it. */
-async function readCapped(res: Response, max: number): Promise<string> {
-  const len = Number(res.headers.get('content-length') ?? '');
-  if (len > max) {
-    await res.body?.cancel();
-    throw new Error(`body over ${max} bytes`);
-  }
+/** A promise that rejects with the signal's reason once it aborts, and a way to stop listening. */
+function whenAborted(signal: AbortSignal): { promise: Promise<never>; off: () => void } {
+  let off = () => {};
+  const promise = new Promise<never>((_, reject) => {
+    if (signal.aborted) return reject(signal.reason);
+    const on = () => reject(signal.reason);
+    signal.addEventListener('abort', on, { once: true });
+    off = () => signal.removeEventListener('abort', on);
+  });
+  promise.catch(() => {});
+  return { promise, off };
+}
+
+/**
+ * Reads a body up to `max` decoded bytes. Every read races `stop`, so an abort ends the read even
+ * when it does not reach the stream itself; `progress` runs before each read (the stall timer).
+ */
+async function readCapped(res: Response, max: number, stop: Promise<never>, progress: () => void): Promise<string> {
+  if (Number(res.headers.get('content-length') ?? '') > max) throw new Error(`body over ${max} bytes`);
   if (!res.body) return '';
   const reader = res.body.getReader();
   const chunks: Uint8Array[] = [];
   let n = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    n += value.byteLength;
-    if (n > max) {
-      await reader.cancel();
-      throw new Error(`body over ${max} bytes`);
+  try {
+    for (;;) {
+      progress();
+      const { done, value } = await Promise.race([reader.read(), stop]);
+      if (done) break;
+      n += value.byteLength;
+      if (n > max) throw new Error(`body over ${max} bytes`);
+      chunks.push(value);
     }
-    chunks.push(value);
+  } catch (e) {
+    void reader.cancel().catch(() => {});
+    throw e;
   }
   return Buffer.concat(chunks, n).toString('utf8');
 }
@@ -160,7 +176,8 @@ export class DataClient {
   private readonly files = new Map<string, Entry<unknown>>();
   /** Least recently inserted first; at most maxShards. */
   private readonly shardCache = new Map<string, Entry<unknown>>();
-  private readonly inflight = new Map<string, Promise<Entry<unknown>>>();
+  /** Fetches in progress, shared by concurrent calls, with the signal of the call that started each. */
+  private readonly inflight = new Map<string, { p: Promise<Entry<unknown>>; signal: AbortSignal }>();
   private readonly skipUntil = new Map<string, number>();
   /** Requests sent, for tests and measurements. */
   requests = 0;
@@ -197,26 +214,47 @@ export class DataClient {
     }
   }
 
-  /** Bases in order, with the ones that recently answered 429 or 403 moved to the back. */
+  /** Bases in order, with the ones that recently answered 429 or 403, or timed out, moved to the back. */
   private orderedBases(): string[] {
     const now = this.o.now();
     const skipped = (b: string) => (this.skipUntil.get(b) ?? 0) > now;
     return [...this.o.bases.filter((b) => !skipped(b)), ...this.o.bases.filter(skipped)];
   }
 
-  /** One GET with headers due within attemptTimeoutMs; the body stays bound to the call's deadline. */
-  private async attempt(url: string, signal: AbortSignal): Promise<Response> {
+  /**
+   * One GET within the call's deadline: response headers within attemptTimeoutMs, then a body that
+   * never pauses for longer than that (a slow body that keeps arriving is fine). The attempt has its
+   * own controller, aborted by a listener on the call's signal, and every await races it. Not
+   * AbortSignal.any(): its composite signal can be garbage-collected during a long body read, and
+   * then no abort reaches the read, which hung the call and every later call that joined its fetch.
+   */
+  private async get(url: string, signal: AbortSignal): Promise<{ status: number; body: string }> {
     // A call that has ended (or timed out) sends nothing more.
     if (signal.aborted) throw signal.reason;
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(new AttemptTimeout(`timed out after ${this.o.attemptTimeoutMs / 1000} s`)), this.o.attemptTimeoutMs);
+    const forward = () => ac.abort(signal.reason);
+    signal.addEventListener('abort', forward, { once: true });
+    const stop = whenAborted(ac.signal);
+    const s = this.o.attemptTimeoutMs / 1000;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const arm = (why: string) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => ac.abort(new AttemptTimeout(why)), this.o.attemptTimeoutMs);
+    };
+    arm(`timed out after ${s} s`);
     this.requests++;
+    let res: Response | undefined;
     try {
-      return await this.o.fetch(url, { signal: AbortSignal.any([signal, ac.signal]), redirect: 'error', headers: { accept: 'application/json' } });
+      res = await Promise.race([this.o.fetch(url, { signal: ac.signal, redirect: 'error', headers: { accept: 'application/json' } }), stop.promise]);
+      if (!res.ok) return { status: res.status, body: '' };
+      return { status: res.status, body: await readCapped(res, this.o.maxBytes, stop.promise, () => arm(`stalled for ${s} s`)) };
     } catch (e) {
       throw ac.signal.aborted && !signal.aborted ? ac.signal.reason : e;
     } finally {
       clearTimeout(timer);
+      signal.removeEventListener('abort', forward);
+      stop.off();
+      if (res?.body && !res.bodyUsed) void res.body.cancel().catch(() => {});
     }
   }
 
@@ -226,18 +264,14 @@ export class DataClient {
       const url = base + path;
       let json: unknown;
       try {
-        const res = await this.attempt(url, signal);
-        if (res.status === 404) {
-          await res.body?.cancel();
-          throw new DataUnavailable(MCP_MSG.notPublished(path));
-        }
-        if (!res.ok) {
-          await res.body?.cancel();
+        const res = await this.get(url, signal);
+        if (res.status === 404) throw new DataUnavailable(MCP_MSG.notPublished(path));
+        if (res.status < 200 || res.status > 299) {
           if (res.status === 429 || res.status === 403) this.skipUntil.set(base, this.o.now() + this.o.skipMs);
           reasons.push(`${host(url)}: HTTP ${res.status} for ${path}`);
           continue;
         }
-        json = JSON.parse(await readCapped(res, this.o.maxBytes));
+        json = JSON.parse(res.body);
         need(isObject(json), 'not a JSON object');
         if (json.schema_version !== SCHEMA_VERSION) throw new SchemaMismatch(MCP_MSG.schema(json.schema_version, SCHEMA_VERSION));
         need(typeof json.generated_at === 'string', 'no generated_at');
@@ -246,6 +280,9 @@ export class DataClient {
       } catch (e) {
         if (e instanceof DataError) throw e;
         if (signal.aborted) throw new DataError(MCP_MSG.deadline([...reasons, `${host(url)}: no answer within ${this.o.callTimeoutMs / 1000} s for ${path}`]), reasons);
+        // A base that does not answer costs 4 s per file; without this, a call over many shards ran
+        // out of time on a base that accepts connections and never answers, every time.
+        if (e instanceof AttemptTimeout) this.skipUntil.set(base, this.o.now() + this.o.skipMs);
         reasons.push(`${host(url)}: ${e instanceof SyntaxError ? 'not valid JSON' : why(e)} for ${path}`);
       }
     }
@@ -261,27 +298,37 @@ export class DataClient {
     const hit = cache.get(path) as Entry<T> | undefined;
     const now = this.o.now();
     if (hit && ((gen !== null && hit.gen === gen) || now - hit.checkedAt < this.o.metaTtlMs)) return hit;
-    let p = this.inflight.get(path) as Promise<Entry<T>> | undefined;
-    if (!p) {
-      p = this.fetchFile(path, parser, signal);
-      this.inflight.set(path, p);
-      void p.then(
+    let f = this.inflight.get(path) as { p: Promise<Entry<T>>; signal: AbortSignal } | undefined;
+    if (!f) {
+      const mine = { p: this.fetchFile(path, parser, signal), signal };
+      this.inflight.set(path, mine);
+      void mine.p.then(
         (e) => {
-          this.inflight.delete(path);
+          if (this.inflight.get(path) === mine) this.inflight.delete(path);
           cache.delete(path);
           cache.set(path, e);
           if (cache === this.shardCache) for (const k of cache.keys()) if (cache.size > this.o.maxShards) cache.delete(k);
         },
-        () => this.inflight.delete(path),
+        () => this.inflight.get(path) === mine && this.inflight.delete(path),
       );
+      f = mine;
     }
+    // A call that joined another call's fetch still answers within its own deadline.
+    const joined = f.signal !== signal;
+    const stop = joined ? whenAborted(signal) : null;
     try {
-      return await p;
-    } catch (e) {
+      return await (stop ? Promise.race([f.p, stop.promise]) : f.p);
+    } catch (err) {
+      // That fetch ended with the call that started it (its deadline, or another of its files
+      // failed) while this call still has time: fetch again under this call's own deadline.
+      if (joined && f.signal.aborted && !signal.aborted && !(err instanceof DataUnavailable) && !(err instanceof SchemaMismatch)) return this.load(path, parser, gen, signal);
+      const e = joined && signal.aborted && !(err instanceof DataError) ? new DataError(MCP_MSG.deadline([`no answer within ${this.o.callTimeoutMs / 1000} s for ${path}`])) : err;
       if (!hit || e instanceof DataUnavailable || e instanceof SchemaMismatch || !(e instanceof DataError)) throw e;
       hit.checkedAt = this.o.now();
       hit.warning = MCP_MSG.refreshFailed(e.reasons.length ? e.reasons : ['no answer in time'], new Date(hit.loadedAt).toISOString());
       return hit;
+    } finally {
+      stop?.off();
     }
   }
 }

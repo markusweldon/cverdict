@@ -1,5 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import v8 from 'node:v8';
+import vm from 'node:vm';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ROW_COLS } from '../../shared/contract';
@@ -282,6 +284,86 @@ describe('deadline and timers', () => {
     expect(aborted).toBe(shardRequests - 1);
   });
 
+  it('ends a body read at the deadline even when the abort never reaches the request', async () => {
+    // What a garbage-collected AbortSignal.any() did to a stalled body: the read never ended, and
+    // every later call joined that fetch and hung with it.
+    const silent = () => new Response(new ReadableStream({ pull: () => new Promise(() => {}) }));
+    const t = setup((path) => (path === 'meta.json' ? silent() : undefined), { bases: [A], callTimeoutMs: 300, attemptTimeoutMs: 5_000 });
+    const timeout = (ms: number) => new Promise((r) => setTimeout(() => r('still waiting'), ms));
+    for (let i = 0; i < 2; i++) {
+      const started = Date.now();
+      const out = await Promise.race([t.signal().catch((e: Error) => e.message), timeout(2_000)]);
+      expect(out).toMatch(/^CVErdict could not load its data in time \(a\.test: no answer within 0\.3 s for meta\.json\)/);
+      expect(Date.now() - started).toBeLessThan(1_500);
+    }
+    expect(paths(t.log)).toEqual(['A:meta.json', 'A:meta.json']);
+  });
+
+  it('falls through when a body stops arriving for 4 s, and keeps a slow body that keeps arriving', async () => {
+    vi.useFakeTimers();
+    const body = new TextEncoder().encode(JSON.stringify(meta()));
+    const half = Math.ceil(body.length / 2);
+    const drip = () =>
+      new Response(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(body.subarray(0, half));
+            setTimeout(() => c.enqueue(body.subarray(half)), 3_900);
+            setTimeout(() => c.close(), 7_800);
+          },
+        }),
+      );
+    const stalled = new Response(new ReadableStream({ start: (c) => c.enqueue(body.subarray(0, 10)) }));
+    const t = setup((path, base) => (path === 'meta.json' && base === A ? stalled : undefined));
+    const p = t.dc.run((c) => c.meta());
+    await vi.advanceTimersByTimeAsync(4_100);
+    await p;
+    expect(paths(t.log)).toEqual(['A:meta.json', 'B:meta.json']);
+    // 3.9 s between chunks, 7.8 s in all: within the call's 10 s, so it is not cut off.
+    const slow = setup((path, base) => (path === 'meta.json' && base === A ? drip() : undefined));
+    const q = slow.dc.run((c) => c.meta());
+    await vi.advanceTimersByTimeAsync(7_900);
+    expect((await q).generated_at).toBe(GEN);
+    expect(paths(slow.log)).toEqual(['A:meta.json']);
+  });
+
+  it('moves a base that timed out to the back, so a call over many shards does not run out of time', async () => {
+    vi.useFakeTimers();
+    const ids = Array.from({ length: 15 }, (_, i) => `CVE-2026-${40000 + i * 7}`);
+    const t = setup((_path, base, init) => (base === A ? stall(init) : undefined));
+    const p = t.dc.run((c) => getVerdict(c, { ids }, NOW));
+    await vi.advanceTimersByTimeAsync(4_100);
+    const r = await p;
+    expect(r.items).toHaveLength(15);
+    expect(paths(t.log).filter((l) => l.startsWith('A:'))).toEqual(['A:meta.json']);
+    // After 10 minutes the first base is asked first again.
+    t.tick(600_001);
+    const q = t.signal();
+    await vi.advanceTimersByTimeAsync(4_100);
+    await q;
+    expect(paths(t.log).slice(-3)).toEqual(['A:meta.json', 'B:meta.json', 'B:signal.json']);
+  });
+
+  it('a call that joined another call\'s fetch is not failed when that call ends first', async () => {
+    const [x, y] = ['CVE-2026-50001', 'CVE-2026-50003'];
+    expect(shardOf(x)).not.toBe(shardOf(y));
+    const t = setup((path, _base, init) => {
+      if (path === `cve/${shardOf(x)}.json`) return new Response('', { status: 404 });
+      if (path === `cve/${shardOf(y)}.json`) return stall(init, 50, () => Response.json(emptyShard()));
+      return undefined;
+    });
+    const first = t.dc.run((c) => getVerdict(c, { ids: [x, y] }, NOW));
+    const second = t.dc.run((c) => getVerdict(c, { ids: [y] }, NOW));
+    await expect(first).rejects.toThrow('is not on the data branch yet');
+    expect((await second).items).toEqual([expect.objectContaining({ id: y, found: false })]);
+  });
+
+  it('says that no tool can answer when meta.json is missing', async () => {
+    const t = setup((path) => (path === 'meta.json' ? new Response('', { status: 404 }) : undefined));
+    await expect(t.signal()).rejects.toThrow('meta.json is not at the first data base that answered, so no tool can answer. Check CVERDICT_DATA_BASE');
+    expect(paths(t.log)).toEqual(['A:meta.json']);
+  });
+
   it('leaves no timer running after a call, and fetches nothing while idle', async () => {
     vi.useFakeTimers();
     const t = setup();
@@ -346,5 +428,30 @@ describe('with a real HTTP server and the real fetch', () => {
     const bombed = new DataClient({ bases: [`${origin}/a/v1/`], fetch: (u, i) => fetch(String(u).replace('/a/v1/meta.json', '/b/v1/meta.json'), i), now: () => NOW });
     await expect(bombed.run((c) => listSignal(c, {}, NOW))).rejects.toThrow(`body over ${24 * 1024 * 1024} bytes for signal.json`);
     expect(Date.now() - t0).toBeLessThan(10_000);
+  });
+
+  it('ends a stalled body on time while garbage collection runs, and the next call is not stuck behind it', async () => {
+    // The real failure: Node's fetch with an AbortSignal.any() signal, a body that stalls after the
+    // headers, and a GC during the read. The abort never arrived and the server hung for good.
+    v8.setFlagsFromString('--expose-gc');
+    const gc = vm.runInNewContext('gc') as () => void;
+    const origin = await serve((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.write('{"schema_version":1,');
+    });
+    const dc = new DataClient({ bases: [`${origin}/v1/`], callTimeoutMs: 400, attemptTimeoutMs: 5_000, now: () => NOW });
+    const collect = setInterval(gc, 50);
+    try {
+      for (let i = 0; i < 3; i++) {
+        const started = Date.now();
+        const out = await Promise.race([dc.run((c) => c.meta()).catch((e: Error) => e.message), new Promise((r) => setTimeout(() => r('still waiting'), 3_000))]);
+        expect(out).toMatch(/could not load its data in time/);
+        expect(Date.now() - started).toBeLessThan(2_000);
+      }
+      expect(dc.requests).toBe(3);
+    } finally {
+      clearInterval(collect);
+      server?.closeAllConnections();
+    }
   });
 });

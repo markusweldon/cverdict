@@ -74,7 +74,8 @@ export function mcpRow(r: Row, knob: number): McpRow {
     cna: r.cna,
     vendor: r.v,
     product: r.p,
-    title: oneLine(r.t),
+    // The pipeline already caps Row.t at 160 characters; a mirror may not.
+    title: cut(oneLine(r.t), TITLE_MAX),
     exploited: r.x === 1,
     weaponized: r.w === 1,
     in_kev: r.k === 1,
