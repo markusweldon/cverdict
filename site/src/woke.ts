@@ -20,6 +20,7 @@ const FIRST_SEEN_NAMES: Readonly<Record<keyof WokeFile['tracking'], string>> = {
 };
 
 export const atMs = (at: string): number => toMs(at);
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isWakeKind(v: string | null): v is WakeKind {
   return v !== null && (WAKE_KINDS as readonly string[]).includes(v);
@@ -30,9 +31,15 @@ export function byKind(items: readonly WokeItem[], kind: WakeKind | null): WokeI
   return kind ? items.filter((i) => i.signals.some((s) => s.kind === kind)) : [...items];
 }
 
-/** Items whose newest signal is at most `days` before `now`. */
+/**
+ * Items whose newest signal is at most `days` before `now`. A date-only `at` (KEV, Exploit-DB,
+ * EPSS) is a calendar day, so it counts when any part of that day is inside, as in the pipeline:
+ * a KEV listing dated on the boundary day most likely came after the cut.
+ */
 export function wokeWithin(items: readonly WokeItem[], now: number, days: number): WokeItem[] {
-  return items.filter((i) => atMs(i.at) >= now - days * DAY_MS);
+  const cut = now - days * DAY_MS;
+  const cutDay = new Date(cut).toISOString().slice(0, 10);
+  return items.filter((i) => (DATE_ONLY.test(i.at) ? i.at >= cutDay : atMs(i.at) >= cut));
 }
 
 /** Most urgent first (tier at the knob), then newest wake: for the short list on Today. */
