@@ -880,6 +880,8 @@ a.chip:hover {
 
 .wf--drill .wf__canvas {
   cursor: pointer;
+  /* The picked column shows the tap; the browser's flash would tint the whole chart. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Spike labels: links to their batch card, drawn over the canvas where the plot leaves room. */
@@ -918,12 +920,13 @@ a.chip:hover {
   line-height: 1.4;
 }
 
-/* Touch: below the chart, so the finger does not hide it and every column stays tappable. */
+/* Touch: below the chart, so the finger does not hide it and every column stays tappable. It
+   takes taps itself, so a tap on its text never reaches the filter or link it covers. */
 .wf__tip.is-pinned {
   top: calc(100% + 6px);
+  pointer-events: auto;
 }
 
-/* Touch: only the link takes taps, so a tap on the rest of the tooltip still picks a column. */
 .wf__tip-go {
   display: flex;
   align-items: center;
@@ -939,7 +942,6 @@ a.chip:hover {
 
 .wf__tip-head {
   margin-bottom: 6px;
-  white-space: nowrap;
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1511,6 +1513,8 @@ a.chip:hover {
 
 .batch__tops {
   display: grid;
+  /* minmax(0, …): a long title truncates instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   grid-column: 2;
 }
