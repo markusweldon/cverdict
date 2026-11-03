@@ -89,9 +89,10 @@ On the site:
   an evidence timeline, the facts (CVSS vector, SSVC, EPSS, KEV, affected products) and
   "Copy as ticket".
 - **Woke up**: CVEs published more than 30 days ago that gained exploitation evidence in the last
-  30 days: a CISA KEV listing, a first Exploit-DB entry, Metasploit module, Nuclei template or
-  vetted PoC repo, or an EPSS jump. The 30-day views cannot see them, yet many KEV additions are
-  years old. Each one shows the dated evidence and a link to check it.
+  30 days: a CISA KEV listing, an EPSS jump, or their first public exploit of any kind (an
+  Exploit-DB entry, Metasploit module, Nuclei template, or a PoC repo on GitHub that is at least
+  3 days old or has 2 stars; the code is not checked). The 30-day views cannot see them, yet many
+  KEV additions are years old. Each one shows the dated evidence and a link to check it.
 - **Receipts**: how often CVErdict flagged a CVE before CISA added it to KEV, next to "CVSS 7 or
   more" and "EPSS 10% or more", with lead times, alert volume and every hit and miss. The live
   record is kept hour by hour from the day it started; a backtest of the last 180 days is shown
@@ -147,8 +148,8 @@ still land in Exploited or Likely next, while only **2.3%** of new CVEs do. Trea
 bound, since the evidence was collected after the fact. `npm run calibrate` reproduces it.
 
 The [Receipts page](https://cverdict-psi.vercel.app/receipts) holds the stricter tests. A live
-record, kept hour by hour since Nov 3, 2026, notes when each method first flags a CVE and whether
-that came before CISA listed it. It has no KEV listings to judge yet. A backtest, marked as
+record notes when each method first flags a CVE and whether that came before CISA listed it; the
+page shows how many listings it has judged so far. A backtest, marked as
 hindsight, uses only evidence dated before each listing. In the run of Nov 3, 2026 it gave, for
 the 120 recent CVEs CISA added to KEV in the previous 180 days: CVErdict 37 flagged before the
 listing, "CVSS 7 or more" 65, "EPSS 10% or more" 17. CVSS 7 or more catches more, but flags 52% of

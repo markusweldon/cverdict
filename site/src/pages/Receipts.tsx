@@ -42,6 +42,8 @@ function MethodName({ m }: { m: ReceiptMethod }) {
 }
 
 function ForwardTable({ f }: { f: ForwardReceipts }) {
+  // Nothing listed yet: KEV columns would only hold zeros that look like a result.
+  const judged = f.eligible > 0;
   return (
     <div class="tablewrap">
       <table class="table rcpt__table rcpt__stack">
@@ -49,9 +51,13 @@ function ForwardTable({ f }: { f: ForwardReceipts }) {
         <thead>
           <tr>
             <th scope="col">Method</th>
-            <th scope="col" class="num">Flagged before KEV</th>
-            <th scope="col" class="num">Of those, same day</th>
-            <th scope="col" class="num">Median lead (quartiles)</th>
+            {judged && (
+              <>
+                <th scope="col" class="num">Flagged before KEV</th>
+                <th scope="col" class="num">Of those, same day</th>
+                <th scope="col" class="num">Median lead (quartiles)</th>
+              </>
+            )}
             <th scope="col" class="num">Alert volume</th>
           </tr>
         </thead>
@@ -62,15 +68,19 @@ function ForwardTable({ f }: { f: ForwardReceipts }) {
             return (
               <tr key={m}>
                 <MethodName m={m} />
-                <td class="num" data-label="Flagged before KEV">
-                  {s ? countOf(s.before, s.n) : '—'}
-                </td>
-                <td class="num" data-label="Of those, same day">
-                  {s ? fmtInt(s.same_day) : '—'}
-                </td>
-                <td class="num" data-label="Median lead (quartiles)">
-                  {s ? leadText(s.lead, s.before) : '—'}
-                </td>
+                {judged && (
+                  <>
+                    <td class="num" data-label="Flagged before KEV">
+                      {s ? countOf(s.before, s.n) : '—'}
+                    </td>
+                    <td class="num" data-label="Of those, same day">
+                      {s ? fmtInt(s.same_day) : '—'}
+                    </td>
+                    <td class="num" data-label="Median lead (quartiles)">
+                      {s ? leadText(s.lead, s.before) : '—'}
+                    </td>
+                  </>
+                )}
                 <td class="num" data-label="Alert volume">
                   {v ? countOf(v.flagged, v.n) : '—'}
                 </td>
@@ -91,7 +101,7 @@ function Forward({ f }: { f: ForwardReceipts }) {
   const notCounted = [
     older > 0 && (
       <>
-        {plural(older, 'listing')} of CVEs older than our {f.watch_days}-day window (<a href={href('woke')}>Woke up</a> shows the recent ones)
+        {plural(older, 'CVE')} older than our {f.watch_days}-day window (<a href={href('woke')}>Woke up</a> shows the recent ones)
       </>
     ),
     listedFirst > 0 && `${plural(listedFirst, 'CVE')} that CISA listed before we first saw ${listedFirst === 1 ? 'it' : 'them'}`,
@@ -107,12 +117,12 @@ function Forward({ f }: { f: ForwardReceipts }) {
       <p class="rcpt__headline">
         {first} {second && <strong>{second}</strong>}
       </p>
-      {f.eligible < MIN_N_FOR_PCT && (
+      {f.eligible > 0 && f.eligible < MIN_N_FOR_PCT && (
         <p class="rcpt__young">The log is young, so the KEV figures show counts only. Percentages appear once {MIN_N_FOR_PCT} listings are counted.</p>
       )}
       <ForwardTable f={f} />
       <p class="muted">
-        Logging since {fmtDateTime(f.since)}. {plural(f.runs, 'hourly run')} so far
+        Logging since {fmtDateTime(f.since)}. {plural(f.runs, 'run')} so far
         {gaps.n > 0 ? `, with ${plural(gaps.n, 'gap')} longer than 3 hours (${fmtInt(Math.round(gaps.hours))} hours in all)` : ', no gaps longer than 3 hours'}. Alert volume counts the{' '}
         {fmtInt(f.volume[0]?.n ?? 0)} CVEs watched so far.
       </p>
@@ -139,12 +149,12 @@ function HowMeasured({ watchDays }: { watchDays: number }) {
         How this is measured
       </h2>
       <ul class="rcpt__rules">
-        <li>Every hour, the pipeline notes when it first sees each new CVE, and when each method first flags it.</li>
+        <li>Each time the pipeline runs, it notes when it first sees each new CVE, and when each method first flags it.</li>
         <li>
           <strong>CVErdict</strong> flags a CVE when it is Exploited or Likely next at the default knob. <strong>CVSS 7 or more</strong> flags it when the score the site shows reaches 7.0.{' '}
-          <strong>EPSS 10% or more</strong> flags it when its EPSS score reaches 0.1.
+          <strong>EPSS 10% or more</strong> flags it when its EPSS score reaches 10%.
         </li>
-        <li>When CISA adds one of those CVEs to KEV, we compare. It counts as flagged before KEV when an earlier hourly run flagged it, on or before the KEV date. A flag that came with the listing does not count.</li>
+        <li>When CISA adds one of those CVEs to KEV, we compare. It counts as flagged before KEV when an earlier run flagged it, on or before the KEV date. A flag that came with the listing does not count.</li>
         <li>
           Lead time is the KEV date minus the day of the first flag, in whole days. A flag on the listing day counts as 0 days and is shown apart: it can come from CISA's own update to the CVE
           record, made as it lists the CVE.
@@ -152,7 +162,7 @@ function HowMeasured({ watchDays }: { watchDays: number }) {
         <li>We watch each CVE for its first {watchDays} days, while it is in the window. A flag after that does not count, for any method.</li>
         <li>Only CVEs we saw before the listing count. Older CVEs and CVEs listed before we saw them are left out, and listed below.</li>
         <li>Alert volume is the share of watched CVEs a method flagged at least once. Catching the same listings with fewer alerts means less work.</li>
-        <li>The record starts with the first run that kept it. Nothing before that is filled in. Times are the hour of the run.</li>
+        <li>The record starts with the first run that kept it. Nothing before that is filled in. Times are when the run happened, to the minute. KEV gives only a date, which we read as a US Eastern day, CISA's own time zone.</li>
       </ul>
       <p class="muted">
         <ExtLink href={LOG_URL}>Read the code that keeps the log</ExtLink>.
@@ -238,7 +248,8 @@ function Backtest({ b }: { b: BacktestReceipts }) {
   const judged = b.items.length;
   const hits = b.items.filter((i) => i.strict.cverdict);
   const viaSsvc = hits.filter((i) => i.chips.includes('ssvc.active')).length;
-  const ssvcOut = b.items.filter((i) => i.left_out.includes('ssvc') || i.left_out.includes('ssvc_exploitation')).length;
+  const ssvcOut = b.items.filter((i) => i.left_out.includes('ssvc_exploitation')).length;
+  const ssvcUndated = b.items.filter((i) => i.left_out.includes('ssvc')).length;
   const hindsight = b.signals.filter((s) => s.treatment === 'hindsight');
   const excluded = b.signals.filter((s) => s.treatment === 'excluded');
   const matched = b.signals.filter((s) => s.treatment === 'time_matched');
@@ -289,9 +300,14 @@ function Backtest({ b }: { b: BacktestReceipts }) {
             what CISA said before the listing.
           </li>
         )}
+        {ssvcUndated > 0 && (
+          <li>
+            For {plural(ssvcUndated, 'CVE')}, it leaves out CISA's whole SSVC assessment. CISA dated it the day before the listing or later, so it may come from the listing.
+          </li>
+        )}
         {viaSsvc > 0 && (
           <li>
-            Of the {fmtInt(hits.length)} CVEs CVErdict flagged first (both groups), {fmtInt(viaSsvc)} were flagged because CISA's own SSVC assessment said exploitation was active before the KEV listing. That
+            Of the {fmtInt(hits.length)} CVEs CVErdict flagged before KEV (both groups), {fmtInt(viaSsvc)} were flagged because CISA's own SSVC assessment said exploitation was active before the KEV listing. That
             is public and dated, but it is CISA's view.
           </li>
         )}
@@ -384,7 +400,7 @@ function BacktestList({ items, filter }: { items: BacktestItem[]; filter: Backte
           {(
             [
               ['all', 'All', items.length],
-              ['hit', 'CVErdict flagged first', hits],
+              ['hit', 'CVErdict flagged before KEV', hits],
               ['miss', 'CVErdict missed', items.length - hits],
             ] as const
           ).map(([key, label, count]) => (
@@ -479,7 +495,7 @@ export default function Receipts() {
 
       {receipts.status === 'error' ? (
         receipts.error instanceof DataError && receipts.error.status === 404 ? (
-          <EmptyState title="Not published yet">The first pipeline run with this page has not finished. Check back after the next hourly run.</EmptyState>
+          <EmptyState title="Not published yet">The first pipeline run with this page has not finished. Check back after the next pipeline run.</EmptyState>
         ) : (
           <ErrorState error={receipts.error} onRetry={receipts.retry} />
         )

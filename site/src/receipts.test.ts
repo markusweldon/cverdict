@@ -34,9 +34,9 @@ describe('receipts helpers', () => {
     const f = forward({ eligible: 14, methods: [score('cverdict', { n: 14, before: 9, earlier: 8, same_day: 1, lead: { median: 6, q1: 2, q3: 11 } }), score('cvss7'), score('epss10')] });
     expect(forwardHeadline(f)).toEqual([
       'Since Nov 3, 2026: CISA added 14 CVEs we had already seen to KEV.',
-      'CVErdict flagged 9 of them first, a median of 6 days earlier (1 of them on the listing day).',
+      'CVErdict flagged 9 of them before CISA listed them, a median of 6 days earlier (1 of them on the listing day).',
     ]);
-    expect(forwardHeadline(forward({ eligible: 1, methods: [score('cverdict', { n: 1 })] }))[1]).toBe('CVErdict flagged none of it first.');
+    expect(forwardHeadline(forward({ eligible: 1, methods: [score('cverdict', { n: 1 })] }))[1]).toBe('CVErdict flagged none of it before CISA listed it.');
   });
 
   it('describes lead times and outcomes in plain words', () => {

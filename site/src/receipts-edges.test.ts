@@ -13,14 +13,14 @@ const forward = (cv: Partial<MethodScore>, eligible: number): ForwardReceipts =>
 describe('receipts copy at the edges', () => {
   it('never says "a median of 0 days earlier": the same-day count says it', () => {
     const [, line] = forwardHeadline(forward({ before: 3, earlier: 1, same_day: 2, lead: { median: 0, q1: 0, q3: 0.5 } }, 4));
-    expect(line).toBe('CVErdict flagged 3 of them first (2 of them on the listing day).');
+    expect(line).toBe('CVErdict flagged 3 of them before CISA listed them (2 of them on the listing day).');
     expect(line).not.toMatch(/0 days/);
-    expect(forwardHeadline(forward({ before: 2, earlier: 2, lead: { median: 1, q1: 1, q3: 1 } }, 2))[1]).toBe('CVErdict flagged 2 of them first, a median of 1 day earlier.');
-    expect(forwardHeadline(forward({ before: 2, earlier: 2, lead: { median: 0.5, q1: 0, q3: 1 } }, 2))[1]).toBe('CVErdict flagged 2 of them first, a median of 0.5 days earlier.');
+    expect(forwardHeadline(forward({ before: 2, earlier: 2, lead: { median: 1, q1: 1, q3: 1 } }, 2))[1]).toBe('CVErdict flagged 2 of them before CISA listed them, a median of 1 day earlier.');
+    expect(forwardHeadline(forward({ before: 2, earlier: 2, lead: { median: 0.5, q1: 0, q3: 1 } }, 2))[1]).toBe('CVErdict flagged 2 of them before CISA listed them, a median of 0.5 days earlier.');
   });
 
   it('dates the start in UTC, with the year, and uses one CVE in the singular', () => {
-    expect(forwardHeadline(forward({}, 1))).toEqual(['Since Nov 3, 2026: CISA added 1 CVE we had already seen to KEV.', 'CVErdict flagged none of it first.']);
+    expect(forwardHeadline(forward({}, 1))).toEqual(['Since Nov 3, 2026: CISA added 1 CVE we had already seen to KEV.', 'CVErdict flagged none of it before CISA listed it.']);
   });
 
   it('shows a share from exactly 10 CVEs on, never below, and never hides the count', () => {

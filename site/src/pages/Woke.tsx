@@ -1,6 +1,6 @@
 /** Woke up: CVEs published before the 30-day window that gained exploitation evidence in it. */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { WAKE_KINDS, type WakeKind, type WokeFile } from '../../../shared/contract';
+import { WAKE_KINDS, type WakeKind, type WokeFile, type WokeItem } from '../../../shared/contract';
 import { copyTicket, watchVendorOf, copyLink } from '../actions';
 import { IconCode, IconCopy, IconRss } from '../components/icons';
 import { CveRow } from '../components/Row';
@@ -12,7 +12,7 @@ import { fmtDate, fmtDateTime, fmtInt, plural } from '../format';
 import { useData, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
 import { cveHref, navigate, setQuery, useLocation } from '../router';
 import { knob, useStore } from '../state';
-import { byKind, byWeek, isWakeKind, listing, trackingNote, WAKE_KIND_LABEL } from '../woke';
+import { byKind, byWeek, isWakeKind, listing, mostUrgent, trackingNote, WAKE_KIND_LABEL } from '../woke';
 
 function Notes({ woke }: { woke: WokeFile }) {
   const t = trackingNote(woke.tracking);
@@ -21,7 +21,7 @@ function Notes({ woke }: { woke: WokeFile }) {
     <div class="wokenotes">
       {t.since && (
         <p>
-          {listing(t.tracked)} have no date at the source, so we date them by the hourly run that first saw them. Tracking since <strong>{fmtDateTime(t.since)}</strong>; whatever was already there then is
+          {listing(t.tracked)} have no date at the source, so we date them by the run that first saw them. Tracking since <strong>{fmtDateTime(t.since)}</strong>; whatever was already there then is
           not listed.
         </p>
       )}
@@ -44,8 +44,13 @@ export default function Woke() {
   const now = useNow(60_000);
   const kindParam = loc.search.get('kind');
   const kind: WakeKind | null = isWakeKind(kindParam) ? kindParam : null;
-  const items = useMemo(() => (woke.status === 'ready' ? byKind(woke.data.items, kind) : []), [woke, kind]);
-  const weeks = useMemo(() => byWeek(items), [items]);
+  // Inside each week, the most urgent first (tier at the knob), then the newest, as on Today.
+  const weeks = useMemo(
+    () => (woke.status === 'ready' ? byWeek(byKind(woke.data.items, kind)).map(([w, group]): [string, WokeItem[]] => [w, mostUrgent(group, (i) => tierAt(i.row, level))]) : []),
+    [woke, kind, level],
+  );
+  // Keyboard order follows the order on screen.
+  const items = useMemo(() => weeks.flatMap(([, group]) => group), [weeks]);
 
   const [sel, setSel] = useState(-1);
   const selRef = useRef(-1);
@@ -104,7 +109,7 @@ export default function Woke() {
 
       {woke.status === 'error' ? (
         woke.error instanceof DataError && woke.error.status === 404 ? (
-          <EmptyState title="Not published yet">The first pipeline run with this feature has not finished. Check back after the next hourly run.</EmptyState>
+          <EmptyState title="Not published yet">The first pipeline run with this feature has not finished. Check back after the next pipeline run.</EmptyState>
         ) : (
           <ErrorState error={woke.error} onRetry={woke.retry} />
         )
@@ -159,8 +164,9 @@ export default function Woke() {
             ))
           )}
           <p class="fineprint">
-            A CVE counts when its first KEV listing, Exploit-DB entry, Metasploit module, Nuclei template or vetted PoC repo, or a threefold EPSS rise to 10% or more, came after it was already 30 days old.
-            CVEs that were in KEV before the last {woke.data.days} days are left out: they never fell asleep. The row age is the time since publication.
+            A CVE counts when it was added to KEV, when its EPSS score rose threefold to 10% or more, or when its first public exploit evidence of any kind appeared, after it was already 30
+            days old. Exploit evidence is an Exploit-DB entry, a Metasploit module, a Nuclei template, or a PoC repo on GitHub that is at least 3 days old or has 2 stars (we do not check the
+            code). CVEs that were in KEV before the last {woke.data.days} days are left out: they never fell asleep. The row age is the time since publication.
           </p>
         </>
       )}

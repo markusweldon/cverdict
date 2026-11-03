@@ -1,4 +1,4 @@
-/** Today's side card: how many old CVEs woke up this week, and the most urgent of them. */
+/** Today's side card: how many old CVEs woke up in the last 7 days, and the most urgent of them. */
 import { data } from '../data';
 import { tierAt } from '../filters';
 import { fmtDate, fmtInt, plural, vendorProduct } from '../format';
@@ -25,17 +25,17 @@ export function WokeCard({ level }: { level: number }) {
         <h2 id="woke-h" class="panel__title">
           Woke up
         </h2>
-        <a class="section__more" href={href('woke')}>
+        <a class="section__more" href={href('woke')} aria-label={`All ${fmtInt(total)} old ${total === 1 ? 'CVE' : 'CVEs'} that woke up`}>
           All {fmtInt(total)} <IconArrowRight size={12} />
         </a>
       </header>
       <p class="wokecard__lede">
         {week.length > 0 ? (
           <>
-            <strong>{plural(week.length, 'old CVE')}</strong> gained exploit evidence this week.
+            <strong>{plural(week.length, 'old CVE')}</strong> gained exploitation evidence in the last 7 days.
           </>
         ) : (
-          <>No old CVE gained exploit evidence this week{total > 0 ? `; ${fmtInt(total)} did in the last ${woke.data.days} days` : ''}.</>
+          <>No old CVE gained exploitation evidence in the last 7 days{total > 0 ? `; ${fmtInt(total)} did in the last ${woke.data.days} days` : ''}.</>
         )}
       </p>
       {top.length > 0 && (
