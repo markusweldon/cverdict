@@ -690,8 +690,13 @@ export default function Check() {
               ))
             }
           </More>
-          <More title="No tracked CVE" count={result.clean.length}>
-            {() => <NameList items={result.clean} />}
+          <More title="Not affected by a tracked CVE" count={result.clean.length}>
+            {() => (
+              <>
+                <p class="check__skipwhy">A tracked CVE may name some of these packages, but not the versions you use.</p>
+                <NameList items={result.clean} />
+              </>
+            )}
           </More>
         </section>
       )}
