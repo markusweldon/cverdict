@@ -230,7 +230,7 @@ last 30 days (`days`). The window views cannot show them.
 | `since` | Signals dated from this instant on count (`generated_at` minus `days`) |
 | `days` | Length of that period, 30 |
 | `published_before` | Only CVEs published before this instant (the window start) are included |
-| `tracking` | `{ metasploit, nuclei, epss }`: since when each first-seen kind is tracked, or `null` when it is not tracked yet. Evidence that was already there when tracking started is not listed |
+| `tracking` | `{ metasploit, nuclei, epss }`: since when each first-seen kind is tracked, or `null` when it is not tracked yet. Evidence that was already there when tracking started is not listed, and counts as older exploit evidence |
 | `skipped[]` | `{ kind, reason }` for each signal this run could not check. Missing data is never read as "nothing new" |
 | `counts` | Items with at least one signal of each kind |
 | `items[]` | `{ id, at, signals[], row }`, newest `at` first, at most 500. `at` is the date of the newest signal; `row` is a `Row` (the same fields as in the row tables, as an object) |
@@ -256,11 +256,14 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
   compared a fresh copy of that source is more than 48 hours ago (it was down, or only a stale
   cached copy loaded): what appeared meanwhile cannot be dated. A stale copy never dates anything
   and puts the kind in `skipped`.
-- The exploit kinds (`exploitdb`, `poc`, `metasploit`, `nuclei`) only wake a CVE that had no dated
-  public exploit evidence before the period: no earlier Exploit-DB entry, Metasploit module (by
-  its earliest `mod_time`, or tracked before the period), Nuclei template tracked before the
-  period, PoC repo, or KEV listing. A first PoC repo for a CVE with a Metasploit module from 2015
-  is not a wake. `kev` and `epss` signals always count.
+- The exploit kinds (`exploitdb`, `poc`, `metasploit`, `nuclei`) only wake a CVE that had no
+  public exploit evidence before the period: no earlier Exploit-DB entry, PoC repo or KEV listing,
+  no Metasploit module with an earlier `mod_time`, and no Metasploit module or Nuclei template that
+  the tracking knew without first seeing it in the period. A module or template that was already
+  there when tracking started or restarted has no date, so it counts as older evidence. An old
+  `mod_time` does not count when that module is the CVE's first and was first seen in the period:
+  a module can land in Metasploit weeks after its last commit. A first PoC repo for a CVE with a
+  Metasploit module from 2015 is not a wake. `kev` and `epss` signals always count.
 - The EPSS check needs the EPSS file from 30 days before the current score date. When it cannot be
   loaded, or the two files come from different EPSS models (a new model moves many scores at once),
   the check is skipped and `skipped` says so. After a pause of more than 48 hours, jump tracking

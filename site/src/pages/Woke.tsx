@@ -22,7 +22,7 @@ function Notes({ woke }: { woke: WokeFile }) {
       {t.since && (
         <p>
           {listing(t.tracked)} have no date at the source, so we date them by the run that first saw them. Tracking since <strong>{fmtDateTime(t.since)}</strong>; whatever was already there then is
-          not listed.
+          not listed, and a new PoC repo or Exploit-DB entry for that CVE does not count as its first exploit.
         </p>
       )}
       {t.untracked.length > 0 && <p>Not tracked yet: {listing(t.untracked)}.</p>}
