@@ -120,6 +120,28 @@ describe('build manifests', () => {
     expect(kind('<html><body>hi</body></html>')).toEqual(['unknown', '', 'We could not tell what kind of file this is']);
     expect(kind(fixture('package-lock.json'), 'package-lock.json')).toBe('parsed');
   });
+
+  it('tells a manifest apart from a loose content match', () => {
+    // A pom.xml that configures the CycloneDX plugin says "cyclonedx", which reads as CycloneDX XML.
+    const pluginPom = pom.replace('</dependencies>', '</dependencies><build><plugins><plugin><groupId>org.cyclonedx</groupId><artifactId>cyclonedx-maven-plugin</artifactId></plugin></plugins></build>');
+    expect(kind(pluginPom, 'pom.xml')).toEqual(['manifest', 'pom', 'pom']);
+    expect(kind(pluginPom)).toEqual(['manifest', 'pom', 'pom']);
+    // What `gradle init` writes for Kotlin: tasks.named<Test> reads like a requirements line.
+    const kts = 'plugins {\n    java\n}\n\ndependencies {\n    implementation("org.apache.logging.log4j:log4j-core:2.14.1")\n}\n\ntasks.named<Test>("test") {\n    useJUnitPlatform()\n}\n';
+    expect(kind(kts, 'build.gradle.kts')).toEqual(['manifest', 'gradle', 'build']);
+    expect(kind(kts)).toEqual(['manifest', 'gradle', 'build']);
+    expect(kind("plugins { id 'java' }\nrepositories { mavenCentral() }\n")).toEqual(['manifest', 'gradle', 'build']);
+    // A CycloneDX BOM that quotes a POM after its <bom> element, and a pasted requirements file, are still read.
+    const bom =
+      '<bom xmlns="http://cyclonedx.org/schema/bom/1.6"><components><component><purl>pkg:maven/a/b@1.0.0</purl>' +
+      '<description><![CDATA[<project xmlns="http://maven.apache.org/POM/4.0.0">]]></description></component></components></bom>';
+    expect(kind(bom)).toBe('parsed');
+    expect(kind(bom, 'bom.xml')).toBe('parsed');
+    expect(parse(fixture('requirements.txt')).format).toBe('requirements');
+    expect(parse(fixture('bom.xml')).format).toBe('cyclonedx-xml');
+    // Read as still reads anything as what it is told.
+    expect(parse('tasks.named<Test>("test")\nrequests==2.0.0\n', 'build.gradle.kts', 'requirements').format).toBe('requirements');
+  });
 });
 
 describe('one SBOM in three formats', () => {
