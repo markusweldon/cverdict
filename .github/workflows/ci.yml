@@ -48,6 +48,8 @@ jobs:
       - name: Test the data-branch publisher
         run: |
           npx tsx scripts/mock-data.ts "$RUNNER_TEMP/data"
+          # The mock data must pass the same checks as a real run's output.
+          npx tsx scripts/validate-data.ts "$RUNNER_TEMP/data"
           remote="$RUNNER_TEMP/publish-test.git"
           git init --quiet --bare "$remote"
           git remote add publish-test "$remote"
