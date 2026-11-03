@@ -106,14 +106,17 @@ describe('ticketMarkdown', () => {
 describe('verdict', () => {
   it('explains each tier in words', () => {
     expect(verdict(detail, 'exploited', 50)).toEqual({ head: 'Patch now', reason: 'exploited, KEV due Oct 28' });
-    expect(verdict({ ...detail, kev: null, score: { ...detail.score, value: 38 } }, 'watch', 50).reason).toBe('score 38: below the knob (50), above the watch floor (25)');
-    expect(verdict(detail, 'quiet', 50).reason).toBe('no evidence yet (quiet ≠ safe)');
+    expect(verdict({ ...detail, kev: null, score: { ...detail.score, value: 38 } }, 'watch', 50).reason).toBe('score 38, below the default knob (50)');
+    expect(verdict({ ...detail, kev: null, score: { ...detail.score, value: 38 } }, 'watch', 60).reason).toBe('score 38, below the knob (60)');
+    // Quiet is never "no evidence" while a counted chip raised the score.
+    expect(verdict({ ...detail, score: { ...detail.score, value: 20 } }, 'quiet', 50).reason).toBe('score 20, below the watch floor (25), and quiet is not safe');
+    expect(verdict({ ...detail, reasons: [] }, 'quiet', 50).reason).toBe('no evidence yet, and quiet is not safe');
   });
 
   it('names the strongest artifact for Likely, including a vendor-declared working exploit', () => {
     const functional = { id: 'vendor.functional', label: 'Acme CVSS vector: functional exploit code exists (E:F)', polarity: 'up', family: 'X', points: 24, source: 'cvelist' } as const;
     const likely = { ...detail, kev: null, reasons: [functional, ...detail.reasons.slice(1)], score: { ...detail.score, value: 62, tier: 'likely' as const } };
-    expect(verdict(likely, 'likely', 50).reason).toBe('the vendor’s CVSS vector says a working exploit exists');
+    expect(verdict(likely, 'likely', 50).reason).toBe('vendor CVSS says a working exploit exists');
   });
 
   it('re-tiers a detail at another knob', () => {
