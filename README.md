@@ -240,7 +240,6 @@ More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **v1.1**
 
-- **Backtest receipts**: a page showing how past verdicts held up against later KEV listings.
 - **CNA noise panel**: who publishes how much, and how much of it ever matters.
 - **EPSS sparklines** on CVE pages and rows.
 - **Open Graph images** per CVE, so shared links carry the verdict.
