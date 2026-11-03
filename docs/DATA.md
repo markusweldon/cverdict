@@ -328,7 +328,7 @@ as seen on the Eastern day before.
   it lists the CVE (for example SSVC exploitation "active"), which is one reason it is counted apart.
 - **Counted** (`eligible`): KEV additions dated from the `since` day on, for CVEs the log saw in an
   earlier run, on or before the listing date. The rest are in `uncounted`: `older` (the CVE was not
-  in the log, because it was published before the window when the log could have seen it; Woke up
+  in the log, because it was published before the window when the log could have seen it; Woke Up
   covers these), `listed_first` (CISA listed it before, or in the same run as, our first sighting)
   or `no_record` (no published CVE record yet).
 - Each CVE is **watched while it is in the window**. A method that flags it only later is not
@@ -413,7 +413,7 @@ lockfile. It covers the CVEs that have a detail shard (the window, every KEV CVE
 `woke.json`) and eight ecosystems: npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist and NuGet.
 The data comes from [OSV.dev](https://osv.dev) (GitHub Advisory Database, PyPI Advisory Database,
 Go Vulnerability Database, RustSec, Drupal security advisories); only advisory IDs, package names
-and version ranges are kept. The site's Check page matches a file against it in the browser.
+and version ranges are kept. The site's Check Deps page matches a file against it in the browser.
 
 | Field | Meaning |
 |---|---|

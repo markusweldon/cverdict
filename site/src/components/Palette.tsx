@@ -26,15 +26,15 @@ interface Item {
 
 const PAGES: readonly [string, string, string][] = [
   ['Today', '', 'Signal, knob, waterfall'],
-  ['KEV clock', 'kev', 'CISA KEV due dates'],
-  ['Woke up', 'woke', 'Old CVEs with new exploit evidence'],
-  ['Batches', 'batches', 'Patch-day cohorts'],
+  ['KEV Clock', 'kev', 'CISA KEV due dates'],
+  ['Woke Up', 'woke', 'Old CVEs with new exploit evidence'],
   ['Explore', 'explore', 'Every CVE in the window'],
-  ['Check', 'check', 'SBOM or lockfile'],
-  ['The surge', 'surge', 'Volume since 1999'],
+  ['Check Deps', 'check', 'Your dependencies, from an SBOM or lockfile'],
+  ['Batches', 'batches', 'Patch-day cohorts'],
   ['Receipts', 'receipts', 'Did we flag it before CISA did?'],
   ['Method', 'method', 'Formula, chips, sources'],
-  ['Feeds', 'feeds', 'JSON, Atom, iCalendar'],
+  ['The Surge', 'surge', 'Volume since 1999'],
+  ['Feeds & API', 'feeds', 'JSON, Atom, iCalendar, MCP'],
 ];
 
 function buildItems(q: string, rows: readonly Row[]): Item[] {

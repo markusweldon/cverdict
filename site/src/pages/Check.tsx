@@ -266,7 +266,7 @@ function FailureText({ failure }: { failure: Failure }) {
 const tierGroups: readonly Tier[] = ['exploited', 'likely', 'watch', 'quiet'];
 
 export default function Check() {
-  useTitle('Check your dependencies');
+  useTitle('Check Your Dependencies');
   useKnobUrl();
   const level = useStore(knob);
   const now = useNow(60_000);
@@ -499,9 +499,9 @@ export default function Check() {
   return (
     <div class="page page--check">
       <header class="page__head">
-        <p class="eyebrow">Your dependencies</p>
+        <p class="eyebrow">Does this affect me?</p>
         <h1 class="page__title" tabIndex={-1}>
-          Does this affect me?
+          Check Your Dependencies
         </h1>
         <p class="page__lede">
           Drop an SBOM or a lockfile to see which of the CVEs {BRAND.name} tracks affect your packages, with each CVE’s verdict. Your file is read here in your browser and never uploaded.

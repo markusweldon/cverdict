@@ -23,7 +23,7 @@ const JSON_FILES: readonly [string, string][] = [
   ['changes.json', 'Escalations from the runs of the last 7 days.'],
   ['woke.json', 'Old CVEs (published before the window) that gained exploitation evidence in the last 30 days, with the dated signals.'],
   ['receipts.json', 'Receipts: which CVEs CISA added to KEV that each method had flagged before the listing, from the live log and the hindsight backtest.'],
-  ['packages.json', 'Package versions the tracked CVEs affect, from OSV.dev advisories, for the Check page. About 120 KB gzip.'],
+  ['packages.json', 'Package versions the tracked CVEs affect, from OSV.dev advisories, for the Check Deps page. About 120 KB gzip.'],
 ];
 
 const SHARD_JS = `// FNV-1a 32-bit of the upper-cased ID, mod ${SHARD_COUNT}, as two hex digits.
@@ -74,7 +74,7 @@ function Snippet({ title, code }: { title: string; code: string }) {
 }
 
 export default function Feeds() {
-  useTitle('Feeds');
+  useTitle('Feeds & API');
   const base = abs(DATA_BASE);
   const feeds = abs(FEEDS_BASE);
   return (
@@ -94,7 +94,7 @@ export default function Feeds() {
         <ul class="endpoints">
           <UrlRow url={`${feeds}signal.xml`} label="Signal (Atom)" note="The newest 100 Exploited and Likely-next CVEs." icon={<IconRss size={16} />} />
           <UrlRow url={`${feeds}kev.xml`} label="KEV additions (Atom)" note="CISA KEV entries added in the last 30 days." icon={<IconRss size={16} />} />
-          <UrlRow url={`${feeds}woke.xml`} label="Woke up (Atom)" note="Up to 100 old CVEs that gained exploitation evidence in the last 30 days, newest first. KEV listings and Exploit-DB entries always make it in. A PoC repo alone counts only when the CVE is Likely next or Exploited." icon={<IconRss size={16} />} />
+          <UrlRow url={`${feeds}woke.xml`} label="Woke Up (Atom)" note="Up to 100 old CVEs that gained exploitation evidence in the last 30 days, newest first. KEV listings and Exploit-DB entries always make it in. A PoC repo alone counts only when the CVE is Likely next or Exploited." icon={<IconRss size={16} />} />
           <UrlRow url={`${feeds}kev-due.ics`} label="KEV due dates (iCalendar)" note="One all-day event per deadline, from a week ago to 60 days out. Subscribe from any calendar app." icon={<IconCalendar size={16} />} />
         </ul>
       </section>

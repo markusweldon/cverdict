@@ -101,7 +101,7 @@ function Forward({ f }: { f: ForwardReceipts }) {
   const notCounted = [
     older > 0 && (
       <>
-        {plural(older, 'CVE')} older than our {f.watch_days}-day window (<a href={href('woke')}>Woke up</a> shows the recent ones)
+        {plural(older, 'CVE')} older than our {f.watch_days}-day window (<a href={href('woke')}>Woke Up</a> shows the recent ones)
       </>
     ),
     listedFirst > 0 && `${plural(listedFirst, 'CVE')} that CISA listed before we first saw ${listedFirst === 1 ? 'it' : 'them'}`,

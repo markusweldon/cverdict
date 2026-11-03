@@ -13,15 +13,15 @@ export const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(
 
 const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
   { name: 'today', path: '', label: 'Today' },
-  { name: 'kev', path: 'kev', label: 'KEV clock' },
-  { name: 'woke', path: 'woke', label: 'Woke up' },
-  { name: 'batches', path: 'batches', label: 'Batches' },
+  { name: 'kev', path: 'kev', label: 'KEV Clock' },
+  { name: 'woke', path: 'woke', label: 'Woke Up' },
   { name: 'explore', path: 'explore', label: 'Explore' },
-  { name: 'check', path: 'check', label: 'Check' },
-  { name: 'surge', path: 'surge', label: 'The surge' },
+  { name: 'check', path: 'check', label: 'Check Deps' },
+  { name: 'batches', path: 'batches', label: 'Batches' },
   { name: 'receipts', path: 'receipts', label: 'Receipts' },
   { name: 'method', path: 'method', label: 'Method' },
-  { name: 'feeds', path: 'feeds', label: 'Feeds' },
+  { name: 'surge', path: 'surge', label: 'The Surge' },
+  { name: 'feeds', path: 'feeds', label: 'Feeds & API' },
 ];
 
 /** Freshness of the last pipeline run: fresh < 2h, late < 6h, stale beyond. */
@@ -81,7 +81,7 @@ export function Header({ route }: { route: Route }) {
         Skip to content
       </a>
       <div class="top__inner">
-        <a class="brand" href={href('')} aria-label={`${BRAND.name} — today`}>
+        <a class="brand" href={href('')} aria-label={`${BRAND.name}, Today`}>
           <Mark size={22} />
           <span class="brand__name">{BRAND.name}</span>
         </a>
@@ -124,7 +124,7 @@ export function Footer() {
           </div>
         </div>
         <p class="foot__text">
-          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the Check page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
+          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the Check Deps page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
           CISA, MITRE, FIRST or any vendor.
         </p>
         <nav class="foot__links" aria-label="Footer">

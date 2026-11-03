@@ -23,7 +23,7 @@ export function WokeCard({ level }: { level: number }) {
     <section class="panel wokecard" aria-labelledby="woke-h">
       <header class="panel__head">
         <h2 id="woke-h" class="panel__title">
-          Woke up
+          Woke Up
         </h2>
         <a class="section__more" href={href('woke')} aria-label={`All ${fmtInt(total)} old ${total === 1 ? 'CVE' : 'CVEs'} that woke up`}>
           All {fmtInt(total)} <IconArrowRight size={12} />
