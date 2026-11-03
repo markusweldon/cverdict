@@ -7,9 +7,11 @@
  *
  * Worst cases are found, not guessed: every shard is read to find the 15 largest verdicts (and the
  * 5 largest with detail), and pages are built from the 50 largest rows or woke items, which no
- * filter can exceed. Also checks, for every CVE in every shard, that score_math adds up: base plus
- * the chip points equals the score for an exploited CVE and raw for any other. Exits 1 when a
- * worst case passes 20,000 estimated tokens (3.5 bytes of JSON per token) or the math fails.
+ * filter can exceed, and from 50 copies of the largest KEV entry (kev.json can hold more after a
+ * large CISA batch than it does today). Also checks, for every CVE in every shard, that score_math
+ * adds up: base plus the chip points equals the score for an exploited CVE and raw for any other.
+ * Exits 1 when a worst case passes 20,000 estimated tokens (3.5 bytes of JSON per token) or the
+ * math fails.
  */
 import { InMemoryTransport } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
@@ -83,7 +85,11 @@ const wokePages = [];
 for (let offset = 0; offset < Math.max(1, wokeCount); offset += 50) wokePages.push(await dc.run((c) => wokeUp(c, { since: '2000-01-01', limit: 50, offset }, now)));
 const wokeBiggest = wokePages.flatMap((p) => p.items).sort((a, b) => size(b) - size(a));
 record('woke_up page of the 50 largest items', { ...wokePages[0], items: wokeBiggest.slice(0, 50) }, true);
-record('kev_due, 60 days ahead and 14 overdue', await dc.run((c) => kevDue(c, { within_days: 60, overdue_days: 14 }, now)), true);
+const kevWide = await dc.run((c) => kevDue(c, { within_days: 60, overdue_days: 14 }, now));
+record('kev_due, 60 days ahead and 14 overdue', kevWide);
+// kev.json can hold far more entries after a large CISA batch: a full page of the largest one.
+const kevBiggest = [...kevWide.items].sort((a, b) => size(b) - size(a))[0];
+record('kev_due page of 50 copies of its largest entry', { ...kevWide, items: kevBiggest ? Array(50).fill(kevBiggest) : [] }, true);
 
 // receipts with the id whose entries are largest.
 const rf = await dc.run((c) => c.file('receipts.json', parse.receipts));
