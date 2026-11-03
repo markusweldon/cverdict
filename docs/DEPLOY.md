@@ -235,3 +235,7 @@ public repositories; old source-cache entries are evicted automatically to stay 
 reason why copies have to opt in to the schedule. GitHub Pages is free for public repositories.
 Vercel's Hobby plan covers a static site of this size for personal, non-commercial use; for
 anything else, check Vercel's plans or use GitHub Pages.
+
+The MCP server (`mcp/`) runs on each user's own machine, not on Vercel: there is no MCP endpoint
+and no function. It reads the data branch on raw.githubusercontent.com, and only when GitHub fails
+falls back to the site's `/data/` rewrite, which costs the same static CDN requests as a page view.

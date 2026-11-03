@@ -634,3 +634,176 @@ export function rowFromColumns(cols: readonly string[], values: unknown[]): Row 
 export function rowsFromTable(table: Pick<RowTable, 'cols' | 'rows'>): Row[] {
   return table.rows.map((r) => rowFromColumns(table.cols, r));
 }
+
+// ── MCP tool results ─────────────────────────────────────────────────────────────────────────
+// What the MCP server (mcp/src/tools.ts) returns. Computed from the v1 files above when a tool is
+// called; none of these are files on the data branch. Same rule as v1: additive changes only.
+
+/** The run and the files behind an MCP answer. */
+export interface McpData {
+  /** meta.generated_at of the run the answer is based on. */
+  generated_at: string;
+  /** Whole hours from generated_at to the moment the server answered. */
+  age_hours: number;
+  score_model: string;
+  knob_default: number;
+  window: Meta['window'];
+  /** Sources with ok: false in that run: their evidence is unknown there, not absent. */
+  sources_down: SourceId[];
+  /** Sources that served a cached copy in that run. */
+  sources_stale: SourceId[];
+  /** Every file read for this answer: its path on the data branch, the URL it came from and its own generated_at. */
+  files: { path: string; url: string; generated_at: string }[];
+  /** Set when a refresh failed and the server answered from its last good copy. */
+  warning: string | null;
+}
+
+/** A Row for agents: readable names, tier at the requested knob. */
+export interface McpRow {
+  id: string;
+  tier: Tier;
+  score: number;
+  published: string;
+  cna: string;
+  vendor: string;
+  product: string;
+  /** Row.t on one line. Untrusted. */
+  title: string;
+  exploited: boolean;
+  weaponized: boolean;
+  in_kev: boolean;
+  kev_due: string | null;
+  cvss: number | null;
+  epss: number | null;
+  /** Row.c: up to 4 chip ids, strongest first. */
+  chips: string[];
+  batch: string | null;
+}
+
+export interface McpPage<T> {
+  data: McpData;
+  total: number;
+  offset: number;
+  next_offset: number | null;
+  items: T[];
+}
+
+export interface McpVerdict {
+  id: string;
+  found: true;
+  /** Tier at `knob`. */
+  tier: Tier;
+  /** Plain-language verdict for the tier (shared/mcp.ts). */
+  verdict: string;
+  knob: number;
+  score: number;
+  /** base + the sum of reasons[].points is score for an exploited CVE, and raw for any other (score is raw clamped to 0 to 100). */
+  score_math: { base: number; raw: number };
+  exploited: boolean;
+  weaponized: boolean;
+  published: string;
+  cna: string;
+  vendor: string;
+  product: string;
+  /** CNA title, or the description cut to 160 characters, on one line. Untrusted. */
+  title: string;
+  cvss: Pick<Cvss, 'score' | 'version' | 'source'> | null;
+  epss: Pick<EpssInfo, 'score' | 'percentile' | 'date'> | null;
+  kev: Pick<KevInfo, 'date_added' | 'due_date' | 'ransomware'> | null;
+  /** Every chip, as in CveDetail.reasons (family losers with points 0, info and unknown chips). */
+  reasons: Pick<Reason, 'id' | 'label' | 'points' | 'polarity' | 'url' | 'at'>[];
+  unknowns: string[];
+  woke: WokeInfo | null;
+  links: { page: string; json: string; cve_org: string };
+  /** Only with detail: true. */
+  detail?: Pick<CveDetail, 'description' | 'affected' | 'cwe' | 'ssvc' | 'kev' | 'epss' | 'exploits' | 'tags' | 'timeline' | 'references'>;
+}
+
+export interface McpNotFound {
+  id: string;
+  found: false;
+  note: string;
+  links: { cve_org: string } | null;
+}
+
+export interface McpVerdictResult {
+  data: McpData;
+  items: (McpVerdict | McpNotFound)[];
+}
+
+export interface McpSignalResult extends McpPage<McpRow> {
+  knob: number;
+  tiers: Tier[];
+  /** The file the rows came from. */
+  file: 'signal.json' | 'index.json';
+}
+
+export interface McpSearchResult extends McpPage<McpRow> {
+  query: string;
+  knob: number;
+  /** What was searched, in words. */
+  scope: string;
+}
+
+export interface McpKevDue {
+  id: string;
+  vendor: string;
+  product: string;
+  /** Untrusted. */
+  name: string;
+  date_added: string;
+  due_date: string;
+  /** due_date minus today (UTC calendar days); negative when overdue. */
+  days_left: number;
+  ransomware: string;
+  forensic_triage: boolean | null;
+  /** Untrusted. */
+  required_action: string;
+  score: number | null;
+}
+
+export interface McpKevDueResult {
+  data: McpData;
+  today_utc: string;
+  /** The due-date range searched, inclusive. */
+  from: string;
+  to: string;
+  catalog_version: string | null;
+  total: number;
+  offset: number;
+  next_offset: number | null;
+  items: McpKevDue[];
+}
+
+export interface McpWokeItem extends McpRow {
+  woke_at: string;
+  signals: WakeSignal[];
+}
+
+export interface McpWokeResult extends McpPage<McpWokeItem> {
+  since: string;
+  tracking: WokeFile['tracking'];
+  skipped: WokeFile['skipped'];
+}
+
+export interface McpReceiptsResult {
+  data: McpData;
+  page: string;
+  knob: number;
+  definitions: Record<string, string>;
+  forward: Omit<ForwardReceipts, 'items' | 'uncounted' | 'gaps'>;
+  backtest:
+    | (Pick<BacktestReceipts, 'hindsight' | 'computed_at' | 'from' | 'to' | 'days' | 'listed' | 'sets' | 'volume'> & {
+        score_model: string | null;
+        excluded: { code: 'no_record' | 'not_public'; n: number }[];
+        epss_missing: number;
+        sources_down: string[];
+      })
+    | null;
+  /** Only with id: that CVE's entries, with rows as McpRow. */
+  cve?: {
+    id: string;
+    forward: (Omit<ReceiptItem, 'row'> & { row: McpRow | null }) | UncountedListing | null;
+    backtest: (Omit<BacktestItem, 'row'> & { row: McpRow | null }) | null;
+  };
+}

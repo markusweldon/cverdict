@@ -7,3 +7,4 @@ published/
 *.log
 .DS_Store
 .vercel
+mcp/dist/

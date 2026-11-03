@@ -144,6 +144,8 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 Every JSON file carries \`schema_version\` and \`generated_at\`. Fields, sharding and the
 versioning policy are documented in
 [docs/DATA.md](https://github.com/${repo}/blob/HEAD/docs/DATA.md).
+AI agents can read the same files through the read-only MCP server:
+[docs/DATA.md#mcp-server](https://github.com/${repo}/blob/HEAD/docs/DATA.md#mcp-server).
 
 \`\`\`sh
 curl -s https://raw.githubusercontent.com/${repo}/${BRANCH}/v1/meta.json | jq .counts

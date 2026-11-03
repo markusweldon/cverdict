@@ -208,6 +208,25 @@ Feeds: [Atom: Exploited + Likely next](https://raw.githubusercontent.com/markusw
 
 Every file, every field, sharding and the versioning policy: [docs/DATA.md](docs/DATA.md).
 
+## Ask from an AI agent (MCP)
+
+CVErdict also runs as a read-only [MCP](https://modelcontextprotocol.io) server, so an AI agent can
+ask for verdicts and get the same score, chips and links as the site, with the time of the run and
+the files behind every answer. No key, no account. It runs on your machine and reads the `data`
+branch on GitHub directly, so it does not depend on the site. An npm package will follow; for now,
+run it from a clone (Node 22.12 or later):
+
+```sh
+git clone --single-branch https://github.com/markusweldon/cverdict.git
+cd cverdict && npm ci
+claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp      # Claude Code; other clients: mcp/README.md
+```
+
+Tools: `get_verdict` (1 to 15 CVE IDs), `list_signal`, `kev_due`, `woke_up`, `receipts` and
+`search_cves`. Setup for other clients, options and limits: [mcp/README.md](mcp/README.md); what
+each answer contains: [docs/DATA.md](docs/DATA.md#mcp-server); copyable commands on the site:
+[Feeds](https://cverdict-psi.vercel.app/feeds#mcp).
+
 ## Deploy your own
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/markusweldon/cverdict)
@@ -261,7 +280,6 @@ More in [CONTRIBUTING.md](CONTRIBUTING.md).
 **v2**
 
 - **SBOM drop**: drop a CycloneDX or SPDX file and see your components in the signal, entirely in the browser.
-- **MCP server**, so AI agents can ask for verdicts and their reasons.
 - **Browser extension** that puts the verdict next to any CVE ID on the web.
 - **MSRC exploitability index** as a chip for Microsoft CVEs.
 - **EUVD cross-check** against ENISA's EU Vulnerability Database.
