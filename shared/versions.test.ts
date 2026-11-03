@@ -160,6 +160,35 @@ describe('hostile input', () => {
       }
     }
   });
+
+  it('every comparator handles strings shaped for backtracking quickly (a keyword, a run, a bad last character)', () => {
+    // "1.0.0-beta1111…1x" once took 2.7 s at 37 characters in the Composer ordering, doubling with each digit.
+    const heads = ['1', '1.0', '1.0.0-', '1.0.0-beta', '1.0.0-p', '1.0.0-rc', '1.0a', '1.0.post', '1!1.0+a', '1-', '1.a'];
+    const runs = ['1', '1.', '.1', '-1', 'a1', '1a', 'a.', '-a', '0'];
+    const tails = ['', 'x', '!', '-', '.', '+'];
+    for (const [eco, c] of Object.entries(COMPARATORS)) {
+      let worst = 0;
+      for (const h of heads) for (const r of runs) for (const t of tails) {
+        const v = (h + r.repeat(MAX_VERSION)).slice(0, MAX_VERSION - t.length) + t;
+        const t0 = performance.now();
+        const k = c.parse(v);
+        if (k !== null) c.cmp(k, k);
+        worst = Math.max(worst, performance.now() - t0);
+      }
+      expect(worst, eco).toBeLessThan(10);
+    }
+  });
+
+  it('a backtracking-shaped Composer version is checked like any other unreadable version', () => {
+    const hostile = `1.0.0-beta${'1'.repeat(100)}x`;
+    const t0 = performance.now();
+    expect(COMPARATORS.Packagist.parse(hostile)).toBeNull();
+    expect(matchAffect('Packagist', hostile, [['>=0', '<8.5.1']])).toBe('unchecked');
+    expect(performance.now() - t0).toBeLessThan(10);
+    // The same family of strings still reads when it is valid.
+    expectEqual('Packagist', ['1.0.0-beta1.2', '1.0.0-beta.1.2', '1.0.0-beta-1-2']);
+    expectAscending('Packagist', ['1.0.0-beta1', `1.0.0-beta1${'0'.repeat(20)}`]);
+  });
 });
 
 describe('parseEvent', () => {

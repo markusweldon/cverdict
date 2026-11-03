@@ -351,8 +351,11 @@ interface ComposerKey {
   dev: boolean;
 }
 
+// The numbers after the stability are written `\d*(?:[.-]\d+)*`, not Composer's `(?:[.-]?\d+)*+`:
+// JavaScript has no possessive quantifier, and that nested form splits a run of digits in
+// exponentially many ways before failing (a 40-character version took minutes). Same strings matched.
 const COMPOSER_RE =
-  /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?(?:[._-]?(stable|beta|b|rc|alpha|a|patch|pl|p)((?:[.-]?\d+)*))?([._-]?dev)?$/;
+  /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?(?:[._-]?(stable|beta|b|rc|alpha|a|patch|pl|p)(\d*(?:[.-]\d+)*))?([._-]?dev)?$/;
 const COMPOSER_STABILITY: Readonly<Record<string, number>> = { alpha: 1, a: 1, beta: 2, b: 2, rc: 3, stable: 4, patch: 5, pl: 5, p: 5 };
 
 export const composer: Comparator<ComposerKey> = {
