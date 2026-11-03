@@ -180,3 +180,10 @@ SOFTWARE.
 Authors, are licensed under the [SIL Open Font License, Version 1.1](https://openfontlicense.org/).
 They are bundled from the `@fontsource-variable/geist` and `@fontsource-variable/geist-mono`
 packages, which include the full license text.
+
+## Share images
+
+The link-preview images in `site/public/og/` are rendered by hand with `tools/og/render.mjs`, using
+[satori](https://github.com/vercel/satori) and [resvg-wasm](https://github.com/yisibl/resvg-js)
+(both MPL-2.0) as build tools; neither ships with the site. The text in them is drawn as glyph
+outlines from the static Geist files of `@fontsource/geist` (SIL Open Font License 1.1, as above).

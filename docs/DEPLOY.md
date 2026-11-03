@@ -9,7 +9,9 @@ CVErdict is a static site plus a JSON data branch. Two pieces run independently:
   [Reliable hourly refresh](#reliable-hourly-refresh).
 - **Site**: a Vite build of `site/`, hosted on Vercel or GitHub Pages, that reads the data.
 
-No servers, databases, accounts or API keys are involved, and nothing needs secrets.
+No databases, accounts or API keys are involved, and nothing needs secrets. The only server-side
+code is one optional Vercel Function that link-preview bots reach and people never do (see
+[Link previews](#link-previews)); the site and the data work without it.
 
 ## Vercel (recommended)
 
@@ -41,6 +43,84 @@ and Vercel serves files from the build before applying rewrites, so it would sha
 
 The data branch carries its own tiny `vercel.json` with `"git": { "deploymentEnabled": false }`, so
 Vercel does not build a preview deployment of it every hour.
+
+## Link previews
+
+A CVE link pasted into Slack, X, LinkedIn, Mastodon, Discord, Teams or a messenger shows that
+CVE's verdict: a title like `CVE-2026-109618: Exploited, score 100`, a description with the
+verdict, the vendor and product, CISA KEV status, public exploits and the run time, and an image
+for its tier (`site/public/og/`). Every other link shows the site card.
+
+How it works:
+
+- `site/index.html` has a share block between `<!--share:start-->` and `<!--share:end-->`. The
+  build fills it with the site card (`genericHead()` in `shared/share.ts`). Image URLs must be
+  absolute: the build uses `SITE_URL`, else Vercel's production domain
+  (`VERCEL_PROJECT_PRODUCTION_URL`), else `BRAND.siteUrl`.
+- `vercel.json` rewrites `/cve/<id>` to the function `api/share.ts` **only** when the user-agent
+  is a link-preview bot (the `has` condition; the list is `BOT_UA_TOKENS` in `shared/share.ts`,
+  and a test keeps the two equal). Browsers, in-app browsers and search or AI crawlers (Googlebot,
+  GPTBot, ClaudeBot) get the static `index.html` as before.
+- The function reads the CVE's detail shard from the `data` branch on raw.githubusercontent.com
+  (the site's own `/data/` copy only when raw is rate-limiting or down), loads the production
+  `index.html`, and returns it with the CVE's tags in the share block. It is read-only, has no
+  npm dependencies, and answers with the plain site card whenever anything is wrong.
+
+What it costs on Hobby, and why it cannot be the first limit to run out:
+
+- Every bot fetch is one edge request and at most one invocation (the CDN keeps each answer for
+  15 minutes per region); people never cause an invocation.
+- A warm request takes about 2 ms of CPU (it parses one shard of about 250 KB). One deadline of
+  1.5 s covers every fetch of a request, bodies are capped (2 MB per shard, 64 KB for the page),
+  each shard is cached in memory for raw's own 5 minutes and then revalidated with its ETag, and
+  after raw and the fallback both fail for a shard it answers with the site card for 60 seconds
+  without fetching. `maxDuration` is 10 s as a backstop.
+- The answer is about 4.5 KB (1.5 KB gzip); the images are static files of 31 to 53 KB.
+
+So invocations stay below edge requests, Active CPU below 4 hours at 1M requests, and memory
+below its limit unless GitHub is slow for most of a month while close to 1M bot requests arrive.
+A Hobby overage pauses the whole project, the static site included, which is why the function is
+bounded this way rather than relied on to fail gracefully.
+
+**Check a preview** (on production; preview deployments sit behind Vercel's login):
+
+```sh
+curl -s -A 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)' \
+  https://cverdict-psi.vercel.app/cve/CVE-2026-109618 | grep -E 'og:|twitter:|<title>'
+curl -s -A 'Mastodon/4.3.0 (http.rb/5.2.0; +https://mastodon.social/) Bot' \
+  -o /dev/null -w '%{http_code} %{content_type}\n' https://cverdict-psi.vercel.app/cve/CVE-2026-109618
+# A browser gets the static page with the site card:
+curl -s -A 'Mozilla/5.0 Chrome/130.0' https://cverdict-psi.vercel.app/cve/CVE-2026-109618 | grep og:title
+# The second request in a region should say x-vercel-cache: HIT
+curl -sI -A 'Twitterbot/1.0' https://cverdict-psi.vercel.app/cve/CVE-2026-109618 | grep -i x-vercel-cache
+```
+
+Then the platforms' own tools: Facebook's Sharing Debugger, LinkedIn's Post Inspector, a private
+Slack channel. Chat apps keep a preview once they have it; every description ends with the time
+of the run it was built from.
+
+**Switch it off** by deleting the `/cve/:id(...)` rewrite with the `has` condition from
+`vercel.json` and redeploying: every link falls back to the site card. A fork needs no change for
+it: the function reads the data branch from `BRAND.repo` in `shared/brand.ts`.
+
+**Change the images** by editing `tools/og/render.mjs` (the words) or `site/src/styles/tokens.css`
+(the colours), then:
+
+```sh
+npm --prefix tools/og ci
+node tools/og/render.mjs     # writes site/public/og/*.png and shared/share-images.ts
+```
+
+and look at the PNGs before committing them. The renderer has its own lockfile; the root
+`npm ci` (CI, the hourly job, Vercel) never installs it. The images carry no CVE data, so they
+only change when the wording or the colours do. The `?v=` in their URLs is the start of each
+file's SHA-256, so chat apps that cache by URL fetch a changed image; a test checks it.
+
+Every file directly in `api/` becomes a Vercel Function, so the function's tests live in
+`api/_test/` (Vercel skips names that start with `_`).
+
+GitHub Pages has no functions: links to a Pages copy show the site card, and its CVE pages are
+served with status 404 (see below).
 
 ## GitHub Pages
 
@@ -100,7 +180,7 @@ summary shows the published data's age and the health of every source.
 
 | Setting | Where | Default | Purpose |
 |---|---|---|---|
-| `SITE_URL` | Settings → Secrets and variables → Actions → **Variables** | the Pages URL when Pages is on, else `BRAND.siteUrl` from `shared/brand.ts` | Public site URL used for links inside the Atom and iCalendar feeds. Set it when you use Vercel with a custom domain |
+| `SITE_URL` | Settings → Secrets and variables → Actions → **Variables** | the Pages URL when Pages is on, else `BRAND.siteUrl` from `shared/brand.ts` | Public site URL used for links inside the Atom and iCalendar feeds, and for the share images of the Pages build. Set it when you use Vercel with a custom domain; for Vercel's own build and the link-preview function, set `SITE_URL` in the Vercel project's environment variables too (they default to the production domain) |
 | `REFRESH_SCHEDULE` | same | off | `on` makes the hourly schedule run in a fork or copy. Scheduled runs only do work in `markusweldon/cverdict` (the check at the top of `refresh.yml`) or when this is `on`, so copies that only host the site, like the one the Vercel button creates, spend no Actions minutes. **Run workflow** works regardless |
 
 There are no secrets to set. The workflow only uses the built-in `GITHUB_TOKEN`:
@@ -233,5 +313,6 @@ Free. The hourly run takes about 5 minutes of GitHub Actions time, which is free
 public repositories; old source-cache entries are evicted automatically to stay within the free
 10 GB. Private repositories have a monthly minutes quota that an hourly run would use up, one
 reason why copies have to opt in to the schedule. GitHub Pages is free for public repositories.
-Vercel's Hobby plan covers a static site of this size for personal, non-commercial use; for
+Vercel's Hobby plan covers a static site of this size, and the link-preview function, for
+personal, non-commercial use (see [Link previews](#link-previews) for what the function uses); for
 anything else, check Vercel's plans or use GitHub Pages.
