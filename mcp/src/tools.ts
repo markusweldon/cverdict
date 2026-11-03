@@ -5,6 +5,7 @@
  */
 import {
   KNOB_DEFAULT,
+  NON_SCORING_SOURCES,
   SIGNAL_MIN_SCORE,
   tierFor,
   type BacktestItem,
@@ -95,8 +96,9 @@ async function dataBlock(call: DataCall, now: number): Promise<McpData> {
     score_model: m.score_model,
     knob_default: m.knob_default,
     window: m.window,
-    sources_down: m.sources.filter((s) => !s.ok).map((s) => s.id),
-    sources_stale: m.sources.filter((s) => s.ok && s.stale).map((s) => s.id),
+    // Only sources that can change a verdict: osv feeds packages.json alone.
+    sources_down: m.sources.filter((s) => !s.ok && !NON_SCORING_SOURCES.has(s.id)).map((s) => s.id),
+    sources_stale: m.sources.filter((s) => s.ok && s.stale && !NON_SCORING_SOURCES.has(s.id)).map((s) => s.id),
     files: [...call.files.values()],
     warning: call.warnings.size ? [...call.warnings].join(' ') : null,
   };

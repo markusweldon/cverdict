@@ -89,7 +89,7 @@ at its maximum bounds stays under 20,000 tokens; `scripts/mcp-measure.ts` checks
 |---|---|
 | `generated_at`, `age_hours` | The pipeline run the answer is based on, and its age in whole hours when the server answered |
 | `score_model`, `knob_default`, `window` | As in `meta.json` |
-| `sources_down`, `sources_stale` | Sources with no usable data in that run (their evidence is unknown, not absent), and sources that served a cached copy |
+| `sources_down`, `sources_stale` | Sources with no usable data in that run (their evidence is unknown, not absent), and sources that served a cached copy. `osv` is left out: it feeds only `packages.json`, never a verdict |
 | `files[]` | Every file read: `path` on the data branch, the `url` it came from, its own `generated_at` |
 | `warning` | Set when a refresh failed and the answer comes from the last good copy |
 

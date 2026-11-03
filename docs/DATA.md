@@ -510,7 +510,7 @@ items. What the server computes itself, all from the files and the time of the r
 - `total` and `next_offset`: counts of the rows that matched.
 
 Every answer starts with `data`: the run (`generated_at`, `score_model`, `window`), the sources
-that were down or stale in it, and `files[]`, each file read with the URL it came from and its own
+that were down or stale in it (`osv` is left out, since it never changes a verdict), and `files[]`, each file read with the URL it came from and its own
 `generated_at`. Right after an hourly publish a CDN can serve one file from the previous run for a
 few minutes; the answer then shows both times rather than hiding it. `data.warning` is set when a
 refresh failed and the answer comes from the server's last good copy. `score_math.base` plus the
