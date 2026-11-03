@@ -1,6 +1,7 @@
 import type { Row, Tier } from '../../../shared/contract';
 import { hasChip, pubMs } from '../filters';
 import { batchKind, batchLabel, cnaName, fmtAge, vendorProduct } from '../format';
+import { hoverMaySelect } from '../hooks';
 import { cveHref, href } from '../router';
 import { ChipList } from './Chip';
 import { IconEye, IconLayers } from './icons';
@@ -39,8 +40,14 @@ export function CveRow({ row, tier, knob, now, selected, watched, isNew, activeC
   const top = row.b ? row.c.filter((c) => c !== 'batch') : row.c;
   // A reason filter also matches chips outside the top four: show the matching one in place of the last.
   const chips = activeChip && activeChip !== 'batch' && !top.includes(activeChip) && hasChip(row, activeChip) ? [...top.slice(0, 3), activeChip] : top;
+  // Hover selects the row under the pointer, except while a j/k move is in effect: the list
+  // scrolling under a resting pointer must not take the keyboard's selection. The next real
+  // pointer movement hands the selection back to the mouse.
+  const onMove = (e: PointerEvent) => {
+    if (e.movementX || e.movementY) onSelect?.();
+  };
   return (
-    <article class={`row row--${tier}${selected ? ' is-selected' : ''}`} data-id={row.id} style={style} onPointerEnter={onSelect}>
+    <article class={`row row--${tier}${selected ? ' is-selected' : ''}`} data-id={row.id} style={style} onPointerEnter={() => hoverMaySelect() && onSelect?.()} onPointerMove={onMove}>
       <TierPill tier={tier} size="sm" />
       <div class="row__body">
         <div class="row__line">

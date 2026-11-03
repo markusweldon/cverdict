@@ -10,6 +10,7 @@ import {
   fmtDateTime,
   fmtPct,
   fmtRelative,
+  fmtSlot,
   isHttpUrl,
   kevDeadline,
   oneIn,
@@ -75,6 +76,12 @@ describe('dates (UTC)', () => {
 
   it('counts KEV deadlines to the end of the due date', () => {
     expect(kevDeadline('2026-10-26')).toBe(Date.UTC(2026, 9, 27));
+  });
+
+  it('names the waterfall slot size', () => {
+    expect(fmtSlot(1)).toBe('by hour');
+    expect(fmtSlot(2)).toBe('in 2-hour slots');
+    expect(fmtSlot(7)).toBe('in 7-hour slots');
   });
 
   it('formats countdowns', () => {

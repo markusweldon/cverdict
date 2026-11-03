@@ -56,6 +56,11 @@
   --b-quiet: color-mix(in srgb, var(--muted) 30%, transparent);
   --b-accent: color-mix(in srgb, var(--accent) 40%, transparent);
   --b-ai: color-mix(in srgb, var(--ai) 40%, transparent);
+
+  /* Tier text on its own tint; the light theme darkens it to pass AA. */
+  --ink-exploited: var(--exploited);
+  --ink-likely: var(--likely);
+  --ink-watch: var(--watch);
 }
 
 :root[data-theme='light'] {
@@ -86,6 +91,9 @@
   --shadow-pop: 0 24px 56px -18px rgb(22 24 28 / 0.28), 0 2px 8px rgb(22 24 28 / 0.08);
   --scan: rgb(0 0 0 / 0.02);
   --grain-opacity: 0.05;
+  --ink-exploited: color-mix(in srgb, var(--exploited) 82%, var(--text));
+  --ink-likely: color-mix(in srgb, var(--likely) 82%, var(--text));
+  --ink-watch: color-mix(in srgb, var(--watch) 82%, var(--text));
 }
 
 @media (prefers-color-scheme: light) {
@@ -117,5 +125,8 @@
     --shadow-pop: 0 24px 56px -18px rgb(22 24 28 / 0.28), 0 2px 8px rgb(22 24 28 / 0.08);
     --scan: rgb(0 0 0 / 0.02);
     --grain-opacity: 0.05;
+    --ink-exploited: color-mix(in srgb, var(--exploited) 82%, var(--text));
+    --ink-likely: color-mix(in srgb, var(--likely) 82%, var(--text));
+    --ink-watch: color-mix(in srgb, var(--watch) 82%, var(--text));
   }
 }

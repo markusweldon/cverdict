@@ -23,6 +23,8 @@ interface Props {
   annotations?: readonly Annotation[];
   height?: number;
   summary: string;
+  /** Reports how many hours each column covers at the current width (for the caption). */
+  onBinHours?: (hours: number) => void;
 }
 
 const PITCH = 3;
@@ -53,7 +55,7 @@ function readColors(el: Element) {
   };
 }
 
-export function Waterfall({ counts, start, annotations = [], height = 176, summary }: Props) {
+export function Waterfall({ counts, start, annotations = [], height = 176, summary, onBinHours }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
@@ -94,6 +96,10 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     }
     return out;
   }, [counts, start, width]);
+
+  useEffect(() => {
+    if (bins.length > 0) onBinHours?.(bins[0].hours);
+  }, [bins[0]?.hours]);
 
   useEffect(() => {
     const cv = canvas.current;

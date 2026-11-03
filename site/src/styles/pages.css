@@ -36,7 +36,7 @@
 .today__feed {
   grid-area: feed;
   min-width: 0;
-  scroll-margin-top: calc(var(--header-h) + 12px);
+  scroll-margin-top: calc(var(--top-h, var(--header-h)) + 12px);
 }
 
 .today__side {
@@ -301,7 +301,7 @@
 
 .verdict--exploited > .icon,
 .verdict--exploited strong {
-  color: var(--exploited);
+  color: var(--ink-exploited);
 }
 
 .verdict--likely {
@@ -311,7 +311,7 @@
 
 .verdict--likely > .icon,
 .verdict--likely strong {
-  color: var(--likely);
+  color: var(--ink-likely);
 }
 
 .verdict--watch {
@@ -321,7 +321,7 @@
 
 .verdict--watch > .icon,
 .verdict--watch strong {
-  color: var(--watch);
+  color: var(--ink-watch);
 }
 
 .verdict__text {
@@ -330,6 +330,19 @@
 
 .verdict__clock {
   margin-left: auto;
+}
+
+/* On the verdict's tint, the clock uses the darker tier ink (and a darker label in light) for AA. */
+.verdict .countdown.is-soon .countdown__time {
+  color: var(--ink-likely);
+}
+
+.verdict .countdown.is-overdue .countdown__time {
+  color: var(--ink-exploited);
+}
+
+:root[data-theme='light'] .verdict .countdown__label {
+  color: var(--muted);
 }
 
 .cve__grid {
@@ -534,7 +547,12 @@
   color: color-mix(in srgb, var(--ok) 70%, var(--muted));
 }
 
-.reason.is-lost {
+/* Not counted, but still evidence: dimmed by colour so the text keeps AA contrast; only the icon fades. */
+.reason.is-lost .reason__label {
+  color: var(--muted);
+}
+
+.reason.is-lost .reason__icon {
   opacity: 0.56;
 }
 
@@ -935,7 +953,7 @@
 
 .explore__controls {
   position: sticky;
-  top: var(--header-h);
+  top: var(--top-h, var(--header-h));
   z-index: 10;
   display: grid;
   gap: 8px;
@@ -1268,7 +1286,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   margin-bottom: 40px;
-  scroll-margin-top: calc(var(--header-h) + 16px);
+  scroll-margin-top: calc(var(--top-h, var(--header-h)) + 16px);
 }
 
 .prose-section > p {
@@ -1394,14 +1412,18 @@
   color: var(--ok);
 }
 
+:root[data-theme='light'] .source__state--fresh {
+  color: color-mix(in srgb, var(--ok) 82%, var(--text));
+}
+
 .source__state--stale {
   background: var(--t-watch);
-  color: var(--watch);
+  color: var(--ink-watch);
 }
 
 .source__state--down {
   background: var(--t-exploited);
-  color: var(--exploited);
+  color: var(--ink-exploited);
 }
 
 .source__facts {
@@ -1691,7 +1713,7 @@
   /* The knob stays at hand while you scroll the feed. */
   .today__knob {
     position: sticky;
-    top: calc(var(--header-h) - 1px);
+    top: calc(var(--top-h, var(--header-h)) - 1px);
     z-index: 15;
     margin: 0 calc(var(--gutter) * -1);
   }
