@@ -189,7 +189,11 @@ There are no secrets to set. The workflow only uses the built-in `GITHUB_TOKEN`:
 
 - `build` installs npm dependencies and runs the pipeline, so it gets a read-only token. It reads
   the `data` branch anonymously, so the repository must be public, as raw.githubusercontent.com
-  requires anyway.
+  requires anyway. `npm ci` installs every dev dependency, so also the MCP server's SDK and `zod`
+  (14 packages with their dependencies, about 25 MB, no install scripts, pinned by
+  `package-lock.json`), which the pipeline never imports; Vercel's install does the same. A
+  separate lockfile in `mcp/` would keep them out, but needs its own install before the root
+  typecheck and tests; it can come with the npm package.
 - `publish` is the only job with `contents: write`, to push the data branch. It runs no npm code,
   only `scripts/publish-data-branch.sh` from a fresh checkout, and gets the build output as an
   artifact.
