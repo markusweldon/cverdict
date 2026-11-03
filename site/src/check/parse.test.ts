@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { FORMATS, GO_SUM_NOTE, MAX_LINE, parse, ParseError, purlComponent, type Component, type FormatId } from './parse';
+import { FORMATS, GO_SUM_NOTE, MAX_LINE, parse, ParseError, parseErrorText, purlComponent, type Component, type FormatId } from './parse';
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 
@@ -94,6 +94,31 @@ describe('fixtures (one per format, detected from the file name)', () => {
     expect(read(fixture('purls.txt')).notes).toEqual(['Ignored a line that is not a package URL.']);
     expect(read(fixture('requirements.txt')).notes).toEqual(['A line includes another requirements file (-r or -c). Check that file too.']);
     expect(read(fixture('go.sum')).notes).toEqual([GO_SUM_NOTE]);
+  });
+});
+
+describe('build manifests', () => {
+  const kind = (text: string, filename = '') => {
+    try {
+      parse(text, filename);
+    } catch (e) {
+      return e instanceof ParseError ? [e.kind, e.detail, e.message.split('.')[0]] : String(e);
+    }
+    return 'parsed';
+  };
+  const pom = '<?xml version="1.0"?>\n<!-- a comment -->\n<project xmlns="http://maven.apache.org/POM/4.0.0"><dependencies><dependency><groupId>a</groupId></dependency></dependencies></project>';
+  it('says why pom.xml, build.gradle and package.json are not read, and what to use instead', () => {
+    expect(kind(pom, 'pom.xml')).toEqual(['manifest', 'pom', 'pom']);
+    expect(kind(pom)).toEqual(['manifest', 'pom', 'pom']);
+    expect(kind('plugins { id "java" }\ndependencies { implementation "org.apache.logging.log4j:log4j-core:2.14.1" }\n', 'build.gradle')).toEqual(['manifest', 'gradle', 'build']);
+    expect(kind('dependencies { implementation("a:b:1") }', 'build.gradle.kts')).toEqual(['manifest', 'gradle', 'build']);
+    expect(kind('{"name":"x","version":"1.0.0","dependencies":{"lodash":"^4.17.20"}}', 'package.json')).toEqual(['manifest', 'npm', 'package']);
+    expect(kind('{"name":"x","devDependencies":{"vite":"^8.0.0"}}')).toEqual(['manifest', 'npm', 'package']);
+    expect(parseErrorText('manifest', 'npm')).toContain('npm sbom --sbom-format cyclonedx');
+    // Anything else is still "could not tell", and a real lockfile is still read.
+    expect(kind('{"hello":"world"}')).toEqual(['unknown', '', 'We could not tell what kind of file this is']);
+    expect(kind('<html><body>hi</body></html>')).toEqual(['unknown', '', 'We could not tell what kind of file this is']);
+    expect(kind(fixture('package-lock.json'), 'package-lock.json')).toBe('parsed');
   });
 });
 

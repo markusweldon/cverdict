@@ -251,7 +251,7 @@ function FailureText({ failure }: { failure: Failure }) {
       return <>This is {fmtSize(failure.size)} of text. Paste up to 5 MB, or save it as a file and use Choose a file.</>;
     case 'parse': {
       const { kind, detail } = failure.error;
-      if (kind !== 'json') return <>{parseErrorText(kind)}</>;
+      if (kind !== 'json') return <>{parseErrorText(kind, detail)}</>;
       return (
         <>
           This looks like JSON, but it could not be read: <UserText>{detail}</UserText>. Check that the whole file was pasted.
@@ -712,7 +712,7 @@ export default function Check() {
             Lockfiles: package-lock.json, npm-shrinkwrap.json, yarn.lock, pnpm-lock.yaml, requirements.txt (pinned with <code>==</code>), poetry.lock, uv.lock, Pipfile.lock, go.mod, go.sum, Cargo.lock,
             Gemfile.lock, composer.lock, packages.lock.json (NuGet), gradle.lockfile.
           </li>
-          <li>Not read: pom.xml and build.gradle, because they do not list the versions your build resolves. Make an SBOM instead:</li>
+          <li>Not read: pom.xml, build.gradle and package.json, because they do not list the versions your build resolves. Make an SBOM instead:</li>
         </ul>
         <ul class="check__cmds">
           <li>

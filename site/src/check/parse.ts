@@ -65,7 +65,8 @@ export interface Parsed {
 /** Why a file could not be read. `detail` quotes the file (the JSON error), so it is rendered as file text. */
 export class ParseError extends Error {
   constructor(
-    readonly kind: 'json' | 'unknown' | 'empty',
+    /** 'manifest': a build file that lists requested versions (detail: one of MANIFEST_TEXT's keys). */
+    readonly kind: 'json' | 'unknown' | 'empty' | 'manifest',
     readonly detail = '',
   ) {
     super(parseErrorText(kind, detail));
@@ -73,8 +74,16 @@ export class ParseError extends Error {
   }
 }
 
+/** Build files people try first, which name the versions asked for, not the ones installed. */
+const MANIFEST_TEXT: ReadonlyMap<string, string> = new Map([
+  ['pom', 'pom.xml lists the versions you ask for, not the ones your build resolves. Make an SBOM instead: mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom (it writes target/bom.json).'],
+  ['gradle', 'build.gradle lists the versions you ask for, not the ones your build resolves. Make an SBOM with the CycloneDX Gradle plugin (gradle cyclonedxBom), or check gradle.lockfile with dependency locking turned on.'],
+  ['npm', 'package.json lists version ranges, not the versions you install. Check package-lock.json, yarn.lock or pnpm-lock.yaml instead, or make an SBOM: npm sbom --sbom-format cyclonedx.'],
+]);
+
 export function parseErrorText(kind: ParseError['kind'], detail = ''): string {
   if (kind === 'json') return `This looks like JSON, but it could not be read: ${detail}. Check that the whole file was pasted.`;
+  if (kind === 'manifest') return MANIFEST_TEXT.get(detail) ?? parseErrorText('unknown');
   if (kind === 'unknown') return 'We could not tell what kind of file this is. Pick it under Read as, or see the accepted files below.';
   return 'No packages found in this file.';
 }
@@ -824,6 +833,15 @@ function textFormat(head: string): FormatId | null {
   return null;
 }
 
+/** A build manifest the page does not read, from the file name or the content; null otherwise. */
+function manifest(filename: string, head: string, doc: unknown): string | null {
+  const base = filename.split(/[\\/]/).pop()?.toLowerCase() ?? '';
+  if (base === 'pom.xml' || (/<project[\s>]/.test(head) && head.includes('maven.apache.org/POM'))) return 'pom';
+  if (/^build\.gradle(?:\.kts)?$/.test(base)) return 'gradle';
+  if (base === 'package.json' || (isObj(doc) && typeof doc.name === 'string' && !('lockfileVersion' in doc) && (isObj(doc.dependencies) || isObj(doc.devDependencies)))) return 'npm';
+  return null;
+}
+
 function parseJson(text: string): unknown {
   try {
     return JSON.parse(text);
@@ -850,7 +868,10 @@ export function parse(input: string, filename = '', forced: FormatId | null = nu
     doc = parseJson(text);
     format = jsonFormat(doc);
   } else if (format === null) format = textFormat(head);
-  if (format === null) throw new ParseError('unknown');
+  if (format === null) {
+    const m = manifest(filename, head, doc);
+    throw m ? new ParseError('manifest', m) : new ParseError('unknown');
+  }
 
   const notes: string[] = [];
   let components: Component[];
