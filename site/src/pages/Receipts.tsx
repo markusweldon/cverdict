@@ -215,11 +215,18 @@ function Excluded({ e }: { e: BacktestReceipts['excluded'][number] }) {
     <details class="rcpt__excluded">
       <summary>{text}</summary>
       <span class="rcpt__ids">
-        {e.ids.map((id) => (
-          <a key={id} href={cveHref(id)} class="mono">
-            {id}
-          </a>
-        ))}
+        {/* A KEV ID without a published record has no page here to link to. */}
+        {e.ids.map((id) =>
+          e.code === 'no_record' ? (
+            <span key={id} class="mono">
+              {id}
+            </span>
+          ) : (
+            <a key={id} href={cveHref(id)} class="mono">
+              {id}
+            </a>
+          ),
+        )}
       </span>
     </details>
   );
@@ -519,9 +526,13 @@ export default function Receipts() {
                       {r.forward.uncounted.map((u) => (
                         <tr key={u.id}>
                           <th scope="row">
-                            <a href={cveHref(u.id)} class="mono">
-                              {u.id}
-                            </a>
+                            {u.reason === 'no_record' ? (
+                              <span class="mono">{u.id}</span>
+                            ) : (
+                              <a href={cveHref(u.id)} class="mono">
+                                {u.id}
+                              </a>
+                            )}
                           </th>
                           <td class="mono" data-label="Added to KEV">
                             {fmtDate(u.kev_added, Number.NaN)}
