@@ -4,8 +4,12 @@
  * The file is untrusted and can be large (up to 50 MB): every parser is a single pass with
  * anchored or bounded regular expressions, line-oriented formats skip lines over 64 KB, and
  * nothing builds a plain object keyed by a string from the file (only arrays, Map and Set), so a
- * package named `__proto__` is just a name. No eval, no DOMParser: CycloneDX XML is read from the
- * text of its <purl> elements only.
+ * package named `__proto__` is just a name. No eval, no DOMParser: CycloneDX XML is read with a
+ * bounded tag walker.
+ *
+ * Every SBOM format gives the same packages: its components (CycloneDX) or packages (SPDX), the
+ * SBOM's own subject included (CycloneDX metadata.component, the package an SPDX document
+ * describes), and never the tools that wrote the SBOM. One without a package URL is "not checked".
  */
 import type { PackageEcosystem } from '../../../shared/contract';
 import { ecosystemOfPurlType } from '../../../shared/packages';
@@ -168,8 +172,9 @@ function sbomEntry(purl: unknown, name: unknown, version: unknown): Component {
 
 function cyclonedxJson(doc: Json): Component[] {
   const out: Component[] = [];
-  // Nested components, without recursion (the file decides how deep).
-  const stack: unknown[] = [doc.components];
+  // Nested components, without recursion (the file decides how deep). The subject comes first.
+  const meta = isObj(doc.metadata) ? doc.metadata : null;
+  const stack: unknown[] = [doc.components, meta && isObj(meta.component) ? [meta.component] : null];
   while (stack.length) {
     const list = stack.pop();
     if (!Array.isArray(list)) continue;
@@ -258,16 +263,57 @@ function xmlText(s: string): string {
   });
 }
 
-function cyclonedxXml(text: string, notes: string[]): Component[] {
-  const out: Component[] = [];
-  // Only the text of <purl> elements: bom-ref attributes and <dependency ref> hold package URLs too.
-  for (const m of text.matchAll(/<(?:[A-Za-z_][\w.-]{0,31}:)?purl>([^<]{1,2048})<\/(?:[A-Za-z_][\w.-]{0,31}:)?purl>/g)) {
-    const purl = xmlText(m[1]);
-    out.push(purlComponent(purl) ?? { eco: null, name: purl.trim(), version: null, skip: 'bad-purl' });
+const XML_TAG = /<(\/?)(?:[A-Za-z_][\w.-]{0,31}:)?([A-Za-z_][\w.-]{0,63})((?:\s[^<>]*?)?)(\/?)>|<!--|<!\[CDATA\[/g;
+const XML_FIELDS: ReadonlySet<string> = new Set(['group', 'name', 'version', 'purl']);
+const XML_MAX_DEPTH = 256;
+
+/**
+ * The same components as CycloneDX JSON: those under the top-level <components> (nested ones
+ * included) and the subject in <metadata>, not the tools in <metadata><tools> or the build
+ * components in <formulation>. Each component's own <group>, <name>, <version> and <purl> are read.
+ */
+function cyclonedxXml(text: string): Component[] {
+  type Open = { depth: number; group?: string; name?: string; version?: string; purl?: string };
+  const found: Open[] = [];
+  const stack: string[] = [];
+  const open: (Open | null)[] = [];
+  let field: { name: string; start: number; depth: number } | null = null;
+  XML_TAG.lastIndex = 0;
+  for (let m = XML_TAG.exec(text); m; m = XML_TAG.exec(text)) {
+    const [whole, close, local, , self] = m;
+    if (local === undefined) {
+      // A comment or CDATA section: skip it whole (an unclosed one ends the file).
+      const end = text.indexOf(whole === '<!--' ? '-->' : ']]>', XML_TAG.lastIndex);
+      if (end < 0) break;
+      XML_TAG.lastIndex = end + 3;
+      continue;
+    }
+    if (close) {
+      const at = stack.lastIndexOf(local);
+      if (at < 0) continue;
+      if (field && field.depth === at && field.name === local) {
+        const value = text.slice(field.start, m.index);
+        const into = open[at - 1];
+        if (into && value.length <= 2048 && !value.includes('<')) into[local as 'name'] = xmlText(value).trim();
+      }
+      if (field && field.depth >= at) field = null;
+      stack.length = at;
+      open.length = at;
+      continue;
+    }
+    if (self || stack.length >= XML_MAX_DEPTH) continue;
+    const depth = stack.length;
+    stack.push(local);
+    let comp: Open | null = null;
+    if (local === 'component') {
+      // The nearest ancestor that is not component or components decides: bom (or none) and metadata count.
+      let i = depth - 1;
+      while (i >= 0 && (stack[i] === 'component' || stack[i] === 'components')) i--;
+      if (i < 0 || stack[i] === 'bom' || stack[i] === 'metadata') found.push((comp = { depth }));
+    } else if (XML_FIELDS.has(local) && open[depth - 1]) field = { name: local, start: m.index + whole.length, depth };
+    open.push(comp);
   }
-  const all = text.match(/<(?:[A-Za-z_][\w.-]{0,31}:)?component[\s>]/g)?.length ?? 0;
-  if (all > out.length) notes.push(`${all - out.length} of ${all} components have no package URL and were not checked.`);
-  return out;
+  return found.map((c) => sbomEntry(c.purl, c.group && c.name ? `${c.group}/${c.name}` : c.name, c.version));
 }
 
 function purlList(text: string, notes: string[]): Component[] {
@@ -716,7 +762,7 @@ const JSON_PARSERS: ReadonlyMap<FormatId, (doc: Json) => Component[]> = new Map(
 ]);
 
 const TEXT_PARSERS: ReadonlyMap<FormatId, (text: string, notes: string[]) => Component[]> = new Map<FormatId, (text: string, notes: string[]) => Component[]>([
-  ['cyclonedx-xml', cyclonedxXml],
+  ['cyclonedx-xml', (text) => cyclonedxXml(text)],
   ['spdx-tag', spdxTag],
   ['purl', purlList],
   ['yarn', yarnLock],

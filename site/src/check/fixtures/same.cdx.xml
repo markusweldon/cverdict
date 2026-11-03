@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1">
+  <metadata>
+    <tools><components><component type="application"><group>org.cyclonedx</group><name>cyclonedx-maven-plugin</name><version>2.9.1</version><purl>pkg:maven/org.cyclonedx/cyclonedx-maven-plugin@2.9.1?type=maven-plugin</purl></component></components></tools>
+    <component type="application" bom-ref="pkg:maven/com.example/order-service@1.4.0?type=jar"><group>com.example</group><name>order-service</name><version>1.4.0</version><purl>pkg:maven/com.example/order-service@1.4.0?type=jar</purl></component>
+  </metadata>
+  <!-- <component><purl>pkg:npm/commented-out@1.0.0</purl></component> -->
+  <components>
+    <component type="library" bom-ref="pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1?type=jar">
+      <group>org.apache.logging.log4j</group><name>log4j-core</name><version>2.14.1</version>
+      <licenses><license><name>Apache-2.0</name></license></licenses>
+      <purl>pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1?type=jar</purl>
+      <components>
+        <component type="library"><group>org.apache.logging.log4j</group><name>log4j-api</name><version>2.14.1</version><purl>pkg:maven/org.apache.logging.log4j/log4j-api@2.14.1?type=jar</purl></component>
+      </components>
+    </component>
+    <component type="library"><group>com.example</group><name>internal-utils</name><version>0.3.0-SNAPSHOT</version></component>
+    <component type="library" bom-ref="pkg:deb/debian/libssl3@3.0.11-1~deb12u2?arch=amd64&amp;distro=debian-12"><name>libssl3</name><version>3.0.11-1~deb12u2</version><purl>pkg:deb/debian/libssl3@3.0.11-1~deb12u2?arch=amd64&amp;distro=debian-12</purl></component>
+  </components>
+  <formulation><formula><components><component type="application"><name>maven</name><version>3.9.9</version><purl>pkg:maven/org.apache.maven/maven-core@3.9.9</purl></component></components></formula></formulation>
+</bom>
