@@ -414,7 +414,7 @@ describe('exploit artifacts only wake a CVE without older exploit evidence', () 
     const edb = parseExploitDb(['id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes', `35667,x,"old",2015-01-04,a,remote,linux,,2015-01-04,2015-01-04,1,${ID}`].join('\n'));
     const d = detectWakes(input({ exploitdb: edb, poc }));
     expect(d.signals.has(ID)).toBe(false);
-    expect(d.notes.some((n) => /1 CVEs with a new exploit artifact already had dated exploit evidence/.test(n))).toBe(true);
+    expect(d.notes.some((n) => /1 CVEs with a new exploit artifact already had older exploit evidence/.test(n))).toBe(true);
     expect(detectWakes(input({ poc, metasploitModified: new Map([[ID, '2015-01-04T10:00:00.000Z']]) })).signals.has(ID)).toBe(false);
     // An older repo (even unstarred) or an old KEV listing count as well.
     expect(detectWakes(input({ poc: new Map([[ID, [repo(daysAgo(4), 0, false, 'new'), repo('2015-02-01T00:00:00.000Z', 0, false, 'old')]]]), exploitdb: edb })).signals.has(ID)).toBe(false);
@@ -428,16 +428,50 @@ describe('exploit artifacts only wake a CVE without older exploit evidence', () 
     expect(d.signals.get(ID)?.map((s) => s.kind)).toEqual(['kev']);
   });
 
-  it('counts a Nuclei template or Metasploit module known to the tracking before the period as older evidence', () => {
+  it('counts a Nuclei template the tracking knows as older evidence, unless it was first seen in the period', () => {
     const tpl = new Map([[ID, [nucleiTemplate(ID)]]]);
     // Tracking began 40 days ago with the template already there.
     const start = new Date(NOW.getTime() - 40 * DAY);
     let r = detectWakes(input({ now: start, nuclei: tpl, poc: new Map() }));
     for (let d = 39; d >= 0; d--) r = detectWakes(input({ now: new Date(NOW.getTime() - d * DAY), nuclei: tpl, poc: d === 0 ? poc : new Map(), previous: r.state, previousAt: new Date(NOW.getTime() - (d + 1) * DAY).toISOString() }));
     expect(r.signals.has(ID)).toBe(false);
-    // A baseline taken inside the period proves nothing about before it.
+    // A baseline taken today has no dates, so the template may be years old: it counts too, and
+    // the PoC repo is not shown as the first exploit next to a template chip.
     const late = detectWakes(input({ nuclei: tpl, poc }));
-    expect(late.signals.get(ID)?.map((s) => s.kind)).toEqual(['poc']);
+    expect(late.signals.has(ID)).toBe(false);
+    // A template first seen in the period is not older evidence: both signals show.
+    const first = detectWakes(input({ now: at(1), nuclei: tpl, poc, previous: detectWakes(input({ nuclei: new Map(), poc: new Map() })).state, previousAt: NOW.toISOString() }));
+    expect(first.signals.get(ID)?.map((s) => s.kind)).toEqual(['poc', 'nuclei']);
+  });
+
+  // Daily runs from `fromDay` days ago to today; `o(d)` gives the inputs of the run d days ago.
+  const daily = (fromDay: number, o: (d: number) => Partial<WakeInput>) => {
+    let r = detectWakes(input({ now: new Date(NOW.getTime() - fromDay * DAY), ...o(fromDay) }));
+    for (let d = fromDay - 1; d >= 0; d--) r = detectWakes(input({ now: new Date(NOW.getTime() - d * DAY), previous: r.state, previousAt: new Date(NOW.getTime() - (d + 1) * DAY).toISOString(), ...o(d) }));
+    return r;
+  };
+
+  it('still counts a template known for months after a source outage restarts the tracking', () => {
+    const tpl = new Map([[ID, [nucleiTemplate(ID)]]]);
+    // Tracking began 60 days ago; Nuclei was down for three daily runs while the runs went on, so
+    // tracking restarted 10 days ago.
+    const r = daily(60, (d) => ({ nuclei: d > 10 && d <= 13 ? null : tpl, poc: d <= 4 ? poc : new Map() }));
+    expect(Date.parse(r.tracking.nuclei!)).toBe(NOW.getTime() - 10 * DAY);
+    expect(r.signals.has(ID)).toBe(false);
+  });
+
+  it("does not read the mod_time of a CVE's first Metasploit module as older evidence for itself", () => {
+    const NEW = 'CVE-2019-11111';
+    const before = new Map([['CVE-2019-0001', [msf('exploit/a')]]]);
+    const after = new Map([...before, [NEW, [msf('exploit/b')]]]);
+    // The module landed 8 days ago, 45 days after its last commit; a PoC repo came 5 days ago.
+    const mod = new Map([['CVE-2019-0001', '2015-01-01T00:00:00.000Z'], [NEW, new Date(NOW.getTime() - 45 * DAY).toISOString()]]);
+    const pocs = new Map([[NEW, [repo(daysAgo(5), 3)]]]);
+    const r = daily(40, (d) => ({ metasploit: d <= 8 ? after : before, metasploitModified: d <= 8 ? mod : new Map(), poc: d <= 5 ? pocs : new Map() }));
+    expect(r.state.metasploit?.fresh[NEW]).toBeDefined();
+    expect(r.signals.get(NEW)?.map((s) => s.kind)).toEqual(['metasploit', 'poc']);
+    // A CVE whose module was already there when tracking started stays quiet.
+    expect(detectWakes(input({ metasploit: after, metasploitModified: mod, poc: pocs })).signals.has(NEW)).toBe(false);
   });
 });
 

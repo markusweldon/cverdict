@@ -27,11 +27,13 @@
  * its source more than MAX_STATE_GAP_HOURS ago (the source was down or served from a stale cache):
  * what appeared during the outage cannot be dated, so it joins the baseline.
  *
- * Exploit artifacts (exploitdb, poc, metasploit, nuclei) only wake a CVE that had no dated public
- * exploit evidence of any kind before the period: no earlier Exploit-DB entry, Metasploit module
- * (by its earliest mod_time, or known to the tracking before the period), Nuclei template known
- * before the period, PoC repo or KEV listing. A first PoC repo for a CVE with a Metasploit module
- * from 2015 is not news. KEV listings and EPSS jumps always count.
+ * Exploit artifacts (exploitdb, poc, metasploit, nuclei) only wake a CVE that had no public
+ * exploit evidence of any kind before the period: no earlier Exploit-DB entry, PoC repo or KEV
+ * listing, no Metasploit module with an earlier mod_time (unless that module is the CVE's first
+ * and was first seen in the period: modules can land weeks after their last commit), and no
+ * Metasploit module or Nuclei template the tracking knew without first seeing it in the period
+ * (one in a baseline has no date, so it counts as older). A first PoC repo for a CVE with a
+ * Metasploit module from 2015 is not news. KEV listings and EPSS jumps always count.
  *
  * A CVE that was already in CISA KEV before the period never "wakes up": it was awake already.
  * Evidence only counts when it arrived after the CVE had left the window (published more than
@@ -346,22 +348,26 @@ export function detectWakes(input: WakeInput): WakeDetection {
     add(signals, id, signal('epss', e.at, `EPSS rose from ${formatPercent(e.from)} to ${formatPercent(e.to)} in ${WAKE_DAYS} days`, 'epss', `${epssUrl(id)}&scope=time-series`, true));
   }
 
-  // Exploit artifacts only wake a CVE that had no dated public exploit evidence before the period.
-  const knownBefore = UNDATED_KINDS.map((kind) => {
+  // Exploit artifacts only wake a CVE that had no public exploit evidence before the period.
+  const tracked = UNDATED_KINDS.flatMap((kind) => {
     const t = state[kind];
-    return t && Date.parse(t.since) < sinceMs ? { fresh: t.fresh, known: new Set(t.known) } : null;
+    return t ? [{ fresh: t.fresh, known: new Set(t.known) }] : [];
   });
   const hadExploit = (id: string): boolean => {
     const edb = input.exploitdb?.firstAdded.get(id)?.date;
     if (edb && edb < sinceDay) return true;
+    // An old mod_time proves a module existed then, unless it is the CVE's first module and was
+    // first seen in the period: a module can land in Metasploit weeks after its last commit.
     const mod = input.metasploitModified?.get(id);
-    if (mod && Date.parse(mod) < sinceMs) return true;
+    if (mod && Date.parse(mod) < sinceMs && !state.metasploit?.fresh[id]) return true;
     if (input.poc?.get(id)?.some((r) => !r.fork && Date.parse(r.created) < sinceMs)) return true;
     const k = input.kev?.entries.get(id);
     if (k && k.dateAdded < sinceDay) return true;
-    // Known before the period: in the baseline of a tracking that began before it, or first seen
-    // and already dropped from `fresh` because that sighting is older than the period.
-    return knownBefore.some((t) => t !== null && !t.fresh[id] && t.known.has(id));
+    // Known to the tracking and not first seen in the period: first seen before it, or in a
+    // baseline (when tracking started or restarted). A baseline artifact has no date and may be
+    // years old, so it counts as older evidence; a template from 2018 must not let a new PoC
+    // repo look like the first exploit.
+    return tracked.some((t) => !t.fresh[id] && t.known.has(id));
   };
   let quieted = 0;
   for (const [id, list] of signals) {
@@ -371,7 +377,7 @@ export function detectWakes(input: WakeInput): WakeDetection {
     else signals.delete(id);
     quieted++;
   }
-  if (quieted) notes.push(`${quieted} CVEs with a new exploit artifact already had dated exploit evidence before the period; not counted as woken by it`);
+  if (quieted) notes.push(`${quieted} CVEs with a new exploit artifact already had older exploit evidence; not counted as woken by it`);
 
   for (const list of signals.values()) list.sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || WAKE_KINDS.indexOf(a.kind) - WAKE_KINDS.indexOf(b.kind));
   return { signals, state, tracking, skipped, notes };
