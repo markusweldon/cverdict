@@ -18,7 +18,7 @@ const JSON_FILES: readonly [string, string][] = [
   ['batches.json', 'Patch-day cohorts: tier counts, product families, top CVEs.'],
   ['kev.json', 'CISA KEV entries added in 30 days or due from 14 days ago, with our score.'],
   ['stats.json', 'Monthly volume since 1999, daily window counts, hourly waterfall buckets, top CNAs.'],
-  ['changes.json', 'Escalations from the last 7 days of hourly runs.'],
+  ['changes.json', 'Escalations from the runs of the last 7 days.'],
   ['woke.json', 'Old CVEs (published before the window) that gained exploitation evidence in the last 30 days, with the dated signals.'],
   ['receipts.json', 'Receipts: which CVEs CISA added to KEV that each method had flagged before the listing, from the live log and the hindsight backtest.'],
 ];
