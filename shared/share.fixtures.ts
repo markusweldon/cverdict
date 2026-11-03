@@ -225,7 +225,7 @@ export const QUIET_CJK = detail({
 export const HOSTILE = detail({
   id: 'CVE-2026-99999',
   cna: 'evil<cna>',
-  affected: [{ vendor: '"><script>alert(1)</script>\u202Egnp.exe\u200B $& $\' $`', product: `${'漏洞 产品 😀 '.repeat(40)}\u0007`, purl: null }],
+  affected: [{ vendor: '"><script>alert(1)</script>\u202Egnp\u061C.exe\u200B\u{E0041} $& $\' $`', product: `${'漏洞 产品 😀 '.repeat(40)}\u0007`, purl: null }],
   epss: { score: Number.NaN, percentile: Number.NaN, date: 'not a date', model: '' },
   kev: { ...kev('2026-02-30'), date_added: 'yesterday' },
   score: { value: 77, tier: 'exploited', raw: 77, model: 'v0.1.0' },
