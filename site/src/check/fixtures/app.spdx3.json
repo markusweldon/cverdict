@@ -1,0 +1,6 @@
+{"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld", "@graph": [
+ {"type": "CreationInfo", "@id": "_:creationinfo", "specVersion": "3.0.1", "created": "2026-11-03T00:00:00Z"},
+ {"type": "software_Package", "spdxId": "urn:spdx.dev:shop-1", "name": "brotli", "software_packageVersion": "1.1.0", "software_packageUrl": "pkg:pypi/brotli@1.1.0"},
+ {"type": "software_Package", "spdxId": "urn:spdx.dev:shop-2", "name": "xstream", "software_packageVersion": "1.4.17", "externalIdentifier": [{"type": "ExternalIdentifier", "externalIdentifierType": "packageUrl", "identifier": "pkg:maven/com.thoughtworks.xstream/xstream@1.4.17"}]},
+ {"type": "software_File", "spdxId": "urn:spdx.dev:shop-3", "name": "README.md"}
+]}

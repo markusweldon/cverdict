@@ -1,0 +1,22 @@
+lockfileVersion: '9.0'
+
+importers:
+  .:
+    dependencies:
+      vite:
+        specifier: ^8.3.1
+        version: 8.3.1
+
+packages:
+
+  vite@8.3.1:
+    resolution: {integrity: sha512-x}
+
+  '@pkgr/core@0.2.9':
+    resolution: {integrity: sha512-y}
+
+snapshots:
+
+  vite@8.3.1(@types/node@22.20.5):
+    dependencies:
+      rollup: 4.59.0

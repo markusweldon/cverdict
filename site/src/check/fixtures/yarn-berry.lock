@@ -1,0 +1,15 @@
+__metadata:
+  version: 8
+  cacheKey: 10c0
+
+"rollup@npm:^4.58.0":
+  version: 4.58.0
+  resolution: "rollup@npm:4.58.0"
+
+"vite@npm:8.3.3":
+  version: 8.3.3
+  resolution: "vite@npm:8.3.3"
+
+"app@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "app@workspace:."

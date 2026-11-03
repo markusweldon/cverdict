@@ -1,0 +1,1 @@
+{"_meta": {"hash": {"sha256": "x"}, "pipfile-spec": 6}, "default": {"brotli": {"version": "==1.0.9"}}, "develop": {"pytest": {"version": "==8.0.0"}}}
