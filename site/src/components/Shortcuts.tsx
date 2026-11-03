@@ -74,7 +74,7 @@ export function ShortcutsHelp() {
             </section>
           ))}
         </div>
-        <p class="help__note">The knob also answers to arrow keys when focused (Shift for single steps). On the waterfall, ← → step through time.</p>
+        <p class="help__note">The knob also answers to arrow keys when focused (Shift for single steps). On the waterfall, ← → step through time and Enter opens that day in Explore.</p>
       </div>
     </Dialog>
   );

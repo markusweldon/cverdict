@@ -873,18 +873,75 @@ a.chip:hover {
   border-radius: var(--r);
   background: var(--raised);
   box-shadow: var(--shadow-pop);
+  max-width: 240px;
   font-size: 12px;
   pointer-events: none;
-  transform: translateX(14px);
 }
 
-.wf__tip.is-left {
-  transform: translateX(calc(-100% - 14px));
+.wf--drill .wf__canvas {
+  cursor: pointer;
+  /* The picked column shows the tap; the browser's flash would tint the whole chart. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Spike labels: links to their batch card, drawn over the canvas where the plot leaves room. */
+.wf__note {
+  position: absolute;
+  top: 2px;
+  z-index: 2;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 12px;
+  white-space: nowrap;
+}
+
+.wf__note-link {
+  /* A taller hit area than the 10px text, without moving it. */
+  margin: -6px -2px;
+  padding: 6px 2px;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+
+.wf__note-link:hover {
+  color: var(--text);
+  text-decoration-color: currentColor;
+}
+
+.wf__tip-hint {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+/* Touch: below the chart, so the finger does not hide it and every column stays tappable. It
+   takes taps itself, so a tap on its text never reaches the filter or link it covers. */
+.wf__tip.is-pinned {
+  top: calc(100% + 6px);
+  pointer-events: auto;
+}
+
+.wf__tip-go {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  margin: 6px -10px -8px;
+  padding: 0 10px;
+  border-top: 1px solid var(--border);
+  color: var(--accent);
+  font-weight: 600;
+  pointer-events: auto;
 }
 
 .wf__tip-head {
   margin-bottom: 6px;
-  white-space: nowrap;
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1310,7 +1367,7 @@ a.chip:hover {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
-  scroll-margin-top: calc(var(--top-h, var(--header-h)) + 16px);
+  /* No scroll-margin: the root's scroll-padding-top already clears the sticky header (both add up). */
   transition: border-color 0.15s;
 }
 
@@ -1456,6 +1513,8 @@ a.chip:hover {
 
 .batch__tops {
   display: grid;
+  /* minmax(0, …): a long title truncates instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   grid-column: 2;
 }
