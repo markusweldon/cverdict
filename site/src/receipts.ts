@@ -14,7 +14,7 @@ export const METHOD_LABEL: Readonly<Record<ReceiptMethod, string>> = {
 export const METHOD_NOTE: Readonly<Record<ReceiptMethod, string>> = {
   cverdict: 'Exploited or Likely next at the default knob',
   cvss7: 'Patch everything rated 7.0 or higher',
-  epss10: 'Patch everything with an EPSS score of 0.1 or more',
+  epss10: 'Patch everything with an EPSS score of 10% or more',
 };
 
 /** "12 of 40 (30%)", or "3 of 7" while the sample is too small for a share. */
@@ -39,7 +39,7 @@ export function methodScore(scores: readonly MethodScore[], method: ReceiptMetho
 
 /**
  * The forward headline: "Since Nov 3, 2026: CISA added 14 CVEs we had already seen to KEV.
- * CVErdict flagged 9 of them first, a median of 6 days earlier."
+ * CVErdict flagged 9 of them before CISA listed them, a median of 6 days earlier."
  */
 export function forwardHeadline(f: ForwardReceipts): string[] {
   // Always with the year: the log's start is a fixed date, not "this week".
@@ -47,11 +47,12 @@ export function forwardHeadline(f: ForwardReceipts): string[] {
   const cv = methodScore(f.methods, 'cverdict');
   if (f.eligible === 0) return [`Since ${since}, CISA has not added any CVE we had already seen to KEV. The first ones will show up here.`];
   const first = `Since ${since}: CISA added ${plural(f.eligible, 'CVE')} we had already seen to KEV.`;
-  if (!cv || cv.before === 0) return [first, `CVErdict flagged none of ${f.eligible === 1 ? 'it' : 'them'} first.`];
+  if (!cv || cv.before === 0) return [first, `CVErdict flagged none of ${f.eligible === 1 ? 'it' : 'them'} before CISA listed ${f.eligible === 1 ? 'it' : 'them'}.`];
   const sameDay = cv.same_day > 0 ? ` (${fmtInt(cv.same_day)} of them on the listing day)` : '';
   // A median of 0 days is a same-day majority: the same-day count below says it in plain words.
   const median = cv.lead && cv.lead.median > 0 ? `, a median of ${days(cv.lead.median)} ${cv.lead.median === 1 ? 'day' : 'days'} earlier` : '';
-  return [first, `CVErdict flagged ${fmtInt(cv.before)} of ${f.eligible === 1 ? 'it' : 'them'} first${median}${sameDay}.`];
+  const them = f.eligible === 1 ? 'it' : 'them';
+  return [first, `CVErdict flagged ${fmtInt(cv.before)} of ${them} before CISA listed ${cv.before === 1 ? 'it' : 'them'}${median}${sameDay}.`];
 }
 
 /** One method's verdict on one forward CVE, in words. */

@@ -28,7 +28,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
-| `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged first, from the hourly forward log and the hindsight backtest | ~20 KB |
+| `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
 | `v1/state.json` | — | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.3 MB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
@@ -241,7 +241,7 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
 |---|---|---|
 | `kev` | The CVE was added to CISA KEV | KEV `dateAdded` (YYYY-MM-DD) |
 | `exploitdb` | The CVE's first Exploit-DB entry was added | Exploit-DB `date_added` (YYYY-MM-DD) |
-| `poc` | The CVE's first vetted PoC repo appeared on GitHub (same vetting rule as the `x.poc` chip) | the repo's `created_at` |
+| `poc` | The CVE's first PoC repo on GitHub that is at least 3 days old or has 2 stars appeared (the rule of the `x.poc` chip; the code is not checked) | the repo's `created_at` |
 | `metasploit` | The CVE's first Metasploit module appeared | first seen: the run that first saw it |
 | `nuclei` | The CVE's first Nuclei template appeared | first seen: the run that first saw it |
 | `epss` | EPSS is at least 10% and at least 3× its score 30 days before the current score date | first seen: the EPSS score date of the run that first saw the jump (YYYY-MM-DD) |
@@ -252,13 +252,22 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
   modification time, Nuclei's index has no dates, two daily EPSS files cannot say which day the
   score rose), so `at` is when the pipeline first saw it. These kinds need the previous run's
   state; without it everything already present is treated as known, so a first run never dates
-  old evidence as new.
+  old evidence as new. The same restart happens for Metasploit or Nuclei when the last run that
+  compared a fresh copy of that source is more than 48 hours ago (it was down, or only a stale
+  cached copy loaded): what appeared meanwhile cannot be dated. A stale copy never dates anything
+  and puts the kind in `skipped`.
+- The exploit kinds (`exploitdb`, `poc`, `metasploit`, `nuclei`) only wake a CVE that had no dated
+  public exploit evidence before the period: no earlier Exploit-DB entry, Metasploit module (by
+  its earliest `mod_time`, or tracked before the period), Nuclei template tracked before the
+  period, PoC repo, or KEV listing. A first PoC repo for a CVE with a Metasploit module from 2015
+  is not a wake. `kev` and `epss` signals always count.
 - The EPSS check needs the EPSS file from 30 days before the current score date. When it cannot be
   loaded, or the two files come from different EPSS models (a new model moves many scores at once),
   the check is skipped and `skipped` says so. After a pause of more than 48 hours, jump tracking
   restarts from a baseline, so jumps from the pause are not all dated on the day it resumes.
 - Evidence only counts when it arrived after the CVE was already older than the window, so a CVE
-  does not join the list by ageing out of the window. A CVE that was in KEV before the period is
+  does not join the list by ageing out of the window. Signals with a time (`poc`, first-seen
+  kinds) are compared to the minute; date-only ones (`kev`, `exploitdb`, `epss`) by UTC day. A CVE that was in KEV before the period is
   left out: it never fell asleep.
 - `label` is our own plain text, written to read after "Woke up Oct 30:" (e.g. `added to CISA KEV`).
   `url` links the evidence where a stable link exists (KEV catalog search, Exploit-DB entry,
@@ -274,7 +283,7 @@ curl -s $BASE/woke.json | jq -r --arg since "$(date -u -d '-7 days' +%F)" '
 
 How often a CVE that CISA later added to KEV had already been flagged, by three methods with the
 same definitions: `cverdict` (Exploited or Likely next at the default knob, 50), `cvss7` (the CVSS
-base score the site shows, CNA else CISA-ADP, is 7.0 or more) and `epss10` (EPSS is 0.1 or more; a
+base score the site shows, CNA else CISA-ADP, is 7.0 or more) and `epss10` (EPSS is 10% or more; a
 CVE without an EPSS score is not flagged). Two parts, never mixed: the **forward log**, recorded in
 real time, and the **backtest**, rebuilt after the fact and marked `hindsight: true`.
 `definitions` repeats each rule in words. Every count comes with its `n`; nothing is rounded away.
@@ -287,22 +296,25 @@ real time, and the **backtest**, rebuilt after the fact and marked `hindsight: t
 | `backtest` | `BacktestReceipts`, below, or `null` until the first backtest |
 
 A `MethodScore` is `{ method, n, before, earlier, same_day, lead }`: of `n` KEV additions, `before`
-were flagged before the listing, `earlier` at least one whole UTC day before the KEV `dateAdded`
+were flagged before the listing, `earlier` at least one whole day before the KEV `dateAdded`
 and `same_day` on that date (0 days, counted apart). `lead` is `{ median, q1, q3 }` in days over
 the `before` CVEs (linear interpolation between ranks), or `null` when `before` is 0. An
 `AlertVolume` is `{ method, n, flagged }`.
 
 ### The forward log (`forward`)
 
-Every hourly run records, for each CVE in the window, the hour of the first run that saw it and the
-hour of the first run at which each method flagged it. When one of those CVEs appears in KEV, at
-any age, the run records its `dateAdded` and the hour it first saw the listing.
+Every run records, for each CVE in the window, the time of the first run that saw it and of the
+first run at which each method flagged it, to the minute (runs can come twice an hour). When one
+of those CVEs appears in KEV, at any age, the run records its `dateAdded` and when it first saw
+the listing. KEV gives a date without a time; we read it as a US Eastern day (CISA's own time
+zone), so a run time is compared with it by its Eastern day: a CVE first seen at 00:17 UTC counts
+as seen on the Eastern day before.
 
 - **Flagged before the listing** means flagged by a run earlier than the one that first saw the
   listing, on or before the KEV `dateAdded`. A flag that came with the listing (the `kev.listed`
   chip, or EPSS reacting to it) is never "before". Same definition for every method. When a run can
-  see a listing it cannot record (a CISA-ADP KEV block without a date), no CVErdict flag is recorded
-  until the listing is. A same-day flag can still come from CISA's own update to the record made as
+  see a listing it cannot record (a CISA-ADP KEV block without a date), no flag of any method is
+  recorded until the listing is. A same-day flag can still come from CISA's own update to the record made as
   it lists the CVE (for example SSVC exploitation "active"), which is one reason it is counted apart.
 - **Counted** (`eligible`): KEV additions dated from the `since` day on, for CVEs the log saw in an
   earlier run, on or before the listing date. The rest are in `uncounted`: `older` (the CVE was not
@@ -314,7 +326,8 @@ any age, the run records its `dateAdded` and the hour it first saw the listing.
 - **Alert volume** (`volume`): out of every CVE the log has watched, how many each method flagged at
   least once. CVEs still in the window can still be flagged, so these shares can rise a little.
 - The log starts with the first run that keeps it (`since`) and never fills in anything before.
-  Times are the run's hour, rounded down. `gaps` lists the most recent 50 pauses of more than 3
+  Times are the run's minute, rounded down. Only canonical CVE IDs are logged (no leading zero
+  beyond four digits, as in every CVE List file). `gaps` lists the most recent 50 pauses of more than 3
   hours between runs; `gap_total` counts all of them.
   A missing or unreadable log starts a new one with a new `since`.
 - CVEs without a KEV listing leave the log 400 days after they were first seen (their counts stay
@@ -327,7 +340,7 @@ any age, the run records its `dateAdded` and the hour it first saw the listing.
 | `watch_days` | How long each CVE is watched (the window, 30 days) |
 | `listed`, `eligible` | KEV additions since `since`, and how many of them are counted |
 | `methods[]`, `volume[]` | One `MethodScore` and one `AlertVolume` per method |
-| `items[]` | Counted additions, newest listing first: `{ id, kev_added, first_seen, flags, row }`. `flags.<method>` is `{ at, outcome, lead }`: `outcome` is `earlier`, `same_day`, `after` (flagged only at or after the listing) or `never`; `at` is the hour of the first flag; `lead` the days before the listing |
+| `items[]` | Counted additions, newest listing first: `{ id, kev_added, first_seen, flags, row }`. `flags.<method>` is `{ at, outcome, lead }`: `outcome` is `earlier`, `same_day`, `after` (flagged only at or after the listing) or `never`; `at` is the time of the first flag (to the minute); `lead` the days before the listing |
 | `uncounted[]` | `{ id, kev_added, reason: older \| listed_first \| no_record }`, newest first. `no_record`: CISA listed an ID that has no published CVE record yet |
 
 `row` is the CVE as scored in this run (a `Row` object), or `null` when its record is not in the data
@@ -351,7 +364,7 @@ Neither uses the listing.
 | Other KEV listings (the vendor and product prior) | Only listings dated before the listing day |
 | EPSS | The archived EPSS file of the day before (`epss_date`); left out when it cannot be loaded |
 | Exploit-DB | Entries with `date_added` (else `date_published`) before the listing day |
-| PoC repos | Repos created before the listing day; strict vets them by age only (3 days old by then), as star counts are only known for today. A repo may have gained its exploit code after it was created |
+| PoC repos | Repos created and last pushed (`pushed_at`) before the listing day, so all their code is older than the listing; strict vets them by age only (3 days old by then), as star counts are only known for today. Repos pushed on the listing day or later count only in `upper` (signal `poc_content`): their code may postdate the listing |
 | Metasploit | Counted when a module's `mod_time` is before the listing day (it existed); other modules only in `upper` |
 | Nuclei | No dates: only in `upper` |
 | CISA SSVC automatable and technical impact | Counted when CISA's container has not changed since the listing day, or the assessment is timestamped before the day before the listing. CISA often stamps the assessment it rewrites for a listing with the day before (17 of the 139 listings in the 2026-11-03 backtest, against 20 over the 29 days before that), so that day cannot vouch for it. Else only in `upper` |
@@ -390,7 +403,8 @@ reads it back through `--previous`). **It is not part of the API**: the format c
 release, and the file only exists so the pipeline can remember what it saw. It carries
 `schema_version`, `generated_at`, `state_version` and `sections`, one per feature, each with its own
 `version` and `data`. Two sections today: `woke` (for Metasploit and Nuclei, the CVE IDs with an
-artifact and when tracking started; recent first sightings; recent EPSS jumps) and `receipts` (the
+artifact, when tracking started and when a fresh copy was last compared; recent first sightings;
+recent EPSS jumps) and `receipts` (version 2, times in minutes; the
 forward log behind `receipts.json`, columnar: 1 to 2 bytes gzip per CVE, so a full 400 days of
 CVEs, about 200,000, is roughly 0.25 MB). A missing or unreadable file, or a section of an unknown version,
 starts that state fresh. Its size is budgeted like every other file.
@@ -402,8 +416,10 @@ starts that state fresh. Its size is budgeted like every other file.
 - `feeds/kev.xml`: Atom, KEV additions of the last 30 days.
 - `feeds/kev-due.ics`: iCalendar with one all-day event per KEV due date, from 7 days ago to 60
   days ahead. Event UIDs are stable per CVE, so calendar apps update events instead of duplicating them.
-- `feeds/woke.xml`: Atom, the newest 100 CVEs from `woke.json`. One entry per CVE with a stable id;
-  a later signal updates the entry. Titles are `CVE-… · <vendor> <product> · woke up: <newest signal>`.
+- `feeds/woke.xml`: Atom, up to 100 CVEs from `woke.json`, newest wake first. Every CVE with a
+  `kev` or `exploitdb` signal is kept before the cap; the rest fill it newest first. A CVE whose
+  only signal is `poc` is left out unless its tier is Exploited or Likely next. One entry per CVE
+  with a stable id; a later signal updates the entry. Titles are `CVE-… · <vendor> <product> · woke up: <newest signal>`.
 
 ## Update cadence
 

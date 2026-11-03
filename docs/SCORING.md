@@ -376,16 +376,18 @@ The recall above is an upper bound by construction. The [Receipts page](https://
 with the same rules for CVErdict (Exploited or Likely next at knob 50), "CVSS 7 or more" and "EPSS
 10% or more":
 
-- **The forward log** (`pipeline/src/receipts.ts`) records, every hour, when each method first
-  flagged each window CVE, and later whether that came before CISA's KEV listing. It started on
-  2026-11-03 and has no results yet; it never fills in anything from before it started.
+- **The forward log** (`pipeline/src/receipts.ts`) records, on every run, when each method first
+  flagged each window CVE, and later whether that came before CISA's KEV listing. It never fills
+  in anything from before it started; the Receipts page shows how many listings it has judged.
 - **The backtest** (`pipeline/src/backtest.ts`, `npm run backtest`) re-scores every KEV addition
   of the last 180 days with the evidence of the day before its listing wherever the source dates
   it, and leaves undated evidence out (its "strict" figures) or adds today's value ("with undated
   evidence", usually the higher figure). It is hindsight and labelled as such.
 
-The backtest on 2026-11-03 (178 KEV additions since 2026-05-07; 38 left out because the CVE was
-published on or after its listing day, 1 without a published record):
+The backtest computed 2026-11-03 05:47 UTC (178 KEV additions since 2026-05-07; 38 left out
+because the CVE was published on or after its listing day, 1 without a published record). PoC
+repos count in the strict figures only when they were created and last pushed before the listing
+day:
 
 | Published up to 2 years before the listing (120) | Flagged before KEV (strict) | With undated evidence |
 |---|--:|--:|
@@ -395,7 +397,8 @@ published on or after its listing day, 1 without a published record):
 
 For the 19 CVEs published more than 2 years before their listing: CVErdict 15 (17 with undated
 evidence), CVSS 7 or more 3 (19), EPSS 10% or more 12. Over the same 180 days, with today's evidence, CVErdict
-flags 2.6% of the 68,169 new CVEs, CVSS 7 or more 52.2% and EPSS 10% or more 0.2%.
+flags 2.6% of the 68,169 new CVEs, CVSS 7 or more 52.2% and EPSS 10% or more 0.2% (`backtest.volume`
+in that run's receipts.json; the count moves with the 180-day range).
 
 The strict figures are unflattering for CVErdict, and for a known reason: CISA rewrites its part of
 the CVE record when it lists a CVE, so the strict variant cannot use CISA's SSVC exploitation value
