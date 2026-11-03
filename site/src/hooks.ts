@@ -113,8 +113,24 @@ export function useCountUp(target: number, durationMs = 600): number {
 
 export function useTitle(title: string | null): void {
   useEffect(() => {
-    document.title = title ? `${title} · ${BRAND.name}` : `${BRAND.name} — ${BRAND.tagline}`;
+    document.title = title ? `${title} · ${BRAND.name}` : `${BRAND.name}: ${BRAND.tagline}`;
   }, [title]);
+}
+
+/** index.html's own description, restored when a page that set its own one goes away. */
+let defaultDescription: string | null = null;
+
+/** Set `<meta name="description">` while mounted; null keeps the site's default. */
+export function useMetaDescription(description: string | null): void {
+  useEffect(() => {
+    const el = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (!el) return;
+    defaultDescription ??= el.content;
+    el.content = description ?? defaultDescription;
+    return () => {
+      el.content = defaultDescription ?? el.content;
+    };
+  }, [description]);
 }
 
 /**

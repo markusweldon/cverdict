@@ -6,9 +6,10 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 
 ## 0. Principles
 
-1. **Static and forkable.** No servers, no accounts, no API keys required. An hourly GitHub Actions job builds
-   JSON; the site is a static SPA that reads it. Anyone can fork and run their own copy. The MCP server (`mcp/`)
-   runs on the user's own machine and reads the same static files; nothing on the site depends on it.
+1. **Static and forkable.** The site and the data need no server, no accounts and no API keys. An hourly GitHub
+   Actions job builds JSON; the site is a static SPA that reads it. Anyone can fork and run their own copy. One
+   optional Vercel Function serves link-preview bots only (`api/share.ts`); people never reach it. The MCP server
+   (`mcp/`) runs on the user's own machine and reads the same static files; nothing on the site depends on it.
 2. **NVD-independent.** NIST stopped enriching most CVEs in April 2026. We use CVE List V5 (CNA + CISA-ADP
    containers), CISA KEV, EPSS and public exploit feeds.
 3. **Explainable.** Every score is a sum of chips the user can read, each linked to its source. No ML, no LLM text.
@@ -21,6 +22,9 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 
 ```
 shared/            contract.ts  model.ts  shard.ts  brand.ts   (imported by both sides; no Node/DOM APIs)
+                   verdict.ts  share.ts  share-images.ts        (verdict words and link-preview tags; .js imports)
+api/               share.ts   (Vercel Function for link-preview bots; tests in api/_test/)
+tools/og/          render.mjs (renders site/public/og/*.png by hand; own package.json and lockfile)
 pipeline/
   src/
     cli.ts                 entry: parses flags, runs the pipeline, prints a summary
@@ -300,6 +304,13 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
   `/feeds/*.xml|ics` to `https://raw.githubusercontent.com/<repo>/data/...`, then a last catch-all SPA fallback
   `/(.*)` → `/index.html` (rewrites apply after static files, so `/feeds` is the Feeds page); security headers
   (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'`).
-  Result: zero-config — import the repo in Vercel, and fresh data arrives hourly without redeploys.
-- **CI.** `ci.yml` on push/PR: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`, `npm run build:mcp` and an MCP
-  smoke test of the bundle on mock data (`mcp/test/smoke.ts`), `shellcheck`, the data-branch publisher test.
+  Result: zero-config: import the repo in Vercel, and fresh data arrives hourly without redeploys.
+- **Link previews.** A rewrite just before the catch-all sends `/cve/<CVE ID>` to `api/share.ts` only when
+  the `user-agent` header matches a link-preview bot (`BOT_UA_TOKENS` in `shared/share.ts`). The function returns
+  `index.html` with that CVE's `<title>`, description, Open Graph and Twitter tags between the share markers,
+  built from its detail shard, under one 1.5 s deadline, and the static site card on any failure. The four tier
+  images and the site card are static PNGs in `site/public/og/`. Details and costs: docs/DEPLOY.md.
+- **CI.** `ci.yml` on push/PR: `npm ci`, `npm run typecheck`, the link-preview function checked and imported as Node
+  ESM, `npm test`, `npm run build` and a check of the built share block, `npm run build:mcp` and an MCP smoke test of
+  the bundle on mock data (`mcp/test/smoke.ts`), `shellcheck`, the data-branch publisher test and the `vercel.json`
+  JSON check.

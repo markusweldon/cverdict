@@ -1,0 +1,16 @@
+{
+  // The function runs as plain Node ESM, so it is checked with Node's own resolution rules: every
+  // relative import it reaches, in api/ and shared/, needs its .js extension.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "strict": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["share.ts"]
+}

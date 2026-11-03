@@ -32,12 +32,28 @@ jobs:
 
       - run: npm run typecheck
 
+      # The link-preview function runs as plain Node ESM: check it with Node's own resolution
+      # rules (every relative import needs its .js extension), then compile it and import it.
+      - name: Check the link-preview function as Node ESM
+        run: |
+          npx tsc -p api/tsconfig.json
+          npx tsc -p api/tsconfig.json --noEmit false --outDir "$RUNNER_TEMP/api-check"
+          echo '{"type":"module"}' >"$RUNNER_TEMP/api-check/package.json"
+          node -e 'import(process.argv[1]).then((m) => { if (typeof m.GET !== "function" || m.HEAD !== m.GET) throw new Error("api/share.ts must export GET and HEAD"); })' "$RUNNER_TEMP/api-check/api/share.js"
+
       - run: npm test
 
       - name: Build site
         env:
           BASE: /
         run: npm run build
+
+      # Link previews need an absolute og:image inside the share block of the built page.
+      - name: Check the built share block
+        run: |
+          grep -q '<!--share:start-->' site/dist/index.html
+          grep -q '<!--share:end-->' site/dist/index.html
+          grep -q '<meta property="og:image" content="https://[^"]*/og/site.png?v=[0-9a-f]\{8\}" />' site/dist/index.html
 
       - name: Build the MCP server
         run: npm run build:mcp

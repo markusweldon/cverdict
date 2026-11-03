@@ -4,6 +4,9 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "site/dist",
+  "functions": {
+    "api/share.ts": { "maxDuration": 10 }
+  },
   "rewrites": [
     {
       "source": "/data/:path+",
@@ -12,6 +15,18 @@
     {
       "source": "/feeds/:file([^/]+\\.(?:xml|ics))",
       "destination": "https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/:file"
+    },
+    {
+      "source": "/cve/:id([Cc][Vv][Ee]-[0-9]+-[0-9]+)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Slackbot-LinkExpanding|Twitterbot|facebookexternalhit|Facebot|LinkedInBot|Discordbot|TelegramBot|WhatsApp/|Mastodon/|Bluesky Cardyb|SkypeUriPreview|redditbot|Iframely|Embedly|Synapse|Mattermost-Bot).*"
+        }
+      ],
+      "missing": [{ "type": "query", "key": "id" }],
+      "destination": "/api/share?id=:id"
     },
     {
       "source": "/(.*)",

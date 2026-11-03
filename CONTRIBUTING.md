@@ -42,22 +42,27 @@ Pipeline flags that make iteration fast:
 ## Project layout
 
 ```text
-shared/     contract.ts (public data types), model.ts (chips and points), shard.ts, brand.ts
+shared/     contract.ts (public data types), model.ts (chips and points), shard.ts, brand.ts,
+            verdict.ts and share.ts (verdict words and link-preview tags)
+api/        share.ts: the Vercel Function for link-preview bots (tests in api/_test/)
 pipeline/   src/ (sources → normalize → score → batches/stats/changes → emit → validate), test/
 site/       the Vite + Preact single-page app
 mcp/        the read-only MCP server for AI agents: src/, test/, the cverdict-mcp package files
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md
 .github/    ci.yml, refresh.yml (hourly data), issue templates
 scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts, mcp-measure.ts
+tools/og/   render.mjs: renders the share images in site/public/og/ (own lockfile, run by hand)
 ```
 
 [docs/SPEC.md](docs/SPEC.md) is the implementation contract; read it before larger changes.
 
 ## Ground rules for code
 
-- TypeScript, strict, ESM. The only runtime dependency is `preact`; the pipeline uses Node
-  built-ins only. The MCP server's SDK and `zod` are exact-pinned dev dependencies that its bundle
-  inlines; only `mcp/` imports them. Propose a new dependency in an issue first.
+- TypeScript, strict, ESM. The only runtime dependency is `preact`; the pipeline and the function in
+  `api/` use Node built-ins only. The MCP server's SDK and `zod` are exact-pinned dev dependencies that
+  its bundle inlines; only `mcp/` imports them. Propose a new dependency in an issue first.
+- `api/share.ts` runs as plain Node ESM, so it and every file of `shared/` it imports use `.js`
+  extensions on relative imports; `npx tsc -p api/tsconfig.json` checks that, as CI does.
 - **CVE text is hostile.** Render it as text only: no `innerHTML`, no `dangerouslySetInnerHTML`.
   Only link `http(s)` URLs, with `rel="noopener noreferrer nofollow"`. Escape everything that goes
   into XML or iCalendar.
@@ -69,7 +74,8 @@ scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts, mcp
 
 ## Tests
 
-Tests live in `pipeline/test/` and `mcp/test/`, and next to the code in `shared/` and `site/src/` as `*.test.ts`. They run with vitest:
+Tests live in `pipeline/test/` and `mcp/test/`, next to the code in `shared/` and `site/src/` as
+`*.test.ts`, and in `api/_test/` (every other file in `api/` becomes a Vercel Function). They run with vitest:
 
 ```sh
 npm test                                   # everything

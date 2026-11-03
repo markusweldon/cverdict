@@ -4,6 +4,7 @@ import { useEffect } from 'preact/hooks';
 import type { CveDetail, Reason } from '../../../shared/contract';
 import { BRAND } from '../../../shared/brand';
 import { BASE_POINTS } from '../../../shared/model';
+import { shareDescription, shareTitle } from '../../../shared/share';
 import { absoluteUrl, copyLink, copyTicket } from '../actions';
 import { Chip } from '../components/Chip';
 import { ExtLink } from '../components/ExtLink';
@@ -31,7 +32,7 @@ import { EmptyState, ErrorState, Loading } from '../components/States';
 import { TierIcon, TierPill } from '../components/Tier';
 import { data, normalizeCveId } from '../data';
 import { batchKind, batchLabel, cnaName, cveListUrl, cveOrgUrl, fmtAge, fmtDate, fmtDateTime, fmtPct, signed, vendorProduct } from '../format';
-import { useData, useNow, useTitle } from '../hooks';
+import { useData, useMetaDescription, useNow, useTitle } from '../hooks';
 import { cveHref, href } from '../router';
 import { keyTargets, knob, normalizeName, toggleWatch, useStore, watchlist } from '../state';
 import { feedbackIssueUrl } from '../ticket';
@@ -533,7 +534,13 @@ function OutsideWindow({ id }: { id: string }) {
 export default function CvePage({ id }: { id: string }) {
   const norm = normalizeCveId(id);
   const detail = useData(norm ? data.detail(norm) : null);
-  useTitle(norm ?? 'Not a CVE ID');
+  const meta = useData(data.meta);
+  const level = useStore(knob);
+  // Once the record is in, the title and description say what a link preview says, at this page's knob.
+  const d = detail.status === 'ready' ? detail.data : null;
+  const tier = d ? detailTier(d, level) : null;
+  useTitle(d && tier ? shareTitle(d, tier) : (norm ?? 'Not a CVE ID'));
+  useMetaDescription(d && tier ? shareDescription(d, tier, level, meta.status === 'ready' ? meta.data.generated_at : null) : null);
   useEffect(() => {
     if (!norm) return;
     const copy = () => void copyTicket(norm);

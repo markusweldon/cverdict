@@ -19,5 +19,5 @@
     "types": ["node", "vite/client"],
     "noEmit": true
   },
-  "include": ["shared", "pipeline", "scripts", "site/src", "site/vite.config.ts", "vitest.config.ts", "mcp"]
+  "include": ["shared", "pipeline", "scripts", "site/src", "site/vite.config.ts", "vitest.config.ts", "mcp", "api"]
 }

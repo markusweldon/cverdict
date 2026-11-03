@@ -40,6 +40,7 @@ jobs:
     outputs:
       pages-enabled: ${{ steps.pages.outputs.enabled }}
       pages-base: ${{ steps.pages.outputs.base }}
+      pages-url: ${{ steps.pages.outputs.url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -184,6 +185,8 @@ jobs:
       - name: Build site
         env:
           BASE: ${{ needs.build.outputs.pages-base }}
+          # Absolute URL of the share images in the page's link-preview tags.
+          SITE_URL: ${{ vars.SITE_URL || needs.build.outputs.pages-url }}
         run: npm run build
 
       - name: Download the published data
