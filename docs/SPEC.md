@@ -194,7 +194,7 @@ v1/state.json       internal carry-forward state, read back through --previous (
 feeds/signal.xml    Atom: newest 100 exploited+likely CVEs (title "CVE-… · <vendor> <product> · <tier>", summary = top chips)
 feeds/kev.xml       Atom: KEV additions, last 30 days
 feeds/kev-due.ics   iCalendar: one all-day VEVENT per KEV due date in [today-7d, +60d] (UID stable per CVE)
-feeds/woke.xml      Atom: newest 100 woke-up CVEs, one entry per CVE
+feeds/woke.xml      Atom: up to 100 woke-up CVEs (KEV and Exploit-DB wakes first, PoC-only wakes only when Likely next or Exploited), one entry per CVE
 ```
 
 Budgets (gzip, checked by `validate.ts`; warn at 80%, fail at 150%): meta ≤ 8 KB, signal ≤ 120 KB, index ≤ 1 MB,

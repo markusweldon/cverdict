@@ -252,7 +252,7 @@ export const RECEIPT_DEFINITIONS: Record<string, string> = {
   before: 'Flagged before the listing: a run earlier than the one that first saw the CISA KEV listing flagged the CVE, on or before the KEV dateAdded.',
   same_day: 'Same day: flagged on the KEV dateAdded itself, before the listing appeared. Counted as 0 days, separately from earlier.',
   eligible: 'Counted: KEV additions dated since the log started, for CVEs the log saw before the listing.',
-  lead: 'Lead time: the KEV dateAdded minus the UTC day of the first flag, in whole days. Median and quartiles interpolate between ranks.',
+  lead: "Lead time: the KEV dateAdded minus the day of the first flag, both read as US Eastern days (CISA's time zone), in whole days. Median and quartiles interpolate between ranks.",
   volume: 'Alert volume: the share of the CVEs a method watched or scored that it flagged.',
   watch: 'Each CVE is watched while it is in the window. A method that flags it only later is not counted.',
 };

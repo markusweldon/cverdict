@@ -83,7 +83,7 @@ On the site:
 - **Today**: the noise meter (every CVE of the last 30 days → the few worth your time), a signal
   waterfall of the whole window hour by hour (click a column to see that day's CVEs in Explore, or
   a spike label to open its patch-day batch), the knob, the signal feed with filters and a vendor
-  watchlist, patch-day batch cards, the KEV due-date clock, old CVEs that woke up this week and
+  watchlist, patch-day batch cards, the KEV due-date clock, old CVEs that woke up in the last 7 days and
   what changed since the last run.
 - **CVE pages**: a one-line verdict, the score arithmetic chip by chip, what we could *not* see,
   an evidence timeline, the facts (CVSS vector, SSVC, EPSS, KEV, affected products) and
@@ -95,8 +95,8 @@ On the site:
   KEV additions are years old. Each one shows the dated evidence and a link to check it.
 - **Receipts**: how often CVErdict flagged a CVE before CISA added it to KEV, next to "CVSS 7 or
   more" and "EPSS 10% or more", with lead times, alert volume and every hit and miss. The live
-  record is kept hour by hour from the day it started; a backtest of the last 180 days is shown
-  apart and marked as hindsight.
+  record notes each run, to the minute, from the day it started; a backtest of the last 180 days
+  is shown apart and marked as hindsight.
 - **KEV clock**, **Batches**, **Explore** (every window CVE, searchable, filterable by publish
   day), **The surge** (monthly volume since 1999), **Method** and **Feeds**.
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
