@@ -1628,7 +1628,9 @@
   }
 }
 
-@media (max-width: 920px) {
+/* The header wraps the nav onto its own scrolling row before the links can run under the
+   search button. Nine links need about 1,100 px on one row. */
+@media (max-width: 1120px) {
   .top__inner {
     flex-wrap: wrap;
     height: auto;
@@ -1656,7 +1658,9 @@
   :root {
     --header-h: 98px;
   }
+}
 
+@media (max-width: 920px) {
   .cve__grid {
     grid-template-columns: minmax(0, 1fr);
   }

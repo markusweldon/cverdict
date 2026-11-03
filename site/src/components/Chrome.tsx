@@ -50,6 +50,17 @@ function DataStatus() {
 export function Header({ route }: { route: Route }) {
   const mode = useStore(theme);
   const el = useRef<HTMLElement>(null);
+  const nav = useRef<HTMLElement>(null);
+  // On narrow screens the nav is a scrolling row, so the current page can sit off-screen.
+  // Bring its link into view (no smooth scroll) whenever the page changes.
+  useEffect(() => {
+    const row = nav.current;
+    const link = row?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!row || !link || row.scrollWidth <= row.clientWidth) return;
+    const left = link.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft;
+    const right = left + link.offsetWidth;
+    if (left < row.scrollLeft || right > row.scrollLeft + row.clientWidth) row.scrollLeft = Math.max(0, left - (row.clientWidth - link.offsetWidth) / 2);
+  }, [route.name]);
   // Sticky bars sit right under the header whatever its real height (it wraps on phones).
   useEffect(() => {
     const top = el.current;
@@ -76,7 +87,7 @@ export function Header({ route }: { route: Route }) {
           <span class="brand__name">{BRAND.name}</span>
         </a>
         <DataStatus />
-        <nav class="nav" aria-label="Primary">
+        <nav class="nav" aria-label="Primary" ref={nav}>
           {NAV.map((n) => (
             <a key={n.name} class="nav__link" href={href(n.path)} aria-current={route.name === n.name ? 'page' : undefined}>
               {n.label}
