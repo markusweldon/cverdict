@@ -1,7 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
 import { fileURLToPath } from 'node:url';
-import { genericHead, injectHead, SHARE_END, SHARE_START, siteOrigin } from '../shared/share.js';
+import { genericHead, hasShareBlock, injectHead, siteOrigin } from '../shared/share.js';
 
 // BASE lets the same build target Vercel ("/") and GitHub Pages ("/<repo>/").
 const base = process.env.BASE ?? '/';
@@ -14,7 +14,7 @@ function shareHead(): Plugin {
   return {
     name: 'cverdict-share-head',
     transformIndexHtml(html) {
-      if (!html.includes(SHARE_START) || !html.includes(SHARE_END)) throw new Error('index.html lost its share markers');
+      if (!hasShareBlock(html)) throw new Error('index.html lost its share markers, or has them out of order');
       return injectHead(html, genericHead(siteOrigin(process.env)));
     },
   };

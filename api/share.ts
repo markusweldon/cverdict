@@ -14,7 +14,7 @@
  */
 import { BRAND, RAW_DATA_URL, REPO_URL } from '../shared/brand.js';
 import { CVE_ID_RE, shardOf } from '../shared/shard.js';
-import { injectHead, minimalTemplate, notInDataHead, readShareRecord, SHARE_END, SHARE_START, shareHead, siteOrigin } from '../shared/share.js';
+import { hasShareBlock, injectHead, minimalTemplate, notInDataHead, readShareRecord, shareHead, siteOrigin } from '../shared/share.js';
 
 export const DEADLINE_MS = 1500;
 export const SHARD_MAX_BYTES = 2 * 1024 * 1024;
@@ -108,7 +108,7 @@ export function createShareHandler(options: Options = {}): (request: Request) =>
     if (now >= templateRetryAt) {
       templateInflight ??= (async () => {
         const got = await fetchText(doFetch, `${origin}/index.html`, signal, TEMPLATE_MAX_BYTES, null);
-        if (got.ok && got.text.includes(SHARE_START) && got.text.includes(SHARE_END)) template = { html: got.text, at: Date.now() };
+        if (got.ok && hasShareBlock(got.text)) template = { html: got.text, at: Date.now() };
         else templateRetryAt = Date.now() + TEMPLATE_RETRY_MS;
       })().finally(() => {
         templateInflight = null;

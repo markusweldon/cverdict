@@ -10,6 +10,7 @@ import {
   DESCRIPTION_MAX,
   escapeHtml,
   genericHead,
+  hasShareBlock,
   injectHead,
   isPreviewBot,
   minimalTemplate,
@@ -316,6 +317,13 @@ describe('injectHead', () => {
     expect(injectHead('<head><title>x</title></head>', '<title>y</title>')).toBe('<head><title>x</title></head>');
     expect(injectHead(`<head>${SHARE_START}<title>x</title></head>`, '<title>y</title>')).toBe(`<head>${SHARE_START}<title>x</title></head>`);
     expect(injectHead(`<head>${SHARE_END}${SHARE_START}</head>`, 'y')).toBe(`<head>${SHARE_END}${SHARE_START}</head>`);
+  });
+
+  it('says whether a template has a block it can fill', () => {
+    expect(hasShareBlock(tpl)).toBe(true);
+    expect(hasShareBlock(`${SHARE_START}${SHARE_END}`)).toBe(true);
+    expect(hasShareBlock(`<head>${SHARE_END}<title>x</title>${SHARE_START}</head>`)).toBe(false);
+    expect(hasShareBlock(`<head>${SHARE_START}</head>`)).toBe(false);
   });
 
   it('keeps $ patterns in vendor names literal', () => {
