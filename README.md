@@ -275,7 +275,8 @@ More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 - **CNA noise panel**: who publishes how much, and how much of it ever matters.
 - **EPSS sparklines** on CVE pages and rows.
-- **Open Graph images** per CVE, so shared links carry the verdict.
+- **Open Graph images** per CVE. Shared CVE links already carry the verdict, score, KEV and exploit status in
+  their preview text, with an image per tier; an image with each CVE's own score may follow.
 
 **v2**
 

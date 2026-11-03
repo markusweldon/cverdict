@@ -8,14 +8,15 @@
     />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <title>CVErdict — the few CVEs that matter today</title>
-    <meta name="description" content="CVErdict: open-source CVE triage for the 2026 flood. The few CVEs that matter today, and exactly why — built only from free public data, refreshed hourly." />
+    <!-- The share block: title, description and the site card. The build fills it in from
+         genericHead() in shared/share.ts (site/vite.config.ts); for link-preview bots on a CVE
+         page, api/share.ts replaces it with that CVE's tags. Keep both markers. -->
+    <!--share:start-->
+    <title>CVErdict</title>
+    <!--share:end-->
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#0A0B0D" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#FAFAF9" media="(prefers-color-scheme: light)" />
-    <meta property="og:title" content="CVErdict" />
-    <meta property="og:description" content="The few CVEs that matter today, and exactly why. Open data, refreshed hourly." />
-    <meta property="og:type" content="website" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="alternate" type="application/atom+xml" title="CVErdict · signal" href="%BASE_URL%data/feeds/signal.xml" />
     <link rel="preload" href="../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />

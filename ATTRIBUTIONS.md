@@ -190,3 +190,10 @@ under MIT), [zod](https://github.com/colinhacks/zod) (MIT), and the libraries th
 own build: ajv, ajv-formats, fast-deep-equal, json-schema-traverse and content-type (MIT) and
 fast-uri (BSD-3-Clause). Their full license texts ship with the bundle in
 [mcp/LICENSE-THIRD-PARTY](mcp/LICENSE-THIRD-PARTY). None of them is part of the site.
+
+## Share images
+
+The link-preview images in `site/public/og/` are rendered by hand with `tools/og/render.mjs`, using
+[satori](https://github.com/vercel/satori) and [resvg-wasm](https://github.com/yisibl/resvg-js)
+(both MPL-2.0) as build tools; neither ships with the site. The text in them is drawn as glyph
+outlines from the static Geist files of `@fontsource/geist` (SIL Open Font License 1.1, as above).

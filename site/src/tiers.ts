@@ -1,7 +1,7 @@
 /** Presentation metadata for tiers, chip families and sources, plus the plain-language verdict. */
-import { WATCH_FLOOR, tierFor, type CveDetail, type Family, type Reason, type SourceId, type Tier } from '../../shared/contract';
+import { WATCH_FLOOR, tierFor, type CveDetail, type Family, type SourceId, type Tier } from '../../shared/contract';
 import { CHIP_BY_ID, type ChipDef } from '../../shared/model';
-import { fmtDate, fmtPct } from './format';
+import { verdict as sharedVerdict } from '../../shared/verdict';
 
 export const TIER_META: Readonly<Record<Tier, { label: string; verdict: string; blurb: string }>> = {
   exploited: { label: 'Exploited', verdict: 'Patch now', blurb: 'Confirmed exploitation: CISA KEV, CISA SSVC “active”, or the vendor says so.' },
@@ -44,42 +44,11 @@ export function chipTone(def: Pick<ChipDef, 'id' | 'family' | 'polarity'>): Chip
 
 export const chipDef = (id: string): ChipDef | undefined => CHIP_BY_ID[id];
 
-/** The headline and its reason, e.g. "Patch now" + "exploited, KEV due Oct 29". */
-export function verdict(d: CveDetail, tier: Tier, knob: number): { head: string; reason: string } {
-  const head = TIER_META[tier].verdict;
-  const strongest = (family: Family) => d.reasons.find((r) => r.family === family && r.polarity === 'up' && r.points > 0) ?? d.reasons.find((r) => r.family === family && r.polarity === 'up');
-  if (tier === 'exploited') {
-    if (d.kev) return { head, reason: `exploited, KEV due ${fmtDate(d.kev.due_date)}` };
-    if (d.ssvc?.exploitation === 'active') return { head, reason: 'exploited: CISA SSVC says exploitation is active' };
-    return { head, reason: 'exploited: the vendor reports exploitation' };
-  }
-  if (tier === 'likely') {
-    const x = strongest('X');
-    return { head, reason: x ? artifactPhrase(x, d) : `score ${d.score.value} clears the knob (${knob})` };
-  }
-  if (tier === 'watch') return { head, reason: `score ${d.score.value}: below the knob (${knob}), above the watch floor (${WATCH_FLOOR})` };
-  return { head, reason: 'no evidence yet (quiet ≠ safe)' };
-}
-
-function artifactPhrase(r: Reason, d: CveDetail): string {
-  switch (r.id) {
-    case 'x.metasploit':
-      return 'Metasploit module';
-    case 'x.nuclei':
-      return 'Nuclei template — scannable at internet scale';
-    case 'x.exploitdb':
-      return 'Exploit-DB entry';
-    case 'epss.high':
-    case 'epss.mid':
-      return d.epss ? `EPSS ${fmtPct(d.epss.score)} chance of exploitation in 30 days` : 'high EPSS';
-    case 'x.poc':
-      return `public proof of concept (${d.exploits.poc.vetted} vetted repo${d.exploits.poc.vetted === 1 ? '' : 's'})`;
-    case 'vendor.functional':
-      return 'the vendor’s CVSS vector says a working exploit exists';
-    default:
-      return CHIP_BY_ID[r.id]?.short ?? r.label;
-  }
-}
+/**
+ * The headline and its reason, e.g. "Patch now" + "exploited, KEV due Oct 29": the same words as
+ * link previews (shared/verdict.ts), with dates relative to the current year.
+ */
+export const verdict = (d: CveDetail, tier: Tier, knob: number): { head: string; reason: string } => sharedVerdict(d, tier, knob, new Date().getUTCFullYear());
 
 /** A detail's tier at another knob: exploitation never depends on it, weaponization forces Likely. */
 export function detailTier(d: CveDetail, knob: number): Tier {
