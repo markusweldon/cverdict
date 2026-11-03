@@ -140,8 +140,8 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect([...result.exploits.exploitdb.keys()]).toEqual(['CVE-2026-100878']);
     expect(result.exploits.poc).toEqual(
       new Map([
-        ['CVE-2026-110447', [{ url: 'https://github.com/real/poc', stars: 4, created: '2026-10-15T10:00:00.000Z', fork: false }]],
-        ['CVE-2026-94216', [{ url: 'https://github.com/other/poc', stars: 1, created: '2026-10-15T10:00:00.000Z', fork: false }]],
+        ['CVE-2026-110447', [{ url: 'https://github.com/real/poc', stars: 4, created: '2026-10-15T10:00:00.000Z', fork: false, pushed: null }]],
+        ['CVE-2026-94216', [{ url: 'https://github.com/other/poc', stars: 1, created: '2026-10-15T10:00:00.000Z', fork: false, pushed: null }]],
       ]),
     );
 

@@ -123,6 +123,8 @@ export interface PocRepo {
   stars: number;
   created: string;
   fork: boolean;
+  /** Last push (GitHub pushed_at): the repo's content is only known to predate this. */
+  pushed?: string | null;
 }
 
 /** Parsed Exploit-DB file. */

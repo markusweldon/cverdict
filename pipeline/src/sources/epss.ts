@@ -94,7 +94,9 @@ export function parseEpssBodyOn(body: Buffer, dates: readonly string[], limits: 
 /**
  * EPSS scores of a past day (the first of `dates` that the archive has), from the dated
  * archive, then the EPSS host, then the cache. A past day never changes, so a cached copy for
- * one of `dates` is reused without a request; a cached copy of another day is not used.
+ * the first of `dates` is reused without a request. A cached copy of a later fallback day is
+ * only used after the first day could not be downloaded (yesterday's first day is today's
+ * fallback, and reusing it would measure over one day more every other day).
  * Never throws: `data` is null and `error` says why when no copy of those days could be read.
  */
 export async function loadEpssOn(
@@ -109,6 +111,7 @@ export async function loadEpssOn(
     urls: dates.flatMap((d) => [EPSS.daily(d), EPSS.dated(d)]),
     parse: (body) => parseEpssBodyOn(body, dates, limits),
     minIntervalMs: 30 * 86_400_000,
+    reuseIf: (t) => t.scoreDate === dates[0],
     signal,
   });
   return { data: fetched.value, error: fetched.value ? null : fetched.error };

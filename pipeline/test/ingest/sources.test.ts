@@ -119,7 +119,7 @@ describe('EPSS for a past day', () => {
     expect(() => parseEpssBodyOn(day('2026-11-02'), ['2026-10-03'], LOOSE)).toThrow(/is for 2026-11-02, wanted 2026-10-03/);
   });
 
-  it('tries the archive, then the EPSS host, then the day before, and reuses the cached day without a request', async () => {
+  it('tries the archive, then the EPSS host, then the day before, and reuses only the cached first day without a request', async () => {
     const cacheDir = tempDir();
     const requested: string[] = [];
     const routes: Record<string, () => Response> = {
@@ -136,14 +136,30 @@ describe('EPSS for a past day', () => {
     expect(first.data?.scoreDate).toBe('2026-10-02');
     expect(requested).toEqual([EPSS.daily('2026-10-03'), EPSS.dated('2026-10-03'), EPSS.daily('2026-10-02')]);
 
+    // A cached fallback day is not reused while the wanted day may exist: it is tried again first.
     requested.length = 0;
     expect((await loadEpssOn(http, ['2026-10-03', '2026-10-02'], LOOSE)).data?.scoreDate).toBe('2026-10-02');
-    expect(requested).toEqual([]);
+    expect(requested.slice(0, 2)).toEqual([EPSS.daily('2026-10-03'), EPSS.dated('2026-10-03')]);
 
-    // The next day wants other dates: the cached file does not stand in for them.
-    const next = await loadEpssOn(http, ['2026-10-04', '2026-10-03'], LOOSE);
+    // Once the wanted day is out and cached, it is reused without a request.
+    routes[EPSS.daily('2026-10-03')] = () => new Response(new Uint8Array(day('2026-10-03')), { status: 200 });
+    expect((await loadEpssOn(http, ['2026-10-03', '2026-10-02'], LOOSE)).data?.scoreDate).toBe('2026-10-03');
+    requested.length = 0;
+    expect((await loadEpssOn(http, ['2026-10-03', '2026-10-02'], LOOSE)).data?.scoreDate).toBe('2026-10-03');
+    expect(requested).toEqual([]);
+    // The next day, yesterday's first day is today's fallback: today's first day is fetched instead
+    // of measuring the jump over 31 days.
+    routes[EPSS.daily('2026-10-04')] = () => new Response(new Uint8Array(day('2026-10-04')), { status: 200 });
+    expect((await loadEpssOn(http, ['2026-10-04', '2026-10-03'], LOOSE)).data?.scoreDate).toBe('2026-10-04');
+    expect(requested).toEqual([EPSS.daily('2026-10-04')]);
+    // While the fallback day is all the archive has, its cached copy still serves when the host is down.
+    const down = new HttpClient({ cacheDir, offline: false, log: captureLogger(), fetch: async () => new Response('down', { status: 404 }), sleep: async () => {} });
+    expect((await loadEpssOn(down, ['2026-10-05', '2026-10-04'], LOOSE)).data?.scoreDate).toBe('2026-10-04');
+
+    // Other dates: the cached file does not stand in for them.
+    const next = await loadEpssOn(down, ['2026-10-06', '2026-10-05'], LOOSE);
     expect(next.data).toBeNull();
-    expect(next.error).toMatch(/cached copy unusable: EPSS: file is for 2026-10-02/);
+    expect(next.error).toMatch(/cached copy unusable: EPSS: file is for 2026-10-04/);
   });
 });
 
@@ -258,7 +274,7 @@ describe('PoC-in-GitHub files', () => {
       JSON.stringify([
         { html_url: 'https://github.com/a/poc', stargazers_count: 3, created_at: '2026-10-20T10:00:00Z', fork: false },
         { html_url: 'https://github.com/b/poc-fork', stargazers_count: 99, created_at: '2026-10-20T10:00:00Z', fork: true },
-        { html_url: 'https://github.com/c/poc', stargazers_count: 30, created_at: '2026-10-21T10:00:00Z', fork: false },
+        { html_url: 'https://github.com/c/poc', stargazers_count: 30, created_at: '2026-10-21T10:00:00Z', pushed_at: '2026-10-23T08:00:00Z', fork: false },
         { html_url: 'https://github.com/a/poc', stargazers_count: 3, created_at: '2026-10-20T10:00:00Z', fork: false },
         { html_url: 'javascript:alert(1)', stargazers_count: 1, created_at: '2026-10-20T10:00:00Z' },
         { html_url: 'https://evil.example/x/y', stargazers_count: 1, created_at: '2026-10-20T10:00:00Z' },
@@ -267,9 +283,9 @@ describe('PoC-in-GitHub files', () => {
       ]),
     );
     expect(repos).toEqual([
-      { url: 'https://github.com/c/poc', stars: 30, created: '2026-10-21T10:00:00.000Z', fork: false },
-      { url: 'https://github.com/a/poc', stars: 3, created: '2026-10-20T10:00:00.000Z', fork: false },
-      { url: 'https://github.com/e/neg', stars: 0, created: '2026-10-22T10:00:00.000Z', fork: false },
+      { url: 'https://github.com/c/poc', stars: 30, created: '2026-10-21T10:00:00.000Z', fork: false, pushed: '2026-10-23T08:00:00.000Z' },
+      { url: 'https://github.com/a/poc', stars: 3, created: '2026-10-20T10:00:00.000Z', fork: false, pushed: null },
+      { url: 'https://github.com/e/neg', stars: 0, created: '2026-10-22T10:00:00.000Z', fork: false, pushed: null },
     ]);
   });
 
