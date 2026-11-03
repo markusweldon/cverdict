@@ -344,10 +344,15 @@ function checkPackages(json: Map<string, JsonObject>, details: Set<string>, inde
       err(`sources.${s.ecosystem} is invalid`);
     }
   }
+  const distinct = asObject(doc.distinct) as PackagesFile['distinct'] | null;
+  const sum = (k: 'advisories' | 'matched') => doc.sources.reduce((n, s) => n + (s.ok ? s[k] : 0), 0);
+  if (!distinct || !Number.isInteger(distinct.advisories) || !Number.isInteger(distinct.matched) || distinct.matched < 0 || distinct.matched > distinct.advisories) err('distinct is invalid');
+  else if (distinct.advisories > sum('advisories') || distinct.matched > sum('matched')) err('distinct counts more advisories than sources[]');
   const packages = asObject(doc.packages);
   if (!packages) return err('packages is not an object');
   const okEcos = new Set(doc.sources.filter((s) => s.ok).map((s) => s.ecosystem));
   const named = new Set<string>();
+  const advisoryIds = new Set<string>();
   const bad: string[] = [];
   const unparsed = new Map<string, number>();
   for (const [eco, pkgs] of Object.entries(packages)) {
@@ -379,6 +384,7 @@ function checkPackages(json: Map<string, JsonObject>, details: Set<string>, inde
         else if (ranges.length === 0 && versions === undefined) bad.push(`${where}: ${advisory} has neither ranges nor versions`);
         else {
           named.add(cve);
+          advisoryIds.add(advisory);
           const c = COMPARATORS[e];
           const unreadable = (ranges as string[][]).filter((r) => r.some((ev) => {
             const p = parseEvent(ev);
@@ -390,6 +396,7 @@ function checkPackages(json: Map<string, JsonObject>, details: Set<string>, inde
     }
   }
   if (bad.length > 0) err(`${bad.length} bad entries (first: ${bad[0]})`);
+  else if (distinct && distinct.matched !== advisoryIds.size) err(`distinct.matched is ${distinct.matched}, but packages holds ${advisoryIds.size} advisories`);
   for (const [eco, n] of unparsed) warnings.push(`${PATHS.packages}: ${n} ${eco} ranges have a bound shared/versions.ts cannot compare (shown as "possibly affected")`);
 
   const rows = readRows(`${PATHS.packages} cves`, asObject(doc.cves) ?? undefined, errors);

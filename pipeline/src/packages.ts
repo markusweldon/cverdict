@@ -33,6 +33,8 @@ export function buildPackagesFile(osv: OsvData, rowById: ReadonlyMap<string, Row
   const sources: PackageSourceStatus[] = [];
   const packages: PackagesFile['packages'] = {};
   const named = new Set<string>();
+  const allIds = new Set<string>();
+  const matchedIds = new Set<string>();
   for (const eco of PACKAGE_ECOSYSTEMS) {
     const status = osv.statuses[eco];
     const copy = osv.mirror.ecosystems[eco];
@@ -41,9 +43,11 @@ export function buildPackagesFile(osv: OsvData, rowById: ReadonlyMap<string, Row
       // Package key → "cve advisory" → entry. Maps only: OSV names never index a plain object.
       const byKey = new Map<string, Map<string, PackageAffect>>();
       for (const [id, , cves, affected] of copy.records) {
+        allIds.add(id);
         const hit = cves.filter((c) => rowById.has(c));
         if (hit.length === 0) continue;
         matched++;
+        matchedIds.add(id);
         for (const [name, ranges, extra] of affected) {
           const key = packageKey(eco, name);
           let entries = byKey.get(key);
@@ -83,6 +87,7 @@ export function buildPackagesFile(osv: OsvData, rowById: ReadonlyMap<string, Row
     scope: packagesScope(windowDays),
     attribution: ATTRIBUTION.map((a) => ({ ...a, prefixes: [...a.prefixes] })),
     sources,
+    distinct: { advisories: allIds.size, matched: matchedIds.size },
     cves: { cols: ROW_COLS, rows: ids.map((id) => ROW_COLS.map((c) => rowById.get(id)![c])) },
     packages,
   };

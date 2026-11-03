@@ -48,6 +48,9 @@ describe('buildPackagesFile', () => {
       ],
     });
     expect(f.sources.find((s) => s.ecosystem === 'npm')).toMatchObject({ ok: true, advisories: 3, matched: 2 });
+    // GHSA-dddd is also an npm record here: once in each ecosystem's count, once in distinct.
+    expect(buildPackagesFile(osv({ npm: [...npm, pypi[1]], PyPI: pypi }), rows, NOW.toISOString(), 30).distinct).toEqual({ advisories: 5, matched: 4 });
+    expect(f.distinct).toEqual({ advisories: 5, matched: 4 });
     expect(f.sources.find((s) => s.ecosystem === 'Go')).toMatchObject({ ok: false, advisories: 0, matched: 0, error: 'no copy' });
     expect(f.attribution).toEqual(ATTRIBUTION);
   });

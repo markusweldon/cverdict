@@ -207,8 +207,6 @@ function summaryText(r: CheckResult, days: number | null): string {
 
 function Coverage({ index, state, days }: { index: PackagesFile | undefined; state: IndexState; days: number | null }) {
   const window = days === null ? 'in the window' : `in the last ${days} days`;
-  const advisories = index ? index.sources.reduce((n, s) => n + s.advisories, 0) : 0;
-  const matched = index ? index.sources.reduce((n, s) => n + s.matched, 0) : 0;
   return (
     <section class="panel check__coverage" aria-labelledby="check-cov">
       <h2 class="panel__title" id="check-cov">
@@ -217,7 +215,8 @@ function Coverage({ index, state, days }: { index: PackagesFile | undefined; sta
       {index ? (
         <p>
           The index covers <strong>{fmtInt(index.cves.rows.length)}</strong> CVEs that name a package in {ECOSYSTEM_LIST}: CVEs published {window}, CVEs in CISA KEV, and older CVEs that woke up. It was built{' '}
-          {fmtDateTime(index.generated_at)} from {fmtInt(advisories)} advisories that name a CVE, {fmtInt(matched)} of which name a tracked CVE.
+          {fmtDateTime(index.generated_at)}
+          {index.distinct ? ` from ${fmtInt(index.distinct.advisories)} advisories that name a CVE, ${fmtInt(index.distinct.matched)} of which name a tracked CVE` : ''}.
         </p>
       ) : (
         <p>

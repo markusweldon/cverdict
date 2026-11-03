@@ -254,6 +254,10 @@ describe('validateOutput', () => {
     expect(check((f) => void f.cves.rows.pop())).toContain(`${PATHS.packages}: 1 CVEs named in packages have no row in cves (first: CVE-2026-100001)`);
     expect(check((f) => void ((f.packages.npm = {}), (f.packages.PyPI = {})))).toContain(`${PATHS.packages}: 1 cves rows are not named in packages (first: CVE-2026-100001)`);
     expect(check((f) => void (f.sources = f.sources.slice(1)))).toContain(`${PATHS.packages}: sources must list every ecosystem once, in PACKAGE_ECOSYSTEMS order`);
+    expect(p.distinct).toEqual({ advisories: 4, matched: 3 });
+    expect(check((f) => void (f.distinct.matched = 2))).toEqual([`${PATHS.packages}: distinct.matched is 2, but packages holds 3 advisories`]);
+    expect(check((f) => void (f.distinct.advisories = 5))).toEqual([`${PATHS.packages}: distinct counts more advisories than sources[]`]);
+    expect(check((f) => void delete (f as Partial<PackagesFile>).distinct)).toEqual([`${PATHS.packages}: distinct is invalid`]);
     unlinkSync(join(dir, PATHS.packages));
     expect(validateOutput(dir).errors).toContain(`missing ${PATHS.packages}`);
   });
