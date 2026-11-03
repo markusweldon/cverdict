@@ -64,6 +64,7 @@ import { BRAND, REPO_URL } from '../shared/brand';
 import { RECEIPT_DEFINITIONS } from '../pipeline/src/emit/build';
 import { BACKTEST_COMMAND, SIGNALS } from '../pipeline/src/backtest';
 import { scoreMethods } from '../pipeline/src/receipts';
+import { serializeState, STATE_PATH } from '../pipeline/src/state';
 
 // ───────────────────────────── clock & randomness ─────────────────────────────
 
@@ -1980,6 +1981,8 @@ function main(): void {
   };
   writeJson(tmp, 'v1/woke.json', woke);
   writeJson(tmp, 'v1/receipts.json', mockReceipts([...window, ...older], rowsById));
+  // Every real run writes the state file (validate.ts requires it); the mock carries no sections.
+  writeFileSync(join(tmp, STATE_PATH), serializeState(new Date(NOW), []));
 
   const shards = Array.from({ length: SHARD_COUNT }, () => ({}) as Record<string, CveDetail>);
   for (const s of [...window, ...older]) shards[parseInt(shardOf(s.d.id), 16)][s.d.id] = toDetail(s);
