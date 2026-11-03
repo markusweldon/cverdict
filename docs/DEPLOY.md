@@ -60,7 +60,9 @@ How it works:
 - `vercel.json` rewrites `/cve/<id>` to the function `api/share.ts` **only** when the user-agent
   is a link-preview bot (the `has` condition; the list is `BOT_UA_TOKENS` in `shared/share.ts`,
   and a test keeps the two equal). Browsers, in-app browsers and search or AI crawlers (Googlebot,
-  GPTBot, ClaudeBot) get the static `index.html` as before.
+  GPTBot, ClaudeBot) get the static `index.html` as before. The rule also needs the link to carry
+  no `id` query parameter of its own (`missing`): Vercel merges the link's query into the
+  destination's, so `/cve/CVE-A?id=CVE-B` could otherwise show CVE-B's verdict under CVE-A's link.
 - The function reads the CVE's detail shard from the `data` branch on raw.githubusercontent.com
   (the site's own `/data/` copy only when raw is rate-limiting or down), loads the production
   `index.html`, and returns it with the CVE's tags in the share block. It is read-only, has no

@@ -25,6 +25,7 @@
           "value": ".*(Slackbot-LinkExpanding|Twitterbot|facebookexternalhit|Facebot|LinkedInBot|Discordbot|TelegramBot|WhatsApp/|Mastodon/|Bluesky Cardyb|SkypeUriPreview|redditbot|Iframely|Embedly|Synapse|Mattermost-Bot).*"
         }
       ],
+      "missing": [{ "type": "query", "key": "id" }],
       "destination": "/api/share?id=:id"
     },
     {
