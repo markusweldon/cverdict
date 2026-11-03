@@ -324,8 +324,6 @@ function checkReceipts(json: Map<string, JsonObject>, errors: string[]): void {
         const hits = items.filter((i) => i[variant][m]).length;
         if (!score || score.n !== s.n || score.before !== hits || score.lead !== null) err(`backtest ${s.key}.${variant}.${m} does not match its items`);
       }
-      // Leaving evidence out can only lower a score: strict never beats the upper bound.
-      if (items.some((i) => i.strict[m] && !i.upper[m])) err(`backtest ${s.key}: a strict ${m} hit is missing from the upper bound`);
     }
   }
 }

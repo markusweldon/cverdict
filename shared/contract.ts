@@ -500,14 +500,14 @@ export interface BacktestSignal {
   label: string;
   /**
    * `time_matched`: only evidence dated before the listing day is used. `hindsight`: the source has
-   * no usable date, so the strict scores leave it out and the upper bound uses today's value.
+   * no usable date, so the strict scores leave it out and `upper` uses today's value.
    * `excluded`: never used, because it is the listing itself or follows from it.
    */
   treatment: 'time_matched' | 'hindsight' | 'excluded';
   note: string;
   /**
    * Backtest CVEs this touched: for `hindsight` signals, how many the strict scores had to leave
-   * out (an upper-bound case); for `excluded` ones, how many it was set aside or lowered for.
+   * out; for `excluded` ones, how many it was set aside or lowered for.
    */
   affected: number;
 }
@@ -518,7 +518,10 @@ export interface BacktestSet {
   n: number;
   /** Time-matched evidence only; signals without a usable date are left out. */
   strict: MethodScore[];
-  /** The same, plus today's value of every signal without a usable date: an upper bound. */
+  /**
+   * The same, plus today's value of every signal without a usable date ("with undated evidence").
+   * Usually the higher figure, but not a guaranteed bound: undated evidence can also cost points.
+   */
   upper: MethodScore[];
 }
 
@@ -556,8 +559,11 @@ export interface BacktestReceipts {
   old_years: number;
   /** KEV additions in the range. */
   listed: number;
-  /** Additions left out of every figure, by reason. */
-  excluded: { reason: string; ids: string[] }[];
+  /**
+   * Additions left out of every figure. `no_record`: no PUBLISHED CVE record. `not_public`: the
+   * CVE was published on or after the listing day, so no method could have flagged it before.
+   */
+  excluded: { code: 'no_record' | 'not_public'; reason: string; ids: string[] }[];
   sets: BacktestSet[];
   /**
    * Alert volume over the same period: CVEs published from `from` on, flagged with today's
