@@ -87,7 +87,8 @@ On the site:
   what changed since the last run.
 - **CVE pages**: a one-line verdict, the score arithmetic chip by chip, what we could *not* see,
   an evidence timeline, the facts (CVSS vector, SSVC, EPSS, KEV, affected products) and
-  "Copy as ticket".
+  "Copy as ticket". A CVE link shared in Slack, X, LinkedIn, Mastodon, Discord or a messenger
+  shows its verdict and score in the preview, with an image for its tier.
 - **Woke up**: CVEs published more than 30 days ago that gained exploitation evidence in the last
   30 days: a CISA KEV listing, an EPSS jump, or their first public exploit of any kind (an
   Exploit-DB entry, Metasploit module, Nuclei template, or a PoC repo on GitHub that is at least
@@ -241,7 +242,9 @@ each answer contains: [docs/DATA.md](docs/DATA.md#mcp-server); copyable commands
 
 **Vercel, zero config.** Import the repository and deploy. The site is static; `/data/*` and
 the feed files under `/feeds/` are rewritten to the `data` branch on raw.githubusercontent.com, so
-fresh data arrives every hour without a redeploy. A fresh clone reads this repository's data until
+fresh data arrives every hour without a redeploy. One small function answers link-preview bots
+only, so shared CVE links show their verdict; people never reach it
+([Link previews](docs/DEPLOY.md#link-previews)). A fresh clone reads this repository's data until
 you point the rewrites in `vercel.json` at your own, so it needs no workflow runs of its own.
 
 **GitHub Pages.** The repository must be public, because the refresh workflow reads the `data`

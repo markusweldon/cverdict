@@ -41,6 +41,12 @@ In scope:
   workflow-command injection from upstream data, cache poisoning), the data-branch publisher, and
   dependencies we ship.
 - **Hosting configuration**: headers and rewrites in `vercel.json` and the Pages deployment.
+- **The Check page** (`/check`): anything that makes a dropped or pasted file, or anything read
+  from it, leave the browser (in a request, the URL, history or storage), render as markup, or
+  freeze the tab.
+- **The link-preview function** (`api/share.ts`): a request that makes it show one CVE's tags
+  under another CVE's link, put markup from CVE text into the page, fetch anything but the data
+  branch and the site's own `index.html`, or run past its deadline and size caps.
 - **The MCP server** (`mcp/`): input or published data that makes it fetch anything but its data
   bases, follow a redirect, read past its size caps, write files or run code. Upstream text that
   it quotes in answers (CVE titles and descriptions, KEV text) can carry prompt-injection attempts;
