@@ -22,14 +22,17 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/meta.json` | `Meta` | Run metadata, headline counts with definitions, source health | ~2 KB |
 | `v1/signal.json` | `RowTable` | Window CVEs with score ≥ 35, plus every exploited or weaponized one; score desc, then newest | ~55 KB |
 | `v1/index.json` | `RowTable` | Every CVE published in the window; newest first | ~720 KB |
-| `v1/cve/<xx>.json` | `CveShard` | Full detail for window CVEs and every KEV CVE; 256 shards | ~25–50 KB each |
+| `v1/cve/<xx>.json` | `CveShard` | Full detail for window CVEs, every KEV CVE and every CVE in `woke.json`; 256 shards | ~25–50 KB each |
 | `v1/batches.json` | `BatchesFile` | Batches (patch days and bulk releases) in the window; newest first | ~30 KB |
 | `v1/kev.json` | `KevFile` | KEV entries added in the last 30 days or due from 14 days ago on; newest first | ~4 KB |
 | `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
+| `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
+| `v1/state.json` | — | **Internal and unstable.** State carried from one run to the next; do not build on it | ~25 KB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
 | `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
+| `feeds/woke.xml` | Atom | Newest 100 CVEs from `woke.json` | ~10 KB |
 
 The **window** is the 30 days before `meta.generated_at` (`meta.window`). Sizes are from the
 2026-10-26 run (15,790 window CVEs); `index.json` grows with CVE volume, about 47 bytes gzip per
@@ -143,7 +146,7 @@ python3 -c 'import sys,functools as f;print("%02x"%(f.reduce(lambda h,c:((h^ord(
 ```
 
 Every shard file exists, even an empty one, so a lookup never 404s on a valid shard. A CVE that is
-neither in the window nor in KEV is not in any shard. The file is
+not in the window, not in KEV and not in `woke.json` is not in any shard. The file is
 `{ schema_version, generated_at, items: { "<CVE ID>": CveDetail } }`.
 
 `CveDetail`:
@@ -168,6 +171,7 @@ neither in the window nor in KEV is not in any shard. The file is
 | `unknowns[]` | Evidence we could not see, in words |
 | `timeline[]` | `{ at, event, source }`, oldest first |
 | `references[]` | Up to 10 reference URLs from the CNA |
+| `woke` | `{ at, signals[] }` when the CVE is in `woke.json` (same fields as there), else `null` |
 
 A `Reason` is `{ id, label, polarity: up|down|info|unknown, family: E|X|SEV|SSVC|PRIOR|NOISE|INFO, points, source, url?, at? }`.
 Chips that lost to a stronger one in their family are included with `points: 0`, so
@@ -215,6 +219,65 @@ at most 500. An item is recorded when a CVE's tier rose, or a new exploitation o
 appeared, between two hourly runs: `{ id, at, from, to, added }`. `from` is `null` for a CVE seen for
 the first time; `added` lists the chip ids that appeared.
 
+## `woke.json`
+
+Old CVEs that woke up: published before the 30-day window, with new exploitation evidence in the
+last 30 days (`days`). The window views cannot show them.
+
+| Field | Meaning |
+|---|---|
+| `since` | Signals dated from this instant on count (`generated_at` minus `days`) |
+| `days` | Length of that period, 30 |
+| `published_before` | Only CVEs published before this instant (the window start) are included |
+| `tracking` | `{ metasploit, nuclei, epss }`: since when each first-seen kind is tracked, or `null` when it is not tracked yet. Evidence that was already there when tracking started is not listed |
+| `skipped[]` | `{ kind, reason }` for each signal this run could not check. Missing data is never read as "nothing new" |
+| `counts` | Items with at least one signal of each kind |
+| `items[]` | `{ id, at, signals[], row }`, newest `at` first, at most 500. `at` is the date of the newest signal; `row` is a `Row` (the same fields as in the row tables, as an object) |
+
+A signal is `{ kind, at, first_seen, label, source, url }`:
+
+| `kind` | Fires when | `at` |
+|---|---|---|
+| `kev` | The CVE was added to CISA KEV | KEV `dateAdded` (YYYY-MM-DD) |
+| `exploitdb` | The CVE's first Exploit-DB entry was added | Exploit-DB `date_added` (YYYY-MM-DD) |
+| `poc` | The CVE's first vetted PoC repo appeared on GitHub (same vetting rule as the `x.poc` chip) | the repo's `created_at` |
+| `metasploit` | The CVE's first Metasploit module appeared | first seen: the run that first saw it |
+| `nuclei` | The CVE's first Nuclei template appeared | first seen: the run that first saw it |
+| `epss` | EPSS is at least 10% and at least 3× its score 30 days before the current score date | first seen: the EPSS score date of the run that first saw the jump (YYYY-MM-DD) |
+
+- Each kind is "first of its kind": a second Metasploit module or a tenth PoC repo does not wake
+  a CVE up again.
+- `first_seen: true` means the source has no date for the evidence (Metasploit's `mod_time` is a
+  modification time, Nuclei's index has no dates, two daily EPSS files cannot say which day the
+  score rose), so `at` is when the pipeline first saw it. These kinds need the previous run's
+  state; without it everything already present is treated as known, so a first run never dates
+  old evidence as new.
+- The EPSS check needs the EPSS file from 30 days before the current score date. When it cannot be
+  loaded, the check is skipped and `skipped` says so.
+- Evidence only counts when it arrived after the CVE was already older than the window, so a CVE
+  does not join the list by ageing out of the window. A CVE that was in KEV before the period is
+  left out: it never fell asleep.
+- `label` is our own plain text, written to read after "Woke up Oct 30:" (e.g. `added to CISA KEV`).
+  `url` links the evidence where a stable link exists (KEV catalog search, Exploit-DB entry,
+  Metasploit module, Nuclei template, the PoC-in-GitHub index file, the FIRST EPSS time series).
+
+```sh
+# What woke up this week, with the evidence
+curl -s $BASE/woke.json | jq -r --arg since "$(date -u -d '-7 days' +%F)" '
+  .items[] | select(.at >= $since) | "\(.at[:10])  \(.id)  \(.row.tier)  \(.signals | map(.label) | join("; "))"'
+```
+
+## `state.json` (internal)
+
+Pipeline state carried between hourly runs (the data branch keeps no history, so the next run
+reads it back through `--previous`). **It is not part of the API**: the format can change in any
+release, and the file only exists so the pipeline can remember what it saw. It carries
+`schema_version`, `generated_at`, `state_version` and `sections`, one per feature, each with its own
+`version` and `data`. Today the only section is `woke`: for Metasploit and Nuclei, the CVE IDs
+with an artifact and when tracking started; recent first sightings; and recent EPSS jumps. A
+missing or unreadable file, or a section of an unknown version, starts that state fresh. Its size
+is budgeted like every other file.
+
 ## Feeds
 
 - `feeds/signal.xml`: Atom, the newest 100 Exploited and Likely-next CVEs. Entry titles are
@@ -222,6 +285,8 @@ the first time; `added` lists the chip ids that appeared.
 - `feeds/kev.xml`: Atom, KEV additions of the last 30 days.
 - `feeds/kev-due.ics`: iCalendar with one all-day event per KEV due date, from 7 days ago to 60
   days ahead. Event UIDs are stable per CVE, so calendar apps update events instead of duplicating them.
+- `feeds/woke.xml`: Atom, the newest 100 CVEs from `woke.json`. One entry per CVE with a stable id;
+  a later signal updates the entry. Titles are `CVE-… · <vendor> <product> · woke up: <newest signal>`.
 
 ## Update cadence
 

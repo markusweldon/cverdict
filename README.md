@@ -82,10 +82,15 @@ On the site:
 
 - **Today**: the noise meter (every CVE of the last 30 days → the few worth your time), a signal
   waterfall of the whole window hour by hour, the knob, the signal feed with filters and a vendor
-  watchlist, patch-day batch cards, the KEV due-date clock and what changed since the last run.
+  watchlist, patch-day batch cards, the KEV due-date clock, old CVEs that woke up this week and
+  what changed since the last run.
 - **CVE pages**: a one-line verdict, the score arithmetic chip by chip, what we could *not* see,
   an evidence timeline, the facts (CVSS vector, SSVC, EPSS, KEV, affected products) and
   "Copy as ticket".
+- **Woke up**: CVEs published more than 30 days ago that gained exploitation evidence in the last
+  30 days: a CISA KEV listing, a first Exploit-DB entry, Metasploit module, Nuclei template or
+  vetted PoC repo, or an EPSS jump. The 30-day views cannot see them, yet many KEV additions are
+  years old. Each one shows the dated evidence and a link to check it.
 - **KEV clock**, **Batches**, **Explore** (every window CVE, searchable), **The surge** (monthly
   volume since 1999), **Method** and **Feeds**.
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
@@ -182,6 +187,7 @@ curl -s $BASE/cve/$shard.json | jq -r --arg id $id '.items[$id].reasons[] | "\(.
 
 Feeds: [Atom: Exploited + Likely next](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/signal.xml) ·
 [Atom: KEV additions](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev.xml) ·
+[Atom: old CVEs that woke up](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/woke.xml) ·
 [iCalendar: KEV due dates](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev-due.ics)
 (also served from the site under `/feeds/`).
 
@@ -230,7 +236,6 @@ More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **v1.1**
 
-- **Woke-up feed**: Quiet or Watch CVEs that just gained exploit evidence.
 - **Backtest receipts**: a page showing how past verdicts held up against later KEV listings.
 - **CNA noise panel**: who publishes how much, and how much of it ever matters.
 - **EPSS sparklines** on CVE pages and rows.

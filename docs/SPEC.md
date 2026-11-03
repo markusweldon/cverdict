@@ -188,9 +188,12 @@ v1/batches.json     BatchesFile (newest first)
 v1/kev.json         KevFile
 v1/stats.json       StatsFile
 v1/changes.json     ChangesFile
+v1/woke.json        WokeFile: CVEs published before the window with new exploitation evidence in 30 days (pipeline/src/woke.ts)
+v1/state.json       internal carry-forward state, read back through --previous (pipeline/src/state.ts; unstable)
 feeds/signal.xml    Atom: newest 100 exploited+likely CVEs (title "CVE-… · <vendor> <product> · <tier>", summary = top chips)
 feeds/kev.xml       Atom: KEV additions, last 30 days
 feeds/kev-due.ics   iCalendar: one all-day VEVENT per KEV due date in [today-7d, +60d] (UID stable per CVE)
+feeds/woke.xml      Atom: newest 100 woke-up CVEs, one entry per CVE
 ```
 
 Budgets (gzip, checked by `validate.ts`; warn at 80%, fail at 150%): meta ≤ 8 KB, signal ≤ 120 KB, index ≤ 1 MB,
@@ -207,7 +210,7 @@ shards on demand per CVE (cache in memory). Show a skeleton while loading and a 
 If a CVE isn't in our shards, show "Outside the 30-day window" with links to cve.org / the raw record.
 
 **Routing** (`router.ts`): History API, base-path aware (`import.meta.env.BASE_URL`), intercept same-origin `<a>` clicks.
-Routes: `/` Today · `/cve/:id` · `/kev` · `/batches` · `/explore` · `/surge` · `/method` · `/feeds`.
+Routes: `/` Today · `/cve/:id` · `/kev` · `/woke` · `/batches` · `/explore` · `/surge` · `/method` · `/feeds`.
 Unknown → 404 view. Update `document.title` per route.
 
 **Pages**
