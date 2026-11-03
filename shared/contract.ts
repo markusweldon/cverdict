@@ -204,6 +204,8 @@ export interface CveDetail {
   timeline: { at: string; event: string; source: SourceId }[];
   /** Up to 10 reference URLs from the CNA container. */
   references: string[];
+  /** Set when the CVE was published before the window and woke up recently (see WokeFile). */
+  woke: WokeInfo | null;
 }
 
 /** One shard file: data/v1/cve/<shard>.json where shard = shardOf(id). */
@@ -334,6 +336,65 @@ export interface ChangesFile {
   generated_at: string;
   /** Escalations only (tier went up, or a new E/X chip appeared), last 7 days, newest first. */
   items: Change[];
+}
+
+/** Kind of new exploitation evidence that "woke up" an old CVE (see WokeFile). */
+export type WakeKind = 'kev' | 'exploitdb' | 'metasploit' | 'nuclei' | 'poc' | 'epss';
+export const WAKE_KINDS: readonly WakeKind[] = ['kev', 'exploitdb', 'metasploit', 'nuclei', 'poc', 'epss'];
+
+/** One piece of new evidence for an old CVE. */
+export interface WakeSignal {
+  kind: WakeKind;
+  /**
+   * When the evidence appeared. YYYY-MM-DD for KEV dateAdded, Exploit-DB date_added and the EPSS
+   * score date; ISO 8601 date-time for a PoC repo's created_at and for first-seen times.
+   */
+  at: string;
+  /**
+   * True when `at` is when we first saw the evidence, because the source gives no date
+   * (Metasploit, Nuclei) or cannot say when it changed (an EPSS jump between two daily files).
+   */
+  first_seen: boolean;
+  /** Plain text that reads after "Woke up <date>:", e.g. "added to CISA KEV". */
+  label: string;
+  source: SourceId;
+  /** Where to check the evidence, when there is a stable link. */
+  url: string | null;
+}
+
+/** Why a CVE is in woke.json; also on its CveDetail. */
+export interface WokeInfo {
+  /** Date of the newest signal (sort key). */
+  at: string;
+  /** Oldest first. */
+  signals: WakeSignal[];
+}
+
+export interface WokeItem extends WokeInfo {
+  id: string;
+  row: Row;
+}
+
+/** v1/woke.json: CVEs published before the window that gained exploitation evidence recently. */
+export interface WokeFile {
+  schema_version: number;
+  generated_at: string;
+  /** Signals dated on or after this instant count (generated_at minus `days`). */
+  since: string;
+  days: number;
+  /** Only CVEs published before this instant (the start of the 30-day window) are included. */
+  published_before: string;
+  /**
+   * First-seen kinds: since when they are tracked, or null when not tracked yet. Evidence that
+   * was already there when tracking started is not shown, so nothing is dated wrongly.
+   */
+  tracking: { metasploit: string | null; nuclei: string | null; epss: string | null };
+  /** Signals this run could not check, and why. Missing data is never read as "nothing new". */
+  skipped: { kind: WakeKind; reason: string }[];
+  /** Items with at least one signal of each kind. */
+  counts: Record<WakeKind, number>;
+  /** Newest `at` first. */
+  items: WokeItem[];
 }
 
 /** Tier for a score at a given knob. Shared so the site and pipeline always agree. */

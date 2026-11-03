@@ -5,15 +5,17 @@
  */
 import { SANITY, type SanityLimits } from './config';
 import { cvelistStatuses, openCvelist, scanCvelist, type CvelistRepo, type CvelistScan } from './sources/cvelist';
-import { loadEpss } from './sources/epss';
+import { loadEpss, loadEpssOn } from './sources/epss';
 import { loadExploitDb } from './sources/exploitdb';
 import { loadKev } from './sources/kev';
 import { loadMetasploit } from './sources/metasploit';
 import { loadNuclei } from './sources/nuclei';
 import { openPoc, readPocRepos } from './sources/poc';
+import { EMPTY_STATE, readSection } from './state';
 import type { EpssTable, ExploitIndex, IngestOptions, IngestResult, KevCatalog, RunContext } from './types';
 import { HttpClient } from './util/http';
 import { since } from './util/log';
+import { detectWakes, epssPastDates, failedWakeDetection, WOKE_SECTION, type WakeDetection } from './woke';
 
 export interface IngestDeps {
   http: HttpClient;
@@ -51,7 +53,44 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   const nucleiP = loadNuclei(http, limits, signal);
   const exploitDbP = loadExploitDb(http, limits, signal);
   const pocP = openPoc(ctx, opts.pocDir, limits, signal);
-  const pending = [kevP, epssP, metasploitP, nucleiP, exploitDbP, pocP];
+  // Every PoC file is read (wake detection needs each CVE's first repo); the scan keeps its own.
+  const pocReadP = pocP.then((tree) => readPocRepos(tree, tree.data?.files.keys() ?? [], log, signal));
+  // EPSS from WAKE_DAYS before the current score date, for EPSS jumps.
+  const epssPastP = epssP.then((e) =>
+    e.data?.scoreDate ? loadEpssOn(http, epssPastDates(e.data.scoreDate), limits, signal) : { data: null, error: 'no current EPSS score date' },
+  );
+  // Wake detection runs as soon as its inputs are in, while the CVE List is still streaming, so
+  // old CVEs that woke up are recognised in the pass (or looked up by path right after it).
+  const previousState = opts.previousState ?? EMPTY_STATE;
+  const previousWoke = readSection(previousState, WOKE_SECTION, log);
+  const wakeP: Promise<WakeDetection> = Promise.all([kevP, exploitDbP, metasploitP, nucleiP, pocReadP, epssP, epssPastP]).then(
+    ([kev, exploitDb, metasploit, nuclei, pocRead, epss, epssPast]) => {
+      const t0 = performance.now();
+      const wake = detectWakes({
+        now: ctx.now,
+        kev: kev.data,
+        exploitdb: exploitDb.data,
+        metasploit: metasploit.data,
+        nuclei: nuclei.data,
+        poc: pocRead.status.ok ? pocRead.repos : null,
+        epss: epss.data,
+        epssPast: epssPast.data,
+        epssPastError: epssPast.error,
+        previous: previousWoke,
+        previousAt: previousState.generatedAt,
+      });
+      for (const note of wake.notes) log.info(`woke: ${note}`);
+      for (const s of wake.skipped) log.warn(`woke: ${s.kind} skipped: ${s.reason}`);
+      log.info(`woke: ${wake.signals.size} CVEs with a wake signal in the period (${since(t0)})`);
+      return wake;
+    },
+  ).catch((err: unknown) => {
+    // Never fatal: keep the previous state and say every signal was skipped.
+    const message = err instanceof Error ? err.message : String(err);
+    log.error(`woke: detection failed (${message})`);
+    return failedWakeDetection(previousWoke, message);
+  });
+  const pending = [kevP, epssP, metasploitP, nucleiP, exploitDbP, pocP, pocReadP, epssPastP, wakeP];
 
   let repo: CvelistRepo;
   let scan: CvelistScan;
@@ -62,6 +101,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
       windowStart: ctx.windowStart,
       now: ctx.now,
       kevIds: kevP.then((kev) => new Set(kev.data?.entries.keys())),
+      extraIds: wakeP.then((w) => new Set(w.signals.keys())),
       minRecords: limits.cvelistRecords,
       log,
       signal,
@@ -74,8 +114,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   }
 
   const ids = new Set(scan.cves.map((c) => c.id));
-  const [kev, epss, metasploit, nuclei, exploitDb, pocTree] = await Promise.all([kevP, epssP, metasploitP, nucleiP, exploitDbP, pocP]);
-  const poc = await readPocRepos(pocTree, ids, log, signal);
+  const [kev, epss, metasploit, nuclei, exploitDb, pocRead, wake] = await Promise.all([kevP, epssP, metasploitP, nucleiP, exploitDbP, pocReadP, wakeP]);
 
   const epssTable: EpssTable = {
     model: epss.data?.model ?? null,
@@ -85,11 +124,11 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   const exploits: ExploitIndex = {
     metasploit: restrict(metasploit.data, ids),
     nuclei: restrict(nuclei.data, ids),
-    exploitdb: restrict(exploitDb.data, ids),
-    poc: poc.repos,
+    exploitdb: restrict(exploitDb.data?.byCve ?? null, ids),
+    poc: restrict(pocRead.repos, ids),
   };
   const kevCatalog: KevCatalog = kev.data ?? { version: null, dateReleased: null, entries: new Map() };
-  const sources = [...cvelistStatuses(repo, scan), kev.status, epss.status, metasploit.status, nuclei.status, exploitDb.status, poc.status];
+  const sources = [...cvelistStatuses(repo, scan), kev.status, epss.status, metasploit.status, nuclei.status, exploitDb.status, pocRead.status];
 
   const kevInWindow = scan.cves.filter((c) => c.inWindow && (kevCatalog.entries.has(c.id) || c.adpKev)).length;
   log.info(
@@ -110,5 +149,6 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
     exploits,
     sources,
     cvelistCommit: repo.commit,
+    wake,
   };
 }

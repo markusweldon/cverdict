@@ -17,6 +17,7 @@ import {
   type Row,
   type RowTable,
   type StatsFile,
+  type WokeFile,
 } from '../../../shared/contract';
 import { SHARD_COUNT, shardOf } from '../../../shared/shard';
 import type { KevCatalog, ScoredCve } from '../types';
@@ -31,10 +32,13 @@ export const PATHS = {
   kev: 'v1/kev.json',
   stats: 'v1/stats.json',
   changes: 'v1/changes.json',
+  woke: 'v1/woke.json',
+  state: 'v1/state.json',
   shard: (name: string) => `v1/cve/${name}.json`,
   signalFeed: 'feeds/signal.xml',
   kevFeed: 'feeds/kev.xml',
   kevDueIcs: 'feeds/kev-due.ics',
+  wokeFeed: 'feeds/woke.xml',
 } as const;
 
 /** kev.json keeps entries added in the last KEV_RECENT_DAYS, or due from KEV_DUE_LOOKBACK_DAYS ago onward. */
@@ -102,6 +106,7 @@ export interface DataFiles {
   kev: KevFile;
   stats: StatsFile;
   changes: ChangesFile;
+  woke: WokeFile;
 }
 
 /** Serialise the JSON tree: relative path → minified JSON. */
@@ -114,6 +119,7 @@ export function serializeData(d: DataFiles): Map<string, string> {
     [PATHS.kev, JSON.stringify(d.kev)],
     [PATHS.stats, JSON.stringify(d.stats)],
     [PATHS.changes, JSON.stringify(d.changes)],
+    [PATHS.woke, JSON.stringify(d.woke)],
   ]);
   for (const [name, shard] of d.shards) files.set(PATHS.shard(name), JSON.stringify(shard));
   return files;

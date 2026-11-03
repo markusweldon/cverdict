@@ -3,13 +3,14 @@
  * escapeXml(), and only `type="text"` constructs are used, so no markup ever comes from data.
  */
 import { BRAND, REPO_URL } from '../../../shared/brand';
-import type { CveDetail, KevEntry, Reason, Tier } from '../../../shared/contract';
+import type { CveDetail, KevEntry, Reason, Tier, WokeFile } from '../../../shared/contract';
 import { topChipIds } from '../rows';
 import { dayLabel } from '../score';
 import { KEV_RECENT_DAYS, PATHS, daysAgo } from './json';
 import { parseIsoDate } from '../util/dates';
 
 const SIGNAL_FEED_MAX = 100;
+const WOKE_FEED_MAX = 100;
 /** Fixed date for tag: URIs (RFC 4151), so entry ids never change. */
 const TAG_DATE = '2026';
 const TIER_LABEL: Record<Tier, string> = { exploited: 'Exploited', likely: 'Likely next', watch: 'Watch', quiet: 'Quiet' };
@@ -201,6 +202,39 @@ export function kevFeed(kev: readonly KevEntry[], opts: FeedOptions): string {
     subtitle: `CISA Known Exploited Vulnerabilities added in the last ${KEV_RECENT_DAYS} days.`,
     self: `${siteUrl}/${PATHS.kevFeed}`,
     alternate: `${siteUrl}/kev`,
+    updated: latest(entries, now.toISOString()),
+    entries,
+  });
+}
+
+/** The newest 100 old CVEs that woke up, newest wake first (from woke.json). */
+export function wokeFeed(woke: WokeFile, opts: FeedOptions): string {
+  const { siteUrl, now } = opts;
+  const entries = woke.items.slice(0, WOKE_FEED_MAX).map((it): AtomEntry => {
+    const r = it.row;
+    const product = oneLine(`${r.v} ${r.p}`);
+    const newest = it.signals[it.signals.length - 1];
+    const tier = TIER_LABEL[r.tier];
+    const lines = it.signals.map((sig) => `${dayLabel(sig.at, now)}: ${sig.label}${sig.first_seen ? ' (the day we first saw it)' : ''}.`);
+    return {
+      // One entry per CVE: a later signal updates it instead of adding a duplicate.
+      id: tagUri(siteUrl, `woke/${it.id}`),
+      title: [it.id, product, `woke up: ${newest.label}`].filter(Boolean).join(' · '),
+      link: cveUrl(siteUrl, it.id),
+      ...(newest.url ? { related: newest.url } : {}),
+      updated: rfc3339(it.at, now),
+      published: rfc3339(it.signals[0].at, now),
+      summary: `Published ${dayLabel(r.pub, now)}. ${lines.join(' ')} ${tier} · score ${r.s}/100.`,
+      content: r.t,
+      categories: ['woke', ...new Set(it.signals.map((sig) => sig.kind)), r.tier],
+    };
+  });
+  return renderFeed({
+    id: `${siteUrl}/${PATHS.wokeFeed}`,
+    title: `${BRAND.name} · old CVEs that woke up`,
+    subtitle: `CVEs published before the last ${woke.days} days that gained exploitation evidence in that time.`,
+    self: `${siteUrl}/${PATHS.wokeFeed}`,
+    alternate: `${siteUrl}/woke`,
     updated: latest(entries, now.toISOString()),
     entries,
   });

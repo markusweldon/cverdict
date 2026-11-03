@@ -71,6 +71,8 @@ export const EPSS = {
   current: 'https://epss.empiricalsecurity.com/epss_scores-current.csv.gz',
   /** Daily archive, tried for today and then yesterday (UTC). */
   daily: (ymd: string) => `https://raw.githubusercontent.com/empiricalsec/epss_scores/main/${ymd.slice(0, 4)}/epss_scores-${ymd}.csv.gz`,
+  /** A past day on the EPSS host (fallback for the archive). */
+  dated: (ymd: string) => `https://epss.empiricalsecurity.com/epss_scores-${ymd}.csv.gz`,
 } as const;
 
 export const METASPLOIT = {
@@ -140,6 +142,10 @@ export const BUDGETS = {
     'v1/signal.json': 120 * 1024,
     'v1/index.json': 1024 * 1024,
     'v1/stats.json': 80 * 1024,
+    'v1/woke.json': 64 * 1024,
+    /** Internal carry-forward state (state.ts); woke tracking is ~25 KB today, Receipts adds its own. */
+    'v1/state.json': 96 * 1024,
+    'feeds/woke.xml': 64 * 1024,
   },
   /** Each `v1/cve/<xx>.json` shard. */
   shardGzipBytes: 80 * 1024,

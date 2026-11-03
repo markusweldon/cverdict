@@ -32,6 +32,7 @@ const detail: CveDetail = {
   unknowns: ['No CISA SSVC assessment yet'],
   timeline: [],
   references: [],
+  woke: null,
 };
 
 describe('mdEscape', () => {

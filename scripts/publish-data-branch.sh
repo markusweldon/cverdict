@@ -77,22 +77,27 @@ repo_slug() {
   esac
 }
 
-# Change fingerprint of a data tree. generated_at differs on every run and is ignored; any other
-# change to the rows, the KEV file or the headline counts produces a new fingerprint.
+# Change fingerprint of a data tree. generated_at differs on every run and is ignored, as are the
+# woke.json bounds that move with it; any other change to the rows, the KEV file, the headline
+# counts, the woke-up list or the carried state produces a new fingerprint. The state must be
+# published whenever it changes, or the next run would forget what this one saw first.
 fingerprint() {
   local dir=$1
   {
     jq -cS 'del(.generated_at)' "$dir/v1/index.json" &&
       jq -cS 'del(.generated_at)' "$dir/v1/kev.json" &&
-      jq -cS '.counts' "$dir/v1/meta.json"
+      jq -cS '.counts' "$dir/v1/meta.json" &&
+      if [[ -f $dir/v1/woke.json ]]; then jq -cS 'del(.generated_at, .since, .published_before)' "$dir/v1/woke.json"; fi &&
+      if [[ -f $dir/v1/state.json ]]; then jq -cS 'del(.generated_at)' "$dir/v1/state.json"; fi
   } | git hash-object --stdin
 }
 
-# Fingerprint of a published commit; fails when it lacks any of the fingerprinted files.
+# Fingerprint of a published commit; fails when it lacks any of the fingerprinted files, so a
+# branch from before woke.json and state.json existed is always republished.
 commit_fingerprint() {
   local dir="$work/published"
   mkdir -p "$dir"
-  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json | tar -x -C "$dir" || return 1
+  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json v1/woke.json v1/state.json | tar -x -C "$dir" || return 1
   fingerprint "$dir"
 }
 
@@ -124,9 +129,12 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 | \`v1/kev.json\` | Recent CISA KEV additions and upcoming due dates |
 | \`v1/stats.json\` | Monthly history since 1999, daily and hourly counts, top CNAs, AI credits |
 | \`v1/changes.json\` | Escalations (tier went up, or new exploit evidence) in the last 7 days |
+| \`v1/woke.json\` | Old CVEs (published before the window) that gained exploitation evidence in the last 30 days |
+| \`v1/state.json\` | Internal state carried between runs; unstable, do not build on it |
 | \`feeds/signal.xml\` | Atom: newest Exploited and Likely-next CVEs |
 | \`feeds/kev.xml\` | Atom: KEV additions |
 | \`feeds/kev-due.ics\` | iCalendar: KEV remediation due dates |
+| \`feeds/woke.xml\` | Atom: old CVEs that woke up |
 
 Every JSON file carries \`schema_version\` and \`generated_at\`. Fields, sharding and the
 versioning policy are documented in

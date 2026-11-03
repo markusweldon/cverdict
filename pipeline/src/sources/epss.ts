@@ -81,3 +81,35 @@ export async function loadEpss(http: HttpClient, now: Date, limits: SanityLimits
   });
   return { data: fetched.value, status: statusFromFetch(EPSS.info, fetched) };
 }
+
+/** The score dates a cached or downloaded EPSS file may carry for `loadEpssOn` to accept it. */
+export function parseEpssBodyOn(body: Buffer, dates: readonly string[], limits: SanityLimits): Parsed<EpssTable> {
+  const parsed = parseEpssBody(body, limits);
+  if (!parsed.value.scoreDate || !dates.includes(parsed.value.scoreDate)) {
+    throw new Error(`EPSS: file is for ${parsed.value.scoreDate ?? 'an unknown date'}, wanted ${dates.join(' or ')}`);
+  }
+  return parsed;
+}
+
+/**
+ * EPSS scores of a past day (the first of `dates` that the archive has), from the dated
+ * archive, then the EPSS host, then the cache. A past day never changes, so a cached copy for
+ * one of `dates` is reused without a request; a cached copy of another day is not used.
+ * Never throws: `data` is null and `error` says why when no copy of those days could be read.
+ */
+export async function loadEpssOn(
+  http: HttpClient,
+  dates: readonly string[],
+  limits: SanityLimits,
+  signal?: AbortSignal,
+): Promise<{ data: EpssTable | null; error: string | null }> {
+  const fetched = await http.getSource({
+    key: 'epss-past',
+    ext: 'csv.gz',
+    urls: dates.flatMap((d) => [EPSS.daily(d), EPSS.dated(d)]),
+    parse: (body) => parseEpssBodyOn(body, dates, limits),
+    minIntervalMs: 30 * 86_400_000,
+    signal,
+  });
+  return { data: fetched.value, error: fetched.value ? null : fetched.error };
+}

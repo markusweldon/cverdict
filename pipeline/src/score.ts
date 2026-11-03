@@ -102,7 +102,7 @@ export function formatInt(n: number): string {
 }
 
 /** Probability as a percentage with sensible precision: "14.2%", "3.1%", "0.43%", "0.043%". */
-function formatPercent(p: number): string {
+export function formatPercent(p: number): string {
   const pct = p * 100;
   return `${pct >= 1 ? pct.toFixed(1) : Number(pct.toPrecision(2)).toString()}%`;
 }
@@ -122,10 +122,10 @@ function plural(n: number, word: string): string {
 }
 
 const cveOrgUrl = (id: string) => `https://www.cve.org/CVERecord?id=${id}`;
-const kevSearchUrl = (q: string) =>
+export const kevSearchUrl = (q: string) =>
   `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${encodeURIComponent(q)}`;
-const epssUrl = (id: string) => `https://api.first.org/data/v1/epss?cve=${id}`;
-const pocIndexUrl = (id: string) => `https://github.com/nomi-sec/PoC-in-GitHub/blob/master/${id.split('-')[1]}/${id}.json`;
+export const epssUrl = (id: string) => `https://api.first.org/data/v1/epss?cve=${id}`;
+export const pocIndexUrl = (id: string) => `https://github.com/nomi-sec/PoC-in-GitHub/blob/master/${id.split('-')[1]}/${id}.json`;
 
 // ── Reasons ────────────────────────────────────────────────────────────────────────────────
 
@@ -328,7 +328,7 @@ function kevInfo(k: KevRaw): KevInfo {
   };
 }
 
-interface PocSummary {
+export interface PocSummary {
   evidence: ExploitEvidence['poc'];
   /** created_at of the oldest non-fork repo. */
   firstCreated: string | null;
@@ -336,11 +336,15 @@ interface PocSummary {
   firstVetted: string | null;
 }
 
-function summarisePoc(repos: PocRepo[], now: Date): PocSummary {
+/** The PoC vetting rule (docs/SCORING.md): at least POC_MIN_STARS stars, or POC_MIN_AGE_DAYS old. */
+export function isVettedPoc(r: PocRepo, now: Date): boolean {
+  return r.stars >= POC_MIN_STARS || now.getTime() - Date.parse(r.created) >= POC_MIN_AGE_DAYS * DAY_MS;
+}
+
+export function summarisePoc(repos: PocRepo[], now: Date): PocSummary {
   const own = repos.filter((r) => !r.fork && Number.isFinite(Date.parse(r.created)));
   const byCreated = [...own].sort((a, b) => Date.parse(a.created) - Date.parse(b.created));
-  const minAgeMs = POC_MIN_AGE_DAYS * DAY_MS;
-  const vetted = byCreated.filter((r) => r.stars >= POC_MIN_STARS || now.getTime() - Date.parse(r.created) >= minAgeMs);
+  const vetted = byCreated.filter((r) => isVettedPoc(r, now));
   const first = byCreated[0];
   const hypeUntil = first ? Date.parse(first.created) + HYPE_DAYS * DAY_MS : 0;
   const top = [...own]
@@ -795,5 +799,6 @@ export function scoreCve(cve: NormalizedCve, enr: Enrichment, opts: { now: Date;
     exploits: f.exploits,
     timeline: timelineFor(f),
     batch: null,
+    woke: null,
   };
 }
