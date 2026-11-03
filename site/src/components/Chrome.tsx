@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { Meta } from '../../../shared/contract';
 import { BRAND, REPO_URL } from '../../../shared/brand';
-import { fmtAge, fmtDateTime } from '../format';
+import { dataStatusTip, fmtAge, fmtDateTime } from '../format';
 import { useData, useNow } from '../hooks';
 import { data } from '../data';
 import { href, type Route } from '../router';
@@ -35,10 +35,8 @@ function DataStatus() {
   const now = useNow(30_000);
   if (meta.status !== 'ready') return null;
   const state = freshness(meta.data, now);
-  const stale = meta.data.sources.filter((s) => s.stale || !s.ok).length;
-  const tip = `Pipeline run ${fmtDateTime(meta.data.generated_at)}. Refreshed hourly.${stale ? ` ${stale} source${stale === 1 ? '' : 's'} served from cache.` : ''}`;
   return (
-    <a class={`status status--${state}`} href={href('method#sources')} data-tip={tip}>
+    <a class={`status status--${state}`} href={href('method#sources')} data-tip={dataStatusTip(meta.data)}>
       <span class="status__dot" aria-hidden="true" />
       <span class="status__text">
         <span class="sr-only">Data age: </span>

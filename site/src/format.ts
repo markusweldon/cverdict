@@ -1,5 +1,6 @@
 /** Pure formatting helpers. Dates are shown in UTC: batches, KEV due dates and the window are UTC days. */
 import { cnaName, isBulkCna } from '../../shared/cna';
+import { NON_SCORING_SOURCES, type Meta } from '../../shared/contract';
 
 const NUMBER = new Intl.NumberFormat('en-US');
 const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
@@ -51,6 +52,15 @@ export function fmtDateTime(iso: string): string {
   const hh = String(d.getUTCHours()).padStart(2, '0');
   const mm = String(d.getUTCMinutes()).padStart(2, '0');
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} · ${hh}:${mm} UTC`;
+}
+
+/**
+ * The header's data status tooltip. It counts the sources behind the verdicts that are down or
+ * stale; OSV.dev (only the Check page uses it) is left out, and Method lists every source.
+ */
+export function dataStatusTip(meta: Pick<Meta, 'generated_at' | 'sources'>): string {
+  const cached = meta.sources.filter((s) => (s.stale || !s.ok) && !NON_SCORING_SOURCES.has(s.id)).length;
+  return `Pipeline run ${fmtDateTime(meta.generated_at)}. Refreshed hourly.${cached ? ` ${cached} source${cached === 1 ? '' : 's'} served from cache.` : ''}`;
 }
 
 export function fmtHour(ms: number): string {

@@ -4,6 +4,7 @@ import {
   batchLabel,
   cnaName,
   cveListUrl,
+  dataStatusTip,
   fmtAge,
   fmtCountdown,
   fmtDate,
@@ -129,5 +130,16 @@ describe('names and links', () => {
     expect(cveListUrl('CVE-2024-12345')).toBe('https://github.com/CVEProject/cvelistV5/blob/main/cves/2024/12xxx/CVE-2024-12345.json');
     expect(cveListUrl('CVE-2019-0708')).toBe('https://github.com/CVEProject/cvelistV5/blob/main/cves/2019/0xxx/CVE-2019-0708.json');
     expect(cveListUrl('nope')).toBeNull();
+  });
+});
+
+describe('dataStatusTip', () => {
+  const src = (id: string, ok: boolean, stale: boolean) => ({ id, name: id, url: '', ok, stale, fetched_at: null, upstream_version: null, records: 0, error: null, license: '' }) as never;
+  const at = '2026-11-03T08:47:00Z';
+  it('counts the scoring sources served from cache, never osv', () => {
+    expect(dataStatusTip({ generated_at: at, sources: [src('kev', true, false), src('osv', true, true)] })).toBe('Pipeline run Nov 3, 2026 · 08:47 UTC. Refreshed hourly.');
+    expect(dataStatusTip({ generated_at: at, sources: [src('epss', true, true), src('nuclei', false, true), src('osv', false, true)] })).toBe(
+      'Pipeline run Nov 3, 2026 · 08:47 UTC. Refreshed hourly. 2 sources served from cache.',
+    );
   });
 });
