@@ -27,7 +27,7 @@ describe('checkComponents', () => {
     ]);
     expect(r.clean.map((c) => c.version).sort()).toEqual(['2.12.2', '2.17.1']);
     expect(r.affectedPackages).toBe(1);
-    expect(r.indexCves).toBe(17);
+    expect(r.indexCves).toBe(20);
   });
 
   it('shows a CVE with two advisories once, with both', () => {
@@ -79,6 +79,32 @@ describe('checkComponents', () => {
     const r = check('module x\nrequire example.com/replaced v0.50.0\nreplace example.com/replaced => ../replaced\n');
     expect(r.cves.map((c) => [c.row.id, c.affected, c.packages[0].unchecked])).toEqual([['CVE-2026-53999', false, 'go-local']]);
     expect(r.notChecked.map((g) => g.reason)).toEqual(['go-stdlib']);
+  });
+
+  it('reports a lowercased golang package URL of a mixed-case module as possibly affected, never clean', () => {
+    // The purl spec lowercases golang names; Go module paths are case-sensitive.
+    const hit = (purl: string) => purls(purl).cves.map((c) => [c.row.id, c.affected, c.packages[0].unchecked, c.packages[0].named]);
+    expect(hit('pkg:golang/github.com/OpenListTeam/OpenList/v4@v4.0.0')).toEqual([['CVE-2026-102663', true, null, undefined]]);
+    expect(hit('pkg:golang/github.com/openlistteam/openlist/v4@v4.0.0')).toEqual([['CVE-2026-102663', false, 'name-case', 'github.com/OpenListTeam/OpenList/v4']]);
+    // Outside the range in either spelling: not affected.
+    expect(purls('pkg:golang/github.com/openlistteam/openlist/v4@v4.2.4').clean).toHaveLength(1);
+    expect(purls('pkg:golang/github.com/openlistteam/openlist@v4.0.0').cves).toEqual([]);
+  });
+
+  it('reports a module whose package an advisory names as possibly affected', () => {
+    const r = check('module x\nrequire (\n\tgithub.com/klauspost/compress v1.16.0\n\texample.com/nested v1.0.0\n\texample.com/nested/sub v1.0.0\n\texample.com/major v1.0.0\n)\n', 'go.mod');
+    const byPkg = r.cves.flatMap((c) => c.packages.map((p) => [c.row.id, p.name, c.affected, p.unchecked, p.named ?? null]));
+    expect(byPkg).toEqual([
+      // .../zstd is a package of the module; the advisory's range is compared with the module's version.
+      ['CVE-2026-116591', 'github.com/klauspost/compress', false, 'go-package', 'github.com/klauspost/compress/zstd'],
+      // A path that is itself a module in the file belongs to that module only (Go's longest-prefix rule).
+      ['CVE-2026-50007', 'example.com/nested/sub', true, null, null],
+    ]);
+    // The module's own advisory keeps its answer (fixed in 1.10.0), and a /v2 path is another module.
+    expect(r.clean.map((c) => c.name).sort()).toEqual(['example.com/major', 'example.com/nested']);
+    expect(r.possiblePackages).toBe(1);
+    // A fixed module version: the package's range is compared too.
+    expect(check('module x\nrequire github.com/klauspost/compress v1.20.2\n', 'go.mod').cves).toEqual([]);
   });
 
   it('lists packages of an ecosystem without data as not checked, never as clean', () => {

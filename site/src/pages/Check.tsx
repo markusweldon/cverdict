@@ -38,7 +38,7 @@ const GROUP_LABEL: Readonly<Record<Group, string>> = {
   likely: TIER_META.likely.verdict,
   watch: TIER_META.watch.label,
   quiet: TIER_META.quiet.label,
-  possible: 'Possibly affected, version not checked',
+  possible: 'Possibly affected, not confirmed',
 };
 const NAMES_SHOWN = 1000;
 
@@ -81,6 +81,10 @@ function uncheckedText(p: PackageHit): ComponentChildren {
       );
     case 'range':
       return 'The advisory’s range could not be compared.';
+    case 'name-case':
+      return `The advisory names ${p.named ?? ''}, the same path with other capital letters. Go paths are case-sensitive, and package URLs are often written in lower case.`;
+    case 'go-package':
+      return `The advisory names ${p.named ?? ''}, a path inside this module: a package of it, or a separate module.`;
     default:
       return null;
   }
@@ -197,7 +201,7 @@ function summaryText(r: CheckResult, days: number | null): string {
   }
   const parts = [read];
   if (affecting > 0) parts.push(`${plural(affecting, 'tracked CVE')} ${affecting === 1 ? 'affects' : 'affect'} ${fmtInt(r.affectedPackages)} of them.`);
-  if (r.possiblePackages > 0) parts.push(`${fmtInt(r.possiblePackages)} ${affecting > 0 ? 'more ' : ''}${r.possiblePackages === 1 ? 'is' : 'are'} possibly affected, version not checked.`);
+  if (r.possiblePackages > 0) parts.push(`${fmtInt(r.possiblePackages)} ${affecting > 0 ? 'more ' : ''}${r.possiblePackages === 1 ? 'is' : 'are'} possibly affected, not confirmed.`);
   return parts.join(' ');
 }
 
@@ -671,7 +675,7 @@ export default function Check() {
                   </h3>
                   <span class="batchday__sum">{plural(list.length, 'CVE')}</span>
                 </header>
-                {g === 'possible' && <p class="check__groupnote">A tracked CVE names these packages, but we could not compare your version with the advisory’s range. Check them against the advisory.</p>}
+                {g === 'possible' && <p class="check__groupnote">A tracked CVE may affect these packages, but we could not confirm it: the reason is under each package. Check them against the advisory.</p>}
                 <div class="rows">{list.map(renderRow)}</div>
               </section>
             );
