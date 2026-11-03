@@ -1,0 +1,15 @@
+{
+  "name": "cverdict-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only MCP server for CVErdict: CVE verdicts, reason chips and evidence links from the public data branch, for AI agents.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "cverdict-mcp": "dist/cverdict-mcp.mjs" },
+  "files": ["dist", "LICENSE", "LICENSE-THIRD-PARTY", "README.md"],
+  "engines": { "node": ">=22.12" },
+  "repository": { "type": "git", "url": "git+https://github.com/markusweldon/cverdict.git", "directory": "mcp" },
+  "homepage": "https://github.com/markusweldon/cverdict/blob/main/mcp/README.md",
+  "bugs": "https://github.com/markusweldon/cverdict/issues",
+  "keywords": ["mcp", "model-context-protocol", "cve", "vulnerability", "kev", "epss", "security"]
+}

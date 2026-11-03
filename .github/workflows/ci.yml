@@ -39,6 +39,16 @@ jobs:
           BASE: /
         run: npm run build
 
+      - name: Build the MCP server
+        run: npm run build:mcp
+
+      # The bundle started over stdio the way an MCP client starts it, against mock data served
+      # on localhost: every tool must answer.
+      - name: MCP smoke test
+        run: |
+          npx tsx scripts/mock-data.ts "$RUNNER_TEMP/mcp-data"
+          npx tsx mcp/test/smoke.ts mcp/dist/cverdict-mcp.mjs "$RUNNER_TEMP/mcp-data"
+
       # shellcheck ships with the ubuntu runner image.
       - name: Lint shell scripts
         run: shellcheck scripts/*.sh
