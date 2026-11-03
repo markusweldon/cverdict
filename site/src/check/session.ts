@@ -17,11 +17,15 @@ import { parse, ParseError, type FormatId } from './parse';
 export const FILE_MAX = 50 * 1024 * 1024;
 export const PASTE_MAX = 5 * 1024 * 1024;
 
-/** 83886080 → "80 MB", 5452595 → "5.2 MB", 300 → "1 KB". */
+/**
+ * 83886080 → "80 MB", 5452595 → "5.2 MB", 300 → "1 KB". Megabytes round up, so a size just over a
+ * limit never reads as the limit itself ("This file is 50 MB. Files up to 50 MB…").
+ */
 export function fmtSize(bytes: number): string {
   const mb = bytes / (1024 * 1024);
   if (mb < 1) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${mb >= 10 ? Math.round(mb) : Math.round(mb * 10) / 10} MB`;
+  // The small offset keeps float noise (6.1 × 1024² is 6.1000000000000005 MB) from rounding up.
+  return `${mb >= 10 ? Math.ceil(mb - 1e-9) : Math.ceil(mb * 10 - 1e-9) / 10} MB`;
 }
 
 export type Failure =
@@ -65,6 +69,18 @@ export const pasteTooLarge = (length: number): Failure | null => (length > PASTE
 export const fileTooLarge = (size: number): Failure | null => (size > FILE_MAX ? { kind: 'file-too-large', size } : null);
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Every character beyond ASCII in the index's rows and advisory data. The page loads the web font
+ * subsets for these as soon as the index arrives, before any file is read: which rows a file
+ * matches then never decides whether a font subset is fetched (rows render titles and vendors in
+ * the web fonts, and those fonts are split by unicode-range).
+ */
+export function indexGlyphs(file: Pick<PackagesFile, 'cves' | 'packages'>): string {
+  const seen = new Set<string>();
+  for (const ch of JSON.stringify([file.cves.rows, file.packages])) if (ch > '\u007e') seen.add(ch);
+  return [...seen].sort().join('');
+}
 
 export function createSession(client: Pick<DataClient, 'packages'>): CheckSession {
   let loading: Promise<PackagesFile> | null = null;

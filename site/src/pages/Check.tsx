@@ -14,7 +14,7 @@ import { advisoryUrl, ATTRIBUTION, rangesText } from '../../../shared/packages';
 import { copyTicket, watchVendorOf } from '../actions';
 import { groupByTier, GROUP_ORDER, type CheckResult, type CveHit, type Group, type NotCheckedGroup, type PackageHit } from '../check/match';
 import { FORMAT_LABEL, FORMATS, isFormatId, parseErrorText, type Component, type FormatId } from '../check/parse';
-import { fileTooLarge, fmtSize, pasteTooLarge, session, type Failure, type Held } from '../check/session';
+import { fileTooLarge, fmtSize, indexGlyphs, pasteTooLarge, session, type Failure, type Held } from '../check/session';
 import { ExtLink } from '../components/ExtLink';
 import { IconAlert, IconLock, IconRefresh } from '../components/icons';
 import { CveRow } from '../components/Row';
@@ -50,6 +50,20 @@ interface Input {
 }
 
 const nextFrame = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Load the web font subsets the index's text needs (see indexGlyphs), once, as soon as it arrives:
+ * the same requests for everyone, before any file is read, never decided by which rows match.
+ * Titles, vendors and ranges are set in the sans face; the mono face here only shows CVE and
+ * advisory IDs, which are ASCII.
+ */
+let fontsWarmed = false;
+function warmFonts(file: PackagesFile): void {
+  if (fontsWarmed || typeof document === 'undefined' || !document.fonts?.load) return;
+  fontsWarmed = true;
+  const glyphs = indexGlyphs(file);
+  if (glyphs !== '') void document.fonts.load('16px "Geist Variable"', glyphs).catch(() => undefined);
+}
 
 function uncheckedText(p: PackageHit): ComponentChildren {
   switch (p.unchecked) {
@@ -260,6 +274,8 @@ export default function Check() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [failure, setFailure] = useState<Failure | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  /** The summary of the last check, for the status region (screen readers hear it when it lands). */
+  const [announce, setAnnounce] = useState<string | null>(null);
   const [indexState, setIndexState] = useState<IndexState>(() => (session.index() ? 'ready' : 'idle'));
   const [paste, setPaste] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -273,7 +289,10 @@ export default function Check() {
   const follow = (p: Promise<PackagesFile>) => {
     setIndexState(session.index() ? 'ready' : 'loading');
     p.then(
-      () => setIndexState('ready'),
+      (file) => {
+        setIndexState('ready');
+        warmFonts(file);
+      },
       () => setIndexState('error'),
     );
   };
@@ -308,11 +327,22 @@ export default function Check() {
     lastInput.current = input;
     setFailure(null);
     setHint(null);
+    setAnnounce(null);
     const fmt = forced === 'auto' ? null : forced;
-    const out = await session.run(input.text, input.file, {
-      forced: fmt,
-      onStage: (s) => id === runId.current && setStatus(s.stage === 'waiting' ? { kind: 'waiting', packages: s.packages, slow: false } : { kind: 'checking', packages: s.packages }),
-    });
+    let out;
+    try {
+      out = await session.run(input.text, input.file, {
+        forced: fmt,
+        onStage: (s) => id === runId.current && setStatus(s.stage === 'waiting' ? { kind: 'waiting', packages: s.packages, slow: false } : { kind: 'checking', packages: s.packages }),
+      });
+    } catch (e) {
+      // A bug must not leave the page saying "Reading..." with Check disabled.
+      if (id === runId.current) {
+        setStatus({ kind: 'idle' });
+        setHint('This file could not be read.');
+      }
+      throw e;
+    }
     if (id !== runId.current) return;
     setStatus({ kind: 'idle' });
     if (!out.ok) {
@@ -321,6 +351,7 @@ export default function Check() {
     }
     lastInput.current = null;
     setHeld(out.held);
+    setAnnounce(summaryText(out.held.result, days));
     requestAnimationFrame(() => resultsHead.current?.focus());
   };
 
@@ -371,6 +402,7 @@ export default function Check() {
     setFile(null);
     setFailure(null);
     setHint(null);
+    setAnnounce(null);
     setStatus({ kind: 'idle' });
     if (fileInput.current) fileInput.current.value = '';
   };
@@ -575,6 +607,8 @@ export default function Check() {
           </p>
         ) : hint ? (
           <p>{hint}</p>
+        ) : announce ? (
+          <p class="sr-only">{announce}</p>
         ) : null}
       </div>
       {failure && (

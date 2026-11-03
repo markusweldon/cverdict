@@ -26,7 +26,7 @@ vi.stubGlobal('document', doc);
 vi.stubGlobal('fetch', globalFetch);
 vi.stubGlobal('window', { localStorage: local, sessionStorage: sess, history: hist, document: doc, location: new URL('https://cverdict.test/check'), fetch: globalFetch, addEventListener: vi.fn() });
 
-const { createSession, fileTooLarge, FILE_MAX, fmtSize, PASTE_MAX, pasteTooLarge, session } = await import('./session');
+const { createSession, fileTooLarge, FILE_MAX, fmtSize, indexGlyphs, PASTE_MAX, pasteTooLarge, session } = await import('./session');
 const { createDataClient } = await import('../data');
 const fetchesAtImport = globalFetch.mock.calls.length;
 
@@ -146,8 +146,21 @@ describe('check session', () => {
     expect(calls).toHaveLength(2);
   });
 
+  it('lists the index characters that need web font subsets, from the index alone', () => {
+    const index = testIndex();
+    expect(indexGlyphs(index)).toBe('');
+    // Rows render titles and vendors in the web fonts: a title with Ł or ő needs the latin-ext
+    // subset. The page loads it when the index arrives, so a match can never be what fetches it.
+    index.cves.rows[0][index.cves.cols.indexOf('t')] = 'Łódź Gőzös – überflow';
+    const glyphs = indexGlyphs(index);
+    expect([...glyphs].sort()).toEqual(['Ł', 'ó', 'ź', 'ő', 'ö', '–', 'ü'].sort());
+    expect(glyphs).toBe(indexGlyphs(index));
+  });
+
   it('formats sizes for the messages', () => {
     expect([fmtSize(300), fmtSize(218_372), fmtSize(5_452_595), fmtSize(6.1 * 1024 * 1024), fmtSize(80 * 1024 * 1024)]).toEqual(['1 KB', '213 KB', '5.2 MB', '6.1 MB', '80 MB']);
+    // Just over a limit never reads as the limit.
+    expect([fmtSize(PASTE_MAX + 1), fmtSize(FILE_MAX + 1), fmtSize(PASTE_MAX), fmtSize(FILE_MAX)]).toEqual(['5.1 MB', '51 MB', '5 MB', '50 MB']);
   });
 
   it('drops a request that hangs when the user presses Retry', async () => {
