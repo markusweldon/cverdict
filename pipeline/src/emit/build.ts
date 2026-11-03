@@ -4,21 +4,26 @@
  * the JSON tree and feeds. The only I/O is reading the previous run for changes.json.
  */
 import {
+  KNOB_DEFAULT,
   SCHEMA_VERSION,
   SIGNAL_MIN_SCORE,
   TIERS,
   type Batch,
+  type BacktestReceipts,
   type Meta,
+  type ReceiptsFile,
   type Row,
   type Tier,
   type WokeFile,
 } from '../../../shared/contract';
 import { BATCH_MIN, SCORE_MODEL } from '../../../shared/model';
+import { runBacktest } from '../backtest';
 import { assignBatches, byScoreThenNewest } from '../batches';
 import { CHANGES_RETENTION_DAYS, buildChanges } from '../changes';
 import { toDetail, toRow } from '../rows';
 import { buildKevPrior, scoreCve } from '../score';
-import { serializeState, EMPTY_STATE, STATE_PATH, type LoadedState } from '../state';
+import { encodeLog, forwardReceipts, RECEIPTS_SECTION, updateLog } from '../receipts';
+import { serializeState, EMPTY_STATE, readSection, STATE_PATH, type LoadedState, type SectionWrite } from '../state';
 import { buildStats } from '../stats';
 import type { Enrichment, IngestResult, ScoredCve } from '../types';
 import { DAY_MS, monthKey, ymd } from '../util/dates';
@@ -126,6 +131,8 @@ export interface BuildInput {
   previousState?: LoadedState;
   /** Public site base for feed links. */
   siteUrl: string;
+  /** The backtest carried forward from the previous receipts.json (used when this run does not refresh it). */
+  backtest?: BacktestReceipts | null;
 }
 
 export interface BuiltOutput {
@@ -137,10 +144,13 @@ export interface BuiltOutput {
   top: Row[];
   scored: ScoredCve[];
   woke: WokeFile;
+  receipts: ReceiptsFile;
+  /** Log lines (receipts and backtest). */
+  notes: string[];
 }
 
 /** Score the ingested records and render every output file in memory. Reads only `previous`. */
-export function buildOutput({ ingest: ing, now, windowDays, knob, previous, previousState = EMPTY_STATE, siteUrl: base }: BuildInput): BuiltOutput {
+export function buildOutput({ ingest: ing, now, windowDays, knob, previous, previousState = EMPTY_STATE, siteUrl: base, backtest: carried = null }: BuildInput): BuiltOutput {
   const windowStart = new Date(now.getTime() - windowDays * DAY_MS);
   const unavailable = new Map(ing.sources.filter((s) => !s.ok).map((s) => [s.id, s.name]));
   const enr: Enrichment = { kev: ing.kev, epss: ing.epss, exploits: ing.exploits, prior: buildKevPrior(ing.kev), unavailable };
@@ -177,7 +187,32 @@ export function buildOutput({ ingest: ing, now, windowDays, knob, previous, prev
     changes,
     woke: woke.file,
   });
-  files.set(STATE_PATH, serializeState(now, [{ key: WOKE_SECTION.key, version: WOKE_SECTION.version, data: ing.wake.state }], previousState));
+  // Receipts: the forward log (state section) and the backtest (refreshed or carried forward).
+  const notes: string[] = [];
+  const r0 = performance.now();
+  const logUpdate = updateLog(readSection(previousState, RECEIPTS_SECTION), scored, ing.kev, now);
+  const rowById = new Map(scored.map((s) => [s.cve.id, toRow(s)]));
+  let backtest = carried;
+  if (ing.backtest) {
+    const t0 = performance.now();
+    backtest = runBacktest({ now, kev: ing.kev, cves: new Map(all.map((s) => [s.cve.id, s.cve])), enr, inputs: ing.backtest, scored: all, rows: rowById });
+    notes.push(`backtest: ${backtest.items.length} of ${backtest.listed} KEV additions since ${backtest.from} re-scored in ${Math.round(performance.now() - t0)} ms`);
+  }
+  const receipts: ReceiptsFile = {
+    schema_version: SCHEMA_VERSION,
+    generated_at: generatedAt,
+    score_model: SCORE_MODEL,
+    knob: KNOB_DEFAULT,
+    definitions: RECEIPT_DEFINITIONS,
+    forward: forwardReceipts(logUpdate.log, ing.kev, rowById, now, windowDays),
+    backtest,
+  };
+  files.set(PATHS.receipts, JSON.stringify(receipts));
+  const writes: SectionWrite[] = [{ key: WOKE_SECTION.key, version: WOKE_SECTION.version, data: ing.wake.state }];
+  // A log carried over unchanged is left to serializeState, which copies the previous section verbatim.
+  if (logUpdate.updated) writes.push({ key: RECEIPTS_SECTION.key, version: RECEIPTS_SECTION.version, data: encodeLog(logUpdate.log) });
+  files.set(STATE_PATH, serializeState(now, writes, previousState));
+  notes.push(...logUpdate.notes.map((n) => `receipts: ${n}`), `receipts: log, figures and state in ${Math.round(performance.now() - r0)} ms`);
   const feedOpts = { siteUrl: base, now };
   files.set(PATHS.signalFeed, signalFeed(details.filter((d) => byId.get(d.id)?.cve.inWindow), feedOpts));
   files.set(PATHS.kevFeed, kevFeed(kev.entries, feedOpts));
@@ -189,5 +224,18 @@ export function buildOutput({ ingest: ing, now, windowDays, knob, previous, prev
     .sort((a, b) => TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier) || byScoreThenNewest(a, b))
     .slice(0, TOP_SUMMARY)
     .map(toRow);
-  return { files, meta, batches, top, scored, woke: woke.file };
+  return { files, meta, batches, top, scored, woke: woke.file, receipts, notes };
 }
+
+/** receipts.json `definitions`: what each method and figure means, in plain words. */
+export const RECEIPT_DEFINITIONS: Record<string, string> = {
+  cverdict: `CVErdict: the CVE is in the Exploited or Likely next tier at the default knob (${KNOB_DEFAULT}).`,
+  cvss7: 'CVSS 7 or more: the CVSS base score the site shows (from the CNA, else CISA-ADP) is 7.0 or higher.',
+  epss10: 'EPSS 10% or more: the EPSS score is 0.1 or higher. A CVE without an EPSS score is not flagged.',
+  before: 'Flagged before the listing: a run earlier than the one that first saw the CISA KEV listing flagged the CVE, on or before the KEV dateAdded.',
+  same_day: 'Same day: flagged on the KEV dateAdded itself, before the listing appeared. Counted as 0 days, separately from earlier.',
+  eligible: 'Counted: KEV additions dated since the log started, for CVEs the log saw before the listing.',
+  lead: 'Lead time: the KEV dateAdded minus the UTC day of the first flag, in whole days. Median and quartiles interpolate between ranks.',
+  volume: 'Alert volume: the share of the CVEs a method watched or scored that it flagged.',
+  watch: 'Each CVE is watched while it is in the window. A method that flags it only later is not counted.',
+};

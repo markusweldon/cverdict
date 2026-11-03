@@ -27,6 +27,7 @@ function edbData(first: Record<string, string>): ExploitDbData {
   return {
     byCve: new Map(),
     firstAdded: new Map(Object.entries(first).map(([cve, date], i) => [cve, { date, id: String(50000 + i), url: `https://www.exploit-db.com/exploits/${50000 + i}` }])),
+    added: new Map(),
   };
 }
 

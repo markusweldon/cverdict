@@ -147,7 +147,13 @@ describe('EPSS for a past day', () => {
 
 describe('Metasploit', () => {
   it('indexes real modules by referenced CVE, exploits and higher ranks first', () => {
-    const { value: byCve, records, version } = parseMetasploitBody(read('msf-sample.json'), LOOSE);
+    const {
+      value: { byCve, firstModified },
+      records,
+      version,
+    } = parseMetasploitBody(read('msf-sample.json'), LOOSE);
+    // The earliest mod_time of the modules that reference a CVE: they existed by then.
+    expect(firstModified.get('CVE-2021-44228')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(records).toBe(6);
     expect(version).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     const log4shell = byCve.get('CVE-2021-44228') ?? [];

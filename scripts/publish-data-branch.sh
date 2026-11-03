@@ -79,8 +79,10 @@ repo_slug() {
 
 # Change fingerprint of a data tree. generated_at differs on every run and is ignored, as are the
 # woke.json bounds that move with it; any other change to the rows, the KEV file, the headline
-# counts, the woke-up list or the carried state produces a new fingerprint. The state must be
-# published whenever it changes, or the next run would forget what this one saw first.
+# counts, the woke-up list, the receipts or the carried state produces a new fingerprint. The state
+# must be published whenever it changes, or the next run would forget what this one saw first.
+# The Receipts log in it records every run (its last run and run count), so in practice every
+# successful run is published.
 fingerprint() {
   local dir=$1
   {
@@ -88,16 +90,17 @@ fingerprint() {
       jq -cS 'del(.generated_at)' "$dir/v1/kev.json" &&
       jq -cS '.counts' "$dir/v1/meta.json" &&
       if [[ -f $dir/v1/woke.json ]]; then jq -cS 'del(.generated_at, .since, .published_before)' "$dir/v1/woke.json"; fi &&
+      if [[ -f $dir/v1/receipts.json ]]; then jq -cS 'del(.generated_at)' "$dir/v1/receipts.json"; fi &&
       if [[ -f $dir/v1/state.json ]]; then jq -cS 'del(.generated_at)' "$dir/v1/state.json"; fi
   } | git hash-object --stdin
 }
 
 # Fingerprint of a published commit; fails when it lacks any of the fingerprinted files, so a
-# branch from before woke.json and state.json existed is always republished.
+# branch from before woke.json, receipts.json and state.json existed is always republished.
 commit_fingerprint() {
   local dir="$work/published"
   mkdir -p "$dir"
-  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json v1/woke.json v1/state.json | tar -x -C "$dir" || return 1
+  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json v1/woke.json v1/receipts.json v1/state.json | tar -x -C "$dir" || return 1
   fingerprint "$dir"
 }
 
@@ -130,6 +133,7 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 | \`v1/stats.json\` | Monthly history since 1999, daily and hourly counts, top CNAs, AI credits |
 | \`v1/changes.json\` | Escalations (tier went up, or new exploit evidence) in the last 7 days |
 | \`v1/woke.json\` | Old CVEs (published before the window) that gained exploitation evidence in the last 30 days |
+| \`v1/receipts.json\` | Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV (forward log and hindsight backtest) |
 | \`v1/state.json\` | Internal state carried between runs; unstable, do not build on it |
 | \`feeds/signal.xml\` | Atom: newest Exploited and Likely-next CVEs |
 | \`feeds/kev.xml\` | Atom: KEV additions |

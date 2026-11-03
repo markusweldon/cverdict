@@ -10,6 +10,7 @@
     "pipeline": "tsx pipeline/src/cli.ts",
     "mock": "tsx scripts/mock-data.ts",
     "calibrate": "tsx scripts/calibrate.ts",
+    "backtest": "tsx scripts/backtest.ts",
     "dev": "vite --config site/vite.config.ts",
     "build": "vite build --config site/vite.config.ts",
     "preview": "vite preview --config site/vite.config.ts",

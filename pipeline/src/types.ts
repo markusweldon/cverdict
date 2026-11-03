@@ -18,6 +18,7 @@ import type {
 } from '../../shared/contract';
 
 import type { LoadedState } from './state';
+import type { BacktestInputs, BacktestPlan } from './backtest';
 import type { WakeDetection } from './woke';
 
 export interface Logger {
@@ -43,6 +44,8 @@ export interface IngestOptions {
   pocDir?: string;
   /** State carried from the previous run (state.ts); missing means a fresh start. */
   previousState?: LoadedState;
+  /** Refresh the hindsight backtest this run (backtest.ts); omitted on normal runs. */
+  backtest?: BacktestPlan;
 }
 
 /** A CVE record reduced to what scoring and display need. All text is sanitised plain text. */
@@ -77,6 +80,10 @@ export interface NormalizedCve {
   vendorInTheWild: boolean;
   /** Lower-cased title + description + affected vendor/product + reference URLs, ≤ 4 KB. For noise heuristics. */
   noiseText: string;
+  /** providerMetadata.dateUpdated of the CNA container: when the CNA last changed its part of the record. */
+  cnaUpdated: string | null;
+  /** providerMetadata.dateUpdated of the CISA-ADP container, if there is one. */
+  adpUpdated: string | null;
   /** datePublished >= windowStart. (KEV CVEs outside the window are also ingested, with inWindow=false.) */
   inWindow: boolean;
 }
@@ -123,6 +130,18 @@ export interface ExploitDbData {
   byCve: ExploitIndex['exploitdb'];
   /** Per CVE: the entry Exploit-DB added first (date_added, else date_published). */
   firstAdded: Map<string, { date: string; id: string; url: string }>;
+  /** Exploit-DB id → date_added, when the file has that column (the backtest dates entries by it). */
+  added: Map<string, string>;
+}
+
+/** Parsed Metasploit metadata. */
+export interface MetasploitData {
+  byCve: ExploitIndex['metasploit'];
+  /**
+   * Per CVE: the earliest `mod_time` of a module referencing it. A module can only have been
+   * modified once it existed, so it existed by then (the backtest's only usable Metasploit date).
+   */
+  firstModified: Map<string, string>;
 }
 
 export interface ExploitIndex {
@@ -155,6 +174,8 @@ export interface IngestResult {
   cvelistCommit: string | null;
   /** Wake signals found in the full source indexes, and the next woke state (woke.ts). */
   wake: WakeDetection;
+  /** Backtest inputs, present when the run refreshes the backtest (backtest.ts). */
+  backtest?: BacktestInputs;
 }
 
 /** KEV CVE ids sharing one canonical vendor (or vendor + product), and how CISA spells it. */

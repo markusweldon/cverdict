@@ -54,6 +54,8 @@ export function makeCve(o: Partial<NormalizedCve> = {}): NormalizedCve {
     aiCredit: null,
     vendorInTheWild: false,
     noiseText: 'acme widget sql injection in login form',
+    cnaUpdated: daysAgo(19),
+    adpUpdated: null,
     inWindow: true,
     ...o,
   };

@@ -28,7 +28,7 @@ function input(o: Partial<WakeInput> = {}): WakeInput {
   return {
     now: NOW,
     kev: makeKevCatalog(),
-    exploitdb: { byCve: new Map(), firstAdded: new Map() },
+    exploitdb: { byCve: new Map(), firstAdded: new Map(), added: new Map() },
     metasploit: new Map(),
     nuclei: new Map(),
     poc: new Map(),

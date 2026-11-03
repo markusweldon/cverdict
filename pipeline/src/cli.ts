@@ -28,6 +28,7 @@ Options:
   --now <iso>           Freeze "now", e.g. 2026-10-26T19:30:00Z; no offset means UTC (default: current time)
   --window-days <n>     Window size in days (default: ${DEFAULT_WINDOW_DAYS})
   --knob <n>            Default knob for tiers, ${KNOB_MIN}–${KNOB_MAX} (default: 50)
+  --refresh-backtest    Recompute the hindsight backtest now (normally it is carried forward for 7 days)
   --offline             Never use the network; read the cache only
   -h, --help            Show this help
 
@@ -60,6 +61,7 @@ export function parseCli(argv: string[]): RunOptions | null {
         'window-days': { type: 'string', default: String(DEFAULT_WINDOW_DAYS) },
         knob: { type: 'string' },
         offline: { type: 'boolean', default: false },
+        'refresh-backtest': { type: 'boolean', default: false },
         help: { type: 'boolean', short: 'h', default: false },
       },
     }));
@@ -89,11 +91,22 @@ export function parseCli(argv: string[]): RunOptions | null {
     windowDays,
     offline: values.offline,
     knob,
+    refreshBacktest: values['refresh-backtest'],
   };
 }
 
 const n = (x: number) => x.toLocaleString('en-US');
 const pct = (part: number, whole: number) => (whole === 0 ? '0.0%' : `${((100 * part) / whole).toFixed(1)}%`);
+
+function receiptsLine({ receipts: { forward: f, backtest: b } }: RunSummary): string {
+  const cv = f.methods.find((m) => m.method === 'cverdict');
+  const back = b?.sets.find((x) => x.key === 'recent');
+  const bcv = back?.strict.find((m) => m.method === 'cverdict');
+  return (
+    `Receipts: log since ${f.since} (${n(f.runs)} runs) · ${n(f.eligible)} of ${n(f.listed)} KEV additions counted, CVErdict first on ${n(cv?.before ?? 0)}` +
+    (b ? ` · backtest ${b.computed_at.slice(0, 10)}: CVErdict ${n(bcv?.before ?? 0)} of ${n(back?.n ?? 0)} (strict)` : ' · no backtest')
+  );
+}
 
 export function formatSummary(s: RunSummary): string {
   const { meta } = s;
@@ -111,6 +124,7 @@ export function formatSummary(s: RunSummary): string {
     `Woke up (old CVEs, new evidence in ${s.woke.days} days): ${n(s.woke.items.length)} · ` +
       WAKE_KINDS.map((k) => `${k} ${n(s.woke.counts[k])}`).join(', ') +
       (s.woke.skipped.length ? ` · skipped: ${[...new Set(s.woke.skipped.map((x) => x.kind))].join(', ')}` : ''),
+    receiptsLine(s),
     '',
     'Top exploited / likely:',
     ...(s.top.length === 0

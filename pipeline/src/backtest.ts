@@ -1,0 +1,453 @@
+/**
+ * Receipts, part 2: the hindsight backtest. A reconstruction after the fact, never real time.
+ *
+ * For every CISA KEV addition of the last BACKTEST_DAYS days, each method is judged on the evidence
+ * as it stood at the end of the day before the KEV dateAdded (the cutoff), wherever a source dates
+ * its evidence:
+ *
+ *   time-matched  KEV prior (other listings before the cutoff), EPSS (the archived file of the day
+ *                 before), Exploit-DB (date_added), PoC repos (created_at; vetted by age at the
+ *                 cutoff), Metasploit modules whose earliest mod_time is before the cutoff, CISA
+ *                 SSVC assessments timestamped before the cutoff, and the CNA (or CISA-ADP)
+ *                 container when it has not changed since the cutoff.
+ *   hindsight     everything else that has no usable date: Nuclei templates, other Metasploit
+ *                 modules, PoC star counts, SSVC assessed on or after the listing day, CNA and
+ *                 CISA-ADP containers changed since. The strict scores leave these out (as
+ *                 unknown, never as absent); the upper bound uses today's values.
+ *   excluded      the KEV listing itself, the CISA-ADP KEV block, today's EPSS score (it reacts to
+ *                 the listing), and an SSVC "exploitation: active" made on or after the listing day
+ *                 (lowered to poc or none, as in scripts/calibrate.ts).
+ *
+ * Vendor and product names, tags and descriptions come from today's record in both variants.
+ * The backtest only says whether each method would have flagged the CVE before the listing; it
+ * does not estimate lead times (that needs the day each method first flagged it, which only the
+ * forward log records).
+ *
+ * The hourly pipeline refreshes it when the carried-forward copy (previous receipts.json) is older
+ * than BACKTEST_REFRESH_DAYS, so normal runs stay fast. scripts/backtest.ts runs it on demand.
+ */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  KNOB_DEFAULT,
+  RECEIPT_METHODS,
+  tierFor,
+  type AlertVolume,
+  type BacktestItem,
+  type BacktestReceipts,
+  type BacktestSet,
+  type BacktestSignal,
+  type MethodScore,
+  type ReceiptMethod,
+  type Row,
+  type SourceId,
+} from '../../shared/contract';
+import { EPSS, type SanityLimits } from './config';
+import { CVSS_LINE, EPSS_LINE } from './receipts';
+import { firedChipIds } from './rows';
+import { buildKevPrior, scoreCve } from './score';
+import { parseEpssBodyOn } from './sources/epss';
+import type { Enrichment, ExploitIndex, KevCatalog, KevPrior, KevRaw, Logger, NormalizedCve, PocRepo, ScoredCve } from './types';
+import { addDays, DAY_MS, normalizeIso, normalizeYmd, ymd } from './util/dates';
+import type { HttpClient } from './util/http';
+import { asNumber, asObject } from './util/json';
+
+export const BACKTEST_DAYS = 180;
+export const BACKTEST_OLD_YEARS = 2;
+export const BACKTEST_REFRESH_DAYS = 7;
+export const BACKTEST_COMMAND = 'npm run backtest -- --help';
+/** Parallel EPSS downloads during a refresh (each with its own cache slot of ~2 MB). */
+export const EPSS_ASOF_SLOTS = 4;
+
+/** Decided before ingest: what a refresh needs to download and keep. */
+export interface BacktestPlan {
+  /** Keep every record published from this instant on, for the alert volume over the period. */
+  volumeFrom: Date;
+  /** EPSS of the day before a listing, already known from the previous backtest: `${id}@${kev_added}`. */
+  reuse: Map<string, { date: string; score: number | null }>;
+}
+
+/** Collected during ingest when the run refreshes the backtest. */
+export interface BacktestInputs {
+  /** EPSS score per listed CVE, by the day before its listing; null when that file could not be loaded. */
+  epss: Map<string, Map<string, number> | null>;
+  reuse: BacktestPlan['reuse'];
+  /** Earliest Metasploit mod_time per CVE (ingested records only). */
+  metasploitModified: Map<string, string>;
+  /** Exploit-DB id → date_added. */
+  exploitdbAdded: Map<string, string>;
+  volumeFrom: string;
+}
+
+const reuseKey = (id: string, added: string) => `${id}@${added}`;
+const cutoffOf = (dateAdded: string) => new Date(`${dateAdded}T00:00:00Z`);
+const dayBefore = (dateAdded: string) => ymd(addDays(cutoffOf(dateAdded), -1));
+
+/** KEV additions dated in the backtest range, newest first. */
+export function backtestListings(kev: KevCatalog, now: Date): KevRaw[] {
+  const from = ymd(addDays(now, -BACKTEST_DAYS));
+  const to = ymd(now);
+  return [...kev.entries.values()]
+    .filter((k) => normalizeYmd(k.dateAdded) === k.dateAdded && k.dateAdded >= from && k.dateAdded <= to)
+    .sort((a, b) => b.dateAdded.localeCompare(a.dateAdded) || a.cveID.localeCompare(b.cveID));
+}
+
+// ── Carry-forward ──────────────────────────────────────────────────────────────────────────
+
+/** The backtest in the previous receipts.json, if it looks like one of ours. Never throws. */
+export function readPreviousBacktest(previousRoot: string | null): BacktestReceipts | null {
+  if (!previousRoot) return null;
+  try {
+    const doc = asObject(JSON.parse(readFileSync(join(previousRoot, 'v1', 'receipts.json'), 'utf8')));
+    const b = asObject(doc?.backtest);
+    if (!b || b.hindsight !== true || !normalizeIso(b.computed_at) || !Array.isArray(b.items) || !Array.isArray(b.sets) || !Array.isArray(b.signals)) return null;
+    return b as unknown as BacktestReceipts;
+  } catch {
+    return null;
+  }
+}
+
+export interface BacktestDecision {
+  /** Reuse this copy as is (null: refresh this run). */
+  carried: BacktestReceipts | null;
+  /** Set when the backtest is refreshed this run. */
+  plan: BacktestPlan | null;
+  note: string;
+}
+
+/** Refresh when there is no previous backtest, or it is older than BACKTEST_REFRESH_DAYS (or from the future). */
+export function decideBacktest(previous: BacktestReceipts | null, now: Date, force = false): BacktestDecision {
+  const age = previous ? now.getTime() - Date.parse(previous.computed_at) : NaN;
+  if (previous && !force && age >= 0 && age < BACKTEST_REFRESH_DAYS * DAY_MS) {
+    return { carried: previous, plan: null, note: `backtest carried forward (computed ${previous.computed_at})` };
+  }
+  const reuse: BacktestPlan['reuse'] = new Map();
+  for (const it of previous?.items ?? []) {
+    const date = normalizeYmd(it?.epss_date);
+    const score = it?.epss === null ? null : asNumber(it?.epss);
+    if (typeof it?.id === 'string' && typeof it.kev_added === 'string' && date && date === dayBefore(it.kev_added) && (it.epss === null || score !== null)) {
+      reuse.set(reuseKey(it.id, it.kev_added), { date, score });
+    }
+  }
+  return {
+    carried: null,
+    plan: { volumeFrom: addDays(now, -BACKTEST_DAYS), reuse },
+    note: previous ? `backtest refresh (previous computed ${previous.computed_at}; ${reuse.size} EPSS values reused)` : 'backtest refresh (no previous backtest)',
+  };
+}
+
+// ── EPSS of past days ──────────────────────────────────────────────────────────────────────
+
+/**
+ * For each day before a listing in the range, the EPSS scores of the CVEs listed the next day,
+ * from the dated EPSS archive (then the EPSS host) through the cached source machinery.
+ * EPSS_ASOF_SLOTS downloads run at once, each reusing its own cache slot for every day it fetches:
+ * a past day never changes, and the results travel in receipts.json, so only the slots are cached.
+ * Days whose every CVE is in `reuse` are not downloaded. Never throws.
+ */
+export async function loadEpssAsOf(
+  http: HttpClient,
+  kev: KevCatalog | null,
+  now: Date,
+  reuse: BacktestPlan['reuse'],
+  limits: SanityLimits,
+  log: Logger,
+  signal?: AbortSignal,
+): Promise<Map<string, Map<string, number> | null>> {
+  const out = new Map<string, Map<string, number> | null>();
+  if (!kev) return out;
+  const wanted = new Map<string, Set<string>>();
+  for (const k of backtestListings(kev, now)) {
+    if (reuse.has(reuseKey(k.cveID, k.dateAdded))) continue;
+    const day = dayBefore(k.dateAdded);
+    let ids = wanted.get(day);
+    if (!ids) wanted.set(day, (ids = new Set()));
+    ids.add(k.cveID);
+  }
+  const started = performance.now();
+  let failed = 0;
+  const queue = [...wanted].sort((a, b) => a[0].localeCompare(b[0]));
+  const worker = async (slot: number) => {
+    for (let next = queue.shift(); next && !signal?.aborted; next = queue.shift()) await fetchDay(slot, ...next);
+  };
+  const fetchDay = async (slot: number, day: string, ids: Set<string>) => {
+    const fetched = await http.getSource({
+      key: `epss-asof-${slot}`,
+      ext: 'csv.gz',
+      urls: [EPSS.daily(day), EPSS.dated(day)],
+      parse: (body) => {
+        const parsed = parseEpssBodyOn(body, [day], limits);
+        const picked = new Map<string, number>();
+        for (const id of ids) {
+          const s = parsed.value.scores.get(id);
+          if (s) picked.set(id, s.epss);
+        }
+        return { ...parsed, value: picked };
+      },
+      signal,
+    });
+    if (!fetched.value) failed++;
+    out.set(day, fetched.value);
+  };
+  await Promise.all(Array.from({ length: EPSS_ASOF_SLOTS }, (_, i) => worker(i)));
+  log.info(`backtest: EPSS for ${wanted.size} past days (${failed} not loadable, ${reuse.size} values reused) in ${((performance.now() - started) / 1000).toFixed(1)} s`);
+  return out;
+}
+
+// ── Reconstruction ─────────────────────────────────────────────────────────────────────────
+
+export const SIGNALS: readonly Omit<BacktestSignal, 'affected'>[] = [
+  { key: 'kev', label: 'The KEV listing and the CISA-ADP KEV block', treatment: 'excluded', note: 'This is the answer, so it is never evidence.' },
+  { key: 'epss_today', label: "Today's EPSS score", treatment: 'excluded', note: 'EPSS reacts to the listing. Only the file from the day before is used.' },
+  { key: 'ssvc_active', label: 'CISA SSVC "active" assessed on or after the listing day', treatment: 'excluded', note: 'Lowered to "poc" when a public exploit exists, else "none", in the upper bound.' },
+  { key: 'kev_prior', label: 'Other KEV listings for the vendor or product', treatment: 'time_matched', note: 'Only listings dated before the listing day.' },
+  { key: 'epss', label: 'EPSS', treatment: 'time_matched', note: 'The archived EPSS file of the day before. Left out when that file could not be loaded.' },
+  { key: 'exploitdb', label: 'Exploit-DB', treatment: 'time_matched', note: 'Entries added before the listing day (date_added, else date_published).' },
+  { key: 'poc', label: 'PoC repos on GitHub', treatment: 'time_matched', note: 'Repos created before the listing day. Repos deleted since cannot be seen.' },
+  { key: 'poc_stars', label: 'PoC star counts', treatment: 'hindsight', note: 'Stars are only known for today. Strict: a repo counts once it was 3 days old by the cutoff.' },
+  { key: 'metasploit', label: 'Metasploit modules', treatment: 'hindsight', note: 'Time-matched when a module was modified before the listing day (so it existed); other modules have no usable date.' },
+  { key: 'nuclei', label: 'Nuclei templates', treatment: 'hindsight', note: 'The template index has no dates.' },
+  { key: 'ssvc', label: 'CISA SSVC assessment', treatment: 'hindsight', note: 'Time-matched when timestamped before the listing day; a later assessment has no earlier version to read.' },
+  { key: 'cna_record', label: 'CNA CVSS, CVSS exploit-maturity and "exploited in the wild" text', treatment: 'hindsight', note: 'Time-matched when the CNA has not changed its part of the record since the listing day.' },
+  { key: 'adp_cvss', label: 'CISA-ADP CVSS (when the CNA gave none)', treatment: 'hindsight', note: 'Time-matched when CISA has not changed its part of the record since the listing day.' },
+];
+
+export interface AsOfEvidence {
+  cve: NormalizedCve;
+  enr: Enrichment;
+  /** Signal keys left out (strict) or changed from today's value (upper: `ssvc_active`). */
+  leftOut: string[];
+}
+
+export interface AsOfInput {
+  cve: NormalizedCve;
+  kev: KevRaw;
+  /** Today's enrichment of the run (exploits, unavailable sources). */
+  enr: Enrichment;
+  /** KEV catalog and prior as of the cutoff (without this CVE). */
+  kevAsOf: { catalog: KevCatalog; prior: KevPrior };
+  /** EPSS of the day before (null: no file); `scores` holds the CVE when EPSS scored it that day. */
+  epss: { date: string; score: number | null } | null;
+  metasploitModified: ReadonlyMap<string, string>;
+  exploitdbAdded: ReadonlyMap<string, string>;
+}
+
+const before = (iso: string | null | undefined, cutoffMs: number) => !!iso && Date.parse(iso) < cutoffMs;
+
+/** The CVE and its enrichment as of the cutoff, in one variant. Pure. */
+export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsOfEvidence {
+  const { cve, kev, enr } = input;
+  const strict = variant === 'strict';
+  const cutoff = cutoffOf(kev.dateAdded);
+  const cutoffMs = cutoff.getTime();
+  const lastDay = dayBefore(kev.dateAdded);
+  const leftOut: string[] = [];
+  const unavailable = new Map<SourceId, string>(enr.unavailable);
+
+  // Exploit artifacts.
+  const msf = enr.exploits.metasploit.get(cve.id) ?? [];
+  const msfDated = msf.length > 0 && before(input.metasploitModified.get(cve.id), cutoffMs);
+  let metasploit = msf;
+  if (msf.length > 0 && !msfDated && strict) {
+    metasploit = [];
+    leftOut.push('metasploit');
+    unavailable.set('metasploit', 'Metasploit (no usable date)');
+  }
+  let nuclei = enr.exploits.nuclei.get(cve.id) ?? [];
+  if (nuclei.length > 0 && strict) {
+    nuclei = [];
+    leftOut.push('nuclei');
+    unavailable.set('nuclei', 'Nuclei templates (no dates)');
+  }
+  const exploitdb = (enr.exploits.exploitdb.get(cve.id) ?? []).filter((e) => {
+    const date = input.exploitdbAdded.get(e.id) ?? e.date;
+    return date !== null && date <= lastDay;
+  });
+  const allRepos = (enr.exploits.poc.get(cve.id) ?? []).filter((r) => before(r.created, cutoffMs));
+  const repos: PocRepo[] = strict ? allRepos.map((r) => ({ ...r, stars: 0 })) : allRepos;
+  if (strict && allRepos.some((r) => r.stars > 0)) leftOut.push('poc_stars');
+
+  // SSVC.
+  let ssvc = cve.ssvc;
+  if (ssvc && !before(ssvc.timestamp, cutoffMs)) {
+    if (strict) {
+      ssvc = null;
+      leftOut.push('ssvc');
+    } else if (ssvc.exploitation === 'active') {
+      const artifact = metasploit.length + nuclei.length + exploitdb.length + repos.filter((r) => !r.fork).length > 0;
+      ssvc = { ...ssvc, exploitation: artifact ? 'poc' : 'none' };
+      leftOut.push('ssvc_active');
+    }
+  }
+
+  // CNA and CISA-ADP containers. Only the chosen CVSS is known (CNA first), so when a changed CNA
+  // container is left out, an older CISA-ADP score is not recovered: the strict CVSS is then unknown.
+  let { cvss, cvssMetrics, cnaCvssMissing, cnaExploitMaturity, vendorInTheWild } = cve;
+  const cnaDated = before(cve.cnaUpdated, cutoffMs);
+  if (strict && !cnaDated) {
+    if (cvss?.source === 'cna' || cnaExploitMaturity.length > 0 || vendorInTheWild) leftOut.push('cna_record');
+    cnaExploitMaturity = [];
+    vendorInTheWild = false;
+    if (cvss?.source === 'cna') cvss = null;
+  }
+  if (strict && cvss?.source === 'cisa-adp' && !before(cve.adpUpdated, cutoffMs)) {
+    cvss = null;
+    leftOut.push('adp_cvss');
+  }
+  if (!cvss) {
+    cvssMetrics = {};
+    cnaCvssMissing = true;
+  }
+
+  // EPSS of the day before.
+  const scores = new Map<string, { epss: number; percentile: number }>();
+  if (input.epss?.score != null) scores.set(cve.id, { epss: input.epss.score, percentile: 0 });
+  if (!input.epss) unavailable.set('epss', 'EPSS (no file for the day before)');
+
+  return {
+    cve: { ...cve, adpKev: null, ssvc, cvss, cvssMetrics, cnaCvssMissing, cnaExploitMaturity, vendorInTheWild },
+    enr: {
+      kev: input.kevAsOf.catalog,
+      prior: input.kevAsOf.prior,
+      epss: { model: null, scoreDate: input.epss?.date ?? null, scores },
+      exploits: {
+        metasploit: new Map(metasploit.length ? [[cve.id, metasploit]] : []),
+        nuclei: new Map(nuclei.length ? [[cve.id, nuclei]] : []),
+        exploitdb: new Map(exploitdb.length ? [[cve.id, exploitdb]] : []),
+        poc: new Map(repos.length ? [[cve.id, repos]] : []),
+      } satisfies ExploitIndex,
+      unavailable,
+    },
+    leftOut,
+  };
+}
+
+/** The KEV catalog as of the start of `dateAdded`: entries listed on earlier days only. */
+export function kevAsOf(kev: KevCatalog, dateAdded: string): KevCatalog {
+  return { version: null, dateReleased: null, entries: new Map([...kev.entries].filter(([, k]) => k.dateAdded < dateAdded)) };
+}
+
+const passed = (s: ScoredCve) => {
+  const t = tierFor(s.score, s.exploited, s.weaponized, KNOB_DEFAULT);
+  return t === 'exploited' || t === 'likely';
+};
+
+function setScores(items: readonly BacktestItem[], pick: (i: BacktestItem) => Record<ReceiptMethod, boolean>): MethodScore[] {
+  return RECEIPT_METHODS.map((method) => {
+    const hits = items.filter((i) => pick(i)[method]).length;
+    // Judged as of the end of the day before: every hit is at least a day earlier.
+    return { method, n: items.length, before: hits, earlier: hits, same_day: 0, lead: null };
+  });
+}
+
+export interface BacktestInput {
+  now: Date;
+  kev: KevCatalog;
+  /** Ingested records by id (KEV records are always ingested). */
+  cves: ReadonlyMap<string, NormalizedCve>;
+  /** Today's enrichment of the run. */
+  enr: Enrichment;
+  inputs: BacktestInputs;
+  /** Every record scored this run, for the alert volume (needs the period's records). */
+  scored: readonly ScoredCve[];
+  rows: ReadonlyMap<string, Row>;
+}
+
+export function runBacktest({ now, kev, cves, enr, inputs, scored, rows }: BacktestInput): BacktestReceipts {
+  const listings = backtestListings(kev, now);
+  const priors = new Map<string, { catalog: KevCatalog; prior: KevPrior }>();
+  const asOfKev = (date: string) => {
+    let p = priors.get(date);
+    if (!p) {
+      const catalog = kevAsOf(kev, date);
+      priors.set(date, (p = { catalog, prior: buildKevPrior(catalog) }));
+    }
+    return p;
+  };
+  const noRecord: string[] = [];
+  const notYet: string[] = [];
+  const items: BacktestItem[] = [];
+  const affected = new Map<string, number>();
+  const epssMissing = new Set<string>();
+  for (const k of listings) {
+    const cve = cves.get(k.cveID);
+    if (!cve) {
+      noRecord.push(k.cveID);
+      continue;
+    }
+    const cutoff = cutoffOf(k.dateAdded);
+    if (Date.parse(cve.published) >= cutoff.getTime()) {
+      notYet.push(k.cveID);
+      continue;
+    }
+    const day = dayBefore(k.dateAdded);
+    const reused = inputs.reuse.get(reuseKey(k.cveID, k.dateAdded));
+    const file = inputs.epss.get(day);
+    const epss = reused ?? (file ? { date: day, score: file.get(k.cveID) ?? null } : null);
+    if (!epss) {
+      epssMissing.add(day);
+      affected.set('epss', (affected.get('epss') ?? 0) + 1);
+    }
+    const input: AsOfInput = { cve, kev: k, enr, kevAsOf: asOfKev(k.dateAdded), epss, metasploitModified: inputs.metasploitModified, exploitdbAdded: inputs.exploitdbAdded };
+    const strict = evidenceAsOf(input, 'strict');
+    const upper = evidenceAsOf(input, 'upper');
+    const s = scoreCve(strict.cve, strict.enr, { now: cutoff, knob: KNOB_DEFAULT });
+    const u = scoreCve(upper.cve, upper.enr, { now: cutoff, knob: KNOB_DEFAULT });
+    for (const key of [...strict.leftOut, ...upper.leftOut]) affected.set(key, (affected.get(key) ?? 0) + 1);
+    const epssHit = (epss?.score ?? -1) >= EPSS_LINE;
+    const old = Date.parse(cve.published) < Date.UTC(cutoff.getUTCFullYear() - BACKTEST_OLD_YEARS, cutoff.getUTCMonth(), cutoff.getUTCDate());
+    items.push({
+      id: k.cveID,
+      kev_added: k.dateAdded,
+      published: cve.published,
+      old,
+      strict: { cverdict: passed(s), cvss7: (strict.cve.cvss?.score ?? -1) >= CVSS_LINE, epss10: epssHit },
+      upper: { cverdict: passed(u), cvss7: (upper.cve.cvss?.score ?? -1) >= CVSS_LINE, epss10: epssHit },
+      score: s.score,
+      chips: firedChipIds(s.reasons),
+      cvss: strict.cve.cvss?.score ?? null,
+      epss: epss?.score ?? null,
+      epss_date: epss?.date ?? null,
+      left_out: strict.leftOut,
+      row: rows.get(k.cveID) ?? null,
+    });
+  }
+
+  const sets: BacktestSet[] = (['recent', 'old'] as const).map((key) => {
+    const set = items.filter((i) => i.old === (key === 'old'));
+    return { key, n: set.length, strict: setScores(set, (i) => i.strict), upper: setScores(set, (i) => i.upper) };
+  });
+
+  const from = ymd(addDays(now, -BACKTEST_DAYS));
+  const volumeFrom = Date.parse(inputs.volumeFrom);
+  const period = scored.filter((s) => {
+    const t = Date.parse(s.cve.published);
+    return t >= volumeFrom && t <= now.getTime();
+  });
+  const volume: AlertVolume[] = [
+    { method: 'cverdict', n: period.length, flagged: period.filter(passed).length },
+    { method: 'cvss7', n: period.length, flagged: period.filter((s) => (s.cve.cvss?.score ?? -1) >= CVSS_LINE).length },
+    { method: 'epss10', n: period.length, flagged: period.filter((s) => (s.epss?.score ?? -1) >= EPSS_LINE).length },
+  ];
+
+  return {
+    hindsight: true,
+    computed_at: now.toISOString(),
+    from,
+    to: ymd(now),
+    days: BACKTEST_DAYS,
+    old_years: BACKTEST_OLD_YEARS,
+    listed: listings.length,
+    excluded: [
+      { reason: 'No published CVE record', ids: noRecord },
+      { reason: 'Published on or after the listing day, so no method could flag it before', ids: notYet },
+    ].filter((e) => e.ids.length > 0),
+    sets,
+    volume: period.length > 0 ? { from: new Date(volumeFrom).toISOString(), n: period.length, methods: volume } : null,
+    // The listing and today's EPSS are set aside for every CVE in the backtest.
+    signals: SIGNALS.map((s) => ({ ...s, affected: s.key === 'kev' || s.key === 'epss_today' ? items.length : (affected.get(s.key) ?? 0) })),
+    epss_missing: [...epssMissing].sort(),
+    items,
+    command: BACKTEST_COMMAND,
+  };
+}

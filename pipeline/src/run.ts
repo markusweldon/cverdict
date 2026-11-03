@@ -6,8 +6,9 @@ import { existsSync } from 'node:fs';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { BRAND } from '../../shared/brand';
-import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, type Batch, type Meta, type Row, type WokeFile } from '../../shared/contract';
+import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, type Batch, type Meta, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
 import { SCORE_MODEL } from '../../shared/model';
+import { decideBacktest, readPreviousBacktest } from './backtest';
 import { buildOutput } from './emit/build';
 import { writeFiles } from './emit/json';
 import { ingest } from './ingest';
@@ -28,6 +29,8 @@ export interface RunOptions {
   offline: boolean;
   /** Default knob for Row.tier / meta.knob_default (KNOB_MIN…KNOB_MAX). */
   knob?: number;
+  /** Recompute the backtest even when the carried-forward copy is recent. */
+  refreshBacktest?: boolean;
 }
 
 export interface RunSummary {
@@ -37,6 +40,7 @@ export interface RunSummary {
   /** Exploited first, then likely; highest score first. */
   top: Row[];
   woke: WokeFile;
+  receipts: ReceiptsFile;
   validation: ValidationResult;
   durationMs: number;
 }
@@ -85,8 +89,11 @@ export async function run(opts: RunOptions): Promise<RunSummary> {
 
   log.info(`${BRAND.slug} pipeline · model ${SCORE_MODEL} · now ${now.toISOString()} · window ${opts.windowDays}d · knob ${knob}`);
   const previousState = loadState(opts.previous, log);
-  const ing = await ingest(ctx, { cvelistDir: opts.cvelistDir, pocDir: opts.pocDir, previousState });
-  const built = buildOutput({ ingest: ing, now, windowDays: opts.windowDays, knob, previous: opts.previous, previousState, siteUrl: base });
+  const decision = decideBacktest(readPreviousBacktest(opts.previous), now, opts.refreshBacktest);
+  log.info(decision.note);
+  const ing = await ingest(ctx, { cvelistDir: opts.cvelistDir, pocDir: opts.pocDir, previousState, backtest: decision.plan ?? undefined });
+  const built = buildOutput({ ingest: ing, now, windowDays: opts.windowDays, knob, previous: opts.previous, previousState, siteUrl: base, backtest: decision.carried });
+  for (const note of built.notes) log.info(note);
   log.info(`scored ${built.scored.length} records (${built.meta.counts.window_published} in window), ${built.batches.length} batches, ${built.woke.items.length} woke up`);
 
   const out = resolve(opts.out);
@@ -103,5 +110,5 @@ export async function run(opts: RunOptions): Promise<RunSummary> {
     throw e;
   }
   log.info(`wrote ${validation.files} files to ${out}`);
-  return { out, meta: built.meta, batches: built.batches, top: built.top, woke: built.woke, validation, durationMs: Date.now() - started };
+  return { out, meta: built.meta, batches: built.batches, top: built.top, woke: built.woke, receipts: built.receipts, validation, durationMs: Date.now() - started };
 }
