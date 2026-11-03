@@ -253,7 +253,9 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
   state; without it everything already present is treated as known, so a first run never dates
   old evidence as new.
 - The EPSS check needs the EPSS file from 30 days before the current score date. When it cannot be
-  loaded, the check is skipped and `skipped` says so.
+  loaded, or the two files come from different EPSS models (a new model moves many scores at once),
+  the check is skipped and `skipped` says so. After a pause of more than 48 hours, jump tracking
+  restarts from a baseline, so jumps from the pause are not all dated on the day it resumes.
 - Evidence only counts when it arrived after the CVE was already older than the window, so a CVE
   does not join the list by ageing out of the window. A CVE that was in KEV before the period is
   left out: it never fell asleep.

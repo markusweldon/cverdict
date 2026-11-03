@@ -70,6 +70,14 @@ export interface EpssTrack {
   /** When tracking started (the baseline run). */
   since: string;
   /**
+   * EPSS score date (YYYY-MM-DD) of the last run that compared two files. When the score date has
+   * moved on by more than MAX_STATE_GAP_HOURS since then (the old file was missing, or EPSS changed
+   * its model), tracking restarts from a baseline, so jumps from the pause are not all dated on
+   * the day the check resumes. A score date, not a run time, so the state only changes when the
+   * data does.
+   */
+  checked: string | null;
+  /**
    * Jumps seen within WAKE_DAYS, by CVE: the score date when first seen, the scores WAKE_DAYS
    * earlier and then. `baseline` jumps were already there when tracking started and are not shown.
    */
@@ -124,7 +132,7 @@ function parseEpssTrack(value: unknown): EpssTrack | null {
     const to = asNumber(e?.to);
     if (id && at && from !== null && to !== null && from >= 0 && to <= 1) jumps[id] = { at, from, to, baseline: e?.baseline === true };
   }
-  return { since, jumps };
+  return { since, checked: normalizeYmd(o.checked), jumps };
 }
 
 export const WOKE_SECTION: StateSection<WokeState> = {
@@ -271,13 +279,26 @@ export function detectWakes(input: WakeInput): WakeDetection {
   // EPSS jumps, kept in state with the score date they were first seen.
   const beforeEpss = prev.epss;
   const scoreDate = input.epss?.scoreDate ?? null;
-  let epss: EpssTrack | null = beforeEpss ? { since: beforeEpss.since, jumps: {} } : null;
+  let epss: EpssTrack | null = beforeEpss ? { since: beforeEpss.since, checked: beforeEpss.checked, jumps: {} } : null;
   for (const [id, e] of Object.entries(beforeEpss?.jumps ?? {})) if (inPeriodDay(e.at)) epss!.jumps[id] = e;
   if (!input.epss || !scoreDate) unavailable('epss', 'The current EPSS scores');
-  else if (!input.epssPast) skipped.push({ kind: 'epss', reason: `EPSS scores from ${WAKE_DAYS} days earlier could not be loaded (${input.epssPastError ?? 'unknown error'}), so no jumps were checked` });
-  else {
-    const baseline = epss === null || gap;
-    epss = { since: baseline ? nowIso : epss!.since, jumps: epss?.jumps ?? {} };
+  else if (!input.epssPast) {
+    // The reason is shown on the site, so it stays plain; the technical error goes to the log.
+    skipped.push({ kind: 'epss', reason: `The EPSS scores from ${WAKE_DAYS} days earlier could not be loaded, so no jumps were checked` });
+    notes.push(`epss: no scores from ${WAKE_DAYS} days earlier (${input.epssPastError ?? 'unknown error'})`);
+  } else if (input.epss.model && input.epssPast.model && input.epss.model !== input.epssPast.model) {
+    // A new EPSS model moves many scores at once: comparing across it would report thousands of
+    // jumps that are not news. Wait until both files come from the same model.
+    skipped.push({ kind: 'epss', reason: `EPSS changed its scoring model in the last ${WAKE_DAYS} days, so old and new scores cannot be compared and no jumps were checked` });
+    notes.push(`epss: model ${input.epssPast.model} on ${input.epssPast.scoreDate}, ${input.epss.model} on ${scoreDate}; jumps not checked`);
+  } else {
+    const last = epss?.checked ?? null;
+    const pauseHours = last ? (Date.parse(scoreDate) - Date.parse(last)) / 3_600_000 : Infinity;
+    // An older score date than last time (a cached copy) is not a pause: nothing was missed.
+    const paused = epss !== null && pauseHours > MAX_STATE_GAP_HOURS;
+    if (paused && !gap) notes.push(`epss: last compared on ${last ?? 'an unknown day'}, now ${scoreDate}; jump tracking restarts`);
+    const baseline = epss === null || gap || paused;
+    epss = { since: baseline ? nowIso : epss!.since, checked: last && last > scoreDate ? last : scoreDate, jumps: epss?.jumps ?? {} };
     let found = 0;
     for (const [id, cur] of input.epss.scores) {
       if (cur.epss < EPSS_JUMP_MIN || epss.jumps[id]) continue;
@@ -307,8 +328,9 @@ export function failedWakeDetection(previous: WokeState | null, reason: string):
     signals: new Map(),
     state,
     tracking: { metasploit: state.metasploit?.since ?? null, nuclei: state.nuclei?.since ?? null, epss: state.epss?.since ?? null },
-    skipped: WAKE_KINDS.map((kind) => ({ kind, reason: `wake detection failed: ${reason}` })),
-    notes: [],
+    // Shown on the site, so plain words; the caller logs the error itself.
+    skipped: WAKE_KINDS.map((kind) => ({ kind, reason: 'The check failed this run' })),
+    notes: [`detection failed (${reason})`],
   };
 }
 
