@@ -21,6 +21,7 @@ const JSON_FILES: readonly [string, string][] = [
   ['changes.json', 'Escalations from the runs of the last 7 days.'],
   ['woke.json', 'Old CVEs (published before the window) that gained exploitation evidence in the last 30 days, with the dated signals.'],
   ['receipts.json', 'Receipts: which CVEs CISA added to KEV that each method had flagged before the listing, from the live log and the hindsight backtest.'],
+  ['packages.json', 'Package versions the tracked CVEs affect, from OSV.dev advisories, for the Check page. About 120 KB gzip.'],
 ];
 
 const SHARD_JS = `// FNV-1a 32-bit of the upper-cased ID, mod ${SHARD_COUNT}, as two hex digits.

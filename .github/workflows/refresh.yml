@@ -197,7 +197,7 @@ jobs:
           cp -R site/dist/data/feeds site/dist/feeds
           # A copy of the app per static route (site/src/router.ts), so /<repo>/kev and friends are
           # served with status 200 (Pages redirects /kev to /kev/ first).
-          for route in kev woke receipts batches explore surge method feeds; do
+          for route in kev woke receipts batches explore check surge method feeds; do
             mkdir -p "site/dist/$route"
             cp site/dist/index.html "site/dist/$route/index.html"
           done
