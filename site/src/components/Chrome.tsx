@@ -1,4 +1,5 @@
 /** Page chrome: header with navigation and data status, and the footer. */
+import { useEffect, useRef } from 'preact/hooks';
 import type { Meta } from '../../../shared/contract';
 import { BRAND, REPO_URL } from '../../../shared/brand';
 import { fmtAge, fmtDateTime } from '../format';
@@ -46,8 +47,24 @@ function DataStatus() {
 
 export function Header({ route }: { route: Route }) {
   const mode = useStore(theme);
+  const el = useRef<HTMLElement>(null);
+  // Sticky bars sit right under the header whatever its real height (it wraps on phones).
+  useEffect(() => {
+    const top = el.current;
+    if (!top) return;
+    const root = document.documentElement;
+    const set = () => root.style.setProperty('--top-h', `${top.offsetHeight - 1}px`);
+    // Set it now too, so a hash jump on first load already sees it before the observer's first callback.
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(top);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--top-h');
+    };
+  }, []);
   return (
-    <header class="top">
+    <header class="top" ref={el}>
       <a class="skip" href="#main">
         Skip to content
       </a>

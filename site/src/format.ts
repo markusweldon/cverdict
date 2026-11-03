@@ -58,6 +58,9 @@ export function fmtHour(ms: number): string {
   return `${String(d.getUTCHours()).padStart(2, '0')}:00`;
 }
 
+/** How the waterfall groups time: "by hour", or "in 2-hour slots" when a column spans several hours. */
+export const fmtSlot = (hours: number): string => (hours === 1 ? 'by hour' : `in ${hours}-hour slots`);
+
 export const fmtMonth = (yyyyMm: string): string => {
   const [y, m] = yyyyMm.split('-');
   return `${MONTHS[Number(m) - 1]} ${y}`;

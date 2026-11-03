@@ -35,8 +35,8 @@ import {
   type FeedFilter,
   type TierCounts,
 } from '../filters';
-import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, HOUR_MS, oneIn, plural } from '../format';
-import { useCountUp, useData, useDebounced, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
+import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, fmtSlot, HOUR_MS, oneIn, plural } from '../format';
+import { prefersReducedMotion, useCountUp, useData, useDebounced, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
 import { cveHref, historyValue, href, navigate, setHistoryValue, setQuery, useLocation } from '../router';
 import { KNOB_PRESETS, knob, previousVisit, useStore, watchlist } from '../state';
 import { TIER_META } from '../tiers';
@@ -45,15 +45,22 @@ const PAGE = 40;
 
 /** Count-up number; mono digits with tightened thousands separators. */
 function CountUp({ value, class: cls }: { value: number; class?: string }) {
-  const parts = fmtInt(useCountUp(value)).split(',');
+  const shown = useCountUp(value);
+  const digits = fmtInt(shown)
+    .split(',')
+    .map((p, i) => (
+      <Fragment key={i}>
+        {i > 0 && <span class="hero__comma">,</span>}
+        {p}
+      </Fragment>
+    ));
+  if (shown === value) return <span class={cls}>{digits}</span>;
+  // Mid count, assistive tech gets the real number: the hero heading takes focus on arrival and
+  // would otherwise be announced as "0 CVEs published".
   return (
     <span class={cls}>
-      {parts.map((p, i) => (
-        <Fragment key={i}>
-          {i > 0 && <span class="hero__comma">,</span>}
-          {p}
-        </Fragment>
-      ))}
+      <span aria-hidden="true">{digits}</span>
+      <span class="sr-only">{fmtInt(value)}</span>
     </span>
   );
 }
@@ -232,6 +239,9 @@ export default function Today() {
   });
   useEffect(() => setHistoryValue('feedLimit', limit), [limit]);
   const [sel, setSel] = useState(-1);
+  // Each waterfall column covers 1+ hours depending on its width: the caption says which.
+  const [binHours, setBinHours] = useState(1);
+  const slot = fmtSlot(binHours);
 
   const counts = useMemo<TierCounts | null>(() => {
     if (meta.status !== 'ready' || rows.length === 0) return null;
@@ -305,7 +315,7 @@ export default function Today() {
 
   const onChip = (id: string) => {
     setFilter({ ...filter, query: q, chip: filter.chip === id ? null : id });
-    document.getElementById('feed')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    document.getElementById('feed')?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   };
 
   if (meta.status === 'error') return <ErrorState error={meta.error} onRetry={meta.retry} />;
@@ -334,7 +344,7 @@ export default function Today() {
           <header class="panel__head">
             <div>
               <h2 id="wf-h" class="panel__title">Signal waterfall</h2>
-              <p class="panel__sub">Every CVE in the window, by hour. Grey is noise; lit ticks passed the knob.</p>
+              <p class="panel__sub">Every CVE in the window, {slot}. Grey is noise; lit ticks passed the knob.</p>
             </div>
             <ul class="legend legend--inline" aria-hidden="true">
               {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
@@ -352,7 +362,8 @@ export default function Today() {
               counts={hourly}
               start={Date.parse(stats.data.hourly.start)}
               annotations={annotations}
-              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely at knob ${level}.`}
+              onBinHours={setBinHours}
+              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely at knob ${level}.`}
             />
           ) : (
             <Loading label="Drawing the waterfall" lines={1} height="176px" />

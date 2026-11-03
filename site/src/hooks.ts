@@ -117,13 +117,33 @@ export function useTitle(title: string | null): void {
   }, [title]);
 }
 
+/**
+ * Set by a j/k move and cleared when the pointer next really moves: until then the list scrolling
+ * under a resting pointer must not take the keyboard's selection. Wheel or touch scrolling with no
+ * key press in between still selects the row that lands under the pointer, as before.
+ */
+let keyMoved = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'pointermove',
+    (e) => {
+      if (e.movementX || e.movementY) keyMoved = false;
+    },
+    { capture: true, passive: true },
+  );
+}
+export const hoverMaySelect = (): boolean => !keyMoved;
+
 /** Register the on-screen list with the global keyboard handler while mounted. */
 export function useListController(controller: ListController): void {
   const ref = useRef(controller);
   ref.current = controller;
   useEffect(() => {
     const proxy: ListController = {
-      move: (d) => ref.current.move(d),
+      move: (d) => {
+        keyMoved = true;
+        ref.current.move(d);
+      },
       open: () => ref.current.open(),
       watch: () => ref.current.watch(),
       copy: () => ref.current.copy(),

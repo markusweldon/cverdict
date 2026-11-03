@@ -4,6 +4,8 @@
 
 ### Every CVE gets a verdict. Every verdict comes with receipts.
 
+<sub>Say it "C-V-E-rdict", like "CVE verdict" run together.</sub>
+
 [**Live site**](https://cverdict-psi.vercel.app) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
 
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)

@@ -269,20 +269,20 @@
 .tier--exploited {
   border-color: var(--b-exploited);
   background: var(--t-exploited);
-  color: var(--exploited);
+  color: var(--ink-exploited);
   box-shadow: 0 0 14px -4px color-mix(in srgb, var(--exploited) 55%, transparent);
 }
 
 .tier--likely {
   border-color: var(--b-likely);
   background: var(--t-likely);
-  color: var(--likely);
+  color: var(--ink-likely);
 }
 
 .tier--watch {
   border-color: var(--b-watch);
   background: var(--t-watch);
-  color: var(--watch);
+  color: var(--ink-watch);
 }
 
 .tier--sm {
@@ -612,6 +612,11 @@ a.chip:hover {
   color: var(--accent);
 }
 
+/* Light: the accent on its own tint is under 4.5:1; darken the text only. */
+:root[data-theme='light'] .row__flag--new {
+  color: color-mix(in srgb, var(--accent) 82%, var(--text));
+}
+
 .row__title {
   overflow: hidden;
   display: -webkit-box;
@@ -879,6 +884,7 @@ a.chip:hover {
 
 .wf__tip-head {
   margin-bottom: 6px;
+  white-space: nowrap;
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1304,7 +1310,7 @@ a.chip:hover {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
-  scroll-margin-top: calc(var(--header-h) + 16px);
+  scroll-margin-top: calc(var(--top-h, var(--header-h)) + 16px);
   transition: border-color 0.15s;
 }
 

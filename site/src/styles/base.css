@@ -9,7 +9,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  scroll-padding-top: calc(var(--header-h) + 16px);
+  scroll-padding-top: calc(var(--top-h, var(--header-h)) + 16px);
 }
 
 body {
@@ -183,6 +183,11 @@ strong {
   border-color: color-mix(in srgb, var(--on-accent) 25%, transparent);
   background: color-mix(in srgb, var(--on-accent) 10%, transparent);
   color: inherit;
+}
+
+/* Light: white text needs a darker key than the button, not a lighter one (AA 4.5:1). */
+:root[data-theme='light'] .kbd--on-accent {
+  background: color-mix(in srgb, var(--text) 22%, var(--accent));
 }
 
 .dot {
@@ -627,6 +632,12 @@ strong {
 
 .select:focus-within {
   border-color: var(--b-accent);
+}
+
+/* Light: the 40% accent border is under 2:1 on white; a field's focus ring needs 3:1 (WCAG 1.4.11). */
+:root[data-theme='light'] .search:focus-within,
+:root[data-theme='light'] .select:focus-within {
+  border-color: var(--accent);
 }
 
 .select select,

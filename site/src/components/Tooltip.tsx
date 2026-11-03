@@ -33,8 +33,9 @@ export function TooltipLayer() {
     const over = (e: PointerEvent) => {
       if (e.pointerType === 'touch') return;
       const t = from(e);
-      if (t === target) return;
+      // Clear first: a pending show for an element the pointer already left must not fire.
       window.clearTimeout(timer);
+      if (t === target) return;
       if (!t) return hide();
       timer = window.setTimeout(() => show(t), target ? 0 : 280);
     };
