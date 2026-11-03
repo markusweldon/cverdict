@@ -6,7 +6,7 @@
 
 <sub>Say it "C-V-E-rdict", like "CVE verdict" run together.</sub>
 
-[**Live site**](https://cverdict-psi.vercel.app) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
+[**Live site**](https://cverdict-psi.vercel.app) · [Receipts](https://cverdict-psi.vercel.app/receipts) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
 
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)
 [![refresh-data](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml)
@@ -81,7 +81,8 @@ or `AI-credited: “Claude Security”`, and unknowns such as `Too new: day 13 o
 On the site:
 
 - **Today**: the noise meter (every CVE of the last 30 days → the few worth your time), a signal
-  waterfall of the whole window hour by hour, the knob, the signal feed with filters and a vendor
+  waterfall of the whole window hour by hour (click a column to see that day's CVEs in Explore, or
+  a spike label to open its patch-day batch), the knob, the signal feed with filters and a vendor
   watchlist, patch-day batch cards, the KEV due-date clock, old CVEs that woke up this week and
   what changed since the last run.
 - **CVE pages**: a one-line verdict, the score arithmetic chip by chip, what we could *not* see,
@@ -95,8 +96,8 @@ On the site:
   more" and "EPSS 10% or more", with lead times, alert volume and every hit and miss. The live
   record is kept hour by hour from the day it started; a backtest of the last 180 days is shown
   apart and marked as hindsight.
-- **KEV clock**, **Batches**, **Explore** (every window CVE, searchable), **The surge** (monthly
-  volume since 1999), **Method** and **Feeds**.
+- **KEV clock**, **Batches**, **Explore** (every window CVE, searchable, filterable by publish
+  day), **The surge** (monthly volume since 1999), **Method** and **Feeds**.
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
 
 ![Today: 15,790 CVEs in, 363 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
@@ -144,6 +145,14 @@ Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own
 CISA's SSVC *active* and its EPSS score) and re-score all 272 CVEs added to KEV in 2026: **74%**
 still land in Exploited or Likely next, while only **2.3%** of new CVEs do. Treat that as an upper
 bound, since the evidence was collected after the fact. `npm run calibrate` reproduces it.
+
+The [Receipts page](https://cverdict-psi.vercel.app/receipts) holds the stricter tests. A live
+record, kept hour by hour since Nov 3, 2026, notes when each method first flags a CVE and whether
+that came before CISA listed it. It has no KEV listings to judge yet. A backtest, marked as
+hindsight, uses only evidence dated before each listing. In the run of Nov 3, 2026 it gave, for
+the 120 recent CVEs CISA added to KEV in the previous 180 days: CVErdict 37 flagged before the
+listing, "CVSS 7 or more" 65, "EPSS 10% or more" 17. CVSS 7 or more catches more, but flags 52% of
+all new CVEs against CVErdict's 2.6%. `npm run backtest` reproduces it.
 
 The full methodology, every chip with its points, the calibration and the known blind spots are in
 [docs/SCORING.md](docs/SCORING.md).
@@ -193,7 +202,8 @@ Feeds: [Atom: Exploited + Likely next](https://raw.githubusercontent.com/markusw
 [Atom: KEV additions](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev.xml) ·
 [Atom: old CVEs that woke up](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/woke.xml) ·
 [iCalendar: KEV due dates](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev-due.ics)
-(also served from the site under `/feeds/`).
+(also served from the site under `/feeds/`). `woke.json` lists the old CVEs that woke up, and
+`receipts.json` holds the Receipts figures with every hit and miss.
 
 Every file, every field, sharding and the versioning policy: [docs/DATA.md](docs/DATA.md).
 
@@ -215,6 +225,9 @@ branch anonymously.
    Copies skip the hourly schedule without it.
 4. Actions → **refresh-data** → Run workflow. From then on it publishes the data and redeploys
    the site every hour.
+
+GitHub often runs the hourly schedule late. To refresh every hour, start the workflow from a free
+external timer: [Reliable hourly refresh](docs/DEPLOY.md#reliable-hourly-refresh).
 
 Renaming, custom domains, the optional `SITE_URL` variable and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
 Hosting costs nothing on either platform's free tier.
