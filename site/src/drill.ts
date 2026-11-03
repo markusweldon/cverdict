@@ -28,6 +28,9 @@ export const dayStart = (ms: number): number => Math.floor(ms / DAY_MS) * DAY_MS
 /** Whether `ms` falls on the UTC day that starts at `day`. */
 export const onDay = (ms: number, day: number): boolean => ms >= day && ms < day + DAY_MS;
 
+/** Whether any part of the UTC day that starts at `day` lies inside the window (its first and last days are partial). */
+export const dayInWindow = (day: number, window: { readonly from: string; readonly to: string }): boolean => day + DAY_MS > Date.parse(window.from) && day <= Date.parse(window.to);
+
 /** One waterfall column: `hours` hourly buckets from `from`, with per-tier counts. */
 export interface Bin<C> {
   from: number;

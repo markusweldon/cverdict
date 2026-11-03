@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { binDay, binRange, binsOf, dayOf, dayStart, dayTotal, exploreDayHref, hoursPerBin, onDay, parseDay } from './drill';
-import { DAY_MS, HOUR_MS } from './format';
+import { binDay, binRange, binsOf, dayInWindow, dayOf, dayStart, dayTotal, exploreDayHref, hoursPerBin, onDay, parseDay } from './drill';
+import { DAY_MS, fmtDate, HOUR_MS } from './format';
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -96,5 +96,54 @@ describe('exploreDayHref', () => {
     expect(exploreDayHref('2026-10-13')).toBe('/explore?day=2026-10-13&sort=score');
     expect(exploreDayHref('2026-10-13', 50)).toBe('/explore?day=2026-10-13&sort=score');
     expect(exploreDayHref('2026-10-13', 60)).toBe('/explore?day=2026-10-13&sort=score&knob=60');
+  });
+});
+
+describe('drill-down edge cases', () => {
+  it('parses only real days, with leap years and padding', () => {
+    expect(parseDay('2000-02-29')).toBe(at('2000-02-29T00:00:00Z'));
+    expect(parseDay('\t2026-10-13\n')).toBe(at('2026-10-13T00:00:00Z'));
+    for (const raw of ['2100-02-29', '2026-00-10', '2026-10-00', '2026-10-32', '0000-01-01', '0099-12-31', '２０２６-10-13', '2026-10-13 2026-10-14']) {
+      expect(parseDay(raw)).toBeNull();
+    }
+  });
+
+  it('knows which days the window touches, partial ends included', () => {
+    const window = { from: '2026-10-04T01:57:14.909Z', to: '2026-11-03T01:57:14.909Z' };
+    expect(dayInWindow(at('2026-10-03T00:00:00Z'), window)).toBe(false);
+    expect(dayInWindow(at('2026-10-04T00:00:00Z'), window)).toBe(true);
+    expect(dayInWindow(at('2026-11-03T00:00:00Z'), window)).toBe(true);
+    expect(dayInWindow(at('2026-11-04T00:00:00Z'), window)).toBe(false);
+  });
+
+  it('splits every hour into exactly one day', () => {
+    const start = at('2026-10-04T01:00:00Z');
+    const counts = Array.from({ length: 721 }, (_, i) => [i % 3, i % 5, 1, i % 7]);
+    const all = counts.reduce((a, c) => a + c[0] + c[1] + c[2] + c[3], 0);
+    let sum = 0;
+    for (let d = dayStart(start); d < start + 721 * HOUR_MS; d += DAY_MS) sum += dayTotal(counts, start, d);
+    expect(sum).toBe(all);
+  });
+
+  it('names the start day and, past midnight, the end day of every column at every width', () => {
+    const start = at('2026-10-04T01:00:00Z');
+    const counts = Array.from({ length: 721 }, () => [0, 0, 0, 1]);
+    for (let per = 1; per <= 9; per++) {
+      for (const b of binsOf(counts, start, per)) {
+        const end = b.from + b.hours * HOUR_MS;
+        const label = binRange(b.from, b.hours, 2026);
+        expect(binDay(b.from)).toBe(new Date(b.from).toISOString().slice(0, 10));
+        expect(label.startsWith(`${fmtDate(dayOf(b.from), 2026)} · `)).toBe(true);
+        const crosses = dayOf(end - 1) !== dayOf(b.from);
+        expect(label.includes(' – ')).toBe(crosses);
+        if (crosses) expect(label).toContain(`– ${fmtDate(dayOf(end), 2026)} · `);
+      }
+    }
+  });
+
+  it('keeps hours per column sane for odd widths', () => {
+    expect(hoursPerBin(721, -5, 3)).toBe(1);
+    expect(hoursPerBin(0, 400, 3)).toBe(1);
+    expect(hoursPerBin(721, 1, 3)).toBe(2163);
   });
 });

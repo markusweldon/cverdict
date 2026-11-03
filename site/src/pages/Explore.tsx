@@ -9,9 +9,9 @@ import { EmptyState, ErrorState, Loading } from '../components/States';
 import { TierIcon } from '../components/Tier';
 import { revealRow, VirtualList } from '../components/VirtualList';
 import { data } from '../data';
-import { dayOf, onDay, parseDay } from '../drill';
+import { dayInWindow, dayOf, onDay, parseDay } from '../drill';
 import { emptyCounts, hasChip, matches, pubMs, terms, tierAt } from '../filters';
-import { cnaName, fmtDate, fmtInt } from '../format';
+import { cnaName, fmtDate, fmtDateTime, fmtInt } from '../format';
 import { useData, useDebounced, useKnobUrl, useListController, useMediaQuery, useNow, useSearchTarget, useTitle } from '../hooks';
 import { cveHref, navigate, setQuery, useLocation } from '../router';
 import { isWatched, knob, useStore, watchlist } from '../state';
@@ -254,7 +254,11 @@ export default function Explore() {
             </button>
           }
         >
-          {meta.status === 'ready' ? `Explore holds the last ${meta.data.window.days} days, ${fmtDate(meta.data.window.from)} to ${fmtDate(meta.data.window.to)}. Pick a day in that range.` : 'Explore holds the last 30 days. Pick a day in that range.'}
+          {meta.status !== 'ready'
+            ? 'Explore holds the last 30 days. Pick a day in that range.'
+            : dayInWindow(p.day!, meta.data.window)
+              ? `No CVE in the window was published that day, as of ${fmtDateTime(meta.data.generated_at)}.`
+              : `Explore holds the last ${meta.data.window.days} days, ${fmtDate(meta.data.window.from)} to ${fmtDate(meta.data.window.to)}. Pick a day in that range.`}
         </EmptyState>
       ) : results.length === 0 ? (
         <EmptyState title="No CVEs match">

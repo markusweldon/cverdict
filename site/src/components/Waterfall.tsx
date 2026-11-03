@@ -265,9 +265,14 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     if (bins.length === 0) return;
     const last = bins.length - 1;
     const big = 12;
+    const next = (h: number | null) => (h === null ? last : h + (e.shiftKey ? big : 1));
+    const prev = (h: number | null) => (h === null ? last : h - (e.shiftKey ? big : 1));
+    // Up and Down too: a slider answers to every arrow key, and screen reader users expect that.
     const moves: Record<string, (h: number | null) => number> = {
-      ArrowRight: (h) => (h === null ? last : h + (e.shiftKey ? big : 1)),
-      ArrowLeft: (h) => (h === null ? last : h - (e.shiftKey ? big : 1)),
+      ArrowRight: next,
+      ArrowUp: next,
+      ArrowLeft: prev,
+      ArrowDown: prev,
       PageUp: (h) => (h ?? last) + big,
       PageDown: (h) => (h ?? last) - big,
       Home: () => 0,
@@ -378,7 +383,13 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       {hb && (
         <div ref={tip} class={`wf__tip${via === 'touch' ? ' is-pinned' : ''}`}>
           <div aria-hidden="true">
-            <div class="wf__tip-head">{describe(hb).range}</div>
+            {/* A column that crosses midnight may wrap, but only between its two ends. */}
+            <div class="wf__tip-head">
+              {describe(hb)
+                .range.split(' – ')
+                .map((end) => end.replace(/ /g, '\u00a0'))
+                .join(' – ')}
+            </div>
             {ORDER.map((t, k) => (
               <div key={t} class="wf__tip-row">
                 <span class={`wf__key wf__key--${t}`} />
