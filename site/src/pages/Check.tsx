@@ -283,6 +283,7 @@ export default function Check() {
   const [drag, setDrag] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const resultsHead = useRef<HTMLHeadingElement>(null);
+  const errorBox = useRef<HTMLDivElement>(null);
   const runId = useRef(0);
   const lastInput = useRef<Input | null>(null);
 
@@ -314,6 +315,11 @@ export default function Check() {
       window.removeEventListener('drop', stop);
     };
   }, []);
+
+  // On a phone the message sits below the card: bring it into view (no smooth scrolling).
+  useEffect(() => {
+    if (failure) errorBox.current?.scrollIntoView({ block: 'nearest' });
+  }, [failure]);
 
   // "Still loading the package index..." after 10 s.
   useEffect(() => {
@@ -612,7 +618,7 @@ export default function Check() {
         ) : null}
       </div>
       {failure && (
-        <div class="check__error" role="alert">
+        <div class="check__error" role="alert" ref={errorBox}>
           <IconAlert size={16} />
           <p>
             <FailureText failure={failure} />
