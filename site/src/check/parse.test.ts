@@ -325,6 +325,16 @@ describe('input handling', () => {
     expect(parse(text).components).toHaveLength(depth);
   });
 
+  it('detects SPDX 3 from a shallow @context only, so a deep one cannot overflow the stack', () => {
+    const pkg = '{"type":"software_Package","name":"a","software_packageUrl":"pkg:npm/a@1"}';
+    const depth = 200_000;
+    const deep = `{"@graph":[${pkg}],"@context":${'['.repeat(depth)}"https://spdx.org/rdf/3.0.1/spdx-context.jsonld"${']'.repeat(depth)}}`;
+    // Before: JSON.stringify(@context) threw a RangeError, which is not a ParseError and left the page waiting.
+    expect(() => parse(deep)).toThrow(ParseError);
+    expect(read(`{"@graph":[${pkg}],"@context":["https://spdx.org/rdf/3.0.1/spdx-context.jsonld",{"x":"y"}]}`).items).toEqual(['npm:a@1']);
+    expect(read(`{"@graph":[${pkg}],"@context":{"spdx":"https://spdx.org/rdf/3.0.1/terms/"}}`).items).toEqual(['npm:a@1']);
+  });
+
   it('skips lines over 64 KB in line formats, with a note', () => {
     const r = read(`pkg:npm/a@1\npkg:npm/${'b'.repeat(MAX_LINE)}@1\npkg:npm/c@2\n`);
     expect(r.items).toEqual(['npm:a@1', 'npm:c@2']);

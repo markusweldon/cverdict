@@ -737,10 +737,19 @@ function byFilename(filename: string): FormatId | null {
   return null;
 }
 
+/**
+ * SPDX 3 JSON-LD names its context by URL: a string, an array holding it, or an inline object. Only
+ * that shallow shape is read: a context nested a million levels deep must not overflow the stack.
+ */
+function spdxContext(ctx: unknown): boolean {
+  const strings = (Array.isArray(ctx) ? ctx : [ctx]).flatMap((c) => (isObj(c) ? [...Object.keys(c), ...Object.values(c)] : [c]));
+  return strings.some((c) => typeof c === 'string' && c.toLowerCase().includes('spdx'));
+}
+
 function jsonFormat(doc: unknown): FormatId | null {
   if (!isObj(doc)) return null;
   if (doc.bomFormat === 'CycloneDX') return 'cyclonedx-json';
-  if (typeof doc.spdxVersion === 'string' || (Array.isArray(doc['@graph']) && JSON.stringify(doc['@context'] ?? '').includes('spdx'))) return 'spdx-json';
+  if (typeof doc.spdxVersion === 'string' || (Array.isArray(doc['@graph']) && spdxContext(doc['@context']))) return 'spdx-json';
   if ('lockfileVersion' in doc && (isObj(doc.packages) || isObj(doc.dependencies))) return 'npm-lock';
   if (isObj(doc._meta) && (isObj(doc.default) || isObj(doc.develop))) return 'pipfile';
   if (Array.isArray(doc.packages) && ('content-hash' in doc || 'packages-dev' in doc || '_readme' in doc)) return 'composer';
