@@ -207,7 +207,8 @@ describe('detectWakes: EPSS jumps', () => {
   it('skips the check when the old file is missing, and says so: missing data is not "no jump"', () => {
     const { epss } = tables(jumpy);
     const d = detectWakes(input({ epss, epssPast: null, epssPastError: 'HTTP 404' }));
-    expect(d.skipped).toEqual([{ kind: 'epss', reason: 'EPSS scores from 30 days earlier could not be loaded (HTTP 404), so no jumps were checked' }]);
+    expect(d.skipped).toEqual([{ kind: 'epss', reason: 'The EPSS scores from 30 days earlier could not be loaded, so no jumps were checked' }]);
+    expect(d.notes).toContain('epss: no scores from 30 days earlier (HTTP 404)');
     expect(d.state.epss).toBeNull();
     expect(d.tracking.epss).toBeNull();
   });
@@ -253,7 +254,7 @@ describe('WOKE_SECTION.parse', () => {
     expect(WOKE_SECTION.parse(messy)).toEqual({
       metasploit: null,
       nuclei: { since: daysAgo(1), known: ['CVE-2019-0002'], fresh: { 'CVE-2019-0002': { at: daysAgo(1), url: null } } },
-      epss: { since: daysAgo(1), jumps: { 'CVE-2019-0003': { at: dateAgo(1), from: 0.01, to: 0.5, baseline: false } } },
+      epss: { since: daysAgo(1), checked: null, jumps: { 'CVE-2019-0003': { at: dateAgo(1), from: 0.01, to: 0.5, baseline: false } } },
     });
     expect(WOKE_SECTION.parse('garbage')).toBeNull();
   });
