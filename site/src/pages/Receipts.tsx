@@ -1,6 +1,7 @@
 /** Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV, against two common rules. */
 import { RECEIPT_METHODS, type BacktestItem, type BacktestReceipts, type BacktestSignal, type ForwardReceipts, type MethodScore, type ReceiptItem, type ReceiptMethod } from '../../../shared/contract';
 import { REPO_URL } from '../../../shared/brand';
+import { Fragment } from 'preact';
 import { ExtLink } from '../components/ExtLink';
 import { IconCode, IconTerminal } from '../components/icons';
 import { CveRow } from '../components/Row';
@@ -85,7 +86,17 @@ function ForwardTable({ f }: { f: ForwardReceipts }) {
 function Forward({ f }: { f: ForwardReceipts }) {
   const [first, second] = forwardHeadline(f);
   const older = f.uncounted.filter((u) => u.reason === 'older').length;
-  const listedFirst = f.uncounted.length - older;
+  const listedFirst = f.uncounted.filter((u) => u.reason === 'listed_first').length;
+  const noRecord = f.uncounted.length - older - listedFirst;
+  const notCounted = [
+    older > 0 && (
+      <>
+        {plural(older, 'listing')} of CVEs older than our {f.watch_days}-day window (<a href={href('woke')}>Woke up</a> shows the recent ones)
+      </>
+    ),
+    listedFirst > 0 && `${plural(listedFirst, 'CVE')} that CISA listed before we first saw ${listedFirst === 1 ? 'it' : 'them'}`,
+    noRecord > 0 && `${plural(noRecord, 'CVE')} with no published record yet`,
+  ].filter(Boolean);
   // Every gap since the start (the list keeps only the most recent ones).
   const gaps = f.gap_total ?? { n: f.gaps.length, hours: f.gaps.reduce((a, g) => a + (Date.parse(g.to) - Date.parse(g.from)) / 3_600_000, 0) };
   return (
@@ -103,16 +114,16 @@ function Forward({ f }: { f: ForwardReceipts }) {
         {gaps.n > 0 ? `, with ${plural(gaps.n, 'gap')} longer than 3 hours (${fmtInt(Math.round(gaps.hours))} hours in all)` : ', no gaps longer than 3 hours'}. Alert volume counts the{' '}
         {fmtInt(f.volume[0]?.n ?? 0)} CVEs watched so far.
       </p>
-      {f.uncounted.length > 0 && (
+      {notCounted.length > 0 && (
         <p class="muted">
           Not counted above:{' '}
-          {older > 0 && (
-            <>
-              {plural(older, 'listing')} of CVEs older than our {f.watch_days}-day window (<a href={href('woke')}>Woke up</a> shows the recent ones)
-            </>
-          )}
-          {older > 0 && listedFirst > 0 && ', and '}
-          {listedFirst > 0 && <>{plural(listedFirst, 'CVE')} that CISA listed before we first saw {listedFirst === 1 ? 'it' : 'them'}</>}. All are in the list below.
+          {notCounted.map((part, i) => (
+            <Fragment key={i}>
+              {i > 0 && (i === notCounted.length - 1 ? ' and ' : ', ')}
+              {part}
+            </Fragment>
+          ))}
+          . All are in the list below.
         </p>
       )}
     </section>
@@ -509,7 +520,7 @@ export default function Receipts() {
                             </a>
                           </th>
                           <td class="mono">{fmtDate(u.kev_added, Number.NaN)}</td>
-                          <td>{u.reason === 'older' ? `Older than our ${r.forward.watch_days}-day window` : 'Listed before we first saw it'}</td>
+                          <td>{u.reason === 'older' ? `Older than our ${r.forward.watch_days}-day window` : u.reason === 'listed_first' ? 'Listed before we first saw it' : 'No published CVE record yet'}</td>
                         </tr>
                       ))}
                     </tbody>

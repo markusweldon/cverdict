@@ -464,9 +464,10 @@ export interface UncountedListing {
   /**
    * `older`: the CVE was not in the log, because it was published before the window when the log
    * could have seen it (these are the ones Woke up covers). `listed_first`: the first run that saw
-   * the CVE already saw its KEV listing, or saw the CVE only after the listing date.
+   * the CVE already saw its KEV listing, or saw the CVE only after the listing date. `no_record`:
+   * there is no published CVE record for it yet, so no method could have seen it.
    */
-  reason: 'older' | 'listed_first';
+  reason: 'older' | 'listed_first' | 'no_record';
   row: Row | null;
 }
 

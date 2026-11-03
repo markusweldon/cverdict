@@ -307,7 +307,8 @@ any age, the run records its `dateAdded` and the hour it first saw the listing.
 - **Counted** (`eligible`): KEV additions dated from the `since` day on, for CVEs the log saw in an
   earlier run, on or before the listing date. The rest are in `uncounted`: `older` (the CVE was not
   in the log, because it was published before the window when the log could have seen it; Woke up
-  covers these) or `listed_first` (CISA listed it before, or in the same run as, our first sighting).
+  covers these), `listed_first` (CISA listed it before, or in the same run as, our first sighting)
+  or `no_record` (no published CVE record yet).
 - Each CVE is **watched while it is in the window**. A method that flags it only later is not
   counted, for every method alike.
 - **Alert volume** (`volume`): out of every CVE the log has watched, how many each method flagged at
@@ -327,7 +328,7 @@ any age, the run records its `dateAdded` and the hour it first saw the listing.
 | `listed`, `eligible` | KEV additions since `since`, and how many of them are counted |
 | `methods[]`, `volume[]` | One `MethodScore` and one `AlertVolume` per method |
 | `items[]` | Counted additions, newest listing first: `{ id, kev_added, first_seen, flags, row }`. `flags.<method>` is `{ at, outcome, lead }`: `outcome` is `earlier`, `same_day`, `after` (flagged only at or after the listing) or `never`; `at` is the hour of the first flag; `lead` the days before the listing |
-| `uncounted[]` | `{ id, kev_added, reason: older \| listed_first, row }`, newest first |
+| `uncounted[]` | `{ id, kev_added, reason: older \| listed_first \| no_record, row }`, newest first. `no_record`: CISA listed an ID that has no published CVE record yet |
 
 `row` is the CVE as scored in this run (a `Row` object), or `null` when its record is not in the data.
 

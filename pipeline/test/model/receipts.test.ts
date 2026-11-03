@@ -21,6 +21,7 @@ import {
   type LogEntry,
   type ReceiptsLog,
 } from '../../src/receipts';
+import { toRow } from '../../src/rows';
 import { parseState, readSection, serializeState } from '../../src/state';
 import type { KevRaw, NormalizedCve } from '../../src/types';
 import { cvss, makeCve, makeIngest, makeKev, makeKevCatalog, score } from '../fixtures/model/builders';
@@ -248,7 +249,9 @@ describe('outcomes and metrics', () => {
     const log: ReceiptsLog = { since: '2026-11-03T03:17:00.000Z', last: '2026-11-13T00:17:00.000Z', runs: 200, gaps: [], gapTotal: { n: 0, hours: 0 }, entries, pruned: { n: 0, cverdict: 0, cvss7: 0, epss10: 0 } };
     // An old CVE listed since the log started, and one listed before it started (left out).
     const catalog = kev([makeKev('CVE-2019-0001', { dateAdded: '2026-11-05' }), makeKev('CVE-2018-0001', { dateAdded: '2026-11-01' })]);
-    const f = forwardReceipts(log, catalog, new Map(), new Date('2026-11-13T00:17:00Z'), 30);
+    // The old CVE has a published record (a row); a KEV ID without one would be `no_record`.
+    const oldRow = toRow(score(makeCve({ id: 'CVE-2019-0001', published: '2019-01-01T00:00:00Z', inWindow: false })));
+    const f = forwardReceipts(log, catalog, new Map([[oldRow.id, oldRow]]), new Date('2026-11-13T00:17:00Z'), 30);
     expect(f.listed).toBe(4);
     expect(f.eligible).toBe(2);
     expect(f.uncounted.map((u) => [u.id, u.reason])).toEqual([

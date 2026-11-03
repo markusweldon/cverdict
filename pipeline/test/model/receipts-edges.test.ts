@@ -69,6 +69,19 @@ describe('forward log: listings and flags', () => {
     expect(early.entries.get('CVE-2026-100002')!.flags.cverdict).toBeNull();
   });
 
+  it('tells an older CVE from a KEV ID without a published record', () => {
+    const log = updateLog(null, [], catalog(), T0).log;
+    const old = makeKev('CVE-2019-0001', { dateAdded: ymd(at(24)) });
+    const unpublished = makeKev('CVE-2026-999999', { dateAdded: ymd(at(24)) });
+    const row = toRow(score(makeCve({ id: 'CVE-2019-0001', published: '2019-01-01T00:00:00Z', inWindow: false })));
+    const f = forwardReceipts(log, catalog([old, unpublished]), new Map([[row.id, row]]), at(30), 30);
+    expect(f.uncounted.map((u) => [u.id, u.reason])).toEqual([
+      ['CVE-2019-0001', 'older'],
+      ['CVE-2026-999999', 'no_record'],
+    ]);
+    expect(f.listed).toBe(2);
+  });
+
   it('measures lead time in whole UTC days, whatever the hour of the flag', () => {
     const kev = { added: '2026-11-05', seen: hourOf(new Date('2026-11-05T18:00:00Z')) };
     // Flagged 23:00 UTC on the 3rd and 00:00 UTC on the 4th: 2 and 1 days.
