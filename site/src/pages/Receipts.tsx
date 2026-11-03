@@ -295,7 +295,7 @@ function Backtest({ b }: { b: BacktestReceipts }) {
           {b.epss_missing.length > 0 &&
             ` EPSS files could not be loaded for ${plural(b.epss_missing.length, 'day')}. For those CVEs, CVErdict treats EPSS as unknown and “EPSS 10% or more” counts them as not flagged. The backtest tries again the next day.`}
           {(b.sources_down?.length ?? 0) > 0 &&
-            ` We had no data from ${b.sources_down!.join(', ')} when this ran, so that evidence is missing from every figure. The backtest tries again the next day.`}
+            ` We had no data from ${b.sources_down!.join(', ').replace(/, ([^,]*)$/, ' and $1')} when this ran, so that evidence is missing from every figure. The backtest tries again the next day.`}
         </li>
         <li>
           Computed {fmtDateTime(b.computed_at)} and refreshed about once a week. Run it yourself with <code>npm run backtest</code>: <ExtLink href={SCRIPT_URL}>scripts/backtest.ts</ExtLink>, which runs{' '}
@@ -506,7 +506,7 @@ export default function Receipts() {
                   Listed since {fmtDate(r.forward.since, Number.NaN)} but not counted <span class="muted">{plural(r.forward.uncounted.length, 'CVE')}</span>
                 </h3>
                 <div class="tablewrap">
-                  <table class="table table--compact">
+                  <table class="table table--compact rcpt__stack">
                     <caption class="sr-only">KEV additions since the log started that it does not count, and why</caption>
                     <thead>
                       <tr>
@@ -523,8 +523,12 @@ export default function Receipts() {
                               {u.id}
                             </a>
                           </th>
-                          <td class="mono">{fmtDate(u.kev_added, Number.NaN)}</td>
-                          <td>{u.reason === 'older' ? `Older than our ${r.forward.watch_days}-day window` : u.reason === 'listed_first' ? 'Listed before we first saw it' : 'No published CVE record yet'}</td>
+                          <td class="mono" data-label="Added to KEV">
+                            {fmtDate(u.kev_added, Number.NaN)}
+                          </td>
+                          <td data-label="Why not counted">
+                            {u.reason === 'older' ? `Older than our ${r.forward.watch_days}-day window` : u.reason === 'listed_first' ? 'Listed before we first saw it' : 'No published CVE record yet'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
