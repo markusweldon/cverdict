@@ -146,7 +146,7 @@ export const BUDGETS = {
     'v1/receipts.json': 64 * 1024,
     /**
      * Internal carry-forward state (state.ts): woke tracking (~25 KB) plus the Receipts forward log,
-     * which grows to ~200,000 CVEs over its 400-day retention (about 2 bytes gzip each).
+     * which grows to ~200,000 CVEs over its 400-day retention (~230 KB gzip in a realistic simulation).
      */
     'v1/state.json': 640 * 1024,
     'feeds/woke.xml': 64 * 1024,
