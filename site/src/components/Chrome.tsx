@@ -18,6 +18,7 @@ const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
   { name: 'batches', path: 'batches', label: 'Batches' },
   { name: 'explore', path: 'explore', label: 'Explore' },
   { name: 'surge', path: 'surge', label: 'The surge' },
+  { name: 'receipts', path: 'receipts', label: 'Receipts' },
   { name: 'method', path: 'method', label: 'Method' },
   { name: 'feeds', path: 'feeds', label: 'Feeds' },
 ];

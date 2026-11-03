@@ -369,6 +369,40 @@ Much of that step is the cold start: 238 window CVEs score exactly 50 or 52. All
 CVEs of Microsoft's Oct 13 batch score 50, most with the pattern of CVE-2026-105016 above (critical
 network bug, SSVC total and automatable, a vendor with KEV history, too new for EPSS).
 
+### Receipts: the real-time record and a time-matched backtest
+
+The recall above is an upper bound by construction. The [Receipts page](https://cverdict-psi.vercel.app/receipts)
+(`v1/receipts.json`, [DATA.md](DATA.md#receiptsjson)) measures the same question in two stricter ways,
+with the same rules for CVErdict (Exploited or Likely next at knob 50), "CVSS 7 or more" and "EPSS
+10% or more":
+
+- **The forward log** (`pipeline/src/receipts.ts`) records, every hour, when each method first
+  flagged each window CVE, and later whether that came before CISA's KEV listing. It started on
+  2026-11-03 and has no results yet; it never fills in anything from before it started.
+- **The backtest** (`pipeline/src/backtest.ts`, `npm run backtest`) re-scores every KEV addition
+  of the last 180 days with the evidence of the day before its listing wherever the source dates
+  it, and leaves undated evidence out (its "strict" figures) or adds today's value ("with undated
+  evidence", usually the higher figure). It is hindsight and labelled as such.
+
+The backtest on 2026-11-03 (178 KEV additions since 2026-05-07; 38 left out because the CVE was
+published on or after its listing day, 1 without a published record):
+
+| Published up to 2 years before the listing (120) | Flagged before KEV (strict) | With undated evidence |
+|---|--:|--:|
+| CVErdict | 42 (35.0%) | 84 (70.0%) |
+| CVSS 7 or more | 65 (54.2%) | 108 (90.0%) |
+| EPSS 10% or more | 17 (14.2%) | 17 (14.2%) |
+
+For the 19 CVEs published more than 2 years before their listing: CVErdict 15 (17 with undated
+evidence), CVSS 7 or more 3 (19), EPSS 10% or more 12. Over the same 180 days, with today's evidence, CVErdict
+flags 2.6% of the 68,198 new CVEs, CVSS 7 or more 52.2% and EPSS 10% or more 0.2%.
+
+The strict figures are unflattering for CVErdict, and for a known reason: CISA rewrites its part of
+the CVE record when it lists a CVE, so the strict variant cannot use CISA's SSVC exploitation value
+or CISA-ADP CVSS for almost any of these CVEs, and a CNA record changed after the listing loses its
+CVSS too. CVSS 7 or more catches more of these CVEs before KEV, at twenty times the alert volume.
+The forward log is the measurement that settles it.
+
 ## Known blind spots
 
 - **Vendor zero-days without artifacts.** Targeted exploitation of edge devices and enterprise
