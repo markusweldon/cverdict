@@ -148,10 +148,11 @@ export const BUDGETS = {
     'v1/woke.json': 64 * 1024,
     'v1/receipts.json': 64 * 1024,
     /**
-     * Internal carry-forward state (state.ts): woke tracking (~25 KB) plus the Receipts forward log,
-     * which grows to ~200,000 CVEs over its 400-day retention (~230 KB gzip in a realistic simulation).
+     * Internal carry-forward state (state.ts), read only by the pipeline: woke tracking (~25 KB)
+     * plus the Receipts forward log. With times in minutes the log costs about 2.5 bytes gzip per
+     * CVE: ~0.55 MB for the ~225,000 CVEs of 400 days at October 2026 volume (receipts.test.ts).
      */
-    'v1/state.json': 640 * 1024,
+    'v1/state.json': 1024 * 1024,
     'feeds/signal.xml': 64 * 1024,
     'feeds/kev.xml': 32 * 1024,
     'feeds/kev-due.ics': 32 * 1024,

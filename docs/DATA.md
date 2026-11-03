@@ -29,7 +29,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
-| `v1/state.json` | — | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.3 MB |
+| `v1/state.json` | — | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
 | `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
@@ -410,8 +410,8 @@ release, and the file only exists so the pipeline can remember what it saw. It c
 `version` and `data`. Two sections today: `woke` (for Metasploit and Nuclei, the CVE IDs with an
 artifact, when tracking started and when a fresh copy was last compared; recent first sightings;
 recent EPSS jumps) and `receipts` (version 2, times in minutes; the
-forward log behind `receipts.json`, columnar: 1 to 2 bytes gzip per CVE, so a full 400 days of
-CVEs, about 200,000, is roughly 0.25 MB). A missing or unreadable file, or a section of an unknown version,
+forward log behind `receipts.json`, columnar: about 2.5 bytes gzip per CVE, so a full 400 days of
+CVEs, about 225,000 at October 2026 volume, is roughly 0.55 MB). A missing or unreadable file, or a section of an unknown version,
 starts that state fresh. Its size is budgeted like every other file.
 
 ## Feeds
