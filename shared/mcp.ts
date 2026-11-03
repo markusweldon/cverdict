@@ -13,7 +13,7 @@ export const MCP_SERVER = {
   title: BRAND.name,
   /** Same as mcp/package.json (checked by a test). */
   version: '0.1.0',
-  /** npm package name, reserved for when the package is published. */
+  /** npm package name: `npx -y cverdict-mcp`. */
   npm: `${BRAND.slug}-mcp`,
   /** Where the server is documented. */
   docs: `${REPO_URL}/blob/main/mcp/README.md`,
@@ -22,16 +22,17 @@ export const MCP_SERVER = {
 const CLONE_DIR = BRAND.repo.split('/')[1];
 
 /**
- * How to run the server from a clone, for the Feeds page (no npm package yet). `-s` matters: a
- * plain `npm run` prints its own banner to stdout, which is the JSON-RPC channel.
+ * How to run the server, for the Feeds page: the npm package first, then a clone. In the clone
+ * snippet `-s` matters: a plain `npm run` prints its own banner to stdout, the JSON-RPC channel.
  */
 export const MCP_SNIPPETS: readonly [title: string, code: string][] = [
-  ['Claude Code, from a clone', `git clone --single-branch ${REPO_URL}.git\ncd ${CLONE_DIR} && npm ci\nclaude mcp add ${BRAND.slug} -- npm --prefix "$PWD" run -s mcp`],
+  ['Claude Code', `claude mcp add ${BRAND.slug} -- npx -y ${BRAND.slug}-mcp`],
   [
     'Other clients: an mcpServers entry (check yours for the exact key names)',
-    `{\n  "mcpServers": {\n    "${BRAND.slug}": {\n      "command": "npm",\n      "args": ["--prefix", "/path/to/${CLONE_DIR}", "run", "-s", "mcp"]\n    }\n  }\n}`,
+    `{\n  "mcpServers": {\n    "${BRAND.slug}": {\n      "command": "npx",\n      "args": ["-y", "${BRAND.slug}-mcp"]\n    }\n  }\n}`,
   ],
   ['Behind a proxy: add to the entry (Node 22.21 or later; older versions ignore NODE_USE_ENV_PROXY)', `"env": { "NODE_USE_ENV_PROXY": "1", "HTTPS_PROXY": "http://proxy.example:3128" }`],
+  ['From a clone, to run a given commit or work on the server', `git clone --single-branch ${REPO_URL}.git\ncd ${CLONE_DIR} && npm ci\nclaude mcp add ${BRAND.slug} -- npm --prefix "$PWD" run -s mcp`],
 ];
 
 /** Data bases the server tries, in order: the data branch on GitHub, then the site's /data/ rewrite. */

@@ -12,7 +12,8 @@ when GitHub fails, so it keeps working when the site is down.
 ## Install
 
 Node 22.12 or later. The package is [`cverdict-mcp`](https://www.npmjs.com/package/cverdict-mcp)
-on npm: one file, no runtime dependencies, published from GitHub Actions with provenance.
+on npm: one file, no runtime dependencies. Versions after 0.1.0 are published from GitHub Actions
+with npm provenance, which links each one to the commit and workflow that built it.
 
 ```sh
 # Claude Code
