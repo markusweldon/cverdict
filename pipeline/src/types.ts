@@ -14,7 +14,11 @@ import type {
   SourceStatus,
   Ssvc,
   Tier,
+  WokeInfo,
 } from '../../shared/contract';
+
+import type { LoadedState } from './state';
+import type { WakeDetection } from './woke';
 
 export interface Logger {
   info(msg: string): void;
@@ -37,6 +41,8 @@ export interface IngestOptions {
   cvelistDir?: string;
   /** Use this existing PoC-in-GitHub clone instead of cloning/fetching (never modified). */
   pocDir?: string;
+  /** State carried from the previous run (state.ts); missing means a fresh start. */
+  previousState?: LoadedState;
 }
 
 /** A CVE record reduced to what scoring and display need. All text is sanitised plain text. */
@@ -112,6 +118,13 @@ export interface PocRepo {
   fork: boolean;
 }
 
+/** Parsed Exploit-DB file. */
+export interface ExploitDbData {
+  byCve: ExploitIndex['exploitdb'];
+  /** Per CVE: the entry Exploit-DB added first (date_added, else date_published). */
+  firstAdded: Map<string, { date: string; id: string; url: string }>;
+}
+
 export interface ExploitIndex {
   metasploit: Map<string, ExploitEvidence['metasploit']>;
   nuclei: Map<string, ExploitEvidence['nuclei']>;
@@ -140,6 +153,8 @@ export interface IngestResult {
   exploits: ExploitIndex;
   sources: SourceStatus[];
   cvelistCommit: string | null;
+  /** Wake signals found in the full source indexes, and the next woke state (woke.ts). */
+  wake: WakeDetection;
 }
 
 /** KEV CVE ids sharing one canonical vendor (or vendor + product), and how CISA spells it. */
@@ -185,4 +200,6 @@ export interface ScoredCve {
   timeline: CveDetail['timeline'];
   /** Set by assignBatches(). */
   batch: string | null;
+  /** Set by buildWoke() for old CVEs that woke up. */
+  woke: WokeInfo | null;
 }

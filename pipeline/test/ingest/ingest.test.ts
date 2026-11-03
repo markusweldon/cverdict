@@ -104,8 +104,17 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const kept = new Map(result.cves.map((c) => [c.id, c]));
     const inWindow = result.cves.filter((c) => c.inWindow).map((c) => c.id).sort();
     expect(inWindow).toEqual(['CVE-2026-100878', 'CVE-2026-103664', 'CVE-2026-108706', 'CVE-2026-109733', 'CVE-2026-110447', 'CVE-2026-94220']);
-    // Outside the window but KEV-listed: via the CISA-ADP KEV block, or via the catalog only.
-    expect(result.cves.filter((c) => !c.inWindow).map((c) => c.id).sort()).toEqual(['CVE-2026-0257', 'CVE-2026-37106', 'CVE-2026-48172', 'CVE-2026-58644']);
+    // Outside the window but KEV-listed (via the CISA-ADP KEV block, or via the catalog only), or
+    // woke up: CVE-2026-94216 got its first vetted PoC repo 11 days ago.
+    expect(result.cves.filter((c) => !c.inWindow).map((c) => c.id).sort()).toEqual(['CVE-2026-0257', 'CVE-2026-37106', 'CVE-2026-48172', 'CVE-2026-58644', 'CVE-2026-94216']);
+    expect(result.wake.signals.get('CVE-2026-94216')).toEqual([
+      { kind: 'poc', at: '2026-10-15T10:00:00.000Z', first_seen: false, label: 'first PoC repo on GitHub (unverified)', source: 'poc-github', url: 'https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-94216.json' },
+    ]);
+    // No previous state: Metasploit and Nuclei start a baseline, nothing counts as new.
+    expect(result.wake.tracking).toEqual({ metasploit: NOW.toISOString(), nuclei: NOW.toISOString(), epss: null });
+    expect(result.wake.state.metasploit?.known).toContain('CVE-2026-110447');
+    // There is no EPSS file from 30 days earlier in this fixture: the jump check is skipped, not "no jumps".
+    expect(result.wake.skipped.map((s) => s.kind)).toEqual(['epss']);
     // Published after --now, not KEV: dropped. Before the window, not KEV: dropped.
     expect(kept.has('CVE-2026-200001')).toBe(false);
     expect(kept.has('CVE-2026-100174')).toBe(false);
@@ -125,12 +134,15 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(result.kev.version).toBe('2026.10.23');
     expect(result.kev.entries.size).toBe(6);
     expect(result.epss.model).toBe('v2026.06.15');
-    expect([...result.epss.scores.keys()].sort()).toEqual(['CVE-2026-0257', 'CVE-2026-100878', 'CVE-2026-109733', 'CVE-2026-110447', 'CVE-2026-58644']);
+    expect([...result.epss.scores.keys()].sort()).toEqual(['CVE-2026-0257', 'CVE-2026-100878', 'CVE-2026-109733', 'CVE-2026-110447', 'CVE-2026-58644', 'CVE-2026-94216']);
     expect([...result.exploits.metasploit.keys()]).toEqual(['CVE-2026-110447']);
     expect([...result.exploits.nuclei.keys()]).toEqual(['CVE-2026-0257']);
     expect([...result.exploits.exploitdb.keys()]).toEqual(['CVE-2026-100878']);
     expect(result.exploits.poc).toEqual(
-      new Map([['CVE-2026-110447', [{ url: 'https://github.com/real/poc', stars: 4, created: '2026-10-15T10:00:00.000Z', fork: false }]]]),
+      new Map([
+        ['CVE-2026-110447', [{ url: 'https://github.com/real/poc', stars: 4, created: '2026-10-15T10:00:00.000Z', fork: false }]],
+        ['CVE-2026-94216', [{ url: 'https://github.com/other/poc', stars: 1, created: '2026-10-15T10:00:00.000Z', fork: false }]],
+      ]),
     );
 
     const status = Object.fromEntries(result.sources.map((s) => [s.id, s]));
@@ -154,7 +166,7 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const ids = (r: typeof a) => r.cves.map((c) => `${c.id}:${c.inWindow}`).sort();
     expect(ids(b)).toEqual(ids(a));
     expect(b.cves.find((c) => c.id === 'CVE-2026-37106')?.inWindow).toBe(false);
-    expect(slow.log.lines.some((l) => /\(1 KEV looked up after the pass\)/.test(l))).toBe(true);
+    expect(slow.log.lines.some((l) => /\(1 KEV or woke-up records looked up after the pass\)/.test(l))).toBe(true);
     expect(b.history).toEqual(a.history);
   });
 
@@ -167,7 +179,7 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const offline = setup({ offline: true, cacheDir: first.ctx.cacheDir });
     const result = await ingestWith(offline.ctx, { cvelistDir: cvelist.clone, pocDir: poc.clone }, { http: offline.http, limits: LIMITS });
     expect(offline.requested).toEqual([]);
-    expect(result.cves).toHaveLength(10);
+    expect(result.cves).toHaveLength(11);
     const http = result.sources.filter((s) => ['kev', 'epss', 'metasploit', 'nuclei', 'exploitdb'].includes(s.id));
     expect(http.every((s) => s.ok && s.stale && s.error === null)).toBe(true);
   });

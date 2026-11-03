@@ -36,6 +36,12 @@ import {
   type Ssvc,
   type StatsFile,
   type Tier,
+  type WakeKind,
+  type WakeSignal,
+  type WokeFile,
+  type WokeInfo,
+  type WokeItem,
+  WAKE_KINDS,
 } from '../shared/contract';
 import {
   BASE_POINTS,
@@ -1449,6 +1455,20 @@ function timeline(s: Scored): CveDetail['timeline'] {
   return ev.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
 
+/** Older KEV records added in the last 30 days woke up; some also gained a Nuclei template. */
+function wokeInfo(s: Scored): WokeInfo | null {
+  const d = s.d;
+  if (d.inWindow || !d.kev || d.kev.date_added < ymd(NOW - 30 * DAY)) return null;
+  const signals: WakeSignal[] = [];
+  if (d.exploits.nuclei[0]) {
+    signals.push({ kind: 'nuclei', at: iso(NOW - 3 * DAY - 7 * HOUR), first_seen: true, label: 'first Nuclei template', source: 'nuclei', url: d.exploits.nuclei[0].url });
+  }
+  const kevSearch = `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${d.id}`;
+  signals.push({ kind: 'kev', at: d.kev.date_added, first_seen: false, label: 'added to CISA KEV', source: 'kev', url: kevSearch });
+  signals.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  return { at: signals[signals.length - 1].at, signals };
+}
+
 function toDetail(s: Scored): CveDetail {
   const d = s.d;
   return {
@@ -1475,6 +1495,7 @@ function toDetail(s: Scored): CveDetail {
     unknowns: s.unknowns,
     timeline: timeline(s),
     references: d.synth.references,
+    woke: wokeInfo(s),
   };
 }
 
@@ -1832,6 +1853,24 @@ function main(): void {
   writeJson(tmp, 'v1/kev.json', { schema_version: SCHEMA_VERSION, generated_at: GENERATED_AT, catalog_version: '2026.10.24', entries: kevEntries });
   writeJson(tmp, 'v1/stats.json', stats);
   writeJson(tmp, 'v1/changes.json', { schema_version: SCHEMA_VERSION, generated_at: GENERATED_AT, items: changes });
+  const wokeItems: WokeItem[] = older
+    .map((s) => ({ s, info: wokeInfo(s) }))
+    .filter((x): x is { s: Scored; info: WokeInfo } => x.info !== null)
+    .map(({ s, info }) => ({ id: s.d.id, ...info, row: toRow(s) }))
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || b.row.s - a.row.s);
+  const wokeCounts = Object.fromEntries(WAKE_KINDS.map((k) => [k, wokeItems.filter((i) => i.signals.some((x) => x.kind === k)).length])) as Record<WakeKind, number>;
+  const woke: WokeFile = {
+    schema_version: SCHEMA_VERSION,
+    generated_at: GENERATED_AT,
+    since: new Date(NOW - 30 * DAY).toISOString(),
+    days: 30,
+    published_before: new Date(WINDOW_START).toISOString(),
+    tracking: { metasploit: new Date(NOW - 9 * DAY).toISOString(), nuclei: new Date(NOW - 9 * DAY).toISOString(), epss: new Date(NOW - 9 * DAY).toISOString() },
+    skipped: [],
+    counts: wokeCounts,
+    items: wokeItems,
+  };
+  writeJson(tmp, 'v1/woke.json', woke);
 
   const shards = Array.from({ length: SHARD_COUNT }, () => ({}) as Record<string, CveDetail>);
   for (const s of [...window, ...older]) shards[parseInt(shardOf(s.d.id), 16)][s.d.id] = toDetail(s);
@@ -1861,6 +1900,16 @@ function main(): void {
     }))),
   );
   writeFileSync(join(feeds, 'kev-due.ics'), ics(kevEntries));
+  writeFileSync(
+    join(feeds, 'woke.xml'),
+    atom(`urn:${BRAND.slug}:woke`, `${BRAND.name} · old CVEs that woke up`, wokeItems.map((i) => ({
+      id: `urn:${BRAND.slug}:woke:${i.id}`,
+      title: `${i.id} · ${[i.row.v, i.row.p].filter(Boolean).join(' ')} · woke up: ${i.signals[i.signals.length - 1].label}`,
+      updated: i.at.length === 10 ? `${i.at}T00:00:00Z` : i.at,
+      link: `${siteUrl}/cve/${i.id}`,
+      summary: i.signals.map((x) => x.label).join(' · '),
+    }))),
+  );
 
   for (const sub of ['v1', 'feeds']) {
     rmSync(join(out, sub), { recursive: true, force: true });

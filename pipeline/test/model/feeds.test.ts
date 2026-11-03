@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { BRAND } from '../../../shared/brand';
 import type { KevEntry } from '../../../shared/contract';
-import { escapeXml, kevFeed, signalFeed } from '../../src/emit/atom';
+import { escapeXml, kevFeed, signalFeed, wokeFeed } from '../../src/emit/atom';
+import { buildWoke, detectWakes } from '../../src/woke';
 import { escapeIcsText, foldLine, kevDueCalendar } from '../../src/emit/ics';
 import { toDetail } from '../../src/rows';
-import { NOW, cvss, dateAgo, daysAgo, makeCve, makeKev, msf, score, ssvc } from '../fixtures/model/builders';
+import { NOW, cvss, dateAgo, daysAgo, makeCve, makeKev, makeKevCatalog, msf, repo, score, ssvc } from '../fixtures/model/builders';
 
 const SITE = 'https://example.test';
 const opts = { siteUrl: SITE, now: NOW };
@@ -209,5 +210,46 @@ describe('KEV due calendar', () => {
 
   it('is deterministic for the same inputs', () => {
     expect(kevDueCalendar(entries, opts)).toBe(ics);
+  });
+});
+
+describe('woke Atom feed', () => {
+  const id = 'CVE-2019-0001';
+  const kev = [makeKev(id, { dateAdded: dateAgo(2) })];
+  const pocs = new Map([[id, [repo(daysAgo(9))]]]);
+  const wake = detectWakes({
+    now: NOW,
+    kev: makeKevCatalog(kev),
+    exploitdb: null,
+    metasploit: new Map(),
+    nuclei: new Map(),
+    poc: pocs,
+    epss: null,
+    epssPast: null,
+    epssPastError: null,
+    previous: null,
+    previousAt: null,
+  });
+  const s = score(makeCve({ id, published: '2019-05-01T00:00:00.000Z', inWindow: false, title: HOSTILE_TITLE, affected: [{ vendor: '<b>Evil</b> & Co', product: 'Widget', purl: null }] }), {
+    kev,
+    poc: { [id]: [repo(daysAgo(9))] },
+  });
+  const woke = buildWoke([s], wake, NOW, new Date(NOW.getTime() - 30 * 86_400_000)).file;
+  const xml = wokeFeed(woke, opts);
+
+  it('is safe with hostile CVE text', () => {
+    expectSafeXml(xml);
+    expect(xml).toContain('&lt;b&gt;Evil&lt;/b&gt; &amp; Co Widget');
+  });
+
+  it('has one entry per CVE, titled by its newest signal and dated by it', () => {
+    expect([...xml.matchAll(/<entry>/g)]).toHaveLength(1);
+    expect(xml).toContain(`<id>tag:example.test,2026:${BRAND.slug}/woke/${id}</id>`);
+    expect(xml).toContain(`<title type="text">${id} · &lt;b&gt;Evil&lt;/b&gt; &amp; Co Widget · woke up: added to CISA KEV</title>`);
+    expect(xml).toContain(`<updated>${dateAgo(2)}T00:00:00.000Z</updated>`);
+    expect(xml).toContain(`<published>${daysAgo(9)}</published>`);
+    expect(xml).toContain('<summary type="text">Published May 1, 2019.');
+    expect(xml).toContain(`<link rel="alternate" type="text/html" href="${SITE}/woke"/>`);
+    expect(xml).toContain('<category term="woke"/>');
   });
 });

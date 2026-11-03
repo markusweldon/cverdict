@@ -89,5 +89,6 @@ export function toDetail(s: ScoredCve): CveDetail {
     unknowns: s.unknowns,
     timeline: s.timeline,
     references: cve.references,
+    woke: s.woke,
   };
 }

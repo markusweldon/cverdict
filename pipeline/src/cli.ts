@@ -5,7 +5,7 @@
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { BRAND } from '../../shared/brand';
-import { KNOB_MAX, KNOB_MIN, TIERS } from '../../shared/contract';
+import { KNOB_MAX, KNOB_MIN, TIERS, WAKE_KINDS } from '../../shared/contract';
 import { DEFAULT_WINDOW_DAYS } from './config';
 import { formatSizeTable } from './validate';
 import { ValidationFailedError, run, type RunOptions, type RunSummary } from './run';
@@ -108,6 +108,9 @@ export function formatSummary(s: RunSummary): string {
       (c.window_passed > 0 ? ` — 1 in ${Math.round(c.window_published / c.window_passed)}` : ''),
     `Last 24h: ${n(c.published_24h)} published, ${n(c.passed_24h)} passed · last 7d: ${n(c.published_7d)} published, ${n(c.passed_7d)} passed`,
     `KEV: ${n(c.kev_total)} entries, ${n(c.kev_adds_30d)} added in the last 30 days · batches: ${n(c.batches_window)}`,
+    `Woke up (old CVEs, new evidence in ${s.woke.days} days): ${n(s.woke.items.length)} · ` +
+      WAKE_KINDS.map((k) => `${k} ${n(s.woke.counts[k])}`).join(', ') +
+      (s.woke.skipped.length ? ` · skipped: ${[...new Set(s.woke.skipped.map((x) => x.kind))].join(', ')}` : ''),
     '',
     'Top exploited / likely:',
     ...(s.top.length === 0

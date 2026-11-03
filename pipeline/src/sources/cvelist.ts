@@ -104,6 +104,8 @@ export interface ScanOptions {
    * KEV records it could not recognise in time are looked up by path after the tree listing.
    */
   kevIds: Promise<ReadonlySet<string>>;
+  /** More IDs to keep outside the window (old CVEs that woke up); recognised the same way as KEV IDs. */
+  extraIds?: Promise<ReadonlySet<string>>;
   minRecords: number;
   log: Logger;
   signal?: AbortSignal;
@@ -121,7 +123,7 @@ export interface CvelistScan {
   windowPublished: number;
   /** PUBLISHED after `now` (only possible with a frozen --now); never in the window. */
   future: number;
-  /** KEV records added by the by-path lookups after the pass. */
+  /** KEV (or extra) records added by the by-path lookups after the pass. */
   lateKev: number;
 }
 
@@ -140,8 +142,13 @@ export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise
   // Filled in as soon as the catalog arrives; until then only CISA-ADP KEV blocks are recognised.
   const kev: { ids: ReadonlySet<string> | null } = { ids: null };
   const kevReady = opts.kevIds.then((ids) => (kev.ids = ids));
-  // After the listing: KEV IDs not kept so far (some may still be in flight; those are skipped below).
-  const pendingKev = async () => [...(await kevReady)].filter((id) => !kept.has(id));
+  const extra: { ids: ReadonlySet<string> | null } = { ids: null };
+  const extraReady = (opts.extraIds ?? Promise.resolve(new Set<string>())).then((ids) => (extra.ids = ids));
+  // After the listing: KEV and extra IDs not kept so far (some may still be in flight; those are skipped below).
+  const pendingKev = async () => {
+    const [k, x] = await Promise.all([kevReady, extraReady]);
+    return [...new Set([...k, ...x])].filter((id) => !kept.has(id));
+  };
   const started = performance.now();
 
   for await (const { path: file, data, lookup } of recordBlobs(repo, pendingKev, opts.signal)) {
@@ -184,7 +191,7 @@ export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise
       if (recordAiCredit(record)) bump(history.ai, monthKey(meta.published));
       const windowed = inWindow(meta.published);
       if (windowed) scan.windowPublished++;
-      if (windowed || adp.kev || kev.ids?.has(meta.id)) {
+      if (windowed || adp.kev || kev.ids?.has(meta.id) || extra.ids?.has(meta.id)) {
         const cve = normalizeCve(record, meta, windowed);
         if (cve) {
           scan.cves.push(cve);
@@ -204,7 +211,7 @@ export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise
   log.info(
     `cvelist: ${history.totalRecords.toLocaleString('en-US')} records in ${since(started)} — ` +
       `${scan.windowPublished.toLocaleString('en-US')} published in window, ${scan.cves.length.toLocaleString('en-US')} kept ` +
-      `(${scan.lateKev} KEV looked up after the pass), ${scan.rejectedInWindow} rejected in window, ${scan.invalid} invalid` +
+      `(${scan.lateKev} KEV or woke-up records looked up after the pass), ${scan.rejectedInWindow} rejected in window, ${scan.invalid} invalid` +
       `${scan.future ? `, ${scan.future} published after --now` : ''}`,
   );
   return scan;

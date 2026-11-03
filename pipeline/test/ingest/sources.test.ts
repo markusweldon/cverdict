@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { SANITY, type SanityLimits } from '../../src/config';
-import { parseEpssBody, parseEpssCsv, parseEpssHeader } from '../../src/sources/epss';
+import { EPSS, SANITY, type SanityLimits } from '../../src/config';
+import { loadEpssOn, parseEpssBody, parseEpssBodyOn, parseEpssCsv, parseEpssHeader } from '../../src/sources/epss';
+import { HttpClient, type FetchLike } from '../../src/util/http';
 import { parseExploitDb, parseExploitDbBody } from '../../src/sources/exploitdb';
 import { parseKevBody, parseKevCatalog } from '../../src/sources/kev';
 import { parseMetasploit, parseMetasploitBody } from '../../src/sources/metasploit';
@@ -11,7 +12,7 @@ import { parseNuclei } from '../../src/sources/nuclei';
 import { parsePocFile } from '../../src/sources/poc';
 import { SanityError } from '../../src/sources/source';
 import type { CacheMeta } from '../../src/util/http';
-import { FIXTURES } from './helpers';
+import { captureLogger, FIXTURES, tempDir } from './helpers';
 
 const read = (name: string) => readFileSync(path.join(FIXTURES, name));
 const LOOSE: SanityLimits = { ...SANITY, kevEntries: 1, epssRows: 1, metasploitModules: 1, nucleiTemplates: 1, exploitdbRows: 1, pocFiles: 1 };
@@ -108,6 +109,42 @@ describe('EPSS', () => {
   });
 });
 
+describe('EPSS for a past day', () => {
+  const day = (date: string) => gzipSync(`#model_version:v2026.06.15,score_date:${date}T12:00:21Z\ncve,epss,percentile\nCVE-2026-0001,0.02,0.5\n`);
+
+  it('accepts only a file for one of the wanted days', () => {
+    expect(parseEpssBodyOn(day('2026-10-03'), ['2026-10-03', '2026-10-02'], LOOSE).value.scoreDate).toBe('2026-10-03');
+    expect(() => parseEpssBodyOn(day('2026-11-02'), ['2026-10-03'], LOOSE)).toThrow(/is for 2026-11-02, wanted 2026-10-03/);
+  });
+
+  it('tries the archive, then the EPSS host, then the day before, and reuses the cached day without a request', async () => {
+    const cacheDir = tempDir();
+    const requested: string[] = [];
+    const routes: Record<string, () => Response> = {
+      [EPSS.daily('2026-10-03')]: () => new Response('nope', { status: 404 }),
+      [EPSS.dated('2026-10-03')]: () => new Response('nope', { status: 404 }),
+      [EPSS.daily('2026-10-02')]: () => new Response(new Uint8Array(day('2026-10-02')), { status: 200 }),
+    };
+    const fetch: FetchLike = async (url) => {
+      requested.push(url);
+      return routes[url]?.() ?? new Response('nope', { status: 404 });
+    };
+    const http = new HttpClient({ cacheDir, offline: false, log: captureLogger(), fetch, sleep: async () => {} });
+    const first = await loadEpssOn(http, ['2026-10-03', '2026-10-02'], LOOSE);
+    expect(first.data?.scoreDate).toBe('2026-10-02');
+    expect(requested).toEqual([EPSS.daily('2026-10-03'), EPSS.dated('2026-10-03'), EPSS.daily('2026-10-02')]);
+
+    requested.length = 0;
+    expect((await loadEpssOn(http, ['2026-10-03', '2026-10-02'], LOOSE)).data?.scoreDate).toBe('2026-10-02');
+    expect(requested).toEqual([]);
+
+    // The next day wants other dates: the cached file does not stand in for them.
+    const next = await loadEpssOn(http, ['2026-10-04', '2026-10-03'], LOOSE);
+    expect(next.data).toBeNull();
+    expect(next.error).toMatch(/cached copy unusable: EPSS: file is for 2026-10-02/);
+  });
+});
+
 describe('Metasploit', () => {
   it('indexes real modules by referenced CVE, exploits and higher ranks first', () => {
     const { value: byCve, records, version } = parseMetasploitBody(read('msf-sample.json'), LOOSE);
@@ -163,11 +200,27 @@ describe('Nuclei', () => {
 
 describe('Exploit-DB', () => {
   it('indexes real rows by the CVEs in `codes`', () => {
-    const { value: byCve, records, version } = parseExploitDbBody(read('exploitdb-sample.csv'), LOOSE);
+    const { value, records, version } = parseExploitDbBody(read('exploitdb-sample.csv'), LOOSE);
+    const { byCve, firstAdded } = value;
     expect(records).toBe(4);
     expect(version).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(byCve.get('CVE-2009-3699')).toEqual([{ id: '16929', verified: true, url: 'https://www.exploit-db.com/exploits/16929', date: '2010-11-11' }]);
     expect(byCve.get('CVE-2021-44228')?.map((e) => e.id)).toHaveLength(3);
+    expect(firstAdded.get('CVE-2009-3699')).toEqual({ date: '2010-11-11', id: '16929', url: 'https://www.exploit-db.com/exploits/16929' });
+  });
+
+  it('keeps the entry Exploit-DB added first per CVE, by date_added', () => {
+    const csv = [
+      'id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes',
+      '20,exploits/a.txt,a,2019-01-01,x,webapps,php,,2026-10-20,2026-10-20,1,CVE-2019-0001',
+      '10,exploits/b.txt,b,2026-10-25,x,webapps,php,,2026-10-25,2026-10-25,1,CVE-2019-0001;CVE-2019-0002',
+      '11,exploits/c.txt,c,2018-05-05,x,webapps,php,,,,1,CVE-2019-0003',
+    ].join('\n');
+    const { firstAdded } = parseExploitDb(csv);
+    expect(firstAdded.get('CVE-2019-0001')).toMatchObject({ date: '2026-10-20', id: '20' });
+    expect(firstAdded.get('CVE-2019-0002')).toMatchObject({ date: '2026-10-25', id: '10' });
+    // No date_added: date_published stands in.
+    expect(firstAdded.get('CVE-2019-0003')).toMatchObject({ date: '2018-05-05', id: '11' });
   });
 
   it('handles quoted descriptions with commas, quotes and newlines, and multiple CVEs per row', () => {

@@ -11,16 +11,19 @@ import {
   type Meta,
   type Row,
   type Tier,
+  type WokeFile,
 } from '../../../shared/contract';
 import { BATCH_MIN, SCORE_MODEL } from '../../../shared/model';
 import { assignBatches, byScoreThenNewest } from '../batches';
 import { CHANGES_RETENTION_DAYS, buildChanges } from '../changes';
 import { toDetail, toRow } from '../rows';
 import { buildKevPrior, scoreCve } from '../score';
+import { serializeState, EMPTY_STATE, STATE_PATH, type LoadedState } from '../state';
 import { buildStats } from '../stats';
 import type { Enrichment, IngestResult, ScoredCve } from '../types';
 import { DAY_MS, monthKey, ymd } from '../util/dates';
-import { kevFeed, signalFeed } from './atom';
+import { buildWoke, WOKE_SECTION } from '../woke';
+import { kevFeed, signalFeed, wokeFeed } from './atom';
 import { kevDueCalendar } from './ics';
 import { KEV_RECENT_DAYS, PATHS, buildKevFile, buildShards, daysAgo, rowTable, serializeData } from './json';
 
@@ -119,6 +122,8 @@ export interface BuildInput {
   knob: number;
   /** Previous output root for changes.json, if any. */
   previous: string | null;
+  /** The previous run's state file; its sections nobody rewrites are carried over. */
+  previousState?: LoadedState;
   /** Public site base for feed links. */
   siteUrl: string;
 }
@@ -131,15 +136,20 @@ export interface BuiltOutput {
   /** Exploited first, then likely; highest score first (max TOP_SUMMARY). */
   top: Row[];
   scored: ScoredCve[];
+  woke: WokeFile;
 }
 
 /** Score the ingested records and render every output file in memory. Reads only `previous`. */
-export function buildOutput({ ingest: ing, now, windowDays, knob, previous, siteUrl: base }: BuildInput): BuiltOutput {
+export function buildOutput({ ingest: ing, now, windowDays, knob, previous, previousState = EMPTY_STATE, siteUrl: base }: BuildInput): BuiltOutput {
   const windowStart = new Date(now.getTime() - windowDays * DAY_MS);
   const unavailable = new Map(ing.sources.filter((s) => !s.ok).map((s) => [s.id, s.name]));
   const enr: Enrichment = { kev: ing.kev, epss: ing.epss, exploits: ing.exploits, prior: buildKevPrior(ing.kev), unavailable };
   // A frozen --now may predate records in the clone: those do not exist yet from our point of view.
-  const scored = ing.cves.filter((c) => Date.parse(c.published) <= now.getTime()).map((c) => scoreCve(c, enr, { now, knob }));
+  const all = ing.cves.filter((c) => Date.parse(c.published) <= now.getTime()).map((c) => scoreCve(c, enr, { now, knob }));
+  const woke = buildWoke(all, ing.wake, now, windowStart);
+  // Wake candidates that did not qualify (published in the window, or kept for nothing else) are
+  // dropped here, so the shards hold window ∪ KEV ∪ woke records.
+  const scored = all.filter((s) => s.cve.inWindow || s.cve.adpKev !== null || ing.kev.entries.has(s.cve.id) || woke.ids.has(s.cve.id));
   const window = scored.filter((s) => s.cve.inWindow);
   const batches = assignBatches(scored);
 
@@ -165,16 +175,19 @@ export function buildOutput({ ingest: ing, now, windowDays, knob, previous, site
     kev,
     stats,
     changes,
+    woke: woke.file,
   });
+  files.set(STATE_PATH, serializeState(now, [{ key: WOKE_SECTION.key, version: WOKE_SECTION.version, data: ing.wake.state }], previousState));
   const feedOpts = { siteUrl: base, now };
   files.set(PATHS.signalFeed, signalFeed(details.filter((d) => byId.get(d.id)?.cve.inWindow), feedOpts));
   files.set(PATHS.kevFeed, kevFeed(kev.entries, feedOpts));
   files.set(PATHS.kevDueIcs, kevDueCalendar(kev.entries, feedOpts));
+  files.set(PATHS.wokeFeed, wokeFeed(woke.file, feedOpts));
 
   const top = window
     .filter((s) => isPassed(s.tier))
     .sort((a, b) => TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier) || byScoreThenNewest(a, b))
     .slice(0, TOP_SUMMARY)
     .map(toRow);
-  return { files, meta, batches, top, scored };
+  return { files, meta, batches, top, scored, woke: woke.file };
 }

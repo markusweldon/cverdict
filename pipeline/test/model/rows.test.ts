@@ -106,7 +106,7 @@ describe('toDetail', () => {
     const d = toDetail(s);
     const keys: (keyof CveDetail)[] = [
       'id', 'state', 'published', 'reserved', 'updated', 'cna', 'title', 'description', 'cvss', 'cwe', 'affected', 'ssvc', 'kev',
-      'epss', 'exploits', 'ai_credit', 'tags', 'batch', 'score', 'reasons', 'unknowns', 'timeline', 'references',
+      'epss', 'exploits', 'ai_credit', 'tags', 'batch', 'score', 'reasons', 'unknowns', 'timeline', 'references', 'woke',
     ];
     expect(Object.keys(d).sort()).toEqual([...keys].sort());
     expect(d.state).toBe('PUBLISHED');

@@ -3,13 +3,14 @@ import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION, rowsFromTable, type CveShard, type Meta, type RowTable } from '../../../shared/contract';
+import { SCHEMA_VERSION, rowsFromTable, type CveShard, type Meta, type RowTable, type WokeFile, type WokeItem } from '../../../shared/contract';
 import { shardOf } from '../../../shared/shard';
 import { buildOutput } from '../../src/emit/build';
 import { PATHS, SHARD_NAMES, writeFiles } from '../../src/emit/json';
 import { formatSizeTable, validateOutput } from '../../src/validate';
 import type { Logger } from '../../src/types';
-import { NOW, cohort, makeCve, makeIngest, makeKev, msf } from '../fixtures/model/builders';
+import { detectWakes } from '../../src/woke';
+import { NOW, cohort, daysAgo, makeCve, makeIngest, makeKev, makeKevCatalog, msf, repo } from '../fixtures/model/builders';
 
 const cves = [
   ...cohort(55),
@@ -21,7 +22,23 @@ const spec = {
   metasploit: { 'CVE-2026-200003': [msf('exploit/windows/http/x')] },
   epss: { 'CVE-2026-200004': [0.2, 0.99] as [number, number] },
 };
-const built = buildOutput({ ingest: makeIngest(cves, spec), now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://example.test' });
+const OLD = 'CVE-2019-0001';
+cves.push(makeCve({ id: OLD, published: '2019-05-01T00:00:00.000Z', inWindow: false }));
+const pocs = { [OLD]: [repo(daysAgo(8))] };
+const wake = detectWakes({
+  now: NOW,
+  kev: makeKevCatalog(spec.kev),
+  exploitdb: { byCve: new Map(), firstAdded: new Map() },
+  metasploit: new Map(Object.entries(spec.metasploit)),
+  nuclei: new Map(),
+  poc: new Map(Object.entries(pocs)),
+  epss: null,
+  epssPast: null,
+  epssPastError: null,
+  previous: null,
+  previousAt: null,
+});
+const built = buildOutput({ ingest: makeIngest(cves, { ...spec, poc: pocs, wake }), now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://example.test' });
 
 let dir: string;
 beforeEach(async () => {
@@ -42,7 +59,8 @@ describe('validateOutput', () => {
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
     expect(result.ok).toBe(true);
-    expect(result.files).toBe(7 + SHARD_NAMES.length + 3);
+    // 9 JSON files (incl. woke.json and state.json), the shards, 4 feeds.
+    expect(result.files).toBe(9 + SHARD_NAMES.length + 4);
     expect(lines[0]).toMatch(/^file\s+bytes\s+gzip\s+budget\s+status$/);
     expect(lines.some((l) => l.startsWith('v1/index.json'))).toBe(true);
     expect(lines.some((l) => l.startsWith('v1/cve/*.json (256'))).toBe(true);
@@ -142,9 +160,29 @@ describe('validateOutput', () => {
     expect(errors).toContain(`${PATHS.signalFeed}: not an Atom document`);
   });
 
+  it('checks woke.json against the index, the shards and its counts', () => {
+    const woke = read<WokeFile>(PATHS.woke);
+    expect(woke.items.map((i) => i.id)).toEqual([OLD]);
+    expect(read<CveShard>(PATHS.shard(shardOf(OLD))).items[OLD].woke?.signals[0].kind).toBe('poc');
+    const inWindow = rowsFromTable(read<RowTable>(PATHS.index))[0];
+    const fake: WokeItem = { ...woke.items[0], id: inWindow.id, row: inWindow };
+    write(PATHS.woke, { ...woke, items: [...woke.items, fake], counts: { ...woke.counts, poc: 5 } });
+    const { errors } = validateOutput(dir);
+    expect(errors).toContain(`${PATHS.woke}: 1 bad items (first: ${inWindow.id} was published in the window)`);
+    expect(errors).toContain(`${PATHS.woke}: counts.poc is 5, items imply 2`);
+  });
+
+  it('requires woke.json, state.json and the woke feed, and budgets them', () => {
+    unlinkSync(join(dir, PATHS.state));
+    write(PATHS.woke, { ...read<WokeFile>(PATHS.woke), pad: randomBytes(100 * 1024).toString('base64') });
+    const { errors } = validateOutput(dir);
+    expect(errors).toContain(`missing ${PATHS.state}`);
+    expect(errors.some((e) => e.startsWith(`${PATHS.woke}:`) && e.includes('exceeds'))).toBe(true);
+  });
+
   it('enforces the file count limit', () => {
     for (let i = 0; i < 40; i++) write(`v1/extra-${i}.txt`, 'x');
-    expect(validateOutput(dir).errors).toContain(`${266 + 40} files emitted; the limit is 300`);
+    expect(validateOutput(dir).errors).toContain(`${269 + 40} files emitted; the limit is 300`);
   });
 });
 

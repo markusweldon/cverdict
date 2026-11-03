@@ -54,7 +54,7 @@ describe('run', () => {
     const [ctx, ingestOpts] = ingestMock.mock.calls[0];
     expect(ctx).toMatchObject({ now: NOW, windowDays: 30, offline: true, cacheDir: join(root, 'cache') });
     expect(ctx.windowStart.toISOString()).toBe('2026-09-26T19:30:00.000Z');
-    expect(ingestOpts).toEqual({ cvelistDir: '/clones/cvelist', pocDir: '/clones/poc' });
+    expect(ingestOpts).toMatchObject({ cvelistDir: '/clones/cvelist', pocDir: '/clones/poc', previousState: { status: 'missing' } });
 
     expect(summary.validation.ok).toBe(true);
     expect(summary.meta.counts.window_published).toBe(50); // the record published after --now is dropped

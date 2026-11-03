@@ -16,6 +16,8 @@ import {
   type Meta,
   type Row,
   type Tier,
+  type WokeFile,
+  WAKE_KINDS,
 } from '../../shared/contract';
 import { CVE_ID_RE, shardOf } from '../../shared/shard';
 import { PATHS, SHARD_NAMES } from './emit/json';
@@ -34,9 +36,12 @@ const REQUIRED = [
   PATHS.kev,
   PATHS.stats,
   PATHS.changes,
+  PATHS.woke,
+  PATHS.state,
   PATHS.signalFeed,
   PATHS.kevFeed,
   PATHS.kevDueIcs,
+  PATHS.wokeFeed,
   ...SHARD_NAMES.map(PATHS.shard),
 ];
 
@@ -232,11 +237,42 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
     }
   }
 
+  checkWoke(json, details, index ? new Set(index.map((r) => r.id)) : null, errors);
+
   const kev = json.get(PATHS.kev) as KevFile | undefined;
   if (kev && Array.isArray(kev.entries)) {
     const noDetail = kev.entries.filter((e) => !details.has(e.id));
     if (noDetail.length > 0) warnings.push(`${noDetail.length} kev.json entries have no CVE record in the shards (first: ${noDetail[0].id})`);
   }
+}
+
+/** woke.json: well-formed items, all published before the window, each with a detail that says so. */
+function checkWoke(json: Map<string, JsonObject>, details: Set<string>, indexIds: Set<string> | null, errors: string[]): void {
+  const woke = json.get(PATHS.woke) as WokeFile | undefined;
+  if (woke) {
+    if (!Array.isArray(woke.items)) {
+      errors.push(`${PATHS.woke}: items is not an array`);
+    } else {
+      const bad: string[] = [];
+      const cutoff = Date.parse(woke.published_before);
+      for (const it of woke.items) {
+        if (typeof it?.id !== 'string' || !CVE_ID_RE.test(it.id) || it.row?.id !== it.id) bad.push(`an item has an invalid id`);
+        else if (!Array.isArray(it.signals) || it.signals.length === 0 || it.signals.some((s) => !WAKE_KINDS.includes(s.kind) || Number.isNaN(Date.parse(s.at)))) bad.push(`${it.id} has invalid signals`);
+        else if (!(Date.parse(it.row.pub) < cutoff)) bad.push(`${it.id} was published in the window`);
+        else if (indexIds?.has(it.id)) bad.push(`${it.id} is also in the index`);
+        else if (!details.has(it.id)) bad.push(`${it.id} has no detail shard entry`);
+      }
+      if (bad.length > 0) errors.push(`${PATHS.woke}: ${bad.length} bad items (first: ${bad[0]})`);
+      const ids = new Set(woke.items.map((i) => i.id));
+      if (ids.size !== woke.items.length) errors.push(`${PATHS.woke}: duplicate ids`);
+      for (const k of WAKE_KINDS) {
+        const n = woke.items.filter((i) => Array.isArray(i.signals) && i.signals.some((s) => s.kind === k)).length;
+        if (woke.counts?.[k] !== n) errors.push(`${PATHS.woke}: counts.${k} is ${woke.counts?.[k]}, items imply ${n}`);
+      }
+    }
+  }
+  const state = json.get(PATHS.state);
+  if (state && (state.state_version !== 1 || !asObject(state.sections))) errors.push(`${PATHS.state}: not a state file (state_version 1 with sections)`);
 }
 
 function checkMeta(meta: Meta, index: Row[], json: Map<string, JsonObject>, errors: string[], warnings: string[]): void {
@@ -263,7 +299,7 @@ function checkMeta(meta: Meta, index: Row[], json: Map<string, JsonObject>, erro
 }
 
 function checkFeeds(root: string, present: Set<string>, errors: string[]): void {
-  for (const feed of [PATHS.signalFeed, PATHS.kevFeed]) {
+  for (const feed of [PATHS.signalFeed, PATHS.kevFeed, PATHS.wokeFeed]) {
     if (!present.has(feed)) continue;
     const xml = readFileSync(join(root, feed), 'utf8');
     if (!xml.startsWith('<?xml') || !/<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/.test(xml) || !xml.trimEnd().endsWith('</feed>')) {
