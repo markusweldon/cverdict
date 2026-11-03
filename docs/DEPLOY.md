@@ -154,8 +154,10 @@ curl -sS -o /dev/null -w '%{http_code}\n' -X POST \
 ```
 
 `204` means it worked: a new run appears under Actions → refresh-data, marked
-*workflow_dispatch*. `401` means the token is wrong or expired. `403` or `404` means the token does
-not have Actions write access to this repository, or the repository or branch name is wrong.
+*workflow_dispatch*. `401` means the token is wrong or expired. `403` means the token has this
+repository but not Actions write access. `404` means the repository or workflow file name is
+wrong, or the token was not given this repository. `422` means the branch in the body does not
+exist (use your default branch if it is not `main`).
 
 ### 3. Set up the timer
 
@@ -182,8 +184,8 @@ Save, then use **Test run** and check for a `204` and a new run in Actions.
   time in a public repository.
 - If the token leaks, the worst anyone can do with it is start, cancel or turn off runs and delete
   run logs, artifacts or caches. Revoke it under Developer settings → Fine-grained tokens and make a new one.
-- The **Freshness watchdog** still fails a run when the published data is more than 3 hours old, so
-  a broken timer shows up in Actions as well as in cron-job.org's email.
+- The **Freshness watchdog** checks the data right after each run, so it cannot notice runs that
+  never started. Rely on cron-job.org's failure email to catch a broken timer.
 
 ## Troubleshooting
 
@@ -198,6 +200,9 @@ ticker, and the method page shows each source's status. Open Actions → refresh
   failure to whoever last changed the workflow's schedule.
 - Individual sources falling back to their cache (CISA or FIRST briefly unreachable, GitLab
   rate-limiting Exploit-DB) is normal and does not stop a run; the source shows as *stale*.
+- To retry a failed refresh, use *Run workflow*, not *Re-run failed jobs*. A re-run publishes that
+  old run's data, and once a newer run has published, the publish step refuses it (it would roll
+  back the state carried between runs).
 
 **No runs at all for days.** GitHub disables scheduled workflows in a **public repository with no
 activity for 60 days**, and sends a warning email beforehand. The hourly bot push to the data branch
