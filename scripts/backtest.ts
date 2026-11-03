@@ -56,17 +56,17 @@ export function formatBacktest(b: BacktestReceipts): string {
     '',
     `CISA KEV additions from ${b.from} to ${b.to}: ${n(b.listed)}. This is hindsight: each CVE is re-scored with the`,
     'evidence of the day before its listing where the source dates it. "Strict" leaves out every signal without a usable',
-    'date; "upper bound" adds today\'s value of those signals. Neither uses the listing itself.',
+    'date; "with undated evidence" adds today\'s value of those signals (usually the higher figure). Neither uses the listing.',
     '',
   ];
-  for (const e of b.excluded) out.push(`- Left out, ${e.reason.toLowerCase()}: ${n(e.ids.length)} (${e.ids.join(', ')})`);
+  for (const e of b.excluded) out.push(`- Left out (${e.reason}): ${n(e.ids.length)}: ${e.ids.join(', ')}`);
   if (b.epss_missing.length) out.push(`- EPSS file missing for ${b.epss_missing.length} days (EPSS left out for those CVEs): ${b.epss_missing.join(', ')}`);
   for (const set of b.sets) {
     out.push(
       '',
       `## ${set.key === 'recent' ? `Published up to ${b.old_years} years before the listing` : `Published more than ${b.old_years} years before the listing`}: ${n(set.n)}`,
       '',
-      '| Method | Flagged before the listing (strict) | Upper bound |',
+      '| Method | Flagged before the listing (strict) | With undated evidence |',
       '|---|--:|--:|',
       ...RECEIPT_METHODS.map((m) => `| ${LABEL[m]} | ${scoreRow(set.strict.find((x) => x.method === m))} | ${scoreRow(set.upper.find((x) => x.method === m))} |`),
     );
@@ -78,7 +78,7 @@ export function formatBacktest(b: BacktestReceipts): string {
   out.push('', '## Signals', '', '| Signal | Treatment | CVEs affected | Note |', '|---|---|--:|---|');
   for (const s of b.signals) out.push(`| ${s.label} | ${s.treatment.replace('_', '-')} | ${n(s.affected)} | ${s.note} |`);
   out.push('', '## Every CVE', '', '| CVE | Listed | Published | CVErdict | CVSS ≥ 7 | EPSS ≥ 10% | Score | Left out |', '|---|---|---|---|---|---|--:|---|');
-  const mark = (strict: boolean, upper: boolean) => (strict ? 'yes' : upper ? 'upper only' : 'no');
+  const mark = (strict: boolean, upper: boolean) => (strict ? 'yes' : upper ? 'undated only' : 'no');
   for (const i of b.items) {
     out.push(
       `| ${i.id}${i.old ? ' (old)' : ''} | ${i.kev_added} | ${i.published.slice(0, 10)} | ${mark(i.strict.cverdict, i.upper.cverdict)} | ${mark(i.strict.cvss7, i.upper.cvss7)} | ` +

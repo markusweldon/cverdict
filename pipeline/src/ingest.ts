@@ -93,7 +93,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   });
   // Backtest refresh only: EPSS of the days before recent KEV listings, downloaded while the CVE List streams.
   const plan = opts.backtest;
-  const epssAsOfP = plan ? kevP.then((kev) => loadEpssAsOf(http, kev.data, ctx.now, plan.reuse, limits, log, signal)) : Promise.resolve(null);
+  const epssAsOfP = plan ? kevP.then((kev) => loadEpssAsOf(http, kev.data, ctx.now, plan, limits, log, signal)) : Promise.resolve(null);
   const pending = [kevP, epssP, metasploitP, nucleiP, exploitDbP, pocP, pocReadP, epssPastP, wakeP, epssAsOfP];
 
   let repo: CvelistRepo;

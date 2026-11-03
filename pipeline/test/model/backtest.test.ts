@@ -95,17 +95,26 @@ describe('evidence as of the day before the listing', () => {
     expect(scoreOf(asOf(kevCve(), spec, { metasploitModified: new Map([[ID, after(3)]]) }), 'upper').weaponized).toBe(true);
   });
 
-  it('leaves Nuclei templates out of the strict scores (no dates) and in the upper bound', () => {
+  it('leaves Nuclei templates out of the strict scores (no dates) and in the undated variant', () => {
     const spec = { nuclei: { [ID]: [nucleiTemplate(ID)] } };
     expect(scoreOf(asOf(kevCve(), spec), 'strict').weaponized).toBe(false);
     expect(scoreOf(asOf(kevCve(), spec), 'upper').weaponized).toBe(true);
   });
 
-  it('keeps an SSVC assessment made before the cutoff, even "active"; a later one is left out or lowered', () => {
-    const early = scoreOf(asOf(kevCve({ ssvc: ssvc('active', 'yes', 'total', before(2)) })), 'strict');
-    expect(early.exploited).toBe(true);
-    expect(early.reasons[0].id).toBe('ssvc.active');
-    const late = kevCve({ ssvc: ssvc('active', 'yes', 'total', after(0)) });
+  it('trusts an SSVC exploitation value only from an unchanged CISA container; the timestamp dates the rest', () => {
+    const asse = ssvc('active', 'yes', 'total', before(2));
+    // CISA's container unchanged since before the cutoff: the whole assessment counts, "active" included.
+    const unchanged = scoreOf(asOf(kevCve({ ssvc: asse, adpUpdated: before(1) })), 'strict');
+    expect(unchanged.exploited).toBe(true);
+    expect(unchanged.reasons[0].id).toBe('ssvc.active');
+    // Changed after the cutoff (as when CISA adds the KEV block): "active" may date from the listing.
+    const changed = scoreOf(asOf(kevCve({ ssvc: asse, adpUpdated: after(1) })), 'strict');
+    expect(changed.exploited).toBe(false);
+    expect(changed.evidence.cve.ssvc).toMatchObject({ exploitation: '', automatable: 'yes', technical_impact: 'total' });
+    expect(changed.leftOut).toEqual(['ssvc_exploitation']);
+    expect(changed.reasons.some((r) => r.id === 'ssvc.total')).toBe(true);
+    // Assessed on or after the listing day: left out entirely; the undated variant lowers "active".
+    const late = kevCve({ ssvc: ssvc('active', 'yes', 'total', after(0)), adpUpdated: after(1) });
     const strict = scoreOf(asOf(late), 'strict');
     expect(strict.evidence.cve.ssvc).toBeNull();
     expect(strict.leftOut).toContain('ssvc');
@@ -115,6 +124,8 @@ describe('evidence as of the day before the listing', () => {
     expect(upper.leftOut).toEqual(['ssvc_active']);
     const withPoc = scoreOf(asOf(late, { exploitdb: { [ID]: [edb('7', '2026-10-01')] } }), 'upper');
     expect(withPoc.evidence.cve.ssvc?.exploitation).toBe('poc');
+    // A dated "none" needs nothing left out.
+    expect(scoreOf(asOf(kevCve({ ssvc: ssvc('none', 'no', 'partial', before(3)), adpUpdated: after(1) })), 'strict').leftOut).toEqual([]);
   });
 
   it('leaves out CNA CVSS and vendor exploitation text when the CNA changed its record after the cutoff', () => {
@@ -164,8 +175,8 @@ describe('runBacktest', () => {
     expect(b.hindsight).toBe(true);
     expect(b.listed).toBe(4); // the January listing is outside the 180 days
     expect(b.excluded).toEqual([
-      { reason: 'No published CVE record', ids: [gone] },
-      { reason: 'Published on or after the listing day, so no method could flag it before', ids: [late] },
+      { code: 'no_record', reason: 'No published CVE record', ids: [gone] },
+      { code: 'not_public', reason: 'Published on or after the listing day, so no method could flag it before', ids: [late] },
     ]);
     const recent = b.sets.find((s) => s.key === 'recent')!;
     const olds = b.sets.find((s) => s.key === 'old')!;
@@ -187,7 +198,7 @@ describe('runBacktest', () => {
     expect(missing.signals.find((s) => s.key === 'epss')?.affected).toBe(1);
   });
 
-  it('never lets the strict scores beat the upper bound, and reports alert volume over the period', () => {
+  it('adds undated evidence only in the upper variant, and reports alert volume over the period', () => {
     const b = run([kevCve({ cnaUpdated: after(1), ...cvss(9.8) }), makeCve({ id: 'CVE-2026-100050', published: '2026-10-30T00:00:00.000Z', ...cvss(9.8) })], undefined, {
       nuclei: { [ID]: [nucleiTemplate(ID)] },
     });
@@ -201,7 +212,14 @@ describe('runBacktest', () => {
 
 describe('carry-forward', () => {
   const computed = (iso: string): BacktestReceipts =>
-    ({ hindsight: true, computed_at: iso, items: [{ id: ID, kev_added: LISTED, epss: 0.25, epss_date: '2026-10-19' }, { id: 'CVE-2026-1', kev_added: LISTED, epss: null, epss_date: null }], sets: [], signals: [] }) as unknown as BacktestReceipts;
+    ({
+      hindsight: true,
+      computed_at: iso,
+      items: [{ id: ID, kev_added: LISTED, epss: 0.25, epss_date: '2026-10-19' }, { id: 'CVE-2026-1', kev_added: LISTED, epss: null, epss_date: null }],
+      excluded: [{ code: 'not_public', reason: 'x', ids: ['CVE-2026-9'] }, { code: 'no_record', reason: 'y', ids: ['CVE-2026-8'] }],
+      sets: [],
+      signals: [],
+    }) as unknown as BacktestReceipts;
 
   it(`carries a backtest younger than ${BACKTEST_REFRESH_DAYS} days, else plans a refresh reusing known EPSS values`, () => {
     const fresh = computed(new Date(NOW.getTime() - 2 * 86_400_000).toISOString());
@@ -211,6 +229,8 @@ describe('carry-forward', () => {
     expect(stale.carried).toBeNull();
     expect([...stale.plan!.reuse]).toEqual([[`${ID}@${LISTED}`, { date: '2026-10-19', score: 0.25 }]]);
     expect(stale.plan!.volumeFrom.toISOString()).toBe('2026-05-07T03:17:00.000Z');
+    // A CVE published after its listing stays excluded, so its EPSS is not downloaded again; one without a record may appear.
+    expect([...stale.plan!.skip]).toEqual(['CVE-2026-9']);
     // From the future (a clock problem): refresh.
     expect(decideBacktest(computed('2026-12-01T00:00:00Z'), NOW).plan).not.toBeNull();
     expect(decideBacktest(null, NOW).note).toMatch(/no previous backtest/);

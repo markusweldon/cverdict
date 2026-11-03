@@ -13,6 +13,8 @@ import { parsePocFile } from '../../src/sources/poc';
 import { SanityError } from '../../src/sources/source';
 import type { CacheMeta } from '../../src/util/http';
 import { captureLogger, FIXTURES, tempDir } from './helpers';
+import { loadEpssAsOf } from '../../src/backtest';
+import { makeKev, makeKevCatalog } from '../fixtures/model/builders';
 
 const read = (name: string) => readFileSync(path.join(FIXTURES, name));
 const LOOSE: SanityLimits = { ...SANITY, kevEntries: 1, epssRows: 1, metasploitModules: 1, nucleiTemplates: 1, exploitdbRows: 1, pocFiles: 1 };
@@ -274,5 +276,37 @@ describe('PoC-in-GitHub files', () => {
   it('returns nothing for invalid JSON or non-arrays', () => {
     expect(parsePocFile('not json')).toEqual([]);
     expect(parsePocFile('{"a":1}')).toEqual([]);
+  });
+});
+
+describe('EPSS for the backtest', () => {
+  const file = (date: string, rows: Record<string, number>) =>
+    gzipSync(`#model_version:v2026.06.15,score_date:${date}T12:00:21Z\ncve,epss,percentile\n${Object.entries(rows).map(([id, e]) => `${id},${e},0.5`).join('\n')}\n`);
+
+  it('downloads the day before each listing once, keeps only the listed CVEs, and skips what it already knows', async () => {
+    const now = new Date('2026-11-03T03:17:00Z');
+    const kev = makeKevCatalog([
+      makeKev('CVE-2026-0001', { dateAdded: '2026-10-20' }),
+      makeKev('CVE-2026-0002', { dateAdded: '2026-10-20' }),
+      makeKev('CVE-2026-0003', { dateAdded: '2026-10-22' }), // already known
+      makeKev('CVE-2026-0004', { dateAdded: '2026-10-25' }), // published after its listing last time
+      makeKev('CVE-2026-0005', { dateAdded: '2026-10-28' }), // no file for that day
+      makeKev('CVE-2020-0001', { dateAdded: '2026-01-02' }), // outside the 180 days
+    ]);
+    const requested: string[] = [];
+    const routes: Record<string, Buffer> = { [EPSS.daily('2026-10-19')]: file('2026-10-19', { 'CVE-2026-0001': 0.3, 'CVE-2026-0009': 0.9 }) };
+    const fetch: FetchLike = async (url) => {
+      requested.push(url);
+      const body = routes[url];
+      return body ? new Response(new Uint8Array(body), { status: 200 }) : new Response('nope', { status: 404 });
+    };
+    const http = new HttpClient({ cacheDir: tempDir(), offline: false, log: captureLogger(), fetch, sleep: async () => {} });
+    const plan = { reuse: new Map([['CVE-2026-0003@2026-10-22', { date: '2026-10-21', score: 0.01 }]]), skip: new Set(['CVE-2026-0004']) };
+    const out = await loadEpssAsOf(http, kev, now, plan, LOOSE, captureLogger());
+    expect([...out.keys()].sort()).toEqual(['2026-10-19', '2026-10-27']);
+    expect([...out.get('2026-10-19')!]).toEqual([['CVE-2026-0001', 0.3]]); // 0002 had no score that day; 0009 was not listed
+    expect(out.get('2026-10-27')).toBeNull();
+    expect(requested.filter((u) => u.includes('2026-10-19'))).toHaveLength(1);
+    expect(requested.some((u) => u.includes('2026-10-21') || u.includes('2026-10-24') || u.includes('2026-01-01'))).toBe(false);
   });
 });
