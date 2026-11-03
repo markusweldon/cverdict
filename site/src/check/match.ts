@@ -112,26 +112,30 @@ const GO_MAJOR = /^v[0-9]+$/;
  * Go paths an advisory names that may belong to a module in the file: the same path in other
  * letter case, and paths inside the module. A path belongs to the longest module of the file that
  * is a prefix of it (Go's rule), never across a /vN major-version element, which starts another
- * module. Built once per check from the file's own Go modules.
+ * module. Prefixes compare in any letter case, so a lowercased package URL of a module owns the
+ * paths inside it too. Built once per check from the file's own Go modules.
  */
 function goLookups(go: ReadonlyMap<string, PackageAffect[]>, modules: ReadonlySet<string>): { lower: Map<string, Lookup[]>; inside: Map<string, Lookup[]> } {
   const lower = new Map<string, Lookup[]>();
   const inside = new Map<string, Lookup[]>();
-  const add = (m: Map<string, Lookup[]>, k: string, l: Lookup) => {
+  const add = <T>(m: Map<string, T[]>, k: string, v: T) => {
     const list = m.get(k);
-    if (list) list.push(l);
-    else m.set(k, [l]);
+    if (list) list.push(v);
+    else m.set(k, [v]);
   };
+  // The file's modules by lowercased path (a file can list one module in two spellings).
+  const byLower = new Map<string, string[]>();
+  for (const m of modules) add(byLower, m.toLowerCase(), m);
   for (const [key, list] of go) {
     if (!Array.isArray(list)) continue;
     add(lower, key.toLowerCase(), { key, list, reason: 'name-case' });
-    if (modules.has(key)) continue;
+    if (byLower.has(key.toLowerCase())) continue;
     const parts = key.split('/');
     for (let i = parts.length - 1; i > 0; i--) {
       if (GO_MAJOR.test(parts[i])) break;
-      const owner = parts.slice(0, i).join('/');
-      if (modules.has(owner)) {
-        add(inside, owner, { key, list, reason: 'go-package' });
+      const owners = byLower.get(parts.slice(0, i).join('/').toLowerCase());
+      if (owners) {
+        for (const owner of owners) add(inside, owner, { key, list, reason: 'go-package' });
         break;
       }
     }
