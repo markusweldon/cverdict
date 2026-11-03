@@ -5,6 +5,7 @@ describe('parsePath', () => {
   it('maps every route at the root base', () => {
     expect(parsePath('/', '/')).toEqual({ name: 'today' });
     expect(parsePath('/kev', '/')).toEqual({ name: 'kev' });
+    expect(parsePath('/woke', '/')).toEqual({ name: 'woke' });
     expect(parsePath('/batches/', '/')).toEqual({ name: 'batches' });
     expect(parsePath('/explore', '/')).toEqual({ name: 'explore' });
     expect(parsePath('/surge', '/')).toEqual({ name: 'surge' });

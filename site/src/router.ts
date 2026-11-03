@@ -11,6 +11,7 @@ export type Route =
   | { name: 'today' }
   | { name: 'cve'; id: string }
   | { name: 'kev' }
+  | { name: 'woke' }
   | { name: 'batches' }
   | { name: 'explore' }
   | { name: 'surge' }
@@ -21,6 +22,7 @@ export type Route =
 const STATIC: Readonly<Record<string, Route['name']>> = {
   '': 'today',
   kev: 'kev',
+  woke: 'woke',
   batches: 'batches',
   explore: 'explore',
   surge: 'surge',

@@ -14,6 +14,7 @@ import { CveRow } from '../components/Row';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 import { TierBar, TierIcon } from '../components/Tier';
 import { Waterfall, type Annotation } from '../components/Waterfall';
+import { WokeCard } from '../components/WokeCard';
 import { data } from '../data';
 import {
   batchCounts,
@@ -437,6 +438,7 @@ export default function Today() {
               <Loading label="Loading KEV deadlines" lines={4} height="44px" />
             )}
           </section>
+          <WokeCard level={level} />
           <section class="panel" aria-labelledby="chg-h">
             <header class="panel__head">
               <h2 id="chg-h" class="panel__title">What changed</h2>

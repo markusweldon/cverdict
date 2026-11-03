@@ -51,13 +51,14 @@ function lazyPage<P extends object>(load: () => Promise<{ default: ComponentType
 
 const Cve = lazyPage(() => import('./pages/Cve'));
 const Kev = lazyPage(() => import('./pages/Kev'));
+const Woke = lazyPage(() => import('./pages/Woke'));
 const Batches = lazyPage(() => import('./pages/Batches'));
 const Explore = lazyPage(() => import('./pages/Explore'));
 const Surge = lazyPage(() => import('./pages/Surge'));
 const Method = lazyPage(() => import('./pages/Method'));
 const Feeds = lazyPage(() => import('./pages/Feeds'));
 const NotFound = lazyPage(() => import('./pages/NotFound'));
-const LAZY = [Cve, Kev, Batches, Explore, Surge, Method, Feeds, NotFound];
+const LAZY = [Cve, Kev, Woke, Batches, Explore, Surge, Method, Feeds, NotFound];
 
 function RouteView({ route }: { route: Route }) {
   switch (route.name) {
@@ -67,6 +68,8 @@ function RouteView({ route }: { route: Route }) {
       return <Cve key={route.id} id={route.id} />;
     case 'kev':
       return <Kev />;
+    case 'woke':
+      return <Woke />;
     case 'batches':
       return <Batches />;
     case 'explore':
@@ -82,7 +85,7 @@ function RouteView({ route }: { route: Route }) {
   }
 }
 
-const GO: Readonly<Record<string, string>> = { t: '', k: 'kev', b: 'batches', e: 'explore', s: 'surge', m: 'method', f: 'feeds' };
+const GO: Readonly<Record<string, string>> = { t: '', k: 'kev', w: 'woke', b: 'batches', e: 'explore', s: 'surge', m: 'method', f: 'feeds' };
 const snap = (v: number, d: number) => Math.min(KNOB_MAX, Math.max(KNOB_MIN, Math.round((v + d) / 5) * 5));
 
 function useGlobalKeys(): void {

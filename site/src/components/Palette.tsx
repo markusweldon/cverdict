@@ -27,6 +27,7 @@ interface Item {
 const PAGES: readonly [string, string, string][] = [
   ['Today', '', 'Signal, knob, waterfall'],
   ['KEV clock', 'kev', 'CISA KEV due dates'],
+  ['Woke up', 'woke', 'Old CVEs with new exploit evidence'],
   ['Batches', 'batches', 'Patch-day cohorts'],
   ['Explore', 'explore', 'Every CVE in the window'],
   ['The surge', 'surge', 'Volume since 1999'],
