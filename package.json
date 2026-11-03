@@ -16,7 +16,9 @@
     "preview": "vite preview --config site/vite.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "mcp": "tsx mcp/src/stdio.ts",
+    "build:mcp": "vite build --config mcp/vite.config.ts"
   },
   "dependencies": {
     "preact": "^11.0.2"
@@ -24,11 +26,14 @@
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
     "@preact/preset-vite": "^2.10.6",
     "@types/node": "^22.10.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "zod": "4.6.7"
   }
 }
