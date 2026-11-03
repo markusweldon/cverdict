@@ -43,8 +43,13 @@ export const ALT_MAX = 420;
 
 /** C0 and C1 controls (tabs and newlines included): become spaces. */
 const CONTROLS = /[\u0000-\u001F\u007F-\u009F]/g;
-/** Zero-width characters, bidi controls and lone surrogates: removed, so text cannot hide or reverse. */
-const INVISIBLE = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+/**
+ * Every default-ignorable code point and lone surrogates: removed, so text cannot hide or reverse.
+ * That is the zero-width characters, all bidi controls (U+061C, U+200E, U+200F, U+202A to U+202E,
+ * U+2066 to U+2069), word joiners, the BOM, soft hyphens, fillers, variation selectors and the
+ * tag characters U+E0000 to U+E007F, which render as nothing and can carry hidden text.
+ */
+const INVISIBLE = /\p{Default_Ignorable_Code_Point}|\p{Cs}/gu;
 
 /**
  * Plain, single-line, bounded text from untrusted input: controls become spaces, invisible and

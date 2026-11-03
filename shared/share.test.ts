@@ -205,7 +205,17 @@ describe('cleanText and escapeHtml', () => {
     expect(cleanText('Mi\u200Bcro\u200Dsoft\uFEFF \u2060Corp', 50)).toBe('Microsoft Corp');
     expect(cleanText('\u202Egnp.exe\u202C \u2066x\u2069', 50)).toBe('gnp.exe x');
     expect(cleanText('lone \uD800 high', 50)).toBe('lone high');
+    expect(cleanText('lone \uDC00 low', 50)).toBe('lone low');
     expect(cleanText('a \u2014 b\u2014c', 50)).toBe('a, b-c');
+  });
+
+  it('removes every other invisible character: the Arabic letter mark, tag characters, soft hyphens and fillers', () => {
+    // U+061C is a bidi control too; tag characters spell hidden text ("A", then the cancel tag).
+    expect(cleanText('gnp\u061c.exe', 50)).toBe('gnp.exe');
+    expect(cleanText('Evil\u{E0041}\u{E007F}Corp', 50)).toBe('EvilCorp');
+    expect(cleanText('Mi\u00adcro\u180esoft\u034f \u3164\u115f\u1160Corp\ufe0f', 50)).toBe('Microsoft Corp');
+    // Visible text, emoji and other scripts stay.
+    expect(cleanText('\uc6cc\ub4dc\ud504\ub808\uc2a4 \u00b7 Pubjet | \u067e\u0627\u0628\u062c\u062a \ud83d\ude00', 50)).toBe('\uc6cc\ub4dc\ud504\ub808\uc2a4 \u00b7 Pubjet | \u067e\u0627\u0628\u062c\u062a \ud83d\ude00');
   });
 
   it('cuts by code point, never inside a surrogate pair', () => {
@@ -271,6 +281,7 @@ describe('shareHead', () => {
     expect(h).not.toMatch(/<script/i);
     expect(h).not.toContain('"><');
     expect(h).not.toMatch(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B\u202E]/);
+    expect(h).not.toMatch(/\p{Default_Ignorable_Code_Point}/u);
     // Only <title>, <meta> and <link rel="canonical"> come out, and every attribute is quoted.
     for (const el of h.match(/<[^>]+>/g) ?? []) expect(el).toMatch(/^<(title|\/title|meta (property|name)="[a-z_:0-9]+" content="[^"<>]*" \/|link rel="canonical" href="[^"<>]*" \/)>$/);
     expect(cps(tag(h, 'name', 'description')[0])).toBeLessThanOrEqual(DESCRIPTION_MAX);
