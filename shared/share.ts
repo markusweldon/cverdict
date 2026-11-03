@@ -44,11 +44,11 @@ export const ALT_MAX = 420;
 /** C0 and C1 controls (tabs and newlines included): become spaces. */
 const CONTROLS = /[\u0000-\u001F\u007F-\u009F]/g;
 /** Zero-width characters, bidi controls and lone surrogates: removed, so text cannot hide or reverse. */
-const INVISIBLE = /[​-‏‪-‮⁠-⁤⁦-⁩﻿]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+const INVISIBLE = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
 
 /**
  * Plain, single-line, bounded text from untrusted input: controls become spaces, invisible and
- * bidi characters go, whitespace collapses, " — " becomes ", " (and any other em dash a hyphen),
+ * bidi characters go, whitespace collapses, " U+2014 " becomes ", " (and any other em dash a hyphen),
  * and the result is cut to `max` code points with "…", never inside a surrogate pair.
  */
 export function cleanText(input: unknown, max: number): string {
@@ -59,8 +59,8 @@ export function cleanText(input: unknown, max: number): string {
     .replace(INVISIBLE, '')
     .replace(/\s+/g, ' ')
     .trim()
-    .replace(/ — /g, ', ')
-    .replace(/—/g, '-');
+    .replace(/ \u2014 /g, ', ')
+    .replace(/\u2014/g, '-');
   const cps = Array.from(s);
   return cps.length <= max ? s : `${cps.slice(0, max - 1).join('').trimEnd()}…`;
 }

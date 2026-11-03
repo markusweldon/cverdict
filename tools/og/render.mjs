@@ -106,7 +106,7 @@ const images = [
   { key: 'site', tree: siteTree(), alt: SITE.alt },
   ...Object.keys(TIERS).map((tier) => ({ key: tier, tree: tierTree(tier), alt: `CVErdict verdict: ${TIERS[tier].name}. ${TIERS[tier].line}` })),
 ];
-for (const img of images) if (/—/.test(img.alt)) throw new Error(`em dash in the ${img.key} image text`);
+for (const img of images) if (/\u2014/.test(img.alt)) throw new Error(`em dash in the ${img.key} image text`);
 
 mkdirSync(OUT_DIR, { recursive: true });
 const table = [];
