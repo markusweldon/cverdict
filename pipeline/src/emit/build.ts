@@ -17,7 +17,7 @@ import {
   type WokeFile,
 } from '../../../shared/contract';
 import { BATCH_MIN, SCORE_MODEL } from '../../../shared/model';
-import { runBacktest } from '../backtest';
+import { backtestProblems, runBacktest } from '../backtest';
 import { assignBatches, byScoreThenNewest } from '../batches';
 import { CHANGES_RETENTION_DAYS, buildChanges } from '../changes';
 import { toDetail, toRow } from '../rows';
@@ -133,6 +133,8 @@ export interface BuildInput {
   siteUrl: string;
   /** The backtest carried forward from the previous receipts.json (used when this run does not refresh it). */
   backtest?: BacktestReceipts | null;
+  /** The previous receipts.json's backtest, kept when a refresh cannot read the KEV catalog. */
+  previousBacktest?: BacktestReceipts | null;
 }
 
 export interface BuiltOutput {
@@ -150,7 +152,17 @@ export interface BuiltOutput {
 }
 
 /** Score the ingested records and render every output file in memory. Reads only `previous`. */
-export function buildOutput({ ingest: ing, now, windowDays, knob, previous, previousState = EMPTY_STATE, siteUrl: base, backtest: carried = null }: BuildInput): BuiltOutput {
+export function buildOutput({
+  ingest: ing,
+  now,
+  windowDays,
+  knob,
+  previous,
+  previousState = EMPTY_STATE,
+  siteUrl: base,
+  backtest: carried = null,
+  previousBacktest = null,
+}: BuildInput): BuiltOutput {
   const windowStart = new Date(now.getTime() - windowDays * DAY_MS);
   const unavailable = new Map(ing.sources.filter((s) => !s.ok).map((s) => [s.id, s.name]));
   const enr: Enrichment = { kev: ing.kev, epss: ing.epss, exploits: ing.exploits, prior: buildKevPrior(ing.kev), unavailable };
@@ -193,7 +205,12 @@ export function buildOutput({ ingest: ing, now, windowDays, knob, previous, prev
   const logUpdate = updateLog(readSection(previousState, RECEIPTS_SECTION), scored, ing.kev, now);
   const rowById = new Map(scored.map((s) => [s.cve.id, toRow(s)]));
   let backtest = carried;
-  if (ing.backtest) {
+  if (ing.backtest && unavailable.has('kev')) {
+    // Without the catalog there are no listings to judge: keep the last backtest rather than publish
+    // an empty one for a week. The next run tries again.
+    backtest = previousBacktest && backtestProblems(previousBacktest).length === 0 ? previousBacktest : null;
+    notes.push(`backtest: not refreshed, ${unavailable.get('kev')} has no data (${backtest ? `kept the one computed ${backtest.computed_at}` : 'none to keep'})`);
+  } else if (ing.backtest) {
     const t0 = performance.now();
     backtest = runBacktest({ now, kev: ing.kev, cves: new Map(all.map((s) => [s.cve.id, s.cve])), enr, inputs: ing.backtest, scored: all, rows: rowById });
     notes.push(`backtest: ${backtest.items.length} of ${backtest.listed} KEV additions since ${backtest.from} re-scored in ${Math.round(performance.now() - t0)} ms`);

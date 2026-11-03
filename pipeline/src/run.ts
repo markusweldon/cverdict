@@ -89,10 +89,11 @@ export async function run(opts: RunOptions): Promise<RunSummary> {
 
   log.info(`${BRAND.slug} pipeline · model ${SCORE_MODEL} · now ${now.toISOString()} · window ${opts.windowDays}d · knob ${knob}`);
   const previousState = loadState(opts.previous, log);
-  const decision = decideBacktest(readPreviousBacktest(opts.previous), now, opts.refreshBacktest);
+  const previousBacktest = readPreviousBacktest(opts.previous);
+  const decision = decideBacktest(previousBacktest, now, opts.refreshBacktest);
   log.info(decision.note);
   const ing = await ingest(ctx, { cvelistDir: opts.cvelistDir, pocDir: opts.pocDir, previousState, backtest: decision.plan ?? undefined });
-  const built = buildOutput({ ingest: ing, now, windowDays: opts.windowDays, knob, previous: opts.previous, previousState, siteUrl: base, backtest: decision.carried });
+  const built = buildOutput({ ingest: ing, now, windowDays: opts.windowDays, knob, previous: opts.previous, previousState, siteUrl: base, backtest: decision.carried, previousBacktest });
   for (const note of built.notes) log.info(note);
   log.info(`scored ${built.scored.length} records (${built.meta.counts.window_published} in window), ${built.batches.length} batches, ${built.woke.items.length} woke up`);
 

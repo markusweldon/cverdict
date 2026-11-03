@@ -107,7 +107,9 @@ function Forward({ f }: { f: ForwardReceipts }) {
       <p class="rcpt__headline">
         {first} {second && <strong>{second}</strong>}
       </p>
-      {f.eligible < MIN_N_FOR_PCT && <p class="rcpt__young">The log is young, so this page shows counts only. Percentages appear once {MIN_N_FOR_PCT} listings are counted.</p>}
+      {f.eligible < MIN_N_FOR_PCT && (
+        <p class="rcpt__young">The log is young, so the KEV figures show counts only. Percentages appear once {MIN_N_FOR_PCT} listings are counted.</p>
+      )}
       <ForwardTable f={f} />
       <p class="muted">
         Logging since {fmtDateTime(f.since)}. {plural(f.runs, 'hourly run')} so far
@@ -292,6 +294,8 @@ function Backtest({ b }: { b: BacktestReceipts }) {
           Left out of every figure: {b.excluded.length === 0 ? 'nothing.' : b.excluded.map((e) => <Excluded key={e.code} e={e} />)}
           {b.epss_missing.length > 0 &&
             ` EPSS files could not be loaded for ${plural(b.epss_missing.length, 'day')}. For those CVEs, CVErdict treats EPSS as unknown and “EPSS 10% or more” counts them as not flagged. The backtest tries again the next day.`}
+          {(b.sources_down?.length ?? 0) > 0 &&
+            ` We had no data from ${b.sources_down!.join(', ')} when this ran, so that evidence is missing from every figure. The backtest tries again the next day.`}
         </li>
         <li>
           Computed {fmtDateTime(b.computed_at)} and refreshed about once a week. Run it yourself with <code>npm run backtest</code>: <ExtLink href={SCRIPT_URL}>scripts/backtest.ts</ExtLink>, which runs{' '}

@@ -453,7 +453,10 @@ export interface ReceiptItem {
   /** Hour of the first run that saw the CVE (rounded down). */
   first_seen: string;
   flags: Record<ReceiptMethod, ReceiptFlag>;
-  /** The CVE as it is scored now, for display; null when its record is not in this run. */
+  /**
+   * The CVE as it is scored now, for display; null when its record is not in this run, or when
+   * the listing is more than a year old (to keep the file small; the CVE page has it).
+   */
   row: Row | null;
 }
 
@@ -468,7 +471,6 @@ export interface UncountedListing {
    * there is no published CVE record for it yet, so no method could have seen it.
    */
   reason: 'older' | 'listed_first' | 'no_record';
-  row: Row | null;
 }
 
 /** The forward log: real-time observations, recorded hour by hour, no hindsight. */
@@ -583,6 +585,11 @@ export interface BacktestReceipts {
   signals: BacktestSignal[];
   /** Days before a listing whose EPSS file could not be loaded (EPSS left out for those CVEs). */
   epss_missing: string[];
+  /**
+   * Sources with no usable data when it was computed (their evidence is missing from every figure;
+   * it is recomputed a day later). Absent in copies from before the field existed.
+   */
+  sources_down?: string[];
   items: BacktestItem[];
   /** Command that reproduces the backtest. */
   command: string;

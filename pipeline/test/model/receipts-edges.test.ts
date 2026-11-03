@@ -1,7 +1,8 @@
 /**
  * Edge cases of the Receipts forward log and backtest, written apart from the builder's tests:
  * gap totals past the kept list, listings a run can see but not record, UTC day maths, corrupt and
- * missing state, the retention boundary, KEV evidence in the backtest, and the receipts.json budget.
+ * missing state, the retention boundary, KEV evidence in the backtest, and the receipts.json budget
+ * over five years of listings.
  */
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
@@ -10,11 +11,12 @@ import { SCORE_MODEL } from '../../../shared/model';
 import { evidenceAsOf, kevAsOf, runBacktest, SIGNALS, type BacktestInputs } from '../../src/backtest';
 import { BUDGETS } from '../../src/config';
 import { buildOutput } from '../../src/emit/build';
-import { decodeLog, encodeLog, forwardReceipts, hourOf, LOG_RETENTION_DAYS, outcomeOf, updateLog, type ReceiptsLog } from '../../src/receipts';
+import { decodeLog, encodeLog, forwardReceipts, hourOf, LOG_RETENTION_DAYS, outcomeOf, updateLog, type LogEntry, type ReceiptsLog } from '../../src/receipts';
 import { toRow } from '../../src/rows';
 import { buildKevPrior } from '../../src/score';
 import { parseState } from '../../src/state';
 import type { KevRaw, NormalizedCve } from '../../src/types';
+import type { Row } from '../../../shared/contract';
 import { cvss, makeCve, makeEnrichment, makeIngest, makeKev, makeKevCatalog, score, ssvc } from '../fixtures/model/builders';
 
 const T0 = new Date('2026-11-03T03:17:00Z');
@@ -159,19 +161,40 @@ describe('backtest: evidence', () => {
 });
 
 describe('budgets', () => {
-  it('keeps receipts.json within budget with a year of forward listings next to a full backtest', () => {
-    // ~25 KEV additions a month that we saw first, as many older ones, each with its row; 180 backtest CVEs.
-    const rows = Array.from({ length: 600 }, (_, i) => {
-      const id = `CVE-2026-${200000 + i}`;
-      return toRow(score(makeCve({ id, published: T0.toISOString(), title: `Remote code execution in Example Product ${i} management console`, ...cvss(9.8) })));
-    });
-    const flag = { at: T0.toISOString(), outcome: 'earlier' as const, lead: 3 };
-    const items = rows.slice(0, 300).map((row) => ({ id: row.id, kev_added: '2027-01-01', first_seen: T0.toISOString(), flags: { cverdict: flag, cvss7: flag, epss10: { at: null, outcome: 'never' as const, lead: null } }, row }));
-    const uncounted = rows.slice(300).map((row) => ({ id: row.id, kev_added: '2027-01-01', reason: 'older' as const, row }));
+  // A small seeded generator, so the rows read like real ones and do not compress unrealistically well.
+  const words = 'remote code execution privilege escalation authentication bypass path traversal deserialization buffer overflow management console gateway firewall router appliance server portal plugin agent controller endpoint web interface allows unauthenticated attackers to execute arbitrary commands via crafted request in the of with'.split(' ');
+  let seed = 7;
+  const rnd = (n: number) => ((seed = (seed * 1103515245 + 12345) % 2 ** 31), seed % n);
+  const text = (n: number) => Array.from({ length: n }, () => words[rnd(words.length)]).join(' ');
+  const name = () => Array.from({ length: 2 + rnd(6) }, () => String.fromCharCode(97 + rnd(26))).join('');
+  const realRow = (id: string, published: string) =>
+    toRow(score(makeCve({ id, published, title: text(22), description: text(40), cna: name(), affected: [{ vendor: name(), product: `${name()} ${name()}`, purl: null }], ...cvss(5 + rnd(50) / 10) })));
+
+  it('keeps receipts.json within budget after five years of forward listings next to a full backtest', () => {
+    // ~350 KEV additions a year (the 2026 rate), 40% of them CVEs the log saw first, each with a row.
+    const now = new Date(T0.getTime() + 5 * 365 * 86_400_000);
+    const entries = new Map<string, LogEntry>();
+    const kevs: KevRaw[] = [];
+    const rows = new Map<string, Row>();
+    for (let i = 0; i < 1750; i++) {
+      const id = `CVE-2026-${200000 + i * 7}`;
+      const added = ymd(new Date(T0.getTime() + Math.floor((i * 5 * 365) / 1750) * 86_400_000 + 86_400_000));
+      const seen = hourOf(T0) + i * 25;
+      kevs.push(makeKev(id, { dateAdded: added }));
+      rows.set(id, realRow(id, new Date(seen * 3_600_000).toISOString()));
+      if (i % 10 < 4) entries.set(id, { seen, flags: { cverdict: i % 3 ? seen + 2 : null, cvss7: seen, epss10: i % 2 ? null : seen + 30 }, kev: { added, seen: hourOf(`${added}T20:00:00Z`) } });
+    }
+    const log: ReceiptsLog = { since: T0.toISOString(), last: now.toISOString(), runs: 40_000, gaps: [], gapTotal: { n: 0, hours: 0 }, entries, pruned: { n: 900_000, cverdict: 9000, cvss7: 400_000, epss10: 3000 } };
+    const forward = forwardReceipts(log, catalog(kevs), rows, now, 30);
+    expect(forward.listed).toBe(1750);
+    // Rows only on listings of the last year; none on uncounted listings.
+    const yearAgo = ymd(new Date(now.getTime() - 365 * 86_400_000));
+    expect(forward.items.every((it) => (it.row !== null) === (it.kev_added >= yearAgo))).toBe(true);
+    expect(forward.items.some((it) => it.row !== null)).toBe(true);
+    expect(forward.uncounted.every((u) => !('row' in u))).toBe(true);
     const no = { cverdict: false, cvss7: true, epss10: false };
-    const btItems = rows.slice(0, 180).map((row) => ({ id: row.id, kev_added: '2026-10-01', published: T0.toISOString(), old: false, strict: no, upper: no, score: 50, chips: ['sev.crit_net', 'ssvc.total', 'prior.vendor'], cvss: 9.8, epss: 0.01, epss_date: '2026-09-30', left_out: ['ssvc', 'nuclei'], row }));
-    const zero = RECEIPT_METHODS.map((method) => ({ method, n: 300, before: 0, earlier: 0, same_day: 0, lead: null }));
-    const file = { forward: { items, uncounted, methods: zero }, backtest: { items: btItems } } as unknown as ReceiptsFile;
+    const btItems = [...rows.values()].slice(0, 180).map((row) => ({ id: row.id, kev_added: '2026-10-01', published: T0.toISOString(), old: false, strict: no, upper: no, score: 50, chips: ['sev.crit_net', 'ssvc.total', 'prior.vendor'], cvss: 9.8, epss: 0.01, epss_date: '2026-09-30', left_out: ['ssvc', 'nuclei'], row }));
+    const file = { schema_version: 1, forward, backtest: { items: btItems } } as unknown as ReceiptsFile;
     const gz = gzipSync(JSON.stringify(file)).length;
     expect(gz).toBeLessThan(BUDGETS.gzipBytes['v1/receipts.json']);
   });

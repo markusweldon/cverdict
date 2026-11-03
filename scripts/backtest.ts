@@ -61,6 +61,7 @@ export function formatBacktest(b: BacktestReceipts): string {
   ];
   for (const e of b.excluded) out.push(`- Left out (${e.reason}): ${n(e.ids.length)}: ${e.ids.join(', ')}`);
   if (b.epss_missing.length) out.push(`- EPSS file missing for ${b.epss_missing.length} days (EPSS left out for those CVEs): ${b.epss_missing.join(', ')}`);
+  if (b.sources_down?.length) out.push(`- No data from ${b.sources_down.join(', ')}: their evidence is missing from every figure`);
   for (const set of b.sets) {
     out.push(
       '',

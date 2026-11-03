@@ -1341,7 +1341,7 @@ function mockReceipts(all: readonly Scored[], rows: ReadonlyMap<string, Row>): R
         { method: 'epss10', n: watched, flagged: 6 },
       ],
       items,
-      uncounted: listed.filter((s) => !s.d.inWindow).map((s) => ({ id: s.d.id, kev_added: s.d.kev!.date_added, reason: 'older' as const, row: null })),
+      uncounted: listed.filter((s) => !s.d.inWindow).map((s) => ({ id: s.d.id, kev_added: s.d.kev!.date_added, reason: 'older' as const })),
     },
     backtest: {
       hindsight: true,
