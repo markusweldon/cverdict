@@ -57,7 +57,7 @@ const SITE = {
 };
 const TIERS = {
   exploited: { name: 'Exploited', line: 'Confirmed exploitation: CISA KEV, CISA SSVC or the vendor.' },
-  likely: { name: 'Likely next', line: 'A public exploit, or enough evidence to clear the default knob.' },
+  likely: { name: 'Likely next', line: 'A Metasploit module or Nuclei template, or enough evidence to clear the default knob.' },
   watch: { name: 'Watch', line: 'Some evidence, below the default knob.' },
   quiet: { name: 'Quiet', line: 'Little or no evidence yet, below the default knob. Quiet is not safe.' },
 };
