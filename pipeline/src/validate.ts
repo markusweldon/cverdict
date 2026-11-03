@@ -322,8 +322,9 @@ function checkReceipts(json: Map<string, JsonObject>, errors: string[]): void {
   for (const problem of backtestProblems(r.backtest)) err(problem);
 }
 
-const EVENT_RE = /^(?:(?:>=|<=|<)[^\s]{1,128}|\?[a-z_]{1,32}=[^\s]{0,128})$/;
-const VERSION_RE = /^[^\s]{1,128}$/;
+/** What compactRecord writes: no whitespace, no control characters, at most 128 characters. */
+const EVENT_RE = /^(?:(?:>=|<=|<)[^\s\u0000-\u001f\u007f-\u009f]{1,128}|\?[a-z_]{1,32}=[^\s\u0000-\u001f\u007f-\u009f]{0,128})$/;
+const VERSION_RE = /^[^\s\u0000-\u001f\u007f-\u009f]{1,128}$/;
 
 /**
  * packages.json: one source per ecosystem, packages only for ecosystems with a copy, every entry
