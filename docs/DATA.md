@@ -489,7 +489,7 @@ starts that state fresh. Its size is budgeted like every other file.
 The same data is available to AI agents through a read-only
 [Model Context Protocol](https://modelcontextprotocol.io) server (`mcp/`). It reads the files above
 and adds nothing: every answer names the files it came from. It runs locally over stdio (setup in
-[mcp/README.md](../mcp/README.md); an npm package will follow) and reads raw.githubusercontent.com,
+[mcp/README.md](../mcp/README.md); `npx -y cverdict-mcp`) and reads raw.githubusercontent.com,
 then this site's `/data/`. `CVERDICT_DATA_BASE` (comma-separated base URLs ending in `/v1/`) points
 it at a fork or a mirror. It speaks protocol revision 2026-07-28 and falls back to the 2025
 revisions for older clients.

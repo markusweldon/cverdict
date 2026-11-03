@@ -133,7 +133,7 @@ export default function Feeds() {
         </h2>
         <p class="muted">A read-only MCP server gives AI agents the same verdicts, chips and links as this site. Every answer says when the data was generated and which files it came from.</p>
         <p class="muted">
-          It runs on your machine and reads the data branch on GitHub directly, so it keeps working when this site is down. GitHub sees which of the {SHARD_COUNT} shard files it fetches, never your CVE IDs or search words. If GitHub refuses or fails, the same requests go to this site’s /data/ copy. An npm package will follow; until then, run it from a clone of the repository (Node 22.12 or later).
+          It runs on your machine and reads the data branch on GitHub directly, so it keeps working when this site is down. GitHub sees which of the {SHARD_COUNT} shard files it fetches, never your CVE IDs or search words. If GitHub refuses or fails, the same requests go to this site’s /data/ copy. It is the npm package cverdict-mcp and needs Node 22.12 or later.
         </p>
         <div class="snippets">
           {MCP_SNIPPETS.map(([title, code]) => (

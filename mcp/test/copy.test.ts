@@ -86,16 +86,21 @@ describe('package and docs', () => {
     for (const dep of ['@modelcontextprotocol/server', '@modelcontextprotocol/client', 'zod']) expect(root.devDependencies[dep], dep).toMatch(/^\d+\.\d+\.\d+$/);
     expect(root.scripts.mcp).toBe('tsx mcp/src/stdio.ts');
     expect(root.scripts['build:mcp']).toBe('vite build --config mcp/vite.config.ts');
-    expect(MCP_SNIPPETS[0][1]).toContain('npm --prefix "$PWD" run -s mcp');
-    // The JSON snippet is valid JSON, with -s so npm's banner stays off stdout.
-    expect(JSON.parse(MCP_SNIPPETS[1][1]).mcpServers.cverdict).toEqual({ command: 'npm', args: ['--prefix', '/path/to/cverdict', 'run', '-s', 'mcp'] });
+    expect(MCP_SNIPPETS[0][1]).toBe('claude mcp add cverdict -- npx -y cverdict-mcp');
+    // The JSON snippet is valid JSON and starts the published package.
+    expect(JSON.parse(MCP_SNIPPETS[1][1]).mcpServers.cverdict).toEqual({ command: 'npx', args: ['-y', 'cverdict-mcp'] });
     expect(JSON.parse(`{${MCP_SNIPPETS[2][1]}}`).env).toEqual({ NODE_USE_ENV_PROXY: '1', HTTPS_PROXY: 'http://proxy.example:3128' });
+    // From a clone, -s keeps npm's banner off stdout, which is the JSON-RPC channel.
+    expect(MCP_SNIPPETS[3][1]).toContain('npm --prefix "$PWD" run -s mcp');
   });
 
   it('documents every tool and the same clone command everywhere', () => {
     const docs = { readme: section(read('README.md'), '## Ask from an AI agent (MCP)'), data: section(read('docs/DATA.md'), '## MCP server'), mcp: read('mcp/README.md') };
     for (const [where, text] of Object.entries(docs)) for (const t of MCP_TOOLS) expect(text, `${t.name} in ${where}`).toContain(`\`${t.name}\``);
-    for (const text of [docs.readme, docs.mcp]) expect(text).toContain('claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp');
+    for (const text of [docs.readme, docs.mcp]) {
+      expect(text).toContain('claude mcp add cverdict -- npx -y cverdict-mcp');
+      expect(text).toContain('claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp');
+    }
     expect(docs.readme).toContain(`1 to ${LIMITS.ids} CVE IDs`);
     expect(docs.data).toContain(`1 to ${LIMITS.ids} CVE IDs (${LIMITS.detailIds} with \`detail\`)`);
     expect(docs.mcp).toContain(`1 to ${LIMITS.ids} IDs, at most ${LIMITS.detailIds} with \`detail\``);

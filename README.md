@@ -222,13 +222,19 @@ Every file, every field, sharding and the versioning policy: [docs/DATA.md](docs
 CVErdict also runs as a read-only [MCP](https://modelcontextprotocol.io) server, so an AI agent can
 ask for verdicts and get the same score, chips and links as the site, with the time of the run and
 the files behind every answer. No key, no account. It runs on your machine and reads the `data`
-branch on GitHub directly, so it does not depend on the site. An npm package will follow; for now,
-run it from a clone (Node 22.12 or later):
+branch on GitHub directly, so it does not depend on the site. It is the npm package
+[`cverdict-mcp`](https://www.npmjs.com/package/cverdict-mcp) (Node 22.12 or later):
+
+```sh
+claude mcp add cverdict -- npx -y cverdict-mcp      # Claude Code; other clients: mcp/README.md
+```
+
+To run a given commit or work on the server, run it from a clone instead:
 
 ```sh
 git clone --single-branch https://github.com/markusweldon/cverdict.git
 cd cverdict && npm ci
-claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp      # Claude Code; other clients: mcp/README.md
+claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp
 ```
 
 Tools: `get_verdict` (1 to 15 CVE IDs), `list_signal`, `kev_due`, `woke_up`, `receipts` and
