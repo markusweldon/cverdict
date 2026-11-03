@@ -9,6 +9,7 @@ describe('parsePath', () => {
     expect(parsePath('/receipts', '/')).toEqual({ name: 'receipts' });
     expect(parsePath('/batches/', '/')).toEqual({ name: 'batches' });
     expect(parsePath('/explore', '/')).toEqual({ name: 'explore' });
+    expect(parsePath('/check', '/')).toEqual({ name: 'check' });
     expect(parsePath('/surge', '/')).toEqual({ name: 'surge' });
     expect(parsePath('/method', '/')).toEqual({ name: 'method' });
     expect(parsePath('/feeds', '/')).toEqual({ name: 'feeds' });
@@ -25,6 +26,7 @@ describe('parsePath', () => {
     expect(parsePath('/repo/', '/repo/')).toEqual({ name: 'today' });
     expect(parsePath('/repo', '/repo/')).toEqual({ name: 'today' });
     expect(parsePath('/repo/cve/CVE-2026-1000', '/repo/')).toEqual({ name: 'cve', id: 'CVE-2026-1000' });
+    expect(parsePath('/repo/check', '/repo/')).toEqual({ name: 'check' });
     expect(parsePath('/other/kev', '/repo/')).toEqual({ name: 'notfound', path: '/other/kev' });
   });
 

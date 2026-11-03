@@ -8,13 +8,15 @@
  * flood: ~16k CVEs in a 30-day window ending 2026-10-26, Microsoft's 1,407-CVE Patch Tuesday on
  * Oct 13, Oracle CPU + Chrome on Oct 20, Linux kernel dumps, the WordPress CNAs and the VulnCheck
  * long tail. Evidence is synthesised per record and scored with the shared model, so every chip,
- * point and tier is self-consistent. A seeded PRNG makes every run byte-identical.
+ * point and tier is self-consistent. A seeded PRNG makes every run byte-identical. packages.json
+ * comes from a small mock OSV mirror run through the pipeline's own builder.
  */
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import {
   KNOB_DEFAULT,
+  PACKAGE_ECOSYSTEMS,
   ROW_COLS,
   SCHEMA_VERSION,
   SIGNAL_MIN_SCORE,
@@ -30,6 +32,7 @@ import {
   type KevInfo,
   type BacktestItem,
   type Meta,
+  type PackageEcosystem,
   type ReceiptFlag,
   type ReceiptItem,
   type ReceiptMethod,
@@ -59,12 +62,15 @@ import {
   RANSOMWARE_BONUS,
   SCORE_MODEL,
 } from '../shared/model';
-import { SHARD_COUNT, shardOf } from '../shared/shard';
+import { SHARD_COUNT, fnv1a, shardOf } from '../shared/shard';
 import { BRAND, REPO_URL } from '../shared/brand';
 import { RECEIPT_DEFINITIONS } from '../pipeline/src/emit/build';
 import { BACKTEST_COMMAND, SIGNALS } from '../pipeline/src/backtest';
 import { scoreMethods } from '../pipeline/src/receipts';
 import { serializeState, STATE_PATH } from '../pipeline/src/state';
+import { buildPackagesFile } from '../pipeline/src/packages';
+import { emptyOsvData, osvStatus, type OsvLite } from '../pipeline/src/sources/osv';
+import { PATHS } from '../pipeline/src/emit/json';
 
 // ───────────────────────────── clock & randomness ─────────────────────────────
 
@@ -1869,6 +1875,67 @@ function plantHostileRecord(drafts: Draft[]): void {
   d.synth.references = ['javascript:alert(document.cookie)', 'https://vuldb.com/?id.333333', 'data:text/html,<script>alert(1)</script>'];
 }
 
+// ───────────────────────────── packages.json ─────────────────────────────
+
+/** Packages the mock advisories name, with real-looking ranges; the CVEs are mock ones. */
+const MOCK_PACKAGES: readonly (readonly [PackageEcosystem, string, string[][], string[]?])[] = [
+  ['npm', 'lodash', [['>=0', '<4.17.21']]],
+  ['npm', '@pkgr/core', [['>=0.2.8', '<0.2.9']]],
+  ['npm', 'vite', [['>=8.0.0', '<8.3.6']]],
+  ['PyPI', 'Pillow', [['>=0', '<12.1.0']]],
+  ['PyPI', 'apache-airflow', [['>=1.10.0', '<1.10.11']]],
+  ['Maven', 'org.apache.logging.log4j:log4j-core', [['>=2.13.0', '<2.15.0'], ['>=2.0-beta9', '<2.3.1'], ['>=2.4', '<2.12.2']]],
+  ['Maven', 'com.thoughtworks.xstream:xstream', [['>=0', '<1.4.18']]],
+  ['Go', 'code.gitea.io/gitea', [['>=1.17.0']]],
+  ['Go', 'stdlib', [['>=0', '<1.22.5']]],
+  ['crates.io', 'webp', [['>=0.0.0-0', '<0.2.6']]],
+  ['RubyGems', 'actionview', [['>=5.2.0', '<5.2.2.1']]],
+  ['Packagist', 'drupal/core', [['>=8.0.0', '<8.3.9'], ['>=8.5.0', '<8.5.1']]],
+  ['Packagist', 'moodle/moodle', [['>=4.0', '<4.0.2']], ['v4.0.0-beta']],
+  ['NuGet', 'CefSharp.Common', [['>=0', '<86.0.241']]],
+  ['NuGet', 'Newtonsoft.Json', [['>=0', '<13.0.1']]],
+];
+const ADVISORY_PREFIX: Record<PackageEcosystem, string> = { npm: 'GHSA', PyPI: 'PYSEC', Maven: 'GHSA', Go: 'GO', 'crates.io': 'RUSTSEC', RubyGems: 'GHSA', Packagist: 'DRUPAL-CORE', NuGet: 'GHSA' };
+const GHSA_CHARS = '23456789cfghjmpqrvwx';
+
+/** A stable advisory ID from a seed, without touching the PRNG (every other mock value stays put). */
+function mockAdvisory(prefix: string, seed: string): string {
+  let h = fnv1a(seed);
+  if (prefix !== 'GHSA') return `${prefix}-2026-${String(h % 9000 + 1000)}`;
+  const part = () => Array.from({ length: 4 }, () => GHSA_CHARS[(h = Math.imul(h ^ 0x9e37, 0x01000193) >>> 0) % 20]).join('');
+  return `GHSA-${part()}-${part()}-${part()}`;
+}
+
+/**
+ * Mock packages.json, built by the pipeline's own builder from a small mock OSV mirror: every
+ * ecosystem, CVEs of every tier, one old KEV CVE, a second advisory for one CVE, an extra version,
+ * and NuGet served from a stale copy so the page's stale state shows.
+ */
+function mockPackages(window: readonly Row[], older: readonly Row[], rows: ReadonlyMap<string, Row>) {
+  const byTier = (t: Tier) => window.filter((r) => r.tier === t);
+  const pool = [...byTier('exploited').slice(0, 4), ...byTier('likely').slice(0, 4), ...byTier('watch').slice(0, 4), ...byTier('quiet').slice(0, 6)];
+  const osv = emptyOsvData('no copy');
+  const records = new Map<PackageEcosystem, OsvLite[]>();
+  MOCK_PACKAGES.forEach(([eco, name, ranges, extra], i) => {
+    const cves = [pool[i % pool.length].id, ...(i % 3 === 0 ? [pool[(i + 7) % pool.length].id] : [])];
+    if (i === 5) cves.push(older[0].id);
+    const id = mockAdvisory(eco === 'Packagist' && !name.startsWith('drupal/') ? 'GHSA' : ADVISORY_PREFIX[eco], `${eco}/${name}`);
+    const list = records.get(eco) ?? [];
+    list.push([id, iso(NOW - (i + 1) * HOUR), cves, [extra ? [name, ranges, extra] : [name, ranges]]]);
+    // Two advisories for one CVE (GHSA plus the ecosystem's own database).
+    if (eco === 'PyPI' && i === 3) list.push([mockAdvisory('GHSA', `${eco}/${name}/2`), iso(NOW - 2 * HOUR), [cves[0]], [[name.toLowerCase(), ranges]]]);
+    records.set(eco, list);
+  });
+  for (const eco of PACKAGE_ECOSYSTEMS) {
+    const list = (records.get(eco) ?? []).sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    const stale = eco === 'NuGet';
+    const fetched = iso(NOW - (stale ? 30 : 1) * HOUR);
+    osv.mirror.ecosystems[eco] = { full_sync_at: iso(NOW - 3 * DAY), zip_etag: null, cursor: iso(NOW - 2 * HOUR), fetched_at: fetched, records: list };
+    osv.statuses[eco] = { ok: true, stale, fetched_at: fetched, modified: iso(NOW - 2 * HOUR), advisories: list.length + 40, error: stale ? 'NuGet/modified_id.csv: HTTP 503' : null };
+  }
+  return { file: buildPackagesFile(osv, rows, GENERATED_AT, WINDOW_DAYS), status: osvStatus(osv.statuses) };
+}
+
 function writeJson(root: string, rel: string, value: unknown): void {
   const file = join(root, rel);
   mkdirSync(dirname(file), { recursive: true });
@@ -1912,6 +1979,8 @@ function main(): void {
   const isPassed = (r: Row) => r.tier === 'exploited' || r.tier === 'likely';
   const since = (ms: number) => indexRows.filter((r) => Date.parse(r.pub) >= NOW - ms);
   const ytd = stats.monthly.filter((m) => m.month.startsWith('2026-')).reduce((a, m) => a + m.published, 0);
+  const olderRows = older.map(toRow);
+  const packages = mockPackages(indexRows, olderRows, new Map([...rowsById, ...olderRows.map((r) => [r.id, r] as const)]));
   const meta: Meta = {
     schema_version: SCHEMA_VERSION,
     generated_at: GENERATED_AT,
@@ -1952,7 +2021,7 @@ function main(): void {
       ai_credited_window: 'Window CVEs whose CNA credits name an AI system or AI lab (information only).',
       batches_window: `Patch-day batches in the window: ${BATCH_MIN}+ CVEs from one CNA on one UTC day.`,
     },
-    sources: sources(414_960),
+    sources: [...sources(414_960), packages.status],
   };
 
   writeJson(tmp, 'v1/meta.json', meta);
@@ -1983,6 +2052,7 @@ function main(): void {
   writeJson(tmp, 'v1/receipts.json', mockReceipts([...window, ...older], rowsById));
   // Every real run writes the state file (validate.ts requires it); the mock carries no sections.
   writeFileSync(join(tmp, STATE_PATH), serializeState(new Date(NOW), []));
+  writeJson(tmp, PATHS.packages, packages.file);
 
   const shards = Array.from({ length: SHARD_COUNT }, () => ({}) as Record<string, CveDetail>);
   for (const s of [...window, ...older]) shards[parseInt(shardOf(s.d.id), 16)][s.d.id] = toDetail(s);

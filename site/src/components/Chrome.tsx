@@ -17,6 +17,7 @@ const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
   { name: 'woke', path: 'woke', label: 'Woke up' },
   { name: 'batches', path: 'batches', label: 'Batches' },
   { name: 'explore', path: 'explore', label: 'Explore' },
+  { name: 'check', path: 'check', label: 'Check' },
   { name: 'surge', path: 'surge', label: 'The surge' },
   { name: 'receipts', path: 'receipts', label: 'Receipts' },
   { name: 'method', path: 'method', label: 'Method' },
@@ -125,7 +126,7 @@ export function Footer() {
           </div>
         </div>
         <p class="foot__text">
-          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, FIRST EPSS, Metasploit, Nuclei, Exploit-DB and PoC-in-GitHub. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
+          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the Check page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
           CISA, MITRE, FIRST or any vendor.
         </p>
         <nav class="foot__links" aria-label="Footer">

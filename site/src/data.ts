@@ -15,6 +15,7 @@ import {
   type CveShard,
   type KevFile,
   type Meta,
+  type PackagesFile,
   type ReceiptsFile,
   type Row,
   type RowTable,
@@ -42,6 +43,8 @@ export interface Loader<T> {
   readonly key: string;
   load(): Promise<T>;
   peek(): T | undefined;
+  /** Drop a load that has not finished, so the next load() asks the server again. */
+  forget?(): void;
 }
 
 export interface DataClient {
@@ -59,6 +62,11 @@ export interface DataClient {
   readonly woke: Loader<WokeFile>;
   /** Receipts: the forward log and the hindsight backtest (404 before receipts.json existed). */
   readonly receipts: Loader<ReceiptsFile>;
+  /**
+   * Package versions the tracked CVEs affect (about 120 KB gzip): loaded only when someone starts a
+   * check on the Check page (404 on data published before packages.json existed).
+   */
+  readonly packages: Loader<PackagesFile>;
   /** The CVE's full record, or null when it is not in our data (outside the window and not in KEV). */
   detail(id: string): Loader<CveDetail | null>;
   /** generated_at of the newest meta.json, bypassing every cache (null when unreachable). */
@@ -132,6 +140,7 @@ export function createDataClient(
     return {
       key: path,
       peek: () => resolved.get(path) as T | undefined,
+      forget: () => void (resolved.has(path) || pending.delete(path)),
       load() {
         let p = pending.get(path) as Promise<T> | undefined;
         if (!p) {
@@ -167,6 +176,7 @@ export function createDataClient(
     changes: resource<ChangesFile>('changes.json', json),
     woke: resource<WokeFile>('woke.json', json),
     receipts: resource<ReceiptsFile>('receipts.json', json),
+    packages: resource<PackagesFile>('packages.json', json),
     detail(id) {
       const norm = normalizeCveId(id);
       if (!norm) return { key: `cve:?${id}`, peek: () => null, load: () => Promise.resolve(null) };

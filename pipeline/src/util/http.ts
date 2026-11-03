@@ -5,6 +5,9 @@
  * backoff and conditional GET (stored ETag / Last-Modified); parse and sanity-check the body; only
  * then write it to `<cache>/sources/<key>.<ext>` + `<key>.meta.json`. If every URL fails, the
  * last good cached copy is served and marked stale. `offline` never touches the network.
+ *
+ * `request()` is the same GET (User-Agent, timeout, retries, status check) for callers that stream
+ * the body themselves, such as the OSV.dev dumps; `readCapped()` reads a body with a byte cap.
  */
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -81,13 +84,69 @@ class HttpStatusError extends Error {
   }
 }
 
+/** A response that must not be retried: over a byte cap, from an unexpected host, or malformed. */
+export class FetchRejected extends Error {
+  override name = 'FetchRejected';
+}
+
 /** Network errors, timeouts, rate limiting and server errors are retried; other statuses are final. */
 function isRetryable(err: unknown): boolean {
+  if (err instanceof FetchRejected) return false;
   if (!(err instanceof HttpStatusError)) return true;
   return err.status === 408 || err.status === 425 || err.status === 429 || err.status >= 500;
 }
 
-function describe(err: unknown): string {
+export interface RequestOptions {
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+  /** Covers the response and `consume()`, per attempt. Default: the client's (60 s). */
+  timeoutMs?: number;
+  /** Delays before each retry. Default: the client's (2 s, 4 s, 8 s). */
+  retryDelaysMs?: readonly number[];
+  /** Non-2xx statuses handed to `consume()` instead of failing (304 always is). */
+  accept?: readonly number[];
+  /** When set, the final URL after redirects must have a host this accepts. */
+  allowHost?: (host: string) => boolean;
+}
+
+/**
+ * Read a response body, at most `maxBytes`. Past the cap the body is cancelled and, unless
+ * `truncate`, a FetchRejected is thrown. With `sink`, chunks go there instead of into memory.
+ */
+export async function readCapped(
+  res: Response,
+  maxBytes: number,
+  opts: { truncate?: boolean; sink?: (chunk: Uint8Array) => Promise<unknown> | void } = {},
+): Promise<{ body: Buffer; bytes: number; truncated: boolean }> {
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  let truncated = false;
+  if (res.body) {
+    const reader = res.body.getReader();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        let chunk = value;
+        if (bytes + chunk.length > maxBytes) {
+          if (!opts.truncate) throw new FetchRejected(`response is larger than ${formatBytes(maxBytes)}`);
+          chunk = chunk.subarray(0, maxBytes - bytes);
+          truncated = true;
+        }
+        bytes += chunk.length;
+        if (opts.sink) await opts.sink(chunk);
+        else chunks.push(chunk);
+        if (truncated) break;
+      }
+    } finally {
+      // Stop the transfer when we stopped reading early; a finished stream ignores this.
+      await reader.cancel().catch(() => {});
+    }
+  }
+  return { body: opts.sink ? Buffer.alloc(0) : Buffer.concat(chunks), bytes, truncated };
+}
+
+export function describe(err: unknown): string {
   if (!(err instanceof Error)) return String(err);
   if (err.name === 'TimeoutError') return 'timed out';
   const cause = (err as Error & { cause?: unknown }).cause;
@@ -208,37 +267,57 @@ export class HttpClient {
     }
   }
 
-  /** GET with timeout and retries (2 s, 4 s, 8 s by default) on network errors and 408/429/5xx. */
-  private async download(url: string, conditional: CacheMeta | null, signal?: AbortSignal): Promise<Download> {
-    const headers: Record<string, string> = { 'user-agent': USER_AGENT, accept: '*/*' };
-    if (conditional?.etag) headers['if-none-match'] = conditional.etag;
-    if (conditional?.last_modified) headers['if-modified-since'] = conditional.last_modified;
-
+  /**
+   * GET with the User-Agent, a timeout per attempt and retries (2 s, 4 s, 8 s by default) on
+   * network errors, timeouts and 408/425/429/5xx. Other statuses throw, except 304 and those in
+   * `accept`. `consume()` reads the response inside the attempt, so the timeout and the retries
+   * cover the body too; a FetchRejected from it is final.
+   */
+  async request<T>(url: string, opts: RequestOptions, consume: (res: Response) => Promise<T>): Promise<T> {
+    const headers: Record<string, string> = { 'user-agent': USER_AGENT, accept: '*/*', ...opts.headers };
+    const delays = opts.retryDelaysMs ?? this.retryDelaysMs;
     for (let attempt = 0; ; attempt++) {
       try {
-        const timeout = AbortSignal.timeout(this.timeoutMs);
+        const timeout = AbortSignal.timeout(opts.timeoutMs ?? this.timeoutMs);
         const res = await this.fetchImpl(url, {
           headers,
           redirect: 'follow',
-          signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+          signal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout,
         });
-        if (res.status === 304) {
-          await res.body?.cancel();
-          return { kind: 'not-modified' };
+        if (opts.allowHost && res.url) {
+          const host = new URL(res.url).hostname;
+          if (!opts.allowHost(host)) {
+            await res.body?.cancel();
+            throw new FetchRejected(`redirected to ${host}, which is not allowed`);
+          }
         }
-        if (!res.ok) {
+        if (!res.ok && res.status !== 304 && !opts.accept?.includes(res.status)) {
           await res.body?.cancel();
           throw new HttpStatusError(res.status);
         }
-        const body = Buffer.from(await res.arrayBuffer());
-        return { kind: 'body', body, etag: res.headers.get('etag'), lastModified: res.headers.get('last-modified') };
+        return await consume(res);
       } catch (err) {
-        const delay = this.retryDelaysMs[attempt];
-        if (signal?.aborted || delay === undefined || !isRetryable(err)) throw err;
+        const delay = delays[attempt];
+        if (opts.signal?.aborted || delay === undefined || !isRetryable(err)) throw err;
         this.options.log.warn(`GET ${url} failed (${describe(err)}); retrying in ${delay / 1000}s`);
         await this.sleep(delay);
       }
     }
+  }
+
+  /** A conditional GET of a whole body, for getSource(). */
+  private download(url: string, conditional: CacheMeta | null, signal?: AbortSignal): Promise<Download> {
+    const headers: Record<string, string> = {};
+    if (conditional?.etag) headers['if-none-match'] = conditional.etag;
+    if (conditional?.last_modified) headers['if-modified-since'] = conditional.last_modified;
+    return this.request(url, { headers, signal }, async (res): Promise<Download> => {
+      if (res.status === 304) {
+        await res.body?.cancel();
+        return { kind: 'not-modified' };
+      }
+      const body = Buffer.from(await res.arrayBuffer());
+      return { kind: 'body', body, etag: res.headers.get('etag'), lastModified: res.headers.get('last-modified') };
+    });
   }
 
   private paths(req: SourceRequest<unknown>) {

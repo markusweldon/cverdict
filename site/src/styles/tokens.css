@@ -33,6 +33,8 @@
 
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* Text from a user's file (the Check page): system fonts only, so no web font subset is fetched for it. */
+  --font-mono-system: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --r-xs: 4px;
   --r-sm: 6px;
   --r: 8px;

@@ -1,0 +1,21 @@
+GIT
+  remote: https://github.com/example/private_gem.git
+  revision: abc
+  specs:
+    private_gem (0.1.0)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    actionview (5.2.1)
+      activesupport (= 5.2.1)
+    jquery-rails (4.4.0)
+    nokogiri (1.15.4-x86_64-linux)
+
+PLATFORMS
+  x86_64-linux
+
+DEPENDENCIES
+  actionview
+BUNDLED WITH
+   2.5.3

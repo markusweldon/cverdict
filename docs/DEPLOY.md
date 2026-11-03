@@ -140,7 +140,7 @@ data branch is updated.
 The site is then at `https://<owner>.github.io/<repo>/`.
 
 Pages has no rewrites, so the job copies `index.html` into a folder per page (`kev/`, `woke/`,
-`receipts/`, `batches/`, `explore/`, `surge/`, `method/`, `feeds/`), which are served with status 200. CVE pages
+`receipts/`, `batches/`, `explore/`, `check/`, `surge/`, `method/`, `feeds/`), which are served with status 200. CVE pages
 (`/cve/<id>`) are served from a copy at `404.html`: they work in a browser, but with HTTP status 404,
 so crawlers, link previews and uptime checks treat them as missing. For CVE links you want to share,
 prefer Vercel.

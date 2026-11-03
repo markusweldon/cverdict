@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /data/v1/cve/
 Disallow: /api/
+Disallow: /data/v1/packages.json

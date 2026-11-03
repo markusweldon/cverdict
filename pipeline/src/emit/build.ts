@@ -12,7 +12,9 @@ import {
   type BacktestReceipts,
   type Meta,
   type ReceiptsFile,
+  type PackagesFile,
   type Row,
+  type SourceId,
   type Tier,
   type WokeFile,
 } from '../../../shared/contract';
@@ -20,6 +22,7 @@ import { BATCH_MIN, SCORE_MODEL } from '../../../shared/model';
 import { backtestProblems, runBacktest } from '../backtest';
 import { assignBatches, byScoreThenNewest } from '../batches';
 import { CHANGES_RETENTION_DAYS, buildChanges } from '../changes';
+import { buildPackagesFile } from '../packages';
 import { toDetail, toRow } from '../rows';
 import { buildKevPrior, scoreCve } from '../score';
 import { encodeLog, forwardReceipts, RECEIPTS_SECTION, updateLog } from '../receipts';
@@ -36,6 +39,12 @@ const HOUR_MS = 3_600_000;
 const TOP_SUMMARY = 10;
 
 const isPassed = (t: Tier) => t === 'exploited' || t === 'likely';
+
+/**
+ * Sources in meta.sources whose data never feeds a score, chip, unknown or the backtest. Their
+ * outages must not change any CVE's output, so they are left out of Enrichment.unavailable.
+ */
+export const NON_SCORING_SOURCES: ReadonlySet<SourceId> = new Set<SourceId>(['osv']);
 const byNewest = (a: ScoredCve, b: ScoredCve) => b.cve.published.localeCompare(a.cve.published) || a.cve.id.localeCompare(b.cve.id);
 const inSignal = (s: ScoredCve) => s.score >= SIGNAL_MIN_SCORE || s.exploited || s.weaponized;
 
@@ -147,6 +156,7 @@ export interface BuiltOutput {
   scored: ScoredCve[];
   woke: WokeFile;
   receipts: ReceiptsFile;
+  packages: PackagesFile;
   /** Log lines (receipts and backtest). */
   notes: string[];
 }
@@ -164,7 +174,7 @@ export function buildOutput({
   previousBacktest = null,
 }: BuildInput): BuiltOutput {
   const windowStart = new Date(now.getTime() - windowDays * DAY_MS);
-  const unavailable = new Map(ing.sources.filter((s) => !s.ok).map((s) => [s.id, s.name]));
+  const unavailable = new Map(ing.sources.filter((s) => !s.ok && !NON_SCORING_SOURCES.has(s.id)).map((s) => [s.id, s.name]));
   const enr: Enrichment = { kev: ing.kev, epss: ing.epss, exploits: ing.exploits, prior: buildKevPrior(ing.kev), unavailable };
   // A frozen --now may predate records in the clone: those do not exist yet from our point of view.
   const all = ing.cves.filter((c) => Date.parse(c.published) <= now.getTime()).map((c) => scoreCve(c, enr, { now, knob }));
@@ -225,6 +235,10 @@ export function buildOutput({
     backtest,
   };
   files.set(PATHS.receipts, JSON.stringify(receipts));
+  const p0 = performance.now();
+  const packages = buildPackagesFile(ing.osv, rowById, generatedAt, windowDays);
+  files.set(PATHS.packages, JSON.stringify(packages));
+  notes.push(`packages: ${packages.cves.rows.length} CVEs named by OSV.dev advisories, built in ${Math.round(performance.now() - p0)} ms`);
   const writes: SectionWrite[] = [{ key: WOKE_SECTION.key, version: WOKE_SECTION.version, data: ing.wake.state }];
   // A log carried over unchanged is left to serializeState, which copies the previous section verbatim.
   if (logUpdate.updated) writes.push({ key: RECEIPTS_SECTION.key, version: RECEIPTS_SECTION.version, data: encodeLog(logUpdate.log) });
@@ -241,7 +255,7 @@ export function buildOutput({
     .sort((a, b) => TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier) || byScoreThenNewest(a, b))
     .slice(0, TOP_SUMMARY)
     .map(toRow);
-  return { files, meta, batches, top, scored, woke: woke.file, receipts, notes };
+  return { files, meta, batches, top, scored, woke: woke.file, receipts, packages, notes };
 }
 
 /** receipts.json `definitions`: what each method and figure means, in plain words. */

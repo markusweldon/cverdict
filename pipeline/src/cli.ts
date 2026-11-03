@@ -7,6 +7,7 @@ import { parseArgs } from 'node:util';
 import { BRAND } from '../../shared/brand';
 import { KNOB_MAX, KNOB_MIN, TIERS, WAKE_KINDS } from '../../shared/contract';
 import { DEFAULT_WINDOW_DAYS } from './config';
+import { packagesSummary } from './packages';
 import { formatSizeTable } from './validate';
 import { ValidationFailedError, run, type RunOptions, type RunSummary } from './run';
 import { parseIsoDate } from './util/dates';
@@ -25,6 +26,8 @@ Options:
   --cache <dir>         Cache for last-good downloads and git clones (default: ${DEFAULT_CACHE})
   --cvelist-dir <dir>   Use an existing cvelistV5 git clone (never modified)
   --poc-dir <dir>       Use an existing PoC-in-GitHub git clone (never modified)
+  --osv-dir <dir>       Read the OSV.dev dumps from <dir>/<ecosystem>.zip instead of downloading
+                        them (the mirror itself lives in <cache>/sources/)
   --now <iso>           Freeze "now", e.g. 2026-10-26T19:30:00Z; no offset means UTC (default: current time)
   --window-days <n>     Window size in days (default: ${DEFAULT_WINDOW_DAYS})
   --knob <n>            Default knob for tiers, ${KNOB_MIN}–${KNOB_MAX} (default: 50)
@@ -57,6 +60,7 @@ export function parseCli(argv: string[]): RunOptions | null {
         cache: { type: 'string', default: DEFAULT_CACHE },
         'cvelist-dir': { type: 'string' },
         'poc-dir': { type: 'string' },
+        'osv-dir': { type: 'string' },
         now: { type: 'string' },
         'window-days': { type: 'string', default: String(DEFAULT_WINDOW_DAYS) },
         knob: { type: 'string' },
@@ -87,6 +91,7 @@ export function parseCli(argv: string[]): RunOptions | null {
     cache: values.cache,
     cvelistDir: values['cvelist-dir'],
     pocDir: values['poc-dir'],
+    osvDir: values['osv-dir'],
     now,
     windowDays,
     offline: values.offline,
@@ -97,6 +102,19 @@ export function parseCli(argv: string[]): RunOptions | null {
 
 const n = (x: number) => x.toLocaleString('en-US');
 const pct = (part: number, whole: number) => (whole === 0 ? '0.0%' : `${((100 * part) / whole).toFixed(1)}%`);
+
+function packagesLine({ packages: file }: RunSummary): string {
+  const p = packagesSummary(file);
+  const copies = file.sources.filter((s) => s.ok).map((s) => s.fetched_at).filter((t): t is string => t !== null).sort();
+  const missing = file.sources.filter((s) => !s.ok).map((s) => s.ecosystem);
+  const stale = file.sources.filter((s) => s.ok && s.stale).map((s) => s.ecosystem);
+  return (
+    `Packages: ${n(p.packages)} packages, ${n(p.cves)} CVEs (${p.byEcosystem.map((e) => `${e.ecosystem} ${n(e.cves)}`).join(', ') || 'none'})` +
+    (copies.length ? `, OSV copy from ${copies[0]}` : '') +
+    (stale.length ? ` · stale: ${stale.join(', ')}` : '') +
+    (missing.length ? ` · not checked: ${missing.join(', ')}` : '')
+  );
+}
 
 function receiptsLine({ receipts: { forward: f, backtest: b } }: RunSummary): string {
   const cv = f.methods.find((m) => m.method === 'cverdict');
@@ -125,6 +143,7 @@ export function formatSummary(s: RunSummary): string {
       WAKE_KINDS.map((k) => `${k} ${n(s.woke.counts[k])}`).join(', ') +
       (s.woke.skipped.length ? ` · skipped: ${[...new Set(s.woke.skipped.map((x) => x.kind))].join(', ')}` : ''),
     receiptsLine(s),
+    packagesLine(s),
     '',
     'Top exploited / likely:',
     ...(s.top.length === 0

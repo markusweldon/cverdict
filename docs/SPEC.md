@@ -91,6 +91,7 @@ npm run pipeline -- [--out site/public/data] [--previous <dir with previous v1/ 
 | `nuclei` | `https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/cves.json` | cache | **NDJSON**; `ID`, `Info.Severity`, `file_path` | ≥ 2,000 lines |
 | `exploitdb` | `https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv` | cache (GitLab rate-limits quickly; fetch at most every 6h — reuse cache if younger) | RFC 4180 CSV; columns `id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes,...`; `codes` is `;`-separated and contains CVE IDs | ≥ 40k rows |
 | `poc-github` | `git clone --depth 1 --no-checkout https://github.com/nomi-sec/PoC-in-GitHub.git` into `<cache>/git/poc` (or fetch) | cache clone as-is | `git ls-tree -r --name-only` → `YYYY/CVE-….json`; cat-file only IDs we need; each file is an array of GitHub repo objects (`html_url, stargazers_count, created_at, fork`) | ≥ 5,000 files |
+| `osv` | per ecosystem (npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist, NuGet): `https://storage.googleapis.com/osv-vulnerabilities/<eco>/modified_id.csv` head (Range requests to the cursor) and the changed `<eco>/<id>.json`; `<eco>/all.zip` every 7 days or without a copy (`--osv-dir` reads local zips) | the mirror in `<cache>/sources/osv-mirror.json.gz`, per ecosystem | ZIP64 reader (`util/zip.ts`, bounded); records with a CVE alias from GHSA, PYSEC, GO, RUSTSEC, DRUPAL-CORE/CONTRIB only (`shared/packages.ts` ATTRIBUTION); compacted to ID, package names and event strings | ≥ about half of today's records per ecosystem; never < 90% of the cached copy. **Never scored** (`NON_SCORING_SOURCES`), only `v1/packages.json` |
 
 HTTP helper: `fetch` with 60 s timeout, 3 retries (2 s, 4 s, 8 s), `User-Agent: <slug>-pipeline (+repo url)`,
 conditional GET with stored ETag/Last-Modified, writes last-good body to cache only after the source's sanity
@@ -202,6 +203,7 @@ v1/stats.json       StatsFile
 v1/changes.json     ChangesFile
 v1/woke.json        WokeFile: CVEs published before the window with new exploitation evidence in 30 days (pipeline/src/woke.ts)
 v1/receipts.json    ReceiptsFile: forward log of KEV catches (pipeline/src/receipts.ts) + hindsight backtest (pipeline/src/backtest.ts)
+v1/packages.json    PackagesFile: package versions the shard CVEs affect, from the OSV mirror (pipeline/src/packages.ts)
 v1/state.json       internal carry-forward state, read back through --previous (pipeline/src/state.ts; unstable)
 feeds/signal.xml    Atom: newest 100 exploited+likely CVEs (title "CVE-… · <vendor> <product> · <tier>", summary = top chips)
 feeds/kev.xml       Atom: KEV additions, last 30 days
@@ -210,7 +212,7 @@ feeds/woke.xml      Atom: up to 100 woke-up CVEs (KEV and Exploit-DB wakes first
 ```
 
 Budgets (gzip, checked by `validate.ts`; warn at 80%, fail at 150%): meta ≤ 8 KB, signal ≤ 120 KB, index ≤ 1 MB,
-each shard ≤ 80 KB, stats ≤ 80 KB, total files ≤ 300. XML/ICS must be escaped properly (no raw CVE text in markup).
+each shard ≤ 80 KB, stats ≤ 80 KB, packages ≤ 256 KB, total files ≤ 300. XML/ICS must be escaped properly (no raw CVE text in markup).
 
 ## 3. Site
 
@@ -223,7 +225,7 @@ shards on demand per CVE (cache in memory). Show a skeleton while loading and a 
 If a CVE isn't in our shards, show "Outside the 30-day window" with links to cve.org / the raw record.
 
 **Routing** (`router.ts`): History API, base-path aware (`import.meta.env.BASE_URL`), intercept same-origin `<a>` clicks.
-Routes: `/` Today · `/cve/:id` · `/kev` · `/woke` · `/receipts` · `/batches` · `/explore` · `/surge` · `/method` · `/feeds`.
+Routes: `/` Today · `/cve/:id` · `/kev` · `/woke` · `/receipts` · `/batches` · `/explore` · `/check` · `/surge` · `/method` · `/feeds`.
 Unknown → 404 view. Update `document.title` per route.
 
 **Pages**
@@ -248,6 +250,14 @@ Unknown → 404 view. Update `document.title` per route.
 - **Explore (`/explore`)**: all window CVEs; virtualised list (render only visible rows); search (ID/vendor/product/title),
   filters (tier, CNA, vendor, chip, publish day `?day=YYYY-MM-DD` shown as a removable "Published Oct 13" chip;
   an invalid day is ignored), sort (score/date); URL-synced.
+- **Check (`/check`)**: an SBOM (CycloneDX JSON or XML, SPDX JSON or tag-value, package URLs) or a lockfile is read
+  in the browser (`check/parse.ts`) and matched against `packages.json` with `shared/versions.ts` (`check/match.ts`);
+  results grouped by tier at the knob, then "possibly affected, version not checked", "not checked" and "no tracked
+  CVE". `packages.json` loads on the first interaction with the input card, never on page open; nothing from the
+  file goes into a request, the URL, history or storage; file text renders in the system monospace font
+  (`--font-mono-system`) so no web font subset is fetched for it; rows do not prefetch shards; results stay in module
+  memory until Clear or reload (`check/session.ts`). Caps: files 50 MB, pasted text 5 MB, lines 64 KB in line formats.
+  The chunk is not warmed on other pages.
 - **The surge (`/surge`)**: monthly published since 1999 (SVG area/line, log toggle, Published/Reserved toggle),
   KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status

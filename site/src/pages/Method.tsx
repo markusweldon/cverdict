@@ -37,6 +37,10 @@ const BLIND_SPOTS: readonly [string, string][] = [
   ['Feeds lag', `Exploit feeds and EPSS need about ${COLD_START_DAYS} days to catch up, so new CVEs show “Too new” instead of a penalty.`],
   ['PoCs are unverified', 'Proof-of-concept repos are counted, never run. Fake PoCs that carry malware are common — treat every link as hostile.'],
   ['Vendor text is data', 'Descriptions are written by CNAs and sometimes contain hostile markup. Everything is shown as plain text.'],
+  [
+    'Check knows only what we track',
+    'The Check page compares an SBOM or lockfile with the CVEs in this data that an OSV.dev advisory ties to a package version, in eight package ecosystems. A clean result there is not a full audit, and “affected” means the version is in the advisory’s range, not that your code reaches the vulnerable part.',
+  ],
 ];
 
 const ATTRIBUTIONS: readonly [string, string, string][] = [
@@ -47,6 +51,11 @@ const ATTRIBUTIONS: readonly [string, string, string][] = [
   ['Nuclei templates', 'https://github.com/projectdiscovery/nuclei-templates', 'MIT, ProjectDiscovery'],
   ['Exploit-DB', 'https://www.exploit-db.com', 'OffSec; only IDs, flags and links are used'],
   ['PoC-in-GitHub', 'https://github.com/nomi-sec/PoC-in-GitHub', 'nomi-sec; linked repos are third-party and unverified'],
+  [
+    'OSV.dev advisories (Check page only)',
+    'https://osv.dev/',
+    'GitHub Advisory Database, PyPI and Go databases (CC-BY-4.0), RustSec (CC0-1.0), Drupal (MIT, Ackama); never part of a score',
+  ],
 ];
 
 function Sources() {
