@@ -7,7 +7,8 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 ## 0. Principles
 
 1. **Static and forkable.** No servers, no accounts, no API keys required. An hourly GitHub Actions job builds
-   JSON; the site is a static SPA that reads it. Anyone can fork and run their own copy.
+   JSON; the site is a static SPA that reads it. Anyone can fork and run their own copy. The MCP server (`mcp/`)
+   runs on the user's own machine and reads the same static files; nothing on the site depends on it.
 2. **NVD-independent.** NIST stopped enriching most CVEs in April 2026. We use CVE List V5 (CNA + CISA-ADP
    containers), CISA KEV, EPSS and public exploit feeds.
 3. **Explainable.** Every score is a sum of chips the user can read, each linked to its source. No ML, no LLM text.
@@ -39,13 +40,20 @@ site/
   src/       main.tsx  app.tsx  router.ts  data.ts  state.ts  format.ts
              components/  pages/  styles/
 .github/workflows/  ci.yml  refresh.yml
-scripts/            publish-data-branch.sh
+mcp/                read-only MCP server for AI agents (stdio), reading the published files
+  src/                     data.ts (bounded, cached reads)  tools.ts (the six tools)  server.ts (factory)  stdio.ts
+  test/                    vitest: fake-fetch unit, protocol and spawn tests; smoke.ts (CI, on mock data)
+  package.json  README.md  LICENSE  LICENSE-THIRD-PARTY   the cverdict-mcp package (not published yet)
+scripts/            publish-data-branch.sh  mcp-measure.ts (MCP answer sizes on real data)
 docs/               SPEC.md  SCORING.md  DATA.md  DEPLOY.md
 vercel.json  README.md  ATTRIBUTIONS.md  LICENSE (MIT)  SECURITY.md  CONTRIBUTING.md
 ```
 
-Single root `package.json` (ESM). Scripts: `pipeline` (tsx), `dev`, `build`, `preview`, `test` (vitest), `typecheck` (tsc).
-Runtime deps: `preact` only. Pipeline uses only Node 22 built-ins (`fetch`, `zlib`, `child_process`, `fs`).
+Single root `package.json` (ESM). Scripts: `pipeline` (tsx), `dev`, `build`, `preview`, `test` (vitest), `typecheck` (tsc),
+`mcp` (the MCP server from source), `build:mcp` (its single-file bundle).
+Runtime deps: `preact` only. Pipeline uses only Node 22 built-ins (`fetch`, `zlib`, `child_process`, `fs`). The MCP
+server's SDK (`@modelcontextprotocol/server`) and `zod` are exact-pinned dev dependencies, bundled into
+`mcp/dist/cverdict-mcp.mjs`; the site never imports them (`shared/mcp.ts` holds the copy both use).
 
 ## 2. Pipeline
 
@@ -240,7 +248,8 @@ Unknown → 404 view. Update `document.title` per route.
   KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status
   from `meta.sources` (fresh/stale), blind spots ("Not in KEV ≠ not exploited", "exposure is yours"), attributions.
-- **Feeds (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`.
+- **Feeds (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`; section `#mcp`: how to run
+  the MCP server from a clone, and its tools (from `shared/mcp.ts`).
 
 **Interactions**: keyboard — `j`/`k` move selection, `Enter`/`o` open, `/` focus search, `w` watch vendor,
 `c` copy ticket, `?` shortcuts help, `⌘K`/`Ctrl+K` command palette (jump to CVE id, vendor, page).
@@ -292,4 +301,5 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
   `/(.*)` → `/index.html` (rewrites apply after static files, so `/feeds` is the Feeds page); security headers
   (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'`).
   Result: zero-config — import the repo in Vercel, and fresh data arrives hourly without redeploys.
-- **CI.** `ci.yml` on push/PR: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.
+- **CI.** `ci.yml` on push/PR: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`, `npm run build:mcp` and an MCP
+  smoke test of the bundle on mock data (`mcp/test/smoke.ts`), `shellcheck`, the data-branch publisher test.

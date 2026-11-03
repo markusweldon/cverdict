@@ -180,3 +180,13 @@ SOFTWARE.
 Authors, are licensed under the [SIL Open Font License, Version 1.1](https://openfontlicense.org/).
 They are bundled from the `@fontsource-variable/geist` and `@fontsource-variable/geist-mono`
 packages, which include the full license text.
+
+## MCP server libraries
+
+The single-file MCP server (`mcp/dist/cverdict-mcp.mjs`, the `cverdict-mcp` package) bundles the
+[MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
+(`@modelcontextprotocol/server` and `@modelcontextprotocol/core`, Apache-2.0, with contributions
+under MIT), [zod](https://github.com/colinhacks/zod) (MIT), and the libraries the SDK vendors in its
+own build: ajv, ajv-formats, fast-deep-equal, json-schema-traverse and content-type (MIT) and
+fast-uri (BSD-3-Clause). Their full license texts ship with the bundle in
+[mcp/LICENSE-THIRD-PARTY](mcp/LICENSE-THIRD-PARTY). None of them is part of the site.

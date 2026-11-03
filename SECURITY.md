@@ -41,6 +41,11 @@ In scope:
   workflow-command injection from upstream data, cache poisoning), the data-branch publisher, and
   dependencies we ship.
 - **Hosting configuration**: headers and rewrites in `vercel.json` and the Pages deployment.
+- **The MCP server** (`mcp/`): input or published data that makes it fetch anything but its data
+  bases, follow a redirect, read past its size caps, write files or run code. Upstream text that
+  it quotes in answers (CVE titles and descriptions, KEV text) can carry prompt-injection attempts;
+  the server marks that text as untrusted, and an agent following it is a known limit rather than
+  a vulnerability in the server.
 
 Out of scope:
 

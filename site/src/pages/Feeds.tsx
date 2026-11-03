@@ -2,8 +2,10 @@
 import type { ComponentChildren } from 'preact';
 import { RAW_DATA_URL } from '../../../shared/brand';
 import { SIGNAL_MIN_SCORE } from '../../../shared/contract';
+import { MCP_SERVER, MCP_SNIPPETS, MCP_TOOLS } from '../../../shared/mcp';
 import { SHARD_COUNT } from '../../../shared/shard';
 import { copyLink } from '../actions';
+import { ExtLink } from '../components/ExtLink';
 import { IconCalendar, IconCode, IconCopy, IconExternal, IconRss } from '../components/icons';
 import { DATA_BASE, FEEDS_BASE } from '../data';
 import { useTitle } from '../hooks';
@@ -122,6 +124,38 @@ export default function Feeds() {
           />
           <Snippet title="Look up one CVE (JavaScript)" code={`${SHARD_JS}\n\nconst id = 'CVE-2026-12345';\nconst shard = await fetch(\`${base}cve/\${shardOf(id)}.json\`).then((r) => r.json());\nconsole.log(shard.items[id]?.reasons);`} />
         </div>
+      </section>
+
+      <section class="prose-section" id="mcp" aria-labelledby="mcp-h">
+        <h2 id="mcp-h" class="section__title">
+          AI agents (MCP)
+        </h2>
+        <p class="muted">A read-only MCP server gives AI agents the same verdicts, chips and links as this site. Every answer says when the data was generated and which files it came from.</p>
+        <p class="muted">
+          It runs on your machine and reads the data branch on GitHub directly, so it keeps working when this site is down. GitHub sees which of the {SHARD_COUNT} shard files it fetches, never your CVE IDs or search words. An npm package will follow; until then, run it from a clone of the repository (Node 22.12 or later).
+        </p>
+        <div class="snippets">
+          {MCP_SNIPPETS.map(([title, code]) => (
+            <Snippet key={title} title={title} code={code} />
+          ))}
+        </div>
+        <ul class="endpoints" aria-label="MCP tools">
+          {MCP_TOOLS.map((t) => (
+            <li class="endpoint" key={t.name}>
+              <span class="endpoint__icon">
+                <IconCode size={16} />
+              </span>
+              <div class="endpoint__body">
+                <p class="endpoint__label">{t.name}</p>
+                <p class="endpoint__note">{t.title}</p>
+              </div>
+              <span />
+            </li>
+          ))}
+        </ul>
+        <p class="muted">
+          Quiet means no evidence yet, never safe. A CVE outside the data comes back as not found, not as safe. Tools, inputs and limits: <ExtLink href={MCP_SERVER.docs}>the server's README</ExtLink>.
+        </p>
       </section>
     </div>
   );
