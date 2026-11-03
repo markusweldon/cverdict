@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { BRAND } from '../../shared/brand';
-import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, type Batch, type Meta, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
+import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, type Batch, type Meta, type PackagesFile, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
 import { SCORE_MODEL } from '../../shared/model';
 import { decideBacktest, readPreviousBacktest, type BacktestDecision } from './backtest';
 import { buildOutput } from './emit/build';
@@ -24,6 +24,8 @@ export interface RunOptions {
   cache: string;
   cvelistDir?: string;
   pocDir?: string;
+  /** Read OSV.dev dumps from `<osvDir>/<ecosystem>.zip` instead of downloading them. */
+  osvDir?: string;
   now?: Date;
   windowDays: number;
   offline: boolean;
@@ -41,6 +43,7 @@ export interface RunSummary {
   top: Row[];
   woke: WokeFile;
   receipts: ReceiptsFile;
+  packages: PackagesFile;
   validation: ValidationResult;
   durationMs: number;
 }
@@ -99,7 +102,7 @@ export async function run(opts: RunOptions): Promise<RunSummary> {
     decision = decideBacktest(null, now, opts.refreshBacktest);
   }
   log.info(decision.note);
-  const ing = await ingest(ctx, { cvelistDir: opts.cvelistDir, pocDir: opts.pocDir, previousState, backtest: decision.plan ?? undefined });
+  const ing = await ingest(ctx, { cvelistDir: opts.cvelistDir, pocDir: opts.pocDir, osvDir: opts.osvDir, previousState, backtest: decision.plan ?? undefined });
   const built = buildOutput({ ingest: ing, now, windowDays: opts.windowDays, knob, previous: opts.previous, previousState, siteUrl: base, backtest: decision.carried, previousBacktest });
   for (const note of built.notes) log.info(note);
   log.info(`scored ${built.scored.length} records (${built.meta.counts.window_published} in window), ${built.batches.length} batches, ${built.woke.items.length} woke up`);
@@ -118,5 +121,5 @@ export async function run(opts: RunOptions): Promise<RunSummary> {
     throw e;
   }
   log.info(`wrote ${validation.files} files to ${out}`);
-  return { out, meta: built.meta, batches: built.batches, top: built.top, woke: built.woke, receipts: built.receipts, validation, durationMs: Date.now() - started };
+  return { out, meta: built.meta, batches: built.batches, top: built.top, woke: built.woke, receipts: built.receipts, packages: built.packages, validation, durationMs: Date.now() - started };
 }

@@ -174,6 +174,63 @@ SOFTWARE.
   repositories are third-party code under their own licenses. They are unverified and may be
   malware; we link to them and never copy or run them.
 
+## Package advisories (OSV.dev)
+
+- **Source:** the [OSV.dev](https://osv.dev) data dumps
+  (`https://storage.googleapis.com/osv-vulnerabilities/<ecosystem>/all.zip` and the changed
+  records listed in `modified_id.csv`) for npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist
+  and NuGet. OSV.dev aggregates the databases below; each keeps its own license.
+- **We use and republish**, in `v1/packages.json` and only for advisories that name a CVE the data
+  covers: the advisory ID, the package name, the affected version ranges, and listed versions the
+  ranges do not cover. **Changes:** everything else in the records (summaries, details,
+  references, credits, severity) is left out, and ranges of one package are merged. The scores
+  never use this data.
+- **GitHub Advisory Database** (`GHSA-` IDs): [CC-BY-4.0](https://github.com/github/advisory-database/blob/main/LICENSE.md).
+  GitHub's terms allow the attribution to be fulfilled by linking to the GitHub Advisory Database at
+  <https://github.com/advisories> or to the individual records used.
+- **PyPI Advisory Database** (`PYSEC-`): [CC-BY-4.0](https://github.com/pypa/advisory-database/blob/main/LICENSE),
+  by the Python Packaging Authority.
+- **Go Vulnerability Database** (`GO-`): database entries under
+  [CC-BY-4.0](https://github.com/golang/vulndb#license), by the Go team.
+- **RustSec Advisory Database** (`RUSTSEC-`): [CC0-1.0](https://github.com/rustsec/advisory-db/blob/main/LICENSE.txt),
+  except content imported from the GitHub Advisory Database, which is CC-BY-4.0.
+- **Drupal security advisories** (`DRUPAL-CORE-`, `DRUPAL-CONTRIB-`): the OSV export by Ackama,
+  [MIT](https://github.com/DrupalSecurityTeam/drupal-advisory-database/blob/main/LICENSE). The
+  notice below also travels inside `packages.json` (`attribution[].notice`) and in the data
+  branch README.
+- Records from other databases in the dumps (`OSV-`, `GSD-`, `EEF-` and any new prefix) are not
+  published until their license and notice are added here and in `shared/packages.ts`. OpenSSF
+  Malicious Packages records (`MAL-`) are skipped; they name no CVE.
+
+<details>
+<summary>Drupal security advisories license notice</summary>
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2025 Ackama
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+</details>
+
 ## Fonts
 
 [Geist and Geist Mono](https://github.com/vercel/geist-font), Copyright 2024 The Geist Project
