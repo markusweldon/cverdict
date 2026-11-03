@@ -833,11 +833,22 @@ function textFormat(head: string): FormatId | null {
   return null;
 }
 
+/** A Maven POM: a <project> element in the POM namespace, before any CycloneDX <bom> element. */
+function isPom(head: string): boolean {
+  const project = head.search(/<project[\s>]/);
+  if (project < 0 || !head.includes('maven.apache.org/POM')) return false;
+  const bom = head.search(/<(?:[A-Za-z_][\w.-]{0,31}:)?bom[\s>]/);
+  return bom < 0 || project < bom;
+}
+
+/** A top-level block of a Gradle build script, Groovy or Kotlin; no accepted text format has one. */
+const GRADLE_BLOCK = /^(?:plugins|dependencies|buildscript|repositories|allprojects|subprojects)[ \t]*\{/m;
+
 /** A build manifest the page does not read, from the file name or the content; null otherwise. */
 function manifest(filename: string, head: string, doc: unknown): string | null {
   const base = filename.split(/[\\/]/).pop()?.toLowerCase() ?? '';
-  if (base === 'pom.xml' || (/<project[\s>]/.test(head) && head.includes('maven.apache.org/POM'))) return 'pom';
-  if (/^build\.gradle(?:\.kts)?$/.test(base)) return 'gradle';
+  if (base === 'pom.xml' || isPom(head)) return 'pom';
+  if (/^build\.gradle(?:\.kts)?$/.test(base) || GRADLE_BLOCK.test(head)) return 'gradle';
   if (base === 'package.json' || (isObj(doc) && typeof doc.name === 'string' && !('lockfileVersion' in doc) && (isObj(doc.dependencies) || isObj(doc.devDependencies)))) return 'npm';
   return null;
 }
@@ -864,14 +875,18 @@ export function parse(input: string, filename = '', forced: FormatId | null = nu
   const looksJson = /^\s*\{/.test(head);
   let doc: unknown;
   let format = forced ?? byFilename(filename);
+  const decided = format !== null;
   if (format === null && looksJson) {
     doc = parseJson(text);
     format = jsonFormat(doc);
   } else if (format === null) format = textFormat(head);
-  if (format === null) {
+  // The loose content matches give way to a build manifest: a pom.xml that configures the CycloneDX
+  // plugin says "cyclonedx", and tasks.named<Test> in build.gradle.kts reads like a requirement.
+  if (!decided && (format === null || format === 'cyclonedx-xml' || format === 'requirements')) {
     const m = manifest(filename, head, doc);
-    throw m ? new ParseError('manifest', m) : new ParseError('unknown');
+    if (m) throw new ParseError('manifest', m);
   }
+  if (format === null) throw new ParseError('unknown');
 
   const notes: string[] = [];
   let components: Component[];
