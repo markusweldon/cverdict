@@ -11,6 +11,7 @@ import { loadKev } from './sources/kev';
 import { loadMetasploit } from './sources/metasploit';
 import { loadNuclei } from './sources/nuclei';
 import { openPoc, readPocRepos } from './sources/poc';
+import { loadEpssAsOf, type BacktestInputs } from './backtest';
 import { EMPTY_STATE, readSection } from './state';
 import type { EpssTable, ExploitIndex, IngestOptions, IngestResult, KevCatalog, RunContext } from './types';
 import { HttpClient } from './util/http';
@@ -70,7 +71,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
         now: ctx.now,
         kev: kev.data,
         exploitdb: exploitDb.data,
-        metasploit: metasploit.data,
+        metasploit: metasploit.data?.byCve ?? null,
         nuclei: nuclei.data,
         poc: pocRead.status.ok ? pocRead.repos : null,
         epss: epss.data,
@@ -90,7 +91,10 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
     log.error(`woke: detection failed (${message})`);
     return failedWakeDetection(previousWoke, message);
   });
-  const pending = [kevP, epssP, metasploitP, nucleiP, exploitDbP, pocP, pocReadP, epssPastP, wakeP];
+  // Backtest refresh only: EPSS of the days before recent KEV listings, downloaded while the CVE List streams.
+  const plan = opts.backtest;
+  const epssAsOfP = plan ? kevP.then((kev) => loadEpssAsOf(http, kev.data, ctx.now, plan.reuse, limits, log, signal)) : Promise.resolve(null);
+  const pending = [kevP, epssP, metasploitP, nucleiP, exploitDbP, pocP, pocReadP, epssPastP, wakeP, epssAsOfP];
 
   let repo: CvelistRepo;
   let scan: CvelistScan;
@@ -102,6 +106,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
       now: ctx.now,
       kevIds: kevP.then((kev) => new Set(kev.data?.entries.keys())),
       extraIds: wakeP.then((w) => new Set(w.signals.keys())),
+      keepFrom: plan?.volumeFrom,
       minRecords: limits.cvelistRecords,
       log,
       signal,
@@ -114,7 +119,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   }
 
   const ids = new Set(scan.cves.map((c) => c.id));
-  const [kev, epss, metasploit, nuclei, exploitDb, pocRead, wake] = await Promise.all([kevP, epssP, metasploitP, nucleiP, exploitDbP, pocReadP, wakeP]);
+  const [kev, epss, metasploit, nuclei, exploitDb, pocRead, wake, epssAsOf] = await Promise.all([kevP, epssP, metasploitP, nucleiP, exploitDbP, pocReadP, wakeP, epssAsOfP]);
 
   const epssTable: EpssTable = {
     model: epss.data?.model ?? null,
@@ -122,7 +127,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
     scores: restrict(epss.data?.scores ?? null, ids),
   };
   const exploits: ExploitIndex = {
-    metasploit: restrict(metasploit.data, ids),
+    metasploit: restrict(metasploit.data?.byCve ?? null, ids),
     nuclei: restrict(nuclei.data, ids),
     exploitdb: restrict(exploitDb.data?.byCve ?? null, ids),
     poc: restrict(pocRead.repos, ids),
@@ -150,5 +155,16 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
     sources,
     cvelistCommit: repo.commit,
     wake,
+    ...(plan && epssAsOf
+      ? {
+          backtest: {
+            epss: epssAsOf,
+            reuse: plan.reuse,
+            metasploitModified: restrict(metasploit.data?.firstModified ?? null, ids),
+            exploitdbAdded: exploitDb.data?.added ?? new Map(),
+            volumeFrom: plan.volumeFrom.toISOString(),
+          } satisfies BacktestInputs,
+        }
+      : {}),
   };
 }

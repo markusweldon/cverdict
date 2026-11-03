@@ -3,7 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION, rowsFromTable, type CveShard, type Meta, type RowTable, type WokeFile, type WokeItem } from '../../../shared/contract';
+import { SCHEMA_VERSION, rowsFromTable, type CveShard, type Meta, type ReceiptsFile, type RowTable, type WokeFile, type WokeItem } from '../../../shared/contract';
+import { BUDGETS } from '../../src/config';
 import { shardOf } from '../../../shared/shard';
 import { buildOutput } from '../../src/emit/build';
 import { PATHS, SHARD_NAMES, writeFiles } from '../../src/emit/json';
@@ -28,7 +29,7 @@ const pocs = { [OLD]: [repo(daysAgo(8))] };
 const wake = detectWakes({
   now: NOW,
   kev: makeKevCatalog(spec.kev),
-  exploitdb: { byCve: new Map(), firstAdded: new Map() },
+  exploitdb: { byCve: new Map(), firstAdded: new Map(), added: new Map() },
   metasploit: new Map(Object.entries(spec.metasploit)),
   nuclei: new Map(),
   poc: new Map(Object.entries(pocs)),
@@ -60,7 +61,7 @@ describe('validateOutput', () => {
     expect(result.warnings).toEqual([]);
     expect(result.ok).toBe(true);
     // 9 JSON files (incl. woke.json and state.json), the shards, 4 feeds.
-    expect(result.files).toBe(9 + SHARD_NAMES.length + 4);
+    expect(result.files).toBe(10 + SHARD_NAMES.length + 4);
     expect(lines[0]).toMatch(/^file\s+bytes\s+gzip\s+budget\s+status$/);
     expect(lines.some((l) => l.startsWith('v1/index.json'))).toBe(true);
     expect(lines.some((l) => l.startsWith('v1/cve/*.json (256'))).toBe(true);
@@ -180,9 +181,22 @@ describe('validateOutput', () => {
     expect(errors.some((e) => e.startsWith(`${PATHS.woke}:`) && e.includes('exceeds'))).toBe(true);
   });
 
+  it('requires receipts.json, budgets it, and checks that its figures match its lists', () => {
+    expect(BUDGETS.gzipBytes[PATHS.receipts]).toBeGreaterThan(0);
+    const r = read<ReceiptsFile>(PATHS.receipts);
+    write(PATHS.receipts, { ...r, forward: { ...r.forward, eligible: 3, methods: r.forward.methods.map((m) => ({ ...m, before: 2 })) } });
+    const { errors } = validateOutput(dir);
+    expect(errors.some((e) => e.includes('forward counts do not match'))).toBe(true);
+    expect(errors.some((e) => e.includes('forward.methods.cverdict does not add up'))).toBe(true);
+    write(PATHS.receipts, { ...r, backtest: { hindsight: false } });
+    expect(validateOutput(dir).errors.some((e) => e.includes('not marked as hindsight'))).toBe(true);
+    unlinkSync(join(dir, PATHS.receipts));
+    expect(validateOutput(dir).errors).toContain(`missing ${PATHS.receipts}`);
+  });
+
   it('enforces the file count limit', () => {
     for (let i = 0; i < 40; i++) write(`v1/extra-${i}.txt`, 'x');
-    expect(validateOutput(dir).errors).toContain(`${269 + 40} files emitted; the limit is 300`);
+    expect(validateOutput(dir).errors).toContain(`${270 + 40} files emitted; the limit is 300`);
   });
 });
 

@@ -106,6 +106,8 @@ export interface ScanOptions {
   kevIds: Promise<ReadonlySet<string>>;
   /** More IDs to keep outside the window (old CVEs that woke up); recognised the same way as KEV IDs. */
   extraIds?: Promise<ReadonlySet<string>>;
+  /** Also keep every record published from this instant (the backtest's alert volume), outside the window. */
+  keepFrom?: Date;
   minRecords: number;
   log: Logger;
   signal?: AbortSignal;
@@ -191,7 +193,7 @@ export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise
       if (recordAiCredit(record)) bump(history.ai, monthKey(meta.published));
       const windowed = inWindow(meta.published);
       if (windowed) scan.windowPublished++;
-      if (windowed || adp.kev || kev.ids?.has(meta.id) || extra.ids?.has(meta.id)) {
+      if (windowed || adp.kev || kev.ids?.has(meta.id) || extra.ids?.has(meta.id) || (opts.keepFrom && meta.published >= opts.keepFrom)) {
         const cve = normalizeCve(record, meta, windowed);
         if (cve) {
           scan.cves.push(cve);

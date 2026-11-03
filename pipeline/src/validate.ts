@@ -13,7 +13,10 @@ import {
   rowFromColumns,
   type BatchesFile,
   type KevFile,
+  type MethodScore,
   type Meta,
+  type ReceiptsFile,
+  RECEIPT_METHODS,
   type Row,
   type Tier,
   type WokeFile,
@@ -38,6 +41,7 @@ const REQUIRED = [
   PATHS.changes,
   PATHS.woke,
   PATHS.state,
+  PATHS.receipts,
   PATHS.signalFeed,
   PATHS.kevFeed,
   PATHS.kevDueIcs,
@@ -238,6 +242,7 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
   }
 
   checkWoke(json, details, index ? new Set(index.map((r) => r.id)) : null, errors);
+  checkReceipts(json, errors);
 
   const kev = json.get(PATHS.kev) as KevFile | undefined;
   if (kev && Array.isArray(kev.entries)) {
@@ -273,6 +278,56 @@ function checkWoke(json: Map<string, JsonObject>, details: Set<string>, indexIds
   }
   const state = json.get(PATHS.state);
   if (state && (state.state_version !== 1 || !asObject(state.sections))) errors.push(`${PATHS.state}: not a state file (state_version 1 with sections)`);
+}
+
+/** One method's counts must add up: same_day + earlier = before ≤ n, and a lead only when before > 0. */
+function badScore(m: MethodScore | undefined, n: number): boolean {
+  if (!m) return true;
+  const counts = [m.n, m.before, m.earlier, m.same_day];
+  if (!counts.every((x) => Number.isInteger(x) && x >= 0)) return true;
+  return m.n !== n || m.earlier + m.same_day !== m.before || m.before > m.n || (m.lead === null) !== (m.before === 0);
+}
+
+/** receipts.json: the figures agree with the per-CVE lists, the backtest is marked as hindsight. */
+function checkReceipts(json: Map<string, JsonObject>, errors: string[]): void {
+  const r = json.get(PATHS.receipts) as ReceiptsFile | undefined;
+  if (!r) return;
+  const err = (msg: string): void => void errors.push(`${PATHS.receipts}: ${msg}`);
+  const f = r.forward;
+  if (!f || !Array.isArray(f.items) || !Array.isArray(f.uncounted) || !Array.isArray(f.methods) || !Array.isArray(f.volume)) return err('forward is incomplete');
+  if (!(Date.parse(f.since) <= Date.parse(f.last))) err('forward.since is after forward.last');
+  if (f.eligible !== f.items.length || f.listed !== f.items.length + f.uncounted.length) err('forward counts do not match its lists');
+  const sinceDay = f.since.slice(0, 10);
+  const ids = [...f.items, ...f.uncounted].map((i) => i.id);
+  if (new Set(ids).size !== ids.length) err('a CVE is listed twice');
+  const bad = [...f.items, ...f.uncounted].find((i) => !CVE_ID_RE.test(i.id) || !(i.kev_added >= sinceDay));
+  if (bad) err(`${bad.id} is not a KEV addition since ${sinceDay}`);
+  for (const m of RECEIPT_METHODS) {
+    const score = f.methods.find((x) => x.method === m);
+    if (badScore(score, f.eligible)) err(`forward.methods.${m} does not add up`);
+    const before = f.items.filter((i) => i.flags?.[m]?.outcome === 'earlier' || i.flags?.[m]?.outcome === 'same_day').length;
+    if (score && score.before !== before) err(`forward.methods.${m}.before is ${score.before}, items imply ${before}`);
+    const v = f.volume.find((x) => x.method === m);
+    if (!v || v.flagged > v.n) err(`forward.volume.${m} is invalid`);
+  }
+  const b = r.backtest;
+  if (b === null) return;
+  if (!b || b.hindsight !== true || !Array.isArray(b.items) || !Array.isArray(b.sets)) return err('backtest is not marked as hindsight or is incomplete');
+  const total = b.sets.reduce((a, s) => a + s.n, 0);
+  const excluded = (b.excluded ?? []).reduce((a, e) => a + e.ids.length, 0);
+  if (total !== b.items.length || total + excluded !== b.listed) err(`backtest sets (${total}) and exclusions (${excluded}) do not add up to ${b.listed} listings`);
+  for (const s of b.sets) {
+    const items = b.items.filter((i) => i.old === (s.key === 'old'));
+    for (const m of RECEIPT_METHODS) {
+      for (const variant of ['strict', 'upper'] as const) {
+        const score = s[variant].find((x) => x.method === m);
+        const hits = items.filter((i) => i[variant][m]).length;
+        if (!score || score.n !== s.n || score.before !== hits || score.lead !== null) err(`backtest ${s.key}.${variant}.${m} does not match its items`);
+      }
+      // Leaving evidence out can only lower a score: strict never beats the upper bound.
+      if (items.some((i) => i.strict[m] && !i.upper[m])) err(`backtest ${s.key}: a strict ${m} hit is missing from the upper bound`);
+    }
+  }
 }
 
 function checkMeta(meta: Meta, index: Row[], json: Map<string, JsonObject>, errors: string[], warnings: string[]): void {

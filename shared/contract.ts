@@ -397,6 +397,195 @@ export interface WokeFile {
   items: WokeItem[];
 }
 
+/** Ways of deciding what to patch first that the Receipts page compares (see ReceiptsFile). */
+export type ReceiptMethod = 'cverdict' | 'cvss7' | 'epss10';
+export const RECEIPT_METHODS: readonly ReceiptMethod[] = ['cverdict', 'cvss7', 'epss10'];
+
+/** Lead time in whole UTC days. Median and quartiles interpolate linearly between ranks. */
+export interface LeadDays {
+  median: number;
+  q1: number;
+  q3: number;
+}
+
+/** How one method did on one set of CISA KEV additions. Every count shares the same `n`. */
+export interface MethodScore {
+  method: ReceiptMethod;
+  /** KEV additions in the set. */
+  n: number;
+  /** Flagged before the listing: `earlier` + `same_day`. */
+  before: number;
+  /** Flagged at least one whole UTC day before the KEV dateAdded. */
+  earlier: number;
+  /** Flagged on the KEV dateAdded itself, by a run before the one that saw the listing (0 days). */
+  same_day: number;
+  /** Lead days over the `before` CVEs; null when `before` is 0, and always null in the backtest. */
+  lead: LeadDays | null;
+}
+
+/** Alert volume: how many CVEs a method flags out of `n`. */
+export interface AlertVolume {
+  method: ReceiptMethod;
+  n: number;
+  flagged: number;
+}
+
+/**
+ * One method's verdict on one KEV addition in the forward log. `earlier` and `same_day` count as
+ * flagged before the listing; `after` means it was flagged only at or after the listing; `never`
+ * means it was not flagged while we watched it.
+ */
+export type ReceiptOutcome = 'earlier' | 'same_day' | 'after' | 'never';
+
+export interface ReceiptFlag {
+  /** Hour of the first run that flagged the CVE while we watched it (rounded down), or null. */
+  at: string | null;
+  outcome: ReceiptOutcome;
+  /** KEV dateAdded minus the UTC day of `at`, for `earlier` and `same_day`; else null. */
+  lead: number | null;
+}
+
+/** A KEV addition the forward log can judge: we saw the CVE before CISA listed it. */
+export interface ReceiptItem {
+  id: string;
+  /** KEV dateAdded (YYYY-MM-DD). */
+  kev_added: string;
+  /** Hour of the first run that saw the CVE (rounded down). */
+  first_seen: string;
+  flags: Record<ReceiptMethod, ReceiptFlag>;
+  /** The CVE as it is scored now, for display; null when its record is not in this run. */
+  row: Row | null;
+}
+
+/** A KEV addition since logging started that the forward log cannot judge, and why. */
+export interface UncountedListing {
+  id: string;
+  kev_added: string;
+  /**
+   * `older`: the CVE was not in the log, because it was published before the window when the log
+   * could have seen it (these are the ones Woke up covers). `listed_first`: the first run that saw
+   * the CVE already saw its KEV listing, or saw the CVE only after the listing date.
+   */
+  reason: 'older' | 'listed_first';
+  row: Row | null;
+}
+
+/** The forward log: real-time observations, recorded hour by hour, no hindsight. */
+export interface ForwardReceipts {
+  /** First run of the log. Nothing before it is known. */
+  since: string;
+  /** Last run that updated the log. */
+  last: string;
+  runs: number;
+  /** Stretches of more than 3 hours without a run (the most recent 50), oldest first. */
+  gaps: { from: string; to: string }[];
+  /** Each CVE is watched while it is in the window (its first `watch_days` days, or from `since`). */
+  watch_days: number;
+  /** KEV additions dated from the `since` day to today. */
+  listed: number;
+  /** Of those, the CVEs we had seen before the listing: the set `methods` scores. */
+  eligible: number;
+  methods: MethodScore[];
+  /** Out of every CVE the log has watched so far, how many each method flagged at least once. */
+  volume: AlertVolume[];
+  /** Eligible KEV additions, newest listing first. */
+  items: ReceiptItem[];
+  /** The other KEV additions since `since`, newest first. */
+  uncounted: UncountedListing[];
+}
+
+/** How the backtest treated one kind of evidence. */
+export interface BacktestSignal {
+  key: string;
+  label: string;
+  /**
+   * `time_matched`: only evidence dated before the listing day is used. `hindsight`: the source has
+   * no usable date, so the strict scores leave it out and the upper bound uses today's value.
+   * `excluded`: never used, because it is the listing itself or follows from it.
+   */
+  treatment: 'time_matched' | 'hindsight' | 'excluded';
+  note: string;
+  /**
+   * Backtest CVEs this touched: for `hindsight` signals, how many the strict scores had to leave
+   * out (an upper-bound case); for `excluded` ones, how many it was set aside or lowered for.
+   */
+  affected: number;
+}
+
+export interface BacktestSet {
+  /** `recent`: published at most `old_years` before the listing. `old`: published longer before. */
+  key: 'recent' | 'old';
+  n: number;
+  /** Time-matched evidence only; signals without a usable date are left out. */
+  strict: MethodScore[];
+  /** The same, plus today's value of every signal without a usable date: an upper bound. */
+  upper: MethodScore[];
+}
+
+export interface BacktestItem {
+  id: string;
+  kev_added: string;
+  published: string;
+  old: boolean;
+  strict: Record<ReceiptMethod, boolean>;
+  upper: Record<ReceiptMethod, boolean>;
+  /** CVErdict's score and chips (fired, as in Row.r) with time-matched evidence. */
+  score: number;
+  chips: string[];
+  /** CVSS base score used by the strict scores (null when left out or absent). */
+  cvss: number | null;
+  /** EPSS score on the day before the listing (null: no score that day, or no file). */
+  epss: number | null;
+  /** Score date of the EPSS file used, or null when no file for that day could be loaded. */
+  epss_date: string | null;
+  /** Keys of the signals (BacktestSignal.key) the strict scores had to leave out for this CVE. */
+  left_out: string[];
+  row: Row | null;
+}
+
+/** The hindsight backtest: KEV additions of the last `days` days, re-scored as of the day before. */
+export interface BacktestReceipts {
+  /** Always true: this is a reconstruction after the fact, not a real-time record. */
+  hindsight: true;
+  /** When the backtest was computed (it is refreshed about weekly). */
+  computed_at: string;
+  /** KEV dateAdded range, inclusive. */
+  from: string;
+  to: string;
+  days: number;
+  old_years: number;
+  /** KEV additions in the range. */
+  listed: number;
+  /** Additions left out of every figure, by reason. */
+  excluded: { reason: string; ids: string[] }[];
+  sets: BacktestSet[];
+  /**
+   * Alert volume over the same period: CVEs published from `from` on, flagged with today's
+   * evidence (hindsight for CVErdict and EPSS). Null when it was not measured.
+   */
+  volume: { from: string; n: number; methods: AlertVolume[] } | null;
+  signals: BacktestSignal[];
+  /** Days before a listing whose EPSS file could not be loaded (EPSS left out for those CVEs). */
+  epss_missing: string[];
+  items: BacktestItem[];
+  /** Command that reproduces the backtest. */
+  command: string;
+}
+
+/** v1/receipts.json: how often CVErdict flagged a CVE before CISA listed it as exploited. */
+export interface ReceiptsFile {
+  schema_version: number;
+  generated_at: string;
+  score_model: string;
+  /** Knob the CVErdict method uses (always KNOB_DEFAULT). */
+  knob: number;
+  /** Plain-language definition of each method and figure. */
+  definitions: Record<string, string>;
+  forward: ForwardReceipts;
+  /** Null until the first backtest has run. */
+  backtest: BacktestReceipts | null;
+}
+
 /** Tier for a score at a given knob. Shared so the site and pipeline always agree. */
 export function tierFor(score: number, exploited: boolean, weaponized: boolean, knob: number): Tier {
   if (exploited) return 'exploited';

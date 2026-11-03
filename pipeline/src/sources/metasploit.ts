@@ -1,7 +1,7 @@
 /** Metasploit Framework module metadata (`db/modules_metadata_base.json`), indexed by referenced CVE. */
 import type { ExploitEvidence } from '../../../shared/contract';
 import { METASPLOIT, type SanityLimits } from '../config';
-import type { ExploitIndex } from '../types';
+import type { ExploitIndex, MetasploitData } from '../types';
 import { normalizeIso, normalizeYmd } from '../util/dates';
 import type { HttpClient, Parsed } from '../util/http';
 import { asArray, asNumber, asObject, asString, parseJson } from '../util/json';
@@ -18,10 +18,11 @@ function compareModules(a: Module, b: Module): number {
 }
 
 /** Index modules by the CVE IDs in their `references` (entries like "CVE-2024-1234"). */
-export function parseMetasploit(doc: unknown): { byCve: ExploitIndex['metasploit']; modules: number; newest: string | null } {
+export function parseMetasploit(doc: unknown): MetasploitData & { modules: number; newest: string | null } {
   const root = asObject(doc);
   if (!root) throw new Error('Metasploit: expected an object of modules');
   const byCve: ExploitIndex['metasploit'] = new Map();
+  const firstModified = new Map<string, string>();
   let modules = 0;
   let newest: string | null = null;
   for (const value of Object.values(root)) {
@@ -42,23 +43,27 @@ export function parseMetasploit(doc: unknown): { byCve: ExploitIndex['metasploit
       url: MODULE_PATH_RE.test(path) ? `${METASPLOIT.blobBase}${path}` : `https://www.rapid7.com/db/modules/${encodeURI(fullname)}/`,
       date: normalizeYmd(m.disclosure_date),
     };
-    for (const id of ids) pushTo(byCve, id, module);
+    for (const id of ids) {
+      pushTo(byCve, id, module);
+      const first = firstModified.get(id);
+      if (modTime && (!first || modTime < first)) firstModified.set(id, modTime);
+    }
   }
   for (const list of byCve.values()) list.sort(compareModules);
-  return { byCve, modules, newest };
+  return { byCve, firstModified, modules, newest };
 }
 
-export function parseMetasploitBody(body: Buffer, limits: SanityLimits): Parsed<ExploitIndex['metasploit']> {
-  const { byCve, modules, newest } = parseMetasploit(parseJson(body, 'Metasploit'));
+export function parseMetasploitBody(body: Buffer, limits: SanityLimits): Parsed<MetasploitData> {
+  const { byCve, firstModified, modules, newest } = parseMetasploit(parseJson(body, 'Metasploit'));
   requireAtLeast(modules, limits.metasploitModules, 'Metasploit modules');
-  return { value: byCve, records: modules, version: newest };
+  return { value: { byCve, firstModified }, records: modules, version: newest };
 }
 
 export async function loadMetasploit(
   http: HttpClient,
   limits: SanityLimits,
   signal?: AbortSignal,
-): Promise<SourceResult<ExploitIndex['metasploit']>> {
+): Promise<SourceResult<MetasploitData>> {
   const fetched = await http.getSource({
     key: 'metasploit',
     ext: 'json',

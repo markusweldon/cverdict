@@ -17,13 +17,14 @@ describe('parseCli', () => {
       windowDays: 30,
       offline: false,
       knob: undefined,
+      refreshBacktest: false,
     });
   });
 
   it('parses every flag, in both --flag value and --flag=value forms', () => {
     const opts = parseCli([
       '--out', 'out', '--previous=published', '--cache', '.c', '--cvelist-dir', '/a', '--poc-dir=/b',
-      '--now', '2026-10-26T19:30:00Z', '--window-days', '14', '--knob=60', '--offline',
+      '--now', '2026-10-26T19:30:00Z', '--window-days', '14', '--knob=60', '--offline', '--refresh-backtest',
     ]);
     expect(opts).toEqual({
       out: 'out',
@@ -35,6 +36,7 @@ describe('parseCli', () => {
       windowDays: 14,
       offline: true,
       knob: 60,
+      refreshBacktest: true,
     });
   });
 
@@ -103,12 +105,17 @@ describe('formatSummary', () => {
         sources,
       },
       woke: { days: 30, items: [{}, {}], counts: { kev: 2, exploitdb: 0, metasploit: 1, nuclei: 0, poc: 0, epss: 0 }, skipped: [{ kind: 'epss', reason: 'x' }] },
+      receipts: {
+        forward: { since: '2026-10-01T00:17:00.000Z', runs: 600, listed: 12, eligible: 5, methods: [{ method: 'cverdict', before: 3 }] },
+        backtest: { computed_at: '2026-10-25T00:17:00.000Z', sets: [{ key: 'recent', n: 80, strict: [{ method: 'cverdict', before: 40 }] }] },
+      },
     }) as unknown as RunSummary;
 
   it('prints counts by tier, the pass rate and the top ids', () => {
     const text = formatSummary(makeSummary([{ id: 'epss', ok: true, stale: true, records: 300000, error: 'HTTP 403' }]));
     expect(text).toContain('Published in window: 16,000');
     expect(text).toContain('Woke up (old CVEs, new evidence in 30 days): 2 · kev 2, exploitdb 0, metasploit 1, nuclei 0, poc 0, epss 0 · skipped: epss');
+    expect(text).toContain('Receipts: log since 2026-10-01T00:17:00.000Z (600 runs) · 5 of 12 KEV additions counted, CVErdict first on 3 · backtest 2026-10-25: CVErdict 40 of 80 (strict)');
     expect(text).toMatch(/exploited\s+20\s+0\.1%/);
     expect(text).toContain('Pass rate (exploited + likely): 2.0% — 1 in 50');
     expect(text).toMatch(/CVE-2026-1001\s+100\s+exploited\s+Microsoft Windows/);

@@ -394,6 +394,8 @@ export function normalizeCve(record: unknown, meta: CveMeta, inWindow: boolean):
     aiCredit: findAiCredit(cna),
     vendorInTheWild: mentionsInTheWild(fullDescription),
     noiseText,
+    cnaUpdated: normalizeIso(asObject(cna?.providerMetadata)?.dateUpdated),
+    adpUpdated: cisaAdp.map((adp) => normalizeIso(asObject(adp.providerMetadata)?.dateUpdated)).reduce<string | null>((a, b) => (b && (!a || b > a) ? b : a), null),
     inWindow,
   };
 }

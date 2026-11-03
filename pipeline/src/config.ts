@@ -143,8 +143,12 @@ export const BUDGETS = {
     'v1/index.json': 1024 * 1024,
     'v1/stats.json': 80 * 1024,
     'v1/woke.json': 64 * 1024,
-    /** Internal carry-forward state (state.ts); woke tracking is ~25 KB today, Receipts adds its own. */
-    'v1/state.json': 96 * 1024,
+    'v1/receipts.json': 64 * 1024,
+    /**
+     * Internal carry-forward state (state.ts): woke tracking (~25 KB) plus the Receipts forward log,
+     * which grows to ~200,000 CVEs over its 400-day retention (about 2 bytes gzip each).
+     */
+    'v1/state.json': 640 * 1024,
     'feeds/woke.xml': 64 * 1024,
   },
   /** Each `v1/cve/<xx>.json` shard. */
