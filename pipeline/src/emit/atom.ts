@@ -207,10 +207,31 @@ export function kevFeed(kev: readonly KevEntry[], opts: FeedOptions): string {
   });
 }
 
-/** The newest 100 old CVEs that woke up, newest wake first (from woke.json). */
+type WokeItem = WokeFile['items'][number];
+/** CISA listings and Exploit-DB entries always make the feed, and come first when it is full. */
+const isPriorityWake = (it: WokeItem) => it.signals.some((s) => s.kind === 'kev' || s.kind === 'exploitdb');
+/**
+ * A wake that only comes from a PoC repo (unverified code, mostly unstarred) is in the feed only
+ * when CVErdict rates the CVE Likely next or Exploited: otherwise it is noise for a subscriber.
+ */
+export function inWokeFeed(it: WokeItem): boolean {
+  if (it.signals.some((s) => s.kind !== 'poc')) return true;
+  return it.row.tier === 'exploited' || it.row.tier === 'likely';
+}
+
+/**
+ * Up to 100 old CVEs that woke up, newest wake first (from woke.json): every KEV and Exploit-DB
+ * wake first, then the newest of the rest. PoC-only wakes need Likely next or Exploited.
+ */
+export function wokeFeedItems(woke: WokeFile): WokeItem[] {
+  const shown = woke.items.filter(inWokeFeed);
+  const keep = new Set([...shown.filter(isPriorityWake), ...shown.filter((it) => !isPriorityWake(it))].slice(0, WOKE_FEED_MAX));
+  return shown.filter((it) => keep.has(it));
+}
+
 export function wokeFeed(woke: WokeFile, opts: FeedOptions): string {
   const { siteUrl, now } = opts;
-  const entries = woke.items.slice(0, WOKE_FEED_MAX).map((it): AtomEntry => {
+  const entries = wokeFeedItems(woke).map((it): AtomEntry => {
     const r = it.row;
     const product = oneLine(`${r.v} ${r.p}`);
     const newest = it.signals[it.signals.length - 1];
@@ -232,7 +253,7 @@ export function wokeFeed(woke: WokeFile, opts: FeedOptions): string {
   return renderFeed({
     id: `${siteUrl}/${PATHS.wokeFeed}`,
     title: `${BRAND.name} · old CVEs that woke up`,
-    subtitle: `CVEs published before the last ${woke.days} days that gained exploitation evidence in that time.`,
+    subtitle: `CVEs published before the last ${woke.days} days that gained exploitation evidence in that time. Up to ${WOKE_FEED_MAX}: every KEV listing and Exploit-DB entry, and a PoC repo alone only when rated Likely next or Exploited.`,
     self: `${siteUrl}/${PATHS.wokeFeed}`,
     alternate: `${siteUrl}/woke`,
     updated: latest(entries, now.toISOString()),
