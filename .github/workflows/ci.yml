@@ -58,6 +58,11 @@ jobs:
           grep -q 'MITRE hereby grants you' <<<"$readme"
           again=$(bash scripts/publish-data-branch.sh "$RUNNER_TEMP/data")
           grep -q 'nothing to publish' <<<"$again"
+          # Older data (a re-run of an old run's publish job) never replaces newer data.
+          cp -R "$RUNNER_TEMP/data" "$RUNNER_TEMP/older"
+          jq '.generated_at = "2000-01-01T00:00:00.000Z"' "$RUNNER_TEMP/data/v1/meta.json" >"$RUNNER_TEMP/older/v1/meta.json"
+          if bash scripts/publish-data-branch.sh "$RUNNER_TEMP/older" 2>"$RUNNER_TEMP/older.log"; then exit 1; fi
+          grep -q 'already holds newer data' "$RUNNER_TEMP/older.log"
 
       - name: Check vercel.json is valid JSON
         run: node -e 'JSON.parse(require("node:fs").readFileSync("vercel.json", "utf8"))'

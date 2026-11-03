@@ -14,8 +14,9 @@
 #
 # Nothing is pushed when the content fingerprint (row index, KEV file and headline counts,
 # ignoring generated_at) matches the branch. The push is a lease on the commit we compared
-# against, so a concurrent publisher can never be silently overwritten. Works on the very
-# first run, when the branch does not exist yet.
+# against, so a concurrent publisher can never be silently overwritten, and data older than the
+# branch's (a re-run of an old run's publish job) is refused, so the carried state never goes
+# back in time. Works on the very first run, when the branch does not exist yet.
 #
 # Environment (all optional):
 #   DATA_BRANCH     branch to publish to (default: data)
@@ -198,6 +199,17 @@ case $status in
   2) log "$REMOTE has no $BRANCH branch yet; it will be created" ;;
   *) die "could not list $REMOTE (git ls-remote exited with $status)" ;;
 esac
+
+# Never replace newer data with older data. Re-running an old run's failed publish job would
+# otherwise roll back state.json for good: the Receipts log would lose the runs and first flags
+# recorded since. Both values are the pipeline's ISO-8601 UTC strings, so they compare as text.
+if [[ -n $remote_tip ]]; then
+  remote_gen=$(git show "$remote_tip:v1/meta.json" 2>/dev/null | jq -r '.generated_at // empty' 2>/dev/null || true)
+  local_gen=$(jq -r '.generated_at // empty' "$src/v1/meta.json")
+  if [[ -n $remote_gen && -n $local_gen ]] && jq -en --arg r "$remote_gen" --arg l "$local_gen" '$r > $l' >/dev/null; then
+    die "the $BRANCH branch already holds newer data ($remote_gen) than this run ($local_gen); start a new run instead of re-running an old one"
+  fi
+fi
 
 local_fp=$(fingerprint "$src")
 if [[ -n $remote_tip ]]; then
