@@ -194,6 +194,12 @@ describe('validateOutput', () => {
     expect(validateOutput(dir).errors).toContain(`missing ${PATHS.receipts}`);
   });
 
+  it('budgets every fixed output path', () => {
+    const fixed: string[] = Object.values(PATHS).filter((p) => typeof p === 'string');
+    const budgets: Readonly<Record<string, number>> = BUDGETS.gzipBytes;
+    expect(fixed.filter((p) => !(budgets[p] > 0))).toEqual([]);
+  });
+
   it('enforces the file count limit', () => {
     for (let i = 0; i < 40; i++) write(`v1/extra-${i}.txt`, 'x');
     expect(validateOutput(dir).errors).toContain(`${270 + 40} files emitted; the limit is 300`);
