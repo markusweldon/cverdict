@@ -213,7 +213,7 @@ shards on demand per CVE (cache in memory). Show a skeleton while loading and a 
 If a CVE isn't in our shards, show "Outside the 30-day window" with links to cve.org / the raw record.
 
 **Routing** (`router.ts`): History API, base-path aware (`import.meta.env.BASE_URL`), intercept same-origin `<a>` clicks.
-Routes: `/` Today · `/cve/:id` · `/kev` · `/woke` · `/receipts` · `/batches` · `/explore` · `/surge` · `/method` · `/feeds`.
+Routes: `/` Today · `/cve/:id` · `/kev` · `/woke` · `/receipts` · `/batches` · `/explore` · `/check` · `/surge` · `/method` · `/feeds`.
 Unknown → 404 view. Update `document.title` per route.
 
 **Pages**
@@ -238,6 +238,14 @@ Unknown → 404 view. Update `document.title` per route.
 - **Explore (`/explore`)**: all window CVEs; virtualised list (render only visible rows); search (ID/vendor/product/title),
   filters (tier, CNA, vendor, chip, publish day `?day=YYYY-MM-DD` shown as a removable "Published Oct 13" chip;
   an invalid day is ignored), sort (score/date); URL-synced.
+- **Check (`/check`)**: an SBOM (CycloneDX JSON or XML, SPDX JSON or tag-value, package URLs) or a lockfile is read
+  in the browser (`check/parse.ts`) and matched against `packages.json` with `shared/versions.ts` (`check/match.ts`);
+  results grouped by tier at the knob, then "possibly affected, version not checked", "not checked" and "no tracked
+  CVE". `packages.json` loads on the first interaction with the input card, never on page open; nothing from the
+  file goes into a request, the URL, history or storage; file text renders in the system monospace font
+  (`--font-mono-system`) so no web font subset is fetched for it; rows do not prefetch shards; results stay in module
+  memory until Clear or reload (`check/session.ts`). Caps: files 50 MB, pasted text 5 MB, lines 64 KB in line formats.
+  The chunk is not warmed on other pages.
 - **The surge (`/surge`)**: monthly published since 1999 (SVG area/line, log toggle, Published/Reserved toggle),
   KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status
