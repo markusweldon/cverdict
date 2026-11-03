@@ -114,6 +114,7 @@ Failures come back as tool results with `isError: true` and a plain message, for
 | Case | Message |
 |---|---|
 | A file is not published | `woke.json is not on the data branch yet, so this tool has nothing to read. The other tools still work.` |
+| `meta.json` is missing at the first base that answers | `meta.json is not at the first data base that answered, so no tool can answer. Check CVERDICT_DATA_BASE, ...` |
 | Every base failed, nothing cached | `CVErdict could not load its data right now (raw.githubusercontent.com: HTTP 503 for meta.json; ...). Try again in a few minutes, or read the files directly: https://github.com/markusweldon/cverdict/tree/data/v1` |
 | No data within the 10 s limit of a call | `CVErdict could not load its data in time (...)` |
 | The data moved to a new schema | `The published data uses schema version 2; this server reads version 1. Update the server: ...` |
@@ -122,9 +123,10 @@ Failures come back as tool results with `isError: true` and a plain message, for
 
 ## How it reads the data
 
-- Bases are tried in order. A 404 is final. A 429 or 403 moves that base to the back for 10
-  minutes. Timeouts (4 s to the response headers), network errors, redirects (refused), 5xx and
-  malformed files fall through to the next base.
+- Bases are tried in order. A 404 is final. A 429 or 403, or a timeout (no response headers within
+  4 s, or a body that stops arriving for 4 s), falls through to the next base and moves that base
+  to the back for 10 minutes. Network errors, redirects (refused), 5xx and malformed files fall
+  through to the next base. A slow body that keeps arriving is not cut off.
 - Each tool call has one 10 s deadline. Shards for `get_verdict` are fetched in parallel, at most 6
   at a time.
 - Bodies are capped at 24 MB decoded, which also stops a compression bomb from a mirror. Files must

@@ -254,6 +254,16 @@ describe('search_cves', () => {
     expect((await t.run((c) => searchCves(c, { query: '.*' }, NOW))).total).toBe(0);
   });
 
+  it('cuts a row title to 160 characters, as the pipeline does, when a mirror sends a longer one', async () => {
+    const tree = files();
+    const index = tree.get('index.json') as { cols: string[]; rows: unknown[][] };
+    const t = index.cols.indexOf('t');
+    tree.set('index.json', { ...index, rows: index.rows.map((r) => r.map((v, i) => (i === t ? `${String(v)} ${'x'.repeat(100_000)}` : v))) });
+    const r = await setup(tree).run((c) => searchCves(c, { query: 'acme', limit: 50 }, NOW));
+    expect(r.items.length).toBe(5);
+    expect(r.items.every((i) => i.title.length === 160 && i.title.endsWith('…'))).toBe(true);
+  });
+
   it('takes at most 8 words', async () => {
     const t = setup();
     await expect(t.run((c) => searchCves(c, { query: 'a b c d e f g h' }, NOW))).resolves.toBeTruthy();

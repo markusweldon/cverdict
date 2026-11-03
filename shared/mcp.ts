@@ -105,7 +105,10 @@ export const MCP_MSG = {
   detailTooMany: (max: number) => `detail: true takes at most ${max} IDs; ask again in groups of ${max}.`,
   tooManyWords: (max: number) => `query takes at most ${max} words.`,
   badDate: (field: string) => `${field} must be a UTC date (2026-10-01) or date-time (2026-10-01T06:00Z).`,
-  notPublished: (file: string) => `${file} is not on the data branch yet, so this tool has nothing to read. The other tools still work.`,
+  notPublished: (file: string) =>
+    file === 'meta.json'
+      ? `meta.json is not at the first data base that answered, so no tool can answer. Check CVERDICT_DATA_BASE, or read the files directly: ${BROWSE_DATA}`
+      : `${file} is not on the data branch yet, so this tool has nothing to read. The other tools still work.`,
   schema: (found: unknown, expected: number) =>
     `The published data uses schema version ${String(found)}; this server reads version ${expected}. Update the server: ${MCP_SERVER.docs}`,
   allFailed: (reasons: readonly string[]) =>
