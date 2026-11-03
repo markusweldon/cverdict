@@ -307,7 +307,7 @@ before `v1/packages.json` existed; the next run publishes it. When it says some 
 stale, OSV.dev could not be reached and the last copy was used; the watchdog warns about it and
 fails the run once it lasts 48 hours. An ecosystem that has never had a copy (every dump rejected,
 or too large) counts from the first run without one, so it also fails the run after 48 hours. A
-full dump that fails its checks is downloaded again at most once a day.
+full dump that cannot be downloaded or fails its checks is downloaded again at most once a day.
 
 **Pages shows a blank page or 404s for assets.** The site must be built with the base path Pages
 serves it from. The workflow reads it from the Pages settings; if you build by hand, use

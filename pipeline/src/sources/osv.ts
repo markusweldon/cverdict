@@ -5,8 +5,8 @@
  * Per ecosystem, every run: a full sync from `<eco>/all.zip` when there is no copy or the copy's
  * full sync is 7 days old (conditional on its ETag); otherwise an incremental sync that reads the
  * head of `<eco>/modified_id.csv` (newest first) with Range requests down to the cursor, and
- * fetches each changed `<eco>/<id>.json`. A rejected full dump is downloaded again at most once a
- * day; meanwhile the copy keeps getting incremental updates. The mirror lives in `<cache>/sources/` (the directory
+ * fetches each changed `<eco>/<id>.json`. A full dump that fails (its download or its checks) is downloaded
+ * again at most once a day; meanwhile the copy keeps getting incremental updates. The mirror lives in `<cache>/sources/` (the directory
  * refresh.yml already caches). Each ecosystem fails on its own and falls back to its cached copy.
  *
  * Everything downloaded is untrusted: byte caps on every response, a redirect host check, advisory

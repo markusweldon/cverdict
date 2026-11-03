@@ -447,6 +447,25 @@ describe('a full dump that fails', () => {
     expect(back.ecosystems.npm?.full_failed_at).toBeUndefined();
   });
 
+  it('waits a day after a dump that cannot be downloaded too, through more than one incremental run', async () => {
+    const cacheDir = await seeded();
+    let zipCalls = 0;
+    const routes = {
+      [url('npm', 'all.zip')]: () => (zipCalls++, new Response('busy', { status: 503 })),
+      [url('npm', 'modified_id.csv')]: csv([`${at(200)},GHSA-dddd-dddd-dddd`]),
+      [url('npm', 'GHSA-dddd-dddd-dddd.json')]: () => ok(JSON.stringify(added)),
+    };
+    const d1 = (await setup({ cacheDir, clock: T0 + 8 * DAY, routes }).run()).data;
+    expect(d1.statuses.npm).toMatchObject({ ok: true, stale: false, advisories: 4 });
+    expect(d1.mirror.ecosystems.npm).toMatchObject({ full_failed_at: new Date(T0 + 8 * DAY).toISOString(), full_error: expect.stringContaining('503') });
+    const tries = zipCalls;
+    // Two hourly runs later the failure is still on record: no download until a day has passed.
+    for (const h of [1, 2, 23]) expect((await setup({ cacheDir, clock: T0 + 8 * DAY + h * HOUR, routes }).run()).data.mirror.ecosystems.npm?.full_failed_at).toBe(new Date(T0 + 8 * DAY).toISOString());
+    expect(zipCalls).toBe(tries);
+    await setup({ cacheDir, clock: T0 + 9 * DAY, routes }).run();
+    expect(zipCalls).toBeGreaterThan(tries);
+  });
+
   it('waits for the retry even when the incremental path cannot help, and stays stale', async () => {
     const cacheDir = await seeded();
     const routes = { [url('npm', 'all.zip')]: () => ok(npmZip(base.slice(0, 1))), [url('npm', 'modified_id.csv')]: csv(['yesterday,GHSA-dddd-dddd-dddd']) };
