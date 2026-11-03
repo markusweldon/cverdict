@@ -9,8 +9,9 @@ import { EmptyState, ErrorState, Loading } from '../components/States';
 import { TierIcon } from '../components/Tier';
 import { revealRow, VirtualList } from '../components/VirtualList';
 import { data } from '../data';
-import { emptyCounts, hasChip, matches, terms, tierAt } from '../filters';
-import { cnaName, fmtInt } from '../format';
+import { dayOf, onDay, parseDay } from '../drill';
+import { emptyCounts, hasChip, matches, pubMs, terms, tierAt } from '../filters';
+import { cnaName, fmtDate, fmtInt } from '../format';
 import { useData, useDebounced, useKnobUrl, useListController, useMediaQuery, useNow, useSearchTarget, useTitle } from '../hooks';
 import { cveHref, navigate, setQuery, useLocation } from '../router';
 import { isWatched, knob, useStore, watchlist } from '../state';
@@ -24,6 +25,8 @@ interface Params {
   cna: string;
   vendor: string;
   chip: string;
+  /** UTC midnight of the `day` filter (YYYY-MM-DD), or null. An invalid day is ignored. */
+  day: number | null;
   sort: Sort;
 }
 
@@ -35,6 +38,7 @@ function readParams(search: URLSearchParams): Params {
     cna: search.get('cna') ?? '',
     vendor: search.get('vendor') ?? '',
     chip: search.get('chip') ?? '',
+    day: parseDay(search.get('day')),
     sort: search.get('sort') === 'score' ? 'score' : 'date',
   };
 }
@@ -72,8 +76,13 @@ export default function Explore() {
   const base = useMemo(() => {
     const ts = terms(p.q);
     const vendor = p.vendor.toLowerCase();
-    return rows.filter((r) => (!p.cna || r.cna === p.cna) && (!vendor || r.v.toLowerCase() === vendor || r.p.toLowerCase() === vendor) && (!p.chip || hasChip(r, p.chip)) && matches(r, ts));
-  }, [rows, p.q, p.cna, p.vendor, p.chip]);
+    const day = p.day;
+    return rows.filter(
+      (r) => (day === null || onDay(pubMs(r), day)) && (!p.cna || r.cna === p.cna) && (!vendor || r.v.toLowerCase() === vendor || r.p.toLowerCase() === vendor) && (!p.chip || hasChip(r, p.chip)) && matches(r, ts),
+    );
+  }, [rows, p.q, p.cna, p.vendor, p.chip, p.day]);
+  // Whether the day holds any CVE at all, to tell "nothing that day" from "too many filters".
+  const dayHasRows = useMemo(() => p.day === null || rows.some((r) => onDay(pubMs(r), p.day!)), [rows, p.day]);
   const tierCounts = useMemo(() => {
     const c = emptyCounts();
     for (const r of base) c[tierAt(r, level)]++;
@@ -100,7 +109,7 @@ export default function Explore() {
     selected.current = results[i]?.id ?? null;
     setSel(i);
   };
-  const signature = `${p.q}|${[...p.tiers].join()}|${p.cna}|${p.vendor}|${p.chip}|${p.sort}|${level}`;
+  const signature = `${p.q}|${[...p.tiers].join()}|${p.cna}|${p.vendor}|${p.chip}|${p.day}|${p.sort}|${level}`;
   useEffect(() => select(-1), [signature]);
   useEffect(() => {
     if (sel < 0) return;
@@ -131,7 +140,8 @@ export default function Explore() {
     else n.add(t);
     setQuery({ tier: [...n].join(',') || null });
   };
-  const anyFilter = p.q || p.tiers.size || p.cna || p.vendor || p.chip;
+  const anyFilter = p.q || p.tiers.size || p.cna || p.vendor || p.chip || p.day !== null;
+  const dayLabel = p.day === null ? '' : fmtDate(dayOf(p.day));
   const total = meta.status === 'ready' ? meta.data.counts.window_published : rows.length;
 
   return (
@@ -207,13 +217,19 @@ export default function Explore() {
               ))}
             </select>
           </label>
+          {p.day !== null && (
+            <button type="button" class="activechip" onClick={() => setQuery({ day: null })} aria-label={`Remove day filter: published ${dayLabel}`}>
+              Published <strong>{dayLabel}</strong>
+              <IconX size={12} />
+            </button>
+          )}
           {anyFilter && (
             <button
               type="button"
               class="btn btn--ghost btn--sm"
               onClick={() => {
                 setQ('');
-                setQuery({ q: null, tier: null, cna: null, vendor: null, chip: null });
+                setQuery({ q: null, tier: null, cna: null, vendor: null, chip: null, day: null });
               }}
             >
               <IconX size={12} /> Reset
@@ -229,8 +245,21 @@ export default function Explore() {
         <ErrorState error={index.error} onRetry={index.retry} />
       ) : index.status !== 'ready' ? (
         <Loading label={`Loading ${fmtInt(total)} CVEs`} lines={8} height="64px" />
+      ) : results.length === 0 && !dayHasRows ? (
+        <EmptyState
+          title={`Nothing published on ${dayLabel}`}
+          action={
+            <button type="button" class="btn btn--sm" onClick={() => setQuery({ day: null })}>
+              Show every day
+            </button>
+          }
+        >
+          {meta.status === 'ready' ? `Explore holds the last ${meta.data.window.days} days, ${fmtDate(meta.data.window.from)} to ${fmtDate(meta.data.window.to)}. Pick a day in that range.` : 'Explore holds the last 30 days. Pick a day in that range.'}
+        </EmptyState>
       ) : results.length === 0 ? (
-        <EmptyState title="No CVEs match">Try fewer filters — or a CVE ID from outside the window opens its own page.</EmptyState>
+        <EmptyState title="No CVEs match">
+          {p.day !== null ? `Nothing from ${dayLabel} matches these filters. Try fewer filters.` : 'Try fewer filters — or a CVE ID from outside the window opens its own page.'}
+        </EmptyState>
       ) : (
         <VirtualList
           key={signature}
