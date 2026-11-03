@@ -216,6 +216,26 @@ describe('buildWoke boundaries', () => {
     expect(buildWoke(scored, wake, NOW, windowStart()).file.items.map((i) => i.id)).toEqual(['CVE-2019-0001']);
   });
 
+  it('counts evidence from while the CVE was still in the window as older evidence', () => {
+    const ID = 'CVE-2026-0042';
+    // Published 45 days ago, so it left the window 15 days ago.
+    const cve = makeCve({ id: ID, published: daysAgo(45), inWindow: false });
+    const pocs = { [ID]: [repo(daysAgo(5), 3)] };
+    const woke = (o: Partial<WakeInput>, kev: ReturnType<typeof makeKev>[] = []) => {
+      const wake = detectWakes(input({ poc: new Map(Object.entries(pocs)), kev: makeKevCatalog(kev), ...o }));
+      return buildWoke([score(cve, { poc: pocs, kev })], wake, NOW, windowStart()).file.items.map((i) => [i.id, i.signals.map((x) => x.kind)]);
+    };
+    // Listed in KEV 20 days ago, while in the window: it was awake already, the PoC is not news.
+    expect(woke({}, [kevAt(ID, 20)])).toEqual([]);
+    // A first Exploit-DB entry 20 days ago: the PoC repo 5 days ago is not its first exploit.
+    const edb = parseExploitDb(['id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes', `51000,x,"e",${dateAgo(20)},a,remote,linux,,${dateAgo(20)},${dateAgo(20)},0,${ID}`].join('\n'));
+    expect(woke({ exploitdb: edb })).toEqual([]);
+    // A KEV listing after it left the window still counts, without the PoC.
+    expect(woke({ exploitdb: edb }, [kevAt(ID, 2)])).toEqual([[ID, ['kev']]]);
+    // Without the earlier evidence, the PoC wakes it.
+    expect(woke({})).toEqual([[ID, ['poc']]]);
+  });
+
   it(`caps the list at ${WOKE_MAX_ITEMS}, newest first, and clears the detail field of those left out`, () => {
     const n = WOKE_MAX_ITEMS + 2;
     const idOf = (i: number) => `CVE-2019-${String(10000 + i)}`;
