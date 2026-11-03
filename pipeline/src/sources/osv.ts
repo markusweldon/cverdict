@@ -5,7 +5,8 @@
  * Per ecosystem, every run: a full sync from `<eco>/all.zip` when there is no copy or the copy's
  * full sync is 7 days old (conditional on its ETag); otherwise an incremental sync that reads the
  * head of `<eco>/modified_id.csv` (newest first) with Range requests down to the cursor, and
- * fetches each changed `<eco>/<id>.json`. The mirror lives in `<cache>/sources/` (the directory
+ * fetches each changed `<eco>/<id>.json`. A rejected full dump is downloaded again at most once a
+ * day; meanwhile the copy keeps getting incremental updates. The mirror lives in `<cache>/sources/` (the directory
  * refresh.yml already caches). Each ecosystem fails on its own and falls back to its cached copy.
  *
  * Everything downloaded is untrusted: byte caps on every response, a redirect host check, advisory
@@ -46,6 +47,9 @@ export interface OsvCopy {
   cursor: string | null;
   /** Last successful contact with OSV.dev for this ecosystem. */
   fetched_at: string;
+  /** When a due full sync last failed, and why; cleared by the next full sync that succeeds. */
+  full_failed_at?: string;
+  full_error?: string;
   /** Sorted by id. */
   records: OsvLite[];
 }
@@ -53,6 +57,8 @@ export interface OsvCopy {
 export interface OsvMirror {
   version: 1;
   ecosystems: Partial<Record<PackageEcosystem, OsvCopy>>;
+  /** Since when each ecosystem without a copy has had none, so a missing one ages like a stale one. */
+  missing?: Partial<Record<PackageEcosystem, string>>;
 }
 
 /** Health of one ecosystem's copy this run (PackageSourceStatus without `matched`). */
@@ -63,6 +69,8 @@ export interface OsvEcosystemStatus {
   modified: string | null;
   advisories: number;
   error: string | null;
+  /** Without a copy: since when (the mirror's `missing`). */
+  missing_since?: string | null;
 }
 
 export interface OsvData {
@@ -234,19 +242,27 @@ export async function readMirror(file: string, log: Logger): Promise<OsvMirror> 
     return { version: 1, ecosystems: {} };
   }
   const mirror: OsvMirror = { version: 1, ecosystems: {} };
+  const missing = asRecord(o.missing);
   for (const eco of PACKAGE_ECOSYSTEMS) {
+    const since = missing && Object.hasOwn(missing, eco) ? missing[eco] : null;
+    if (isTime(since)) (mirror.missing ??= {})[eco] = since;
     const c = Object.hasOwn(ecosystems, eco) ? asRecord(ecosystems[eco]) : null;
     if (!c || !isTime(c.full_sync_at) || !isTime(c.fetched_at) || !Array.isArray(c.records)) continue;
     const records = c.records.filter(isValidLite);
     const dropped = c.records.length - records.length;
     if (dropped > 0) log.warn(`osv: ${eco}: dropped ${dropped} invalid records from the cached mirror`);
-    mirror.ecosystems[eco] = {
+    const copy: OsvCopy = {
       full_sync_at: c.full_sync_at,
       zip_etag: typeof c.zip_etag === 'string' && c.zip_etag.length <= 200 ? c.zip_etag : null,
       cursor: isTime(c.cursor) ? c.cursor : null,
       fetched_at: c.fetched_at,
       records: records.sort(byRecordId),
     };
+    if (isTime(c.full_failed_at)) {
+      copy.full_failed_at = c.full_failed_at;
+      copy.full_error = typeof c.full_error === 'string' ? c.full_error.slice(0, 300) : 'unknown error';
+    }
+    mirror.ecosystems[eco] = copy;
   }
   return mirror;
 }
@@ -376,7 +392,8 @@ async function fullSync(eco: PackageEcosystem, prev: OsvCopy | undefined, env: E
       if (!prev) throw new Error('all.zip answered 304 without a cached copy');
       env.log.info(`osv: ${eco}: all.zip not modified`);
       const now = isoNow(env);
-      return { ...prev, full_sync_at: now, fetched_at: now };
+      const { full_failed_at: _at, full_error: _error, ...rest } = prev;
+      return { ...rest, full_sync_at: now, fetched_at: now };
     }
     const t1 = performance.now();
     const copy = await readDump(eco, tmp, prev, got.etag, env);
@@ -532,24 +549,46 @@ interface EcoResult {
 }
 
 async function syncEcosystem(eco: PackageEcosystem, prev: OsvCopy | undefined, deps: OsvDeps, env: Env): Promise<EcoResult> {
+  /** Why this run's full sync failed, when it did. */
+  let rejected: string | null = null;
+  const failed = (copy: OsvCopy, why: string): OsvCopy => ({ ...copy, full_failed_at: isoNow(env), full_error: why.slice(0, 300) });
   try {
     if (deps.osvDir) return { copy: await syncFromFile(eco, deps.osvDir, prev, env), stale: false, error: null };
     if (deps.offline) return { copy: prev, stale: true, error: prev ? null : 'offline; no cached copy' };
-    const age = prev ? env.clock() - Date.parse(prev.full_sync_at) : Infinity;
-    if (prev && age >= 0 && age < env.cfg.fullSyncMs) {
+    const now = env.clock();
+    const age = prev ? now - Date.parse(prev.full_sync_at) : Infinity;
+    const due = !(age >= 0 && age < env.cfg.fullSyncMs);
+    // A full dump that failed less than a day ago is not downloaded again yet.
+    const sinceFailed = prev?.full_failed_at ? now - Date.parse(prev.full_failed_at) : Infinity;
+    const waiting = sinceFailed >= 0 && sinceFailed < env.cfg.fullRetryMs;
+    if (prev && (!due || waiting)) {
       const t0 = performance.now();
       const inc = await incremental(eco, prev, env);
       if (inc.kind === 'ok') {
         env.log.info(`osv: ${eco}: ${inc.changed} changed records applied (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
         return { copy: inc.copy, stale: false, error: null };
       }
+      if (waiting) throw new Error(`${inc.reason}; the full dump failed (${prev.full_error}) and is retried after ${new Date(Date.parse(prev.full_failed_at!) + env.cfg.fullRetryMs).toISOString()}`);
       env.log.info(`osv: ${eco}: ${inc.reason}; reading the full dump`);
     }
-    return { copy: await fullSync(eco, prev, env), stale: false, error: null };
+    try {
+      return { copy: await fullSync(eco, prev, env), stale: false, error: null };
+    } catch (err) {
+      if (!prev || env.signal.aborted) throw err;
+      rejected = describe(err);
+    }
+    // Keep the copy current from modified_id.csv until the dump is retried (unless that was just tried).
+    env.log.warn(`osv: ${eco}: full dump failed (${rejected}); retried in ${env.cfg.fullRetryMs / 3_600_000} h, incremental updates meanwhile`);
+    const inc = due ? await incremental(eco, prev, env) : null;
+    if (inc?.kind === 'ok') {
+      env.log.info(`osv: ${eco}: ${inc.changed} changed records applied to the cached copy`);
+      return { copy: failed(inc.copy, rejected), stale: false, error: null };
+    }
+    return { copy: failed(prev, rejected), stale: true, error: inc ? `${rejected}; ${inc.reason}` : rejected };
   } catch (err) {
     const message = env.signal.aborted && !deps.signal?.aborted ? `the OSV step ran out of time (${env.cfg.budgetMs / 1000} s)` : describe(err);
     env.log.warn(`osv: ${eco}: ${message}${prev ? '; using the cached copy' : '; no cached copy'}`);
-    return { copy: prev, stale: true, error: message };
+    return { copy: prev && rejected ? failed(prev, rejected) : prev, stale: true, error: rejected ? `${rejected}; ${message}` : message };
   }
 }
 
@@ -576,15 +615,21 @@ export async function loadOsv(deps: OsvDeps): Promise<{ data: OsvData; status: S
 
   const mirror: OsvMirror = { version: 1, ecosystems: {} };
   const statuses = {} as Record<PackageEcosystem, OsvEcosystemStatus>;
+  let missingChanged = false;
   PACKAGE_ECOSYSTEMS.forEach((eco, i) => {
     const { copy, stale, error } = results[i];
+    const since = copy ? null : (prev.missing?.[eco] ?? new Date(clock()).toISOString());
     if (copy) mirror.ecosystems[eco] = copy;
-    statuses[eco] = { ok: copy !== undefined, stale, fetched_at: copy?.fetched_at ?? null, modified: copy?.cursor ?? null, advisories: copy?.records.length ?? 0, error };
+    else (mirror.missing ??= {})[eco] = since!;
+    if (since !== (prev.missing?.[eco] ?? null)) missingChanged = true;
+    statuses[eco] = { ok: copy !== undefined, stale, fetched_at: copy?.fetched_at ?? null, modified: copy?.cursor ?? null, advisories: copy?.records.length ?? 0, error, ...(since ? { missing_since: since } : {}) };
   });
   for (const [prefix, n] of env.counters.prefixes) deps.log.warn(`osv: skipped ${n} records with the prefix ${prefix}, which has no licence notice in ATTRIBUTION`);
   if (env.counters.malformed > 0) deps.log.warn(`osv: skipped ${env.counters.malformed} malformed records`);
 
-  if (!deps.offline && results.some((r) => !r.stale)) {
+  // Also written when only a failure time changed, so the next run waits instead of downloading again.
+  const failureChanged = PACKAGE_ECOSYSTEMS.some((eco, i) => results[i].copy?.full_failed_at !== prev.ecosystems[eco]?.full_failed_at);
+  if (!deps.offline && (missingChanged || failureChanged || results.some((r) => !r.stale))) {
     try {
       const bytes = await writeMirror(file, mirror);
       deps.log.info(`osv: mirror ${formatBytes(bytes)} gzip written (${((performance.now() - t0) / 1000).toFixed(1)} s for the OSV step)`);
@@ -598,12 +643,15 @@ export async function loadOsv(deps: OsvDeps): Promise<{ data: OsvData; status: S
 /**
  * The one `osv` entry of meta.sources. `ok` when any ecosystem has a copy (the watchdog fails a run
  * at once only when nothing is usable); `stale` when any ecosystem is stale or missing, with the
- * oldest copy's time, so a copy stale for 48 hours fails the watchdog like any other source.
+ * oldest copy's time or the time since when an ecosystem has had no copy, whichever is older, so a
+ * copy stale for 48 hours, or an ecosystem missing for 48 hours, fails the watchdog like any other
+ * source.
  */
 export function osvStatus(statuses: Record<PackageEcosystem, OsvEcosystemStatus>, cfg: Pick<Config, 'info' | 'base'> = OSV): SourceStatus {
   const list = PACKAGE_ECOSYSTEMS.map((eco) => ({ eco, ...statuses[eco] }));
   const withCopy = list.filter((s) => s.ok);
-  const oldest = withCopy.map((s) => s.fetched_at).filter((t): t is string => t !== null).sort()[0] ?? null;
+  const times = list.map((s) => (s.ok ? s.fetched_at : s.missing_since)).filter((t): t is string => typeof t === 'string');
+  const oldest = withCopy.length > 0 ? (times.sort((a, b) => Date.parse(a) - Date.parse(b))[0] ?? null) : null;
   const newest = withCopy.map((s) => s.modified).filter((t): t is string => t !== null).sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
   const problems = list.filter((s) => s.stale || !s.ok).map((s) => `${s.eco}: ${s.error ?? (s.ok ? 'cached copy' : 'no copy')}`);
   return {

@@ -121,6 +121,7 @@ export interface OsvConfig {
   isAllowedHost: (host: string) => boolean;
   mirrorFile: string;
   fullSyncMs: number;
+  fullRetryMs: number;
   csvHeadBytes: number;
   csvMaxBytes: number;
   csvOverlapMs: number;
@@ -151,6 +152,8 @@ export const OSV: OsvConfig = {
   mirrorFile: 'osv-mirror.json.gz',
   /** Re-read the full dump of an ecosystem this often. */
   fullSyncMs: 7 * 24 * 3_600_000,
+  /** After a full dump is rejected, wait this long before downloading it again (incremental runs meanwhile). */
+  fullRetryMs: 24 * 3_600_000,
   /** First `modified_id.csv` range request; doubled until the cursor is reached, up to csvMaxBytes. */
   csvHeadBytes: 16 * 1024,
   csvMaxBytes: 1024 * 1024,

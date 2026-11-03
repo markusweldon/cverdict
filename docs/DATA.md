@@ -454,8 +454,9 @@ apk, containers) and other advisory databases.
 How it is kept up to date: the pipeline keeps a compact copy of the OSV records of the eight
 ecosystems that name a CVE in its cache. Every run reads the newest lines of each ecosystem's
 `modified_id.csv` and fetches the records that changed; every 7 days, or when there is no copy, it
-reads the full `all.zip` dump instead. When OSV.dev cannot be reached, each ecosystem keeps its
-last copy and is marked `stale`.
+reads the full `all.zip` dump instead. A dump that fails its checks is tried again a day later,
+and the copy keeps getting the changed records meanwhile. When OSV.dev cannot be reached, each
+ecosystem keeps its last copy and is marked `stale`.
 
 ## `state.json` (internal)
 
