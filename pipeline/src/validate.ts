@@ -23,6 +23,7 @@ import {
   WAKE_KINDS,
 } from '../../shared/contract';
 import { CVE_ID_RE, shardOf } from '../../shared/shard';
+import { backtestProblems } from './backtest';
 import { PATHS, SHARD_NAMES } from './emit/json';
 import { BUDGETS } from './config';
 import type { Logger } from './types';
@@ -310,22 +311,9 @@ function checkReceipts(json: Map<string, JsonObject>, errors: string[]): void {
     const v = f.volume.find((x) => x.method === m);
     if (!v || v.flagged > v.n) err(`forward.volume.${m} is invalid`);
   }
-  const b = r.backtest;
-  if (b === null) return;
-  if (!b || b.hindsight !== true || !Array.isArray(b.items) || !Array.isArray(b.sets)) return err('backtest is not marked as hindsight or is incomplete');
-  const total = b.sets.reduce((a, s) => a + s.n, 0);
-  const excluded = (b.excluded ?? []).reduce((a, e) => a + e.ids.length, 0);
-  if (total !== b.items.length || total + excluded !== b.listed) err(`backtest sets (${total}) and exclusions (${excluded}) do not add up to ${b.listed} listings`);
-  for (const s of b.sets) {
-    const items = b.items.filter((i) => i.old === (s.key === 'old'));
-    for (const m of RECEIPT_METHODS) {
-      for (const variant of ['strict', 'upper'] as const) {
-        const score = s[variant].find((x) => x.method === m);
-        const hits = items.filter((i) => i[variant][m]).length;
-        if (!score || score.n !== s.n || score.before !== hits || score.lead !== null) err(`backtest ${s.key}.${variant}.${m} does not match its items`);
-      }
-    }
-  }
+  if (!f.gap_total || !Number.isInteger(f.gap_total.n) || f.gap_total.n < f.gaps.length || !(f.gap_total.hours >= 0)) err('forward.gap_total is invalid');
+  if (r.backtest === null) return;
+  for (const problem of backtestProblems(r.backtest)) err(problem);
 }
 
 function checkMeta(meta: Meta, index: Row[], json: Map<string, JsonObject>, errors: string[], warnings: string[]): void {

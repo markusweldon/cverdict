@@ -57,6 +57,8 @@ export interface ReceiptsLog {
   last: string;
   runs: number;
   gaps: [string, string][];
+  /** Every gap since `since` (`gaps` keeps only the most recent MAX_GAPS). */
+  gapTotal: { n: number; hours: number };
   entries: Map<string, LogEntry>;
   /** Totals of pruned entries, so alert volume still counts them. */
   pruned: { n: number } & Record<ReceiptMethod, number>;
@@ -66,6 +68,8 @@ const emptyPruned = (): ReceiptsLog['pruned'] => ({ n: 0, cverdict: 0, cvss7: 0,
 export const hourOf = (d: Date | string): number => Math.floor((typeof d === 'string' ? Date.parse(d) : d.getTime()) / HOUR_MS);
 export const hourIso = (h: number): string => new Date(h * HOUR_MS).toISOString();
 const hourDay = (h: number): string => ymd(new Date(h * HOUR_MS));
+/** Length of a gap in hours, to 0.1. */
+const gapHours = (from: string, to: string): number => Math.round((Date.parse(to) - Date.parse(from)) / HOUR_MS * 10) / 10;
 
 // ── Compact encoding ─────────────────────────────────────────────────────────────────────────
 //
@@ -139,6 +143,8 @@ export interface EncodedLog {
   last: string;
   runs: number;
   gaps: [string, string][];
+  /** [count, hours] of every gap since `since`. */
+  gap_total: [number, number];
   pruned: ReceiptsLog['pruned'];
   h0: number;
   ids: string;
@@ -166,6 +172,7 @@ export function encodeLog(log: ReceiptsLog): EncodedLog {
     last: log.last,
     runs: log.runs,
     gaps: log.gaps,
+    gap_total: [log.gapTotal.n, log.gapTotal.hours],
     pruned: log.pruned,
     h0,
     ids: encodeIds(ids),
@@ -218,7 +225,11 @@ export function decodeLog(data: unknown): ReceiptsLog | null {
     const to = Array.isArray(g) ? normalizeIso(g[1]) : null;
     if (from && to) gaps.push([from, to]);
   }
-  return { since, last, runs, gaps, entries, pruned };
+  // Logs written before gap_total existed hold every gap they saw (fewer than MAX_GAPS so far).
+  const t = Array.isArray(o.gap_total) ? o.gap_total.map(asNumber) : null;
+  const gapTotal = t ? { n: t[0], hours: t[1] } : { n: gaps.length, hours: gaps.reduce((a, [from, to]) => a + gapHours(from, to), 0) };
+  if (gapTotal.n === null || !Number.isInteger(gapTotal.n) || gapTotal.n < gaps.length || gapTotal.hours === null || !(gapTotal.hours >= 0)) return null;
+  return { since, last, runs, gaps, gapTotal: { n: gapTotal.n, hours: gapTotal.hours }, entries, pruned };
 }
 
 export const RECEIPTS_SECTION: StateSection<ReceiptsLog> = { key: 'receipts', version: 1, parse: decodeLog };
@@ -261,10 +272,11 @@ export function updateLog(previous: ReceiptsLog | null, scored: readonly ScoredC
         pruned: { ...previous.pruned },
         entries: new Map([...previous.entries].map(([id, e]) => [id, { seen: e.seen, flags: { ...e.flags }, kev: e.kev && { ...e.kev } }])),
       }
-    : { since: nowIso, last: nowIso, runs: 0, gaps: [], entries: new Map(), pruned: emptyPruned() };
+    : { since: nowIso, last: nowIso, runs: 0, gaps: [], gapTotal: { n: 0, hours: 0 }, entries: new Map(), pruned: emptyPruned() };
   if (!previous) notes.push('no usable log in the previous state; a new log starts now');
   if (previous && now.getTime() - Date.parse(previous.last) > GAP_HOURS * HOUR_MS) {
     log.gaps.push([previous.last, nowIso]);
+    log.gapTotal = { n: log.gapTotal.n + 1, hours: log.gapTotal.hours + gapHours(previous.last, nowIso) };
     notes.push(`gap since the last run (${previous.last})`);
   }
   log.gaps = log.gaps.slice(-MAX_GAPS);
@@ -272,22 +284,10 @@ export function updateLog(previous: ReceiptsLog | null, scored: readonly ScoredC
   log.last = nowIso;
 
   let added = 0;
-  const newFlags: Record<ReceiptMethod, number> = { cverdict: 0, cvss7: 0, epss10: 0 };
   for (const s of scored) {
-    if (!s.cve.inWindow) continue;
-    let e = log.entries.get(s.cve.id);
-    if (!e) {
-      e = { seen: hour, flags: { cverdict: null, cvss7: null, epss10: null }, kev: null };
-      log.entries.set(s.cve.id, e);
-      added++;
-    }
-    const f = flagged(s);
-    for (const m of RECEIPT_METHODS) {
-      if (e.flags[m] === null && f[m]) {
-        e.flags[m] = hour;
-        newFlags[m]++;
-      }
-    }
+    if (!s.cve.inWindow || log.entries.has(s.cve.id)) continue;
+    log.entries.set(s.cve.id, { seen: hour, flags: { cverdict: null, cvss7: null, epss10: null }, kev: null });
+    added++;
   }
 
   // KEV listings for any logged CVE, at whatever age. The catalog first; the CISA-ADP KEV block
@@ -301,6 +301,23 @@ export function updateLog(previous: ReceiptsLog | null, scored: readonly ScoredC
   };
   for (const k of kev.entries.values()) record(k.cveID, normalizeYmd(k.dateAdded));
   for (const s of scored) if (s.cve.adpKev) record(s.cve.id, s.cve.adpKev.dateAdded);
+
+  // First flags. A listing this run can see but not record (no usable date, or dated after `now`)
+  // would otherwise give CVErdict a flag that seems to come before the listing: no CVErdict flag is
+  // recorded until the listing is, and then it comes with the listing ('after').
+  const newFlags: Record<ReceiptMethod, number> = { cverdict: 0, cvss7: 0, epss10: 0 };
+  for (const s of scored) {
+    if (!s.cve.inWindow) continue;
+    const e = log.entries.get(s.cve.id)!;
+    const unrecorded = !e.kev && (kev.entries.has(s.cve.id) || s.cve.adpKev !== null);
+    const f = flagged(s);
+    for (const m of RECEIPT_METHODS) {
+      if (e.flags[m] === null && f[m] && !(m === 'cverdict' && unrecorded)) {
+        e.flags[m] = hour;
+        newFlags[m]++;
+      }
+    }
+  }
 
   const cutoff = hour - LOG_RETENTION_DAYS * 24;
   let pruned = 0;
@@ -412,6 +429,7 @@ export function forwardReceipts(log: ReceiptsLog, kev: KevCatalog, rows: Readonl
     last: log.last,
     runs: log.runs,
     gaps: log.gaps.map(([from, to]) => ({ from, to })),
+    gap_total: { n: log.gapTotal.n, hours: Math.round(log.gapTotal.hours * 10) / 10 },
     watch_days: watchDays,
     listed: items.length + uncounted.length,
     eligible: items.length,

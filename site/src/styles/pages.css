@@ -2100,7 +2100,8 @@
   color: var(--ok);
 }
 
-.rcpt__use--hindsight {
+.rcpt__use--hindsight,
+.rcpt__use--today {
   color: var(--ink-watch);
 }
 

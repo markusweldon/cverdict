@@ -1,5 +1,5 @@
 /** Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV, against two common rules. */
-import { RECEIPT_METHODS, type BacktestItem, type BacktestReceipts, type ForwardReceipts, type MethodScore, type ReceiptItem, type ReceiptMethod } from '../../../shared/contract';
+import { RECEIPT_METHODS, type BacktestItem, type BacktestReceipts, type BacktestSignal, type ForwardReceipts, type MethodScore, type ReceiptItem, type ReceiptMethod } from '../../../shared/contract';
 import { REPO_URL } from '../../../shared/brand';
 import { ExtLink } from '../components/ExtLink';
 import { IconCode, IconTerminal } from '../components/icons';
@@ -86,7 +86,8 @@ function Forward({ f }: { f: ForwardReceipts }) {
   const [first, second] = forwardHeadline(f);
   const older = f.uncounted.filter((u) => u.reason === 'older').length;
   const listedFirst = f.uncounted.length - older;
-  const gapHours = f.gaps.reduce((a, g) => a + (Date.parse(g.to) - Date.parse(g.from)) / 3_600_000, 0);
+  // Every gap since the start (the list keeps only the most recent ones).
+  const gaps = f.gap_total ?? { n: f.gaps.length, hours: f.gaps.reduce((a, g) => a + (Date.parse(g.to) - Date.parse(g.from)) / 3_600_000, 0) };
   return (
     <section id="live" class="prose-section" aria-labelledby="live-title">
       <h2 class="section__title" id="live-title">
@@ -99,13 +100,19 @@ function Forward({ f }: { f: ForwardReceipts }) {
       <ForwardTable f={f} />
       <p class="muted">
         Logging since {fmtDateTime(f.since)}. {plural(f.runs, 'hourly run')} so far
-        {f.gaps.length > 0 ? `, with ${plural(f.gaps.length, 'gap')} longer than 3 hours (${fmtInt(gapHours)} hours in all)` : ', no gaps longer than 3 hours'}. Alert volume counts the{' '}
+        {gaps.n > 0 ? `, with ${plural(gaps.n, 'gap')} longer than 3 hours (${fmtInt(Math.round(gaps.hours))} hours in all)` : ', no gaps longer than 3 hours'}. Alert volume counts the{' '}
         {fmtInt(f.volume[0]?.n ?? 0)} CVEs watched so far.
       </p>
       {f.uncounted.length > 0 && (
         <p class="muted">
-          Not counted above: {plural(older, 'listing')} of CVEs older than our {f.watch_days}-day window (they show up in <a href={href('woke')}>Woke up</a>)
-          {listedFirst > 0 && <>, and {plural(listedFirst, 'CVE')} that CISA listed before we first saw {listedFirst === 1 ? 'it' : 'them'}</>}. All are in the list below.
+          Not counted above:{' '}
+          {older > 0 && (
+            <>
+              {plural(older, 'listing')} of CVEs older than our {f.watch_days}-day window (<a href={href('woke')}>Woke up</a> shows the recent ones)
+            </>
+          )}
+          {older > 0 && listedFirst > 0 && ', and '}
+          {listedFirst > 0 && <>{plural(listedFirst, 'CVE')} that CISA listed before we first saw {listedFirst === 1 ? 'it' : 'them'}</>}. All are in the list below.
         </p>
       )}
     </section>
@@ -125,7 +132,10 @@ function HowMeasured({ watchDays }: { watchDays: number }) {
           <strong>EPSS 10% or more</strong> flags it when its EPSS score reaches 0.1.
         </li>
         <li>When CISA adds one of those CVEs to KEV, we compare. It counts as flagged before KEV when an earlier hourly run flagged it, on or before the KEV date. A flag that came with the listing does not count.</li>
-        <li>Lead time is the KEV date minus the day of the first flag, in whole days. A flag on the listing day counts as 0 days and is shown apart.</li>
+        <li>
+          Lead time is the KEV date minus the day of the first flag, in whole days. A flag on the listing day counts as 0 days and is shown apart: it can come from CISA's own update to the CVE
+          record, made as it lists the CVE.
+        </li>
         <li>We watch each CVE for its first {watchDays} days, while it is in the window. A flag after that does not count, for any method.</li>
         <li>Only CVEs we saw before the listing count. Older CVEs and CVEs listed before we saw them are left out, and listed below.</li>
         <li>Alert volume is the share of watched CVEs a method flagged at least once. Catching the same listings with fewer alerts means less work.</li>
@@ -212,6 +222,7 @@ function Backtest({ b }: { b: BacktestReceipts }) {
   const hindsight = b.signals.filter((s) => s.treatment === 'hindsight');
   const excluded = b.signals.filter((s) => s.treatment === 'excluded');
   const matched = b.signals.filter((s) => s.treatment === 'time_matched');
+  const asToday = b.signals.filter((s) => s.treatment === 'today');
   return (
     <section id="backtest" class="prose-section rcpt__back" aria-labelledby="backtest-title">
       <h2 class="section__title" id="backtest-title">
@@ -229,7 +240,7 @@ function Backtest({ b }: { b: BacktestReceipts }) {
           <h3 class="rcpt__sub">
             Published up to {b.old_years} years before the listing <span class="muted">{plural(recent.n, 'CVE')}</span>
           </h3>
-          <BacktestTable strict={recent.strict} upper={recent.upper} volume={b.volume} label="Each method on recent CVEs that CISA added to KEV" />
+          <BacktestTable strict={recent.strict} upper={recent.upper} volume={b.volume} label="Backtest, hindsight: each method on recent CVEs that CISA added to KEV" />
         </>
       )}
       {old && old.n > 0 && (
@@ -237,7 +248,7 @@ function Backtest({ b }: { b: BacktestReceipts }) {
           <h3 class="rcpt__sub">
             Published more than {b.old_years} years before the listing <span class="muted">{plural(old.n, 'CVE')}</span>
           </h3>
-          <BacktestTable strict={old.strict} upper={old.upper} volume={null} label="Each method on old CVEs that CISA added to KEV" />
+          <BacktestTable strict={old.strict} upper={old.upper} volume={null} label="Backtest, hindsight: each method on old CVEs that CISA added to KEV" />
         </>
       )}
       {b.volume && (
@@ -248,7 +259,8 @@ function Backtest({ b }: { b: BacktestReceipts }) {
       <h3 class="rcpt__sub">What to keep in mind</h3>
       <ul class="rcpt__rules">
         <li>
-          “Flagged before KEV” uses only evidence dated before the listing day. Evidence without a usable date is left out and treated as unknown, never as absent. “With undated evidence” adds what
+          “Flagged before KEV” uses only evidence dated before the listing day, plus the vendor, product and description as they read today. Evidence without a usable date is left out and
+          treated as unknown, never as absent. “With undated evidence” adds what
           that evidence says today, as if it had all been there already. Most of it is exploits, so this is usually the higher figure. The truth is likely between the two.
         </li>
         {ssvcOut > 0 && (
@@ -267,7 +279,8 @@ function Backtest({ b }: { b: BacktestReceipts }) {
         <li>The backtest only says yes or no. It does not measure lead time: that needs the hour each method first flagged a CVE, which only the live record has.</li>
         <li>
           Left out of every figure: {b.excluded.length === 0 ? 'nothing.' : b.excluded.map((e) => <Excluded key={e.code} e={e} />)}
-          {b.epss_missing.length > 0 && ` EPSS files could not be loaded for ${plural(b.epss_missing.length, 'day')}, so EPSS was left out for those CVEs.`}
+          {b.epss_missing.length > 0 &&
+            ` EPSS files could not be loaded for ${plural(b.epss_missing.length, 'day')}. For those CVEs, CVErdict treats EPSS as unknown and “EPSS 10% or more” counts them as not flagged. The backtest tries again the next day.`}
         </li>
         <li>
           Computed {fmtDateTime(b.computed_at)} and refreshed about once a week. Run it yourself with <code>npm run backtest</code>: <ExtLink href={SCRIPT_URL}>scripts/backtest.ts</ExtLink>, which runs{' '}
@@ -277,6 +290,7 @@ function Backtest({ b }: { b: BacktestReceipts }) {
       <h3 class="rcpt__sub">Which evidence was used</h3>
       <div class="tablewrap">
         <table class="table table--compact rcpt__signals rcpt__stack">
+          <caption class="sr-only">How the backtest used each kind of evidence</caption>
           <thead>
             <tr>
               <th scope="col">Evidence</th>
@@ -285,14 +299,14 @@ function Backtest({ b }: { b: BacktestReceipts }) {
             </tr>
           </thead>
           <tbody>
-            {[...matched, ...hindsight, ...excluded].map((s) => (
+            {[...matched, ...hindsight, ...asToday, ...excluded].map((s) => (
               <tr key={s.key}>
                 <th scope="row">{s.label}</th>
                 <td data-label="How it was used">
-                  <span class={`rcpt__use rcpt__use--${s.treatment}`}>{USE_LABEL[s.treatment]}</span> {s.note}
+                  <span class={`rcpt__use rcpt__use--${s.treatment}`}>{USE_LABEL[s.treatment] ?? s.treatment}</span> {s.note}
                 </td>
                 <td class="num" data-label="Left out for">
-                  {s.affected === 0 ? '—' : s.affected >= judged ? 'all' : plural(s.affected, 'CVE')}
+                  {s.treatment === 'today' || s.affected === 0 ? '—' : s.affected >= judged ? 'all' : plural(s.affected, 'CVE')}
                 </td>
               </tr>
             ))}
@@ -336,7 +350,7 @@ function ForwardList({ items, level, now }: { items: ReceiptItem[]; level: numbe
 }
 
 const MARK_TEXT = { yes: 'Yes', upper: 'Only with undated evidence', no: 'No' } as const;
-const USE_LABEL = { time_matched: 'Dated', hindsight: 'Not always dated', excluded: 'Never used' } as const;
+const USE_LABEL: Readonly<Record<BacktestSignal['treatment'], string>> = { time_matched: 'Dated', hindsight: 'Not always dated', today: 'As it is today', excluded: 'Never used' };
 
 function BacktestList({ items, filter }: { items: BacktestItem[]; filter: BacktestFilter }) {
   const shown = filterBacktest(items, filter);
@@ -478,6 +492,7 @@ export default function Receipts() {
                 </h3>
                 <div class="tablewrap">
                   <table class="table table--compact">
+                    <caption class="sr-only">KEV additions since the log started that it does not count, and why</caption>
                     <thead>
                       <tr>
                         <th scope="col">CVE</th>

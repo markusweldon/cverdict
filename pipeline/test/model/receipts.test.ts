@@ -98,7 +98,7 @@ describe('log encoding', () => {
         kev: null,
       });
     }
-    const log: ReceiptsLog = { since: T0.toISOString(), last: T0.toISOString(), runs: 9600, gaps: [], entries, pruned: { n: 0, cverdict: 0, cvss7: 0, epss10: 0 } };
+    const log: ReceiptsLog = { since: T0.toISOString(), last: T0.toISOString(), runs: 9600, gaps: [], gapTotal: { n: 0, hours: 0 }, entries, pruned: { n: 0, cverdict: 0, cvss7: 0, epss10: 0 } };
     const gz = gzipSync(JSON.stringify(encodeLog(log))).length;
     // Woke tracking uses ~25 KB of the same file.
     expect(gz + 30 * 1024).toBeLessThan(BUDGETS.gzipBytes['v1/state.json']);
@@ -245,7 +245,7 @@ describe('outcomes and metrics', () => {
       // Never listed.
       [ids[3], { seen: at('2026-11-03T03:00:00Z'), flags: flags(null, null, at('2026-11-05T03:00:00Z')), kev: null }],
     ]);
-    const log: ReceiptsLog = { since: '2026-11-03T03:17:00.000Z', last: '2026-11-13T00:17:00.000Z', runs: 200, gaps: [], entries, pruned: { n: 0, cverdict: 0, cvss7: 0, epss10: 0 } };
+    const log: ReceiptsLog = { since: '2026-11-03T03:17:00.000Z', last: '2026-11-13T00:17:00.000Z', runs: 200, gaps: [], gapTotal: { n: 0, hours: 0 }, entries, pruned: { n: 0, cverdict: 0, cvss7: 0, epss10: 0 } };
     // An old CVE listed since the log started, and one listed before it started (left out).
     const catalog = kev([makeKev('CVE-2019-0001', { dateAdded: '2026-11-05' }), makeKev('CVE-2018-0001', { dateAdded: '2026-11-01' })]);
     const f = forwardReceipts(log, catalog, new Map(), new Date('2026-11-13T00:17:00Z'), 30);

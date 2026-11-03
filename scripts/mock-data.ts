@@ -1330,6 +1330,7 @@ function mockReceipts(all: readonly Scored[], rows: ReadonlyMap<string, Row>): R
       last: GENERATED_AT,
       runs: 9 * 24 - 2,
       gaps: [{ from: new Date(NOW - 4 * DAY).toISOString(), to: new Date(NOW - 4 * DAY + 4 * HOUR).toISOString() }],
+      gap_total: { n: 1, hours: 4 },
       watch_days: WINDOW_DAYS,
       listed: listed.length,
       eligible: items.length,

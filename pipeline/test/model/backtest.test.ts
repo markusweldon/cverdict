@@ -2,9 +2,11 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { BacktestReceipts } from '../../../shared/contract';
+import { RECEIPT_METHODS, type BacktestReceipts } from '../../../shared/contract';
+import { SCORE_MODEL } from '../../../shared/model';
 import {
   BACKTEST_REFRESH_DAYS,
+  backtestProblems,
   decideBacktest,
   evidenceAsOf,
   kevAsOf,
@@ -124,6 +126,15 @@ describe('evidence as of the day before the listing', () => {
     expect(upper.leftOut).toEqual(['ssvc_active']);
     const withPoc = scoreOf(asOf(late, { exploitdb: { [ID]: [edb('7', '2026-10-01')] } }), 'upper');
     expect(withPoc.evidence.cve.ssvc?.exploitation).toBe('poc');
+    // Stamped on the day before the listing, in a container changed since: CISA dates its listing
+    // update that way, so the stamp cannot show the assessment predates the listing.
+    for (const stamp of [before(1), '2026-10-19T00:00:00.000Z', before(1 / 24)]) {
+      const dayBefore = scoreOf(asOf(kevCve({ ssvc: ssvc('active', 'yes', 'total', stamp), adpUpdated: after(0) })), 'strict');
+      expect(dayBefore.evidence.cve.ssvc).toBeNull();
+      expect(dayBefore.leftOut).toEqual(['ssvc']);
+    }
+    // The same stamp in a container unchanged since the cutoff: written before the listing, so it counts.
+    expect(scoreOf(asOf(kevCve({ ssvc: ssvc('active', 'yes', 'total', before(1)), adpUpdated: before(1 / 24) })), 'strict').exploited).toBe(true);
     // A dated "none" needs nothing left out.
     expect(scoreOf(asOf(kevCve({ ssvc: ssvc('none', 'no', 'partial', before(3)), adpUpdated: after(1) })), 'strict').leftOut).toEqual([]);
   });
@@ -211,14 +222,26 @@ describe('runBacktest', () => {
 });
 
 describe('carry-forward', () => {
-  const computed = (iso: string): BacktestReceipts =>
+  const no = { cverdict: false, cvss7: false, epss10: false };
+  const zero = (n: number) => RECEIPT_METHODS.map((method) => ({ method, n, before: 0, earlier: 0, same_day: 0, lead: null }));
+  const computed = (iso: string, o: Partial<BacktestReceipts> = {}): BacktestReceipts =>
     ({
       hindsight: true,
       computed_at: iso,
-      items: [{ id: ID, kev_added: LISTED, epss: 0.25, epss_date: '2026-10-19' }, { id: 'CVE-2026-1', kev_added: LISTED, epss: null, epss_date: null }],
+      score_model: SCORE_MODEL,
+      listed: 4,
+      items: [
+        { id: ID, kev_added: LISTED, old: false, strict: no, upper: no, epss: 0.25, epss_date: '2026-10-19' },
+        { id: 'CVE-2026-1', kev_added: LISTED, old: false, strict: no, upper: no, epss: null, epss_date: null },
+      ],
       excluded: [{ code: 'not_public', reason: 'x', ids: ['CVE-2026-9'] }, { code: 'no_record', reason: 'y', ids: ['CVE-2026-8'] }],
-      sets: [],
+      sets: [
+        { key: 'recent', n: 2, strict: zero(2), upper: zero(2) },
+        { key: 'old', n: 0, strict: zero(0), upper: zero(0) },
+      ],
       signals: [],
+      epss_missing: [],
+      ...o,
     }) as unknown as BacktestReceipts;
 
   it(`carries a backtest younger than ${BACKTEST_REFRESH_DAYS} days, else plans a refresh reusing known EPSS values`, () => {
@@ -234,6 +257,25 @@ describe('carry-forward', () => {
     // From the future (a clock problem): refresh.
     expect(decideBacktest(computed('2026-12-01T00:00:00Z'), NOW).plan).not.toBeNull();
     expect(decideBacktest(null, NOW).note).toMatch(/no previous backtest/);
+  });
+
+  it('recomputes a recent copy from another score model, an inconsistent one, and one with missing EPSS days after a day', () => {
+    const recent = new Date(NOW.getTime() - 2 * 86_400_000).toISOString();
+    expect(backtestProblems(computed(recent))).toEqual([]);
+    // Another model, or a copy from before score_model existed: never carried.
+    expect(decideBacktest(computed(recent, { score_model: 'v0.0.1' }), NOW)).toMatchObject({ carried: null, note: expect.stringMatching(/score model v0\.0\.1/) });
+    expect(decideBacktest(computed(recent, { score_model: undefined }), NOW).carried).toBeNull();
+    // Figures that do not match the items (a stricter validate.ts would fail the run every hour for a week).
+    const broken = computed(recent, { listed: 9 });
+    expect(backtestProblems(broken)).toHaveLength(1);
+    expect(decideBacktest(broken, NOW).carried).toBeNull();
+    // EPSS files missing: retried a day later, not a week later; the values already known are reused.
+    const missing = (iso: string) => computed(iso, { epss_missing: ['2026-10-19'] });
+    expect(decideBacktest(missing(new Date(NOW.getTime() - 3_600_000).toISOString()), NOW).carried).not.toBeNull();
+    const retry = decideBacktest(missing(recent), NOW);
+    expect(retry.carried).toBeNull();
+    expect(retry.plan!.reuse.size).toBe(1);
+    expect(retry.note).toMatch(/1 EPSS days missing/);
   });
 
   it('reads the previous receipts.json defensively', () => {
