@@ -207,13 +207,14 @@ describe('loadOsv: full sync', () => {
     expect(r1.data.statuses.npm.error).toContain('larger than');
 
     const moved = setup({
-      cacheDir,
+      cacheDir: await seeded(),
       clock: later,
       routes: { [url('npm', 'all.zip')]: () => Object.defineProperty(ok(npmZip()), 'url', { value: 'https://evil.example/all.zip' }) },
     });
     const r2 = await moved.run();
     expect(r2.data.statuses.npm).toMatchObject({ ok: true, stale: true });
-    expect(r2.data.statuses.npm.error).toBe('redirected to evil.example, which is not allowed');
+    // Then the incremental update, which has no route here, fails too.
+    expect(r2.data.statuses.npm.error).toBe('redirected to evil.example, which is not allowed; fetch failed');
   });
 
   it('rejects a dump below its floor or far below the cached copy', async () => {
@@ -406,5 +407,79 @@ describe('the OSV step budget', () => {
     const { data } = await t.run();
     expect(data.statuses.npm).toMatchObject({ ok: true, stale: true, advisories: 3 });
     expect(data.statuses.npm.error).toBe('the OSV step ran out of time (0.05 s)');
+  });
+});
+
+describe('a full dump that fails', () => {
+  const at = (h: number) => new Date(Date.parse('2026-11-02T12:00:00Z') + h * HOUR).toISOString().replace('.000Z', 'Z');
+  const added = osvRecord('GHSA-dddd-dddd-dddd', { cves: ['CVE-2026-10005'], name: 'express', modified: at(200) });
+
+  it('keeps the copy current from modified_id.csv and downloads the dump again only after a day', async () => {
+    const cacheDir = await seeded();
+    let dump = npmZip(base.slice(0, 1));
+    const routes = {
+      [url('npm', 'all.zip')]: () => ok(dump),
+      [url('npm', 'modified_id.csv')]: csv([`${at(200)},GHSA-dddd-dddd-dddd`]),
+      [url('npm', 'GHSA-dddd-dddd-dddd.json')]: () => ok(JSON.stringify(added)),
+    };
+    const npmCalls = (t: { calls: { url: string }[] }) => t.calls.filter((c) => c.url.startsWith(`${OSV.base}/npm/`)).map((c) => c.url.slice(OSV.base.length + 5));
+
+    // 8 days on: the dump is rejected (1 record, the copy has 3), the copy is updated incrementally.
+    const r1 = setup({ cacheDir, clock: T0 + 8 * DAY, routes });
+    const d1 = (await r1.run()).data;
+    expect(npmCalls(r1)).toEqual(['all.zip', 'modified_id.csv', 'GHSA-dddd-dddd-dddd.json']);
+    expect(d1.statuses.npm).toMatchObject({ ok: true, stale: false, advisories: 4, error: null, fetched_at: new Date(T0 + 8 * DAY).toISOString() });
+    expect(d1.mirror.ecosystems.npm).toMatchObject({ full_failed_at: new Date(T0 + 8 * DAY).toISOString(), full_error: expect.stringContaining('fewer than 90% of the cached 3') });
+
+    // An hour later: no download, only the incremental update.
+    const r2 = setup({ cacheDir, clock: T0 + 8 * DAY + HOUR, routes });
+    expect((await r2.run()).data.statuses.npm).toMatchObject({ ok: true, stale: false, advisories: 4 });
+    expect(npmCalls(r2)).toEqual(['modified_id.csv', 'GHSA-dddd-dddd-dddd.json']);
+
+    // A day after the failure the dump is tried again; this one passes and clears the failure.
+    dump = npmZip([...base, added]);
+    const r3 = setup({ cacheDir, clock: T0 + 9 * DAY, routes });
+    const d3 = (await r3.run()).data;
+    expect(npmCalls(r3)).toEqual(['all.zip']);
+    expect(d3.mirror.ecosystems.npm?.full_failed_at).toBeUndefined();
+    expect(d3.mirror.ecosystems.npm?.full_sync_at).toBe(new Date(T0 + 9 * DAY).toISOString());
+    const back = JSON.parse(gunzipSync(readFileSync(mirrorPath(cacheDir))).toString()) as OsvMirror;
+    expect(back.ecosystems.npm?.full_failed_at).toBeUndefined();
+  });
+
+  it('waits for the retry even when the incremental path cannot help, and stays stale', async () => {
+    const cacheDir = await seeded();
+    const routes = { [url('npm', 'all.zip')]: () => ok(npmZip(base.slice(0, 1))), [url('npm', 'modified_id.csv')]: csv(['yesterday,GHSA-dddd-dddd-dddd']) };
+    const r1 = setup({ cacheDir, clock: T0 + 8 * DAY, routes });
+    expect((await r1.run()).data.statuses.npm).toMatchObject({ ok: true, stale: true, error: expect.stringMatching(/fewer than 90%.*; unreadable line/) });
+    const r2 = setup({ cacheDir, clock: T0 + 8 * DAY + 2 * HOUR, routes });
+    const s2 = (await r2.run()).data.statuses.npm;
+    expect(r2.calls.some((c) => c.url === url('npm', 'all.zip'))).toBe(false);
+    expect(s2).toMatchObject({ ok: true, stale: true, fetched_at: new Date(T0).toISOString() });
+    expect(s2.error).toContain('is retried after 2026-11-12T08:00:00.000Z');
+  });
+});
+
+describe('an ecosystem that never gets a copy', () => {
+  it('ages from when it was first missing, so the osv entry escalates like a stale copy', async () => {
+    const pypi = buildZip([entry(osvRecord('GHSA-pppp-pppp-pppp', { eco: 'PyPI', name: 'flask' }))]);
+    const routes = { [url('PyPI', 'all.zip')]: () => ok(pypi), [url('PyPI', 'modified_id.csv')]: csv(['2026-10-01T00:00:00Z,GHSA-pppp-pppp-pppp']) };
+    const first = setup({ clock: T0, routes });
+    const r1 = await first.run();
+    expect(r1.data.statuses.npm).toMatchObject({ ok: false, missing_since: new Date(T0).toISOString() });
+    expect(r1.data.statuses.PyPI.missing_since).toBeUndefined();
+
+    // 49 hours on, PyPI was updated an hour ago and npm still has no copy: the entry is 49 hours old.
+    const later = setup({ cacheDir: first.cacheDir, clock: T0 + 49 * HOUR, routes });
+    const r2 = await later.run();
+    expect(r2.data.statuses.PyPI).toMatchObject({ ok: true, stale: false, fetched_at: new Date(T0 + 49 * HOUR).toISOString() });
+    expect(r2.status).toMatchObject({ ok: true, stale: true, fetched_at: new Date(T0).toISOString() });
+    expect(r2.status.error).toContain('npm: fetch failed');
+
+    // Once npm has a copy, it is no longer missing.
+    const fixed = setup({ cacheDir: first.cacheDir, clock: T0 + 50 * HOUR, routes: { ...routes, [url('npm', 'all.zip')]: () => ok(npmZip()) } });
+    const r3 = await fixed.run();
+    expect(r3.data.mirror.missing?.npm).toBeUndefined();
+    expect(r3.data.mirror.missing?.Go).toBe(new Date(T0).toISOString());
   });
 });
