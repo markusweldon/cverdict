@@ -328,9 +328,11 @@ any age, the run records its `dateAdded` and the hour it first saw the listing.
 | `listed`, `eligible` | KEV additions since `since`, and how many of them are counted |
 | `methods[]`, `volume[]` | One `MethodScore` and one `AlertVolume` per method |
 | `items[]` | Counted additions, newest listing first: `{ id, kev_added, first_seen, flags, row }`. `flags.<method>` is `{ at, outcome, lead }`: `outcome` is `earlier`, `same_day`, `after` (flagged only at or after the listing) or `never`; `at` is the hour of the first flag; `lead` the days before the listing |
-| `uncounted[]` | `{ id, kev_added, reason: older \| listed_first \| no_record, row }`, newest first. `no_record`: CISA listed an ID that has no published CVE record yet |
+| `uncounted[]` | `{ id, kev_added, reason: older \| listed_first \| no_record }`, newest first. `no_record`: CISA listed an ID that has no published CVE record yet |
 
-`row` is the CVE as scored in this run (a `Row` object), or `null` when its record is not in the data.
+`row` is the CVE as scored in this run (a `Row` object), or `null` when its record is not in the data
+or the listing is more than 365 days old. The lists keep every listing since `since`; without rows
+on the older ones the file grows by about 5 KB gzip a year instead of about 17 KB.
 
 ### The backtest (`backtest`)
 
@@ -361,7 +363,7 @@ Neither uses the listing.
 | Field | Meaning |
 |---|---|
 | `hindsight` | Always `true` |
-| `computed_at` | When it was computed. The hourly pipeline carries it forward and recomputes it once it is 7 days old, a day after a run that could not load some EPSS files, and whenever the carried copy is from another score model or does not add up |
+| `computed_at` | When it was computed. The hourly pipeline carries it forward and recomputes it once it is 7 days old, a day after a run that could not load some EPSS files or had a source down, and whenever the carried copy is from another score model or does not add up. A refresh that cannot read the KEV catalog keeps the previous backtest and tries again the next run |
 | `score_model` | Score model it was computed with |
 | `from`, `to`, `days`, `listed` | The KEV `dateAdded` range (inclusive), its length, and how many additions it holds |
 | `excluded[]` | `{ code, reason, ids }` left out of every figure: `no_record` (no PUBLISHED CVE record) and `not_public` (published on or after the listing day, so no method could flag it before) |
@@ -369,6 +371,7 @@ Neither uses the listing.
 | `volume` | `{ from, n, methods }`: of the CVEs published from `from` on, how many each method flags with today's evidence (hindsight too). `null` when it was not measured |
 | `signals[]` | `{ key, label, treatment: time_matched \| hindsight \| excluded \| today, note, affected }`: how each kind of evidence was used, and for how many CVEs it was left out (or set aside; for `today`, every CVE) |
 | `epss_missing[]` | Days whose EPSS file could not be loaded. For those CVEs CVErdict treats EPSS as unknown and `epss10` counts them as not flagged |
+| `sources_down[]` | Names of sources that had no usable data (not even a cached copy) when it was computed: their evidence is missing from every figure |
 | `items[]` | Per CVE, newest listing first: `{ id, kev_added, published, old, strict, upper, score, chips, cvss, epss, epss_date, left_out, row }`. `strict` and `upper` map each method to `true`/`false`; `score` and `chips` are CVErdict's strict score; `left_out` lists the `signals` keys the strict score had to leave out |
 | `command` | How to reproduce it: `npm run backtest` (`scripts/backtest.ts`) |
 

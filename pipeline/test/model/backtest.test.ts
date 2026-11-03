@@ -15,9 +15,10 @@ import {
   type AsOfInput,
   type BacktestInputs,
 } from '../../src/backtest';
+import { buildOutput } from '../../src/emit/build';
 import { buildKevPrior, scoreCve } from '../../src/score';
 import type { NormalizedCve } from '../../src/types';
-import { cvss, edb, makeCve, makeEnrichment, makeKev, makeKevCatalog, msf, nucleiTemplate, repo, ssvc, type EnrichmentSpec } from '../fixtures/model/builders';
+import { cvss, edb, makeCve, makeEnrichment, makeIngest, makeKev, makeKevCatalog, msf, nucleiTemplate, repo, ssvc, type EnrichmentSpec } from '../fixtures/model/builders';
 
 const NOW = new Date('2026-11-03T03:17:00Z');
 const ID = 'CVE-2026-100001';
@@ -276,6 +277,31 @@ describe('carry-forward', () => {
     expect(retry.carried).toBeNull();
     expect(retry.plan!.reuse.size).toBe(1);
     expect(retry.note).toMatch(/1 EPSS days missing/);
+  });
+
+  it('retries a day later when a source had no data, and never publishes an empty backtest when KEV is down', () => {
+    const recent = new Date(NOW.getTime() - 2 * 86_400_000).toISOString();
+    const down = (iso: string) => computed(iso, { sources_down: ['Exploit-DB'] });
+    expect(decideBacktest(down(new Date(NOW.getTime() - 3_600_000).toISOString()), NOW).carried).not.toBeNull();
+    expect(decideBacktest(down(recent), NOW)).toMatchObject({ carried: null, note: expect.stringMatching(/Exploit-DB had no data/) });
+    // Copies from before the field existed are carried as before.
+    expect(decideBacktest(computed(recent), NOW).carried).not.toBeNull();
+
+    const cve = makeCve({ id: ID, published: '2026-10-01T00:00:00Z', ...cvss(9.8) });
+    const kev = [makeKev(ID, { dateAdded: LISTED })];
+    const refresh: BacktestInputs = { epss: new Map(), reuse: new Map(), metasploitModified: new Map(), exploitdbAdded: new Map(), volumeFrom: '2026-05-07T03:17:00.000Z' };
+    const build = (spec: EnrichmentSpec, previousBacktest: BacktestReceipts | null) =>
+      buildOutput({ ingest: { ...makeIngest([cve], { ...spec, kev: spec.down?.includes('kev') ? [] : kev }), backtest: refresh }, now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://x.test', previousBacktest });
+    // A source down during a refresh is recorded, so the page can say so and the next day retries.
+    expect(build({ down: ['exploitdb'] }, null).receipts.backtest?.sources_down).toEqual(['exploitdb']);
+    expect(build({}, null).receipts.backtest).toMatchObject({ listed: 1, sources_down: [] });
+    // KEV down: no listings to judge. Keep the previous backtest (if it adds up), else publish none.
+    const old = computed('2026-10-01T00:00:00Z');
+    const kept = build({ down: ['kev'] }, old);
+    expect(kept.receipts.backtest).toBe(old);
+    expect(kept.notes.join('\n')).toMatch(/not refreshed, kev has no data \(kept the one computed 2026-10-01/);
+    expect(build({ down: ['kev'] }, null).receipts.backtest).toBeNull();
+    expect(build({ down: ['kev'] }, computed('2026-10-01T00:00:00Z', { listed: 9 })).receipts.backtest).toBeNull();
   });
 
   it('reads the previous receipts.json defensively', () => {

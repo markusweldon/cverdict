@@ -151,8 +151,8 @@ export function backtestProblems(b: BacktestReceipts): string[] {
 /**
  * Carry the previous backtest while it is younger than BACKTEST_REFRESH_DAYS. Refresh when there is
  * none, when it is from the future, from another score model or inconsistent, and a day after a
- * refresh that could not load some EPSS files (those CVEs would otherwise count as EPSS misses for
- * a week).
+ * refresh that could not load some EPSS files or had a source down (those CVEs would otherwise
+ * count as misses for a week).
  */
 export function decideBacktest(previous: BacktestReceipts | null, now: Date, force = false): BacktestDecision {
   const age = previous ? now.getTime() - Date.parse(previous.computed_at) : NaN;
@@ -166,7 +166,9 @@ export function decideBacktest(previous: BacktestReceipts | null, now: Date, for
           ? `score model ${previous.score_model ?? 'unknown'}, now ${SCORE_MODEL}`
           : Array.isArray(previous.epss_missing) && previous.epss_missing.length > 0 && age >= DAY_MS
             ? `${previous.epss_missing.length} EPSS days missing`
-            : backtestProblems(previous)[0] ?? null;
+            : Array.isArray(previous.sources_down) && previous.sources_down.length > 0 && age >= DAY_MS
+              ? `computed while ${previous.sources_down.join(', ')} had no data`
+              : backtestProblems(previous)[0] ?? null;
   if (previous && why === null) {
     return { carried: previous, plan: null, note: `backtest carried forward (computed ${previous.computed_at})` };
   }
@@ -564,6 +566,7 @@ export function runBacktest({ now, kev, cves, enr, inputs, scored, rows }: Backt
     // The listing and today's EPSS are set aside for every CVE in the backtest.
     signals: SIGNALS.map((s) => ({ ...s, affected: s.key === 'kev' || s.key === 'epss_today' || s.treatment === 'today' ? items.length : (affected.get(s.key) ?? 0) })),
     epss_missing: [...epssMissing].sort(),
+    sources_down: [...enr.unavailable.values()].sort(),
     items,
     command: BACKTEST_COMMAND,
   };

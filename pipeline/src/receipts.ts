@@ -44,6 +44,12 @@ export const GAP_HOURS = 3;
 const MAX_GAPS = 50;
 export const CVSS_LINE = 7;
 export const EPSS_LINE = 0.1;
+/**
+ * Counted listings carry the CVE's row for this long after the listing; older ones carry null (the
+ * CVE page has it). The lists keep every listing since `since`, so rows on all of them would push
+ * receipts.json past its budget within about two years.
+ */
+export const ROW_DAYS = 365;
 
 /** One CVE in the log. Times are whole hours since the Unix epoch (the run's hour, rounded down). */
 export interface LogEntry {
@@ -390,6 +396,7 @@ export function forwardReceipts(log: ReceiptsLog, kev: KevCatalog, rows: Readonl
   const sinceDay = ymd(new Date(log.since));
   const today = ymd(now);
   const inRange = (d: string) => d >= sinceDay && d <= today;
+  const rowFrom = ymd(new Date(now.getTime() - ROW_DAYS * DAY_MS));
   const items: ReceiptItem[] = [];
   const uncounted: UncountedListing[] = [];
   const counted = new Set<string>();
@@ -397,7 +404,7 @@ export function forwardReceipts(log: ReceiptsLog, kev: KevCatalog, rows: Readonl
     if (!e.kev || !inRange(e.kev.added)) continue;
     counted.add(id);
     if (!isEligible(e)) {
-      uncounted.push({ id, kev_added: e.kev.added, reason: 'listed_first', row: rows.get(id) ?? null });
+      uncounted.push({ id, kev_added: e.kev.added, reason: 'listed_first' });
       continue;
     }
     const k = e.kev;
@@ -406,15 +413,14 @@ export function forwardReceipts(log: ReceiptsLog, kev: KevCatalog, rows: Readonl
       kev_added: k.added,
       first_seen: hourIso(e.seen),
       flags: Object.fromEntries(RECEIPT_METHODS.map((m) => [m, outcomeOf(e.flags[m], k)])) as ReceiptItem['flags'],
-      row: rows.get(id) ?? null,
+      row: k.added >= rowFrom ? (rows.get(id) ?? null) : null,
     });
   }
   for (const k of kev.entries.values()) {
     const added = normalizeYmd(k.dateAdded);
     if (!added || !inRange(added) || counted.has(k.cveID) || log.entries.has(k.cveID)) continue;
     // KEV records are always scored, so a listing without a row has no published record.
-    const row = rows.get(k.cveID) ?? null;
-    uncounted.push({ id: k.cveID, kev_added: added, reason: row ? 'older' : 'no_record', row });
+    uncounted.push({ id: k.cveID, kev_added: added, reason: rows.has(k.cveID) ? 'older' : 'no_record' });
   }
   const newest = (a: { kev_added: string; id: string }, b: { kev_added: string; id: string }) => b.kev_added.localeCompare(a.kev_added) || a.id.localeCompare(b.id);
   items.sort(newest);
