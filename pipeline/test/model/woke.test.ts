@@ -107,7 +107,7 @@ describe('detectWakes: undated artifacts need carried-forward state', () => {
     const d = first();
     expect(d.signals.size).toBe(0);
     expect(d.tracking).toEqual({ metasploit: NOW.toISOString(), nuclei: NOW.toISOString(), epss: NOW.toISOString() });
-    expect(d.state.metasploit).toEqual({ since: NOW.toISOString(), known: ['CVE-2019-0001'], fresh: {} });
+    expect(d.state.metasploit).toEqual({ since: NOW.toISOString(), known: ['CVE-2019-0001'], fresh: {}, checked: NOW.toISOString() });
     expect(d.notes.some((n) => /metasploit: baseline of 1 CVEs/.test(n))).toBe(true);
   });
 
@@ -234,7 +234,7 @@ describe('detectWakes: unavailable dated sources', () => {
   });
 
   it('a failed detection keeps the previous state and skips every kind', () => {
-    const prev: WokeState = { metasploit: { since: daysAgo(3), known: ['CVE-2019-0001'], fresh: {} }, nuclei: null, epss: null };
+    const prev: WokeState = { metasploit: { since: daysAgo(3), known: ['CVE-2019-0001'], fresh: {}, checked: daysAgo(3) }, nuclei: null, epss: null };
     const f = failedWakeDetection(prev, 'boom');
     expect(f.state).toBe(prev);
     expect(f.tracking).toEqual({ metasploit: daysAgo(3), nuclei: null, epss: null });
@@ -254,7 +254,7 @@ describe('WOKE_SECTION.parse', () => {
     };
     expect(WOKE_SECTION.parse(messy)).toEqual({
       metasploit: null,
-      nuclei: { since: daysAgo(1), known: ['CVE-2019-0002'], fresh: { 'CVE-2019-0002': { at: daysAgo(1), url: null } } },
+      nuclei: { since: daysAgo(1), known: ['CVE-2019-0002'], fresh: { 'CVE-2019-0002': { at: daysAgo(1), url: null } }, checked: daysAgo(1) },
       epss: { since: daysAgo(1), checked: null, jumps: { 'CVE-2019-0003': { at: dateAgo(1), from: 0.01, to: 0.5, baseline: false } } },
     });
     expect(WOKE_SECTION.parse('garbage')).toBeNull();
@@ -317,7 +317,9 @@ describe('buildOutput with woke CVEs', () => {
     const woke = JSON.parse(built.files.get(PATHS.woke)!);
     expect(woke.items.map((i: { id: string }) => i.id)).toEqual(['CVE-2019-0001']);
     expect(built.scored.map((s) => s.cve.id).sort()).toEqual(['CVE-2019-0001', 'CVE-2026-100001']);
-    expect(built.files.get(PATHS.wokeFeed)).toContain('CVE-2019-0001 · Acme Widget · woke up: first PoC repo on GitHub (unverified)');
+    // A PoC repo alone wakes a CVE below Likely next on the page, but is noise in the feed.
+    expect(woke.items[0].row.tier).toBe('watch');
+    expect(built.files.get(PATHS.wokeFeed)).not.toContain('CVE-2019-0001');
     const state = parseState(built.files.get(PATHS.state)!);
     expect(state.status).toBe('ok');
     expect(WOKE_SECTION.parse(state.sections.get('woke')?.data)).toEqual(wake.state);

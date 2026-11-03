@@ -72,7 +72,10 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
         kev: kev.data,
         exploitdb: exploitDb.data,
         metasploit: metasploit.data?.byCve ?? null,
+        metasploitModified: metasploit.data?.firstModified ?? null,
         nuclei: nuclei.data,
+        // A stale cached copy is fine for scoring, but cannot date what is new.
+        stale: { metasploit: metasploit.status.stale, nuclei: nuclei.status.stale },
         poc: pocRead.status.ok ? pocRead.repos : null,
         epss: epss.data,
         epssPast: epssPast.data,

@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type WokeFile } from '../../../shared/contract';
 import { BUDGETS } from '../../src/config';
-import { wokeFeed } from '../../src/emit/atom';
+import { wokeFeed, wokeFeedItems } from '../../src/emit/atom';
 import { parseExploitDb } from '../../src/sources/exploitdb';
 import { EMPTY_STATE, loadState, parseState, readSection, serializeState, STATE_PATH } from '../../src/state';
 import type { EpssTable, Logger } from '../../src/types';
@@ -174,11 +174,11 @@ describe('EPSS jumps', () => {
     expect(back.notes).toContain(`epss: last compared on ${dateAgo(0)}, now ${dateAgo(-3)}; jump tracking restarts`);
     expect(back.tracking.epss).toBe(at(73).toISOString());
     expect(back.state.epss?.checked).toBe(dateAgo(-3));
-    // Two days later is not a pause, and hourly runs on the same files do not change the state.
+    // Two days later is not a pause, and hourly runs on the same files do not change the EPSS state.
     const short = detectWakes(input({ now: at(48), epss: day(2), epssPast: past, previous: base.state, previousAt: at(47).toISOString() }));
     expect(short.signals.size).toBe(2);
     const again = detectWakes(input({ now: at(49), epss: day(2), epssPast: past, previous: short.state, previousAt: at(48).toISOString() }));
-    expect(again.state).toEqual(short.state);
+    expect(again.state.epss).toEqual(short.state.epss);
   });
 });
 
@@ -277,7 +277,13 @@ describe('state file robustness', () => {
       },
       epss: { since: NOW.toISOString(), jumps: { 'CVE-2019-0004': { at: '2026-10-26', from: '0.01', to: 0.5 }, 'CVE-2019-0005': { at: '2026-10-26', from: 0.01, to: 1.5 } } },
     });
-    expect(parsed?.nuclei).toEqual({ since: NOW.toISOString(), known: ['CVE-2019-0001'], fresh: { 'CVE-2019-0001': { at: NOW.toISOString(), url: null }, 'CVE-2019-0002': { at: NOW.toISOString(), url: null } } });
+    // A section from before `checked` existed reads as compared when tracking started.
+    expect(parsed?.nuclei).toEqual({
+      since: NOW.toISOString(),
+      known: ['CVE-2019-0001'],
+      fresh: { 'CVE-2019-0001': { at: NOW.toISOString(), url: null }, 'CVE-2019-0002': { at: NOW.toISOString(), url: null } },
+      checked: NOW.toISOString(),
+    });
     expect(parsed?.epss?.jumps).toEqual({ 'CVE-2019-0004': { at: '2026-10-26', from: 0.01, to: 0.5, baseline: false } });
     expect(parsed?.epss?.checked).toBeNull();
   });
@@ -355,5 +361,140 @@ describe('woke Atom feed with hostile text', () => {
     expect(two).toContain(`<updated>${daysAgo(1)}</updated>`);
     expect(two).toContain('first Metasploit module (the day we first saw it).');
     expect(two).toContain('woke up: first Metasploit module');
+  });
+});
+
+describe('first-seen dating through a source outage while runs continue', () => {
+  const tpl = (...cves: string[]) => new Map(cves.map((id) => [id, [nucleiTemplate(id)]]));
+  const hourly = (from: number, to: number, start: ReturnType<typeof detectWakes>, o: (h: number) => Partial<WakeInput>) => {
+    let r = start;
+    for (let h = from; h <= to; h++) r = detectWakes(input({ now: at(h), previous: r.state, previousAt: at(h - 1).toISOString(), ...o(h) }));
+    return r;
+  };
+
+  it('restarts from a baseline when the source was down for 72 hourly runs, instead of a burst of wakes dated today', () => {
+    const r0 = detectWakes(input({ nuclei: tpl('CVE-2019-0001') }));
+    const down = hourly(1, 72, r0, () => ({ nuclei: null }));
+    // The state file stayed fresh, but nothing was compared.
+    expect(down.state.nuclei?.checked).toBe(NOW.toISOString());
+    const back = detectWakes(input({ now: at(73), nuclei: tpl('CVE-2019-0001', 'CVE-2019-0009'), previous: down.state, previousAt: at(72).toISOString() }));
+    expect(back.signals.has('CVE-2019-0009')).toBe(false);
+    expect(back.state.nuclei?.known).toContain('CVE-2019-0009');
+    expect(back.tracking.nuclei).toBe(at(73).toISOString());
+    expect(back.notes.some((n) => /nuclei: last compared .*; first-seen tracking restarts/.test(n))).toBe(true);
+    // The next new template after that is dated as usual.
+    const next = detectWakes(input({ now: at(74), nuclei: tpl('CVE-2019-0001', 'CVE-2019-0009', 'CVE-2019-0010'), previous: back.state, previousAt: at(73).toISOString() }));
+    expect(next.signals.get('CVE-2019-0010')?.[0]).toMatchObject({ kind: 'nuclei', at: at(74).toISOString(), first_seen: true });
+  });
+
+  it('treats a stale cached copy like an outage: nothing is dated from it, and it says so', () => {
+    const r0 = detectWakes(input({ metasploit: new Map([['CVE-2019-0001', [msf('exploit/a')]]]) }));
+    // A new module upstream, but only an old cached copy arrives for 72 hourly runs.
+    const stale = hourly(1, 72, r0, () => ({ metasploit: new Map([['CVE-2019-0001', [msf('exploit/a')]]]), stale: { metasploit: true } }));
+    expect(stale.skipped).toEqual([{ kind: 'metasploit', reason: 'Only an old copy of Metasploit could be loaded this run' }]);
+    expect(stale.state.metasploit?.checked).toBe(NOW.toISOString());
+    const mods = new Map([['CVE-2019-0001', [msf('exploit/a')]], ['CVE-2019-0009', [msf('exploit/b')]]]);
+    const live = detectWakes(input({ now: at(73), metasploit: mods, previous: stale.state, previousAt: at(72).toISOString() }));
+    expect(live.signals.size).toBe(0);
+    expect(live.state.metasploit?.known).toEqual(['CVE-2019-0001', 'CVE-2019-0009']);
+    // A short stale spell (within 48 h) keeps tracking: the module is dated when a fresh copy shows it.
+    const brief = hourly(1, 5, r0, () => ({ metasploit: new Map([['CVE-2019-0001', [msf('exploit/a')]]]), stale: { metasploit: true } }));
+    const fresh = detectWakes(input({ now: at(6), metasploit: mods, previous: brief.state, previousAt: at(5).toISOString() }));
+    expect(fresh.signals.get('CVE-2019-0009')?.[0]).toMatchObject({ kind: 'metasploit', at: at(6).toISOString() });
+  });
+});
+
+describe('exploit artifacts only wake a CVE without older exploit evidence', () => {
+  // Shaped like CVE-2014-9583: a Metasploit module and Exploit-DB entries from January 2015, then
+  // a first PoC repo on GitHub this month.
+  const ID = 'CVE-2014-9583';
+  const poc = new Map([[ID, [repo(daysAgo(4))]]]);
+
+  it('does not wake a CVE for its first PoC repo when Exploit-DB or a dated Metasploit module had it long before', () => {
+    const edb = parseExploitDb(['id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes', `35667,x,"old",2015-01-04,a,remote,linux,,2015-01-04,2015-01-04,1,${ID}`].join('\n'));
+    const d = detectWakes(input({ exploitdb: edb, poc }));
+    expect(d.signals.has(ID)).toBe(false);
+    expect(d.notes.some((n) => /1 CVEs with a new exploit artifact already had dated exploit evidence/.test(n))).toBe(true);
+    expect(detectWakes(input({ poc, metasploitModified: new Map([[ID, '2015-01-04T10:00:00.000Z']]) })).signals.has(ID)).toBe(false);
+    // An older repo (even unstarred) or an old KEV listing count as well.
+    expect(detectWakes(input({ poc: new Map([[ID, [repo(daysAgo(4), 0, false, 'new'), repo('2015-02-01T00:00:00.000Z', 0, false, 'old')]]]), exploitdb: edb })).signals.has(ID)).toBe(false);
+    // Without older evidence it wakes up as before.
+    expect(detectWakes(input({ poc })).signals.get(ID)?.map((s) => s.kind)).toEqual(['poc']);
+  });
+
+  it('keeps KEV listings and EPSS jumps, and drops only the artifact signals', () => {
+    const kev = makeKevCatalog([makeKev(ID, { dateAdded: dateAgo(2) })]);
+    const d = detectWakes(input({ kev, poc, metasploitModified: new Map([[ID, '2015-01-04T10:00:00.000Z']]) }));
+    expect(d.signals.get(ID)?.map((s) => s.kind)).toEqual(['kev']);
+  });
+
+  it('counts a Nuclei template or Metasploit module known to the tracking before the period as older evidence', () => {
+    const tpl = new Map([[ID, [nucleiTemplate(ID)]]]);
+    // Tracking began 40 days ago with the template already there.
+    const start = new Date(NOW.getTime() - 40 * DAY);
+    let r = detectWakes(input({ now: start, nuclei: tpl, poc: new Map() }));
+    for (let d = 39; d >= 0; d--) r = detectWakes(input({ now: new Date(NOW.getTime() - d * DAY), nuclei: tpl, poc: d === 0 ? poc : new Map(), previous: r.state, previousAt: new Date(NOW.getTime() - (d + 1) * DAY).toISOString() }));
+    expect(r.signals.has(ID)).toBe(false);
+    // A baseline taken inside the period proves nothing about before it.
+    const late = detectWakes(input({ nuclei: tpl, poc }));
+    expect(late.signals.get(ID)?.map((s) => s.kind)).toEqual(['poc']);
+  });
+});
+
+describe('leaving the window, to the minute for timed signals', () => {
+  it('counts a PoC repo created after the CVE left the window, not one created hours before', () => {
+    const start = windowStart();
+    // Published 23:00 UTC: it leaves the window 23:00 UTC 30 days later, not at the start of that day.
+    const published = new Date(start.getTime() - 20.5 * HOUR);
+    const left = published.getTime() + 30 * DAY;
+    const cve = makeCve({ id: 'CVE-2026-0001', published: published.toISOString(), inWindow: false });
+    const early = repo(new Date(left - 18 * HOUR).toISOString(), 5);
+    const late = repo(new Date(left + HOUR).toISOString(), 5);
+    const wokeBy = (r: ReturnType<typeof repo>) => {
+      const pocs = { 'CVE-2026-0001': [r] };
+      const wake = detectWakes(input({ poc: new Map(Object.entries(pocs)) }));
+      return buildWoke([score(cve, { poc: pocs })], wake, NOW, start).file.items.length;
+    };
+    expect(new Date(left - 18 * HOUR).toISOString().slice(0, 10)).toBe(new Date(left).toISOString().slice(0, 10));
+    expect(wokeBy(early)).toBe(0);
+    expect(wokeBy(late)).toBe(1);
+  });
+});
+
+describe('woke Atom feed selection', () => {
+  const item = (id: string, kinds: WokeFile['items'][number]['signals'][number]['kind'][], tier: 'exploited' | 'likely' | 'watch' | 'quiet', day: number) => ({
+    id,
+    at: daysAgo(day),
+    signals: kinds.map((kind) => ({ kind, at: daysAgo(day), first_seen: false, label: kind, source: 'kev' as const, url: null })),
+    row: { id, t: 'x', v: 'v', p: 'p', cna: 'x', pub: '2019-01-01T00:00:00.000Z', s: 10, tier, c: [], x: 0, k: 0, b: null, e: null, r: 0 } as unknown as WokeFile['items'][number]['row'],
+  });
+  const file = (items: WokeFile['items']): WokeFile => ({
+    schema_version: 1,
+    generated_at: NOW.toISOString(),
+    since: daysAgo(30),
+    days: 30,
+    published_before: daysAgo(30),
+    tracking: { metasploit: null, nuclei: null, epss: null },
+    skipped: [],
+    counts: { kev: 0, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 0, epss: 0 },
+    items,
+  });
+
+  it('leaves out PoC-only wakes below Likely next, and keeps every KEV and Exploit-DB wake before the cap', () => {
+    // 120 newer PoC-only wakes rated Likely next push nothing important out.
+    const pocs = Array.from({ length: 120 }, (_, i) => item(`CVE-2019-${10000 + i}`, ['poc'], 'likely', 1));
+    const quiet = [item('CVE-2018-0001', ['poc'], 'quiet', 1), item('CVE-2018-0002', ['poc'], 'watch', 1)];
+    const older = [item('CVE-2015-0001', ['kev'], 'exploited', 20), item('CVE-2015-0002', ['exploitdb'], 'watch', 25), item('CVE-2015-0003', ['metasploit'], 'quiet', 26)];
+    const items = wokeFeedItems(file([...quiet, ...pocs, ...older]));
+    expect(items).toHaveLength(100);
+    const ids = items.map((i) => i.id);
+    expect(ids).toContain('CVE-2015-0001');
+    expect(ids).toContain('CVE-2015-0002');
+    expect(ids).not.toContain('CVE-2018-0001');
+    expect(ids).not.toContain('CVE-2018-0002');
+    expect(ids).not.toContain('CVE-2015-0003'); // not a priority kind, and older than 98 PoC wakes
+    // Still newest first.
+    expect(ids.slice(-2)).toEqual(['CVE-2015-0001', 'CVE-2015-0002']);
+    expect(wokeFeedItems(file([...older, ...quiet])).map((i) => i.id)).toEqual(['CVE-2015-0001', 'CVE-2015-0002', 'CVE-2015-0003']);
   });
 });

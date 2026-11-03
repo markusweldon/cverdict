@@ -23,7 +23,15 @@
  *              the run that first saw it, which makes it a first-seen kind too.
  * First-seen kinds need state from the previous run. Without it, everything present counts as
  * already known (a baseline) and tracking starts now, so a first run never floods the feed with
- * old news dated today.
+ * old news dated today. The same happens when a kind was last compared against a fresh copy of
+ * its source more than MAX_STATE_GAP_HOURS ago (the source was down or served from a stale cache):
+ * what appeared during the outage cannot be dated, so it joins the baseline.
+ *
+ * Exploit artifacts (exploitdb, poc, metasploit, nuclei) only wake a CVE that had no dated public
+ * exploit evidence of any kind before the period: no earlier Exploit-DB entry, Metasploit module
+ * (by its earliest mod_time, or known to the tracking before the period), Nuclei template known
+ * before the period, PoC repo or KEV listing. A first PoC repo for a CVE with a Metasploit module
+ * from 2015 is not news. KEV listings and EPSS jumps always count.
  *
  * A CVE that was already in CISA KEV before the period never "wakes up": it was awake already.
  * Evidence only counts when it arrived after the CVE had left the window (published more than
@@ -40,7 +48,7 @@ import {
   type WokeItem,
 } from '../../shared/contract';
 import { toRow } from './rows';
-import { epssUrl, formatPercent, isVettedPoc, kevSearchUrl, pocIndexUrl, utcDay } from './score';
+import { epssUrl, formatPercent, isVettedPoc, kevSearchUrl, pocIndexUrl } from './score';
 import type { StateSection } from './state';
 import type { EpssTable, ExploitDbData, ExploitIndex, KevCatalog, PocRepo, ScoredCve } from './types';
 import { addDays, DAY_MS, normalizeIso, normalizeYmd, ymd } from './util/dates';
@@ -59,10 +67,13 @@ export const EPSS_JUMP_FACTOR = 3;
  * restarts from a fresh baseline instead of dating it wrongly.
  */
 export const MAX_STATE_GAP_HOURS = 48;
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 /** woke.json keeps at most this many CVEs (newest first). */
 export const WOKE_MAX_ITEMS = 500;
 
 export type UndatedKind = 'metasploit' | 'nuclei';
+/** Kinds that are a public exploit: they only wake a CVE that had none before (see detectWakes). */
+const ARTIFACT_KINDS: ReadonlySet<WakeKind> = new Set(['exploitdb', 'poc', 'metasploit', 'nuclei']);
 export const UNDATED_KINDS: readonly UndatedKind[] = ['metasploit', 'nuclei'];
 
 /** EPSS jump tracking. */
@@ -92,6 +103,12 @@ export interface ArtifactTrack {
   known: string[];
   /** CVEs whose first artifact appeared after `since`, while still within WAKE_DAYS. */
   fresh: Record<string, { at: string; url: string | null }>;
+  /**
+   * The last run that compared a fresh copy of the source (not missing, not a stale cache). When
+   * it is more than MAX_STATE_GAP_HOURS before now, tracking restarts from a baseline, so the
+   * artifacts added during an outage are not all dated on the day the source came back.
+   */
+  checked: string;
 }
 
 /** The `woke` section of state.json. */
@@ -116,7 +133,8 @@ function parseTrack(value: unknown): ArtifactTrack | null {
     const url = asString(e?.url);
     if (id && at) fresh[id] = { at, url: url && /^https:\/\//.test(url) ? url : null };
   }
-  return { since, known, fresh };
+  // Sections written before `checked` existed were compared on every run they were written.
+  return { since, known, fresh, checked: normalizeIso(o.checked) ?? since };
 }
 
 function parseEpssTrack(value: unknown): EpssTrack | null {
@@ -151,7 +169,11 @@ export interface WakeInput {
   kev: KevCatalog | null;
   exploitdb: ExploitDbData | null;
   metasploit: ExploitIndex['metasploit'] | null;
+  /** Earliest Metasploit mod_time per CVE (proves a module existed then). */
+  metasploitModified?: ReadonlyMap<string, string> | null;
   nuclei: ExploitIndex['nuclei'] | null;
+  /** Undated sources served from a stale cache this run: their copy cannot date anything new. */
+  stale?: Partial<Record<UndatedKind, boolean>>;
   /** Every PoC file, by CVE ID. */
   poc: ReadonlyMap<string, PocRepo[]> | null;
   epss: EpssTable | null;
@@ -247,13 +269,20 @@ export function detectWakes(input: WakeInput): WakeDetection {
   for (const kind of UNDATED_KINDS) {
     const { map, label, source, name } = sources[kind];
     const before = prev[kind];
+    const stale = map !== null && input.stale?.[kind] === true;
+    const pauseHours = before ? (now.getTime() - Date.parse(before.checked)) / 3_600_000 : Infinity;
+    // A copy compared too long ago (the source was down or stale meanwhile): restart, as after a gap.
+    const paused = before !== null && !(pauseHours >= 0 && pauseHours <= MAX_STATE_GAP_HOURS);
     let track: ArtifactTrack | null;
-    if (!map) {
-      // Keep what we knew; detect nothing new until the source is back.
+    if (!map || stale) {
+      // Keep what we knew; detect nothing new until a fresh copy is back. A stale cache would
+      // hide what is new now and date it all on the day the live fetch works again.
       track = before ? { ...before, fresh: { ...before.fresh } } : null;
-      unavailable(kind, name);
-    } else if (!before || gap) {
-      track = { since: nowIso, known: [...new Set([...(before?.known ?? []), ...map.keys()])].sort(), fresh: { ...before?.fresh } };
+      if (stale) skipped.push({ kind, reason: `Only an old copy of ${name} could be loaded this run` });
+      else unavailable(kind, name);
+    } else if (!before || gap || paused) {
+      if (paused && !gap) notes.push(`${kind}: last compared ${before!.checked}; first-seen tracking restarts`);
+      track = { since: nowIso, known: [...new Set([...(before?.known ?? []), ...map.keys()])].sort(), fresh: { ...before?.fresh }, checked: nowIso };
       notes.push(`${kind}: baseline of ${track.known.length} CVEs; tracking starts now`);
     } else {
       const known = new Set(before.known);
@@ -265,7 +294,7 @@ export function detectWakes(input: WakeInput): WakeDetection {
         fresh[id] = { at: nowIso, url: list[0]?.url ?? null };
         found++;
       }
-      track = { since: before.since, known: [...known].sort(), fresh };
+      track = { since: before.since, known: [...known].sort(), fresh, checked: nowIso };
       if (found) notes.push(`${kind}: ${found} CVEs with a first artifact since the previous run`);
     }
     if (track) {
@@ -317,6 +346,33 @@ export function detectWakes(input: WakeInput): WakeDetection {
     add(signals, id, signal('epss', e.at, `EPSS rose from ${formatPercent(e.from)} to ${formatPercent(e.to)} in ${WAKE_DAYS} days`, 'epss', `${epssUrl(id)}&scope=time-series`, true));
   }
 
+  // Exploit artifacts only wake a CVE that had no dated public exploit evidence before the period.
+  const knownBefore = UNDATED_KINDS.map((kind) => {
+    const t = state[kind];
+    return t && Date.parse(t.since) < sinceMs ? { fresh: t.fresh, known: new Set(t.known) } : null;
+  });
+  const hadExploit = (id: string): boolean => {
+    const edb = input.exploitdb?.firstAdded.get(id)?.date;
+    if (edb && edb < sinceDay) return true;
+    const mod = input.metasploitModified?.get(id);
+    if (mod && Date.parse(mod) < sinceMs) return true;
+    if (input.poc?.get(id)?.some((r) => !r.fork && Date.parse(r.created) < sinceMs)) return true;
+    const k = input.kev?.entries.get(id);
+    if (k && k.dateAdded < sinceDay) return true;
+    // Known before the period: in the baseline of a tracking that began before it, or first seen
+    // and already dropped from `fresh` because that sighting is older than the period.
+    return knownBefore.some((t) => t !== null && !t.fresh[id] && t.known.has(id));
+  };
+  let quieted = 0;
+  for (const [id, list] of signals) {
+    if (!list.some((x) => ARTIFACT_KINDS.has(x.kind)) || !hadExploit(id)) continue;
+    const kept = list.filter((x) => !ARTIFACT_KINDS.has(x.kind));
+    if (kept.length) signals.set(id, kept);
+    else signals.delete(id);
+    quieted++;
+  }
+  if (quieted) notes.push(`${quieted} CVEs with a new exploit artifact already had dated exploit evidence before the period; not counted as woken by it`);
+
   for (const list of signals.values()) list.sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || WAKE_KINDS.indexOf(a.kind) - WAKE_KINDS.indexOf(b.kind));
   return { signals, state, tracking, skipped, notes };
 }
@@ -361,8 +417,11 @@ export function buildWoke(scored: readonly ScoredCve[], wake: WakeDetection, now
     // Only evidence that arrived once the CVE was already older than the window: a CVE that got a
     // KEV listing at 25 days old was in the normal views then, and must not "wake up" days later
     // just because it aged out of the window.
-    const leftWindow = ymd(new Date(published + windowMs));
-    const signals = (wake.signals.get(s.cve.id) ?? []).filter((x) => utcDay(x.at) >= leftWindow);
+    // Timed signals (PoC creation, first sightings) compare instants; date-only ones (KEV,
+    // Exploit-DB, EPSS) compare the day.
+    const leftAt = published + windowMs;
+    const leftWindow = ymd(new Date(leftAt));
+    const signals = (wake.signals.get(s.cve.id) ?? []).filter((x) => (DATE_ONLY.test(x.at) ? x.at >= leftWindow : Date.parse(x.at) >= leftAt));
     if (!signals.length) continue;
     // Already in KEV before the period: it was awake already, newer evidence is not news.
     const listed = normalizeYmd(s.kev?.date_added ?? s.cve.adpKev?.dateAdded);
