@@ -99,6 +99,7 @@ export function testIndex(overrides: { down?: string[] } = {}): PackagesFile {
       matched: down.has(ecosystem) ? 0 : 10,
       error: down.has(ecosystem) ? 'download failed' : null,
     })),
+    distinct: { advisories: 650, matched: 20 },
     cves: { cols: ROW_COLS, rows },
     packages,
   };

@@ -420,6 +420,7 @@ and version ranges are kept. The site's Check page matches a file against it in 
 | `scope` | Which CVEs are covered, in words |
 | `attribution[]` | `{ name, url, license, prefixes, notice }` for each advisory database; only advisories with these ID prefixes are included. `notice` is license text that must travel with copies of the file (the Drupal advisories' MIT notice) |
 | `sources[]` | One per ecosystem, in the order above: `{ ecosystem, ok, stale, fetched_at, modified, advisories, matched, error }`. `advisories` counts the ecosystem's OSV records that name any CVE, `matched` those that name one in `cves`, `modified` is the newest OSV change applied. When `ok` is false the ecosystem has no entry in `packages`: its packages were not checked, which is not the same as not affected |
+| `distinct` | `{ advisories, matched }`: distinct advisory IDs over the ecosystems with data. An advisory that covers several ecosystems counts once here and once in each ecosystem's `sources[]` entry. `matched` are those that name a CVE in `cves`: exactly the advisories in `packages` |
 | `cves` | `{ cols, rows }`: one row per CVE named in `packages`, the same columns and values as `index.json` |
 | `packages` | `{ <ecosystem>: { <package key>: [cve, advisory, ranges, versions?][] } }`, keys sorted, entries by CVE then advisory |
 

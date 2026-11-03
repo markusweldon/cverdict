@@ -673,6 +673,12 @@ export interface PackagesFile {
   attribution: PackageAttribution[];
   /** One per PACKAGE_ECOSYSTEMS entry, in that order. */
   sources: PackageSourceStatus[];
+  /**
+   * Distinct advisory IDs over the ecosystems with a copy: an advisory that covers several
+   * ecosystems counts once (the sums of `sources[]` count it once in each). `matched`: those that
+   * name a CVE in `cves`, which are exactly the advisories in `packages`.
+   */
+  distinct: { advisories: number; matched: number };
   /** Every CVE named in `packages`, one row each, with the same columns and values as index.json. */
   cves: { cols: typeof ROW_COLS; rows: unknown[][] };
   /** Ecosystem → package key (packageKey() in shared/packages.ts) → affects, by CVE then advisory. */
