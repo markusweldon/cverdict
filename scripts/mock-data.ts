@@ -28,7 +28,12 @@ import {
   type ExploitEvidence,
   type KevEntry,
   type KevInfo,
+  type BacktestItem,
   type Meta,
+  type ReceiptFlag,
+  type ReceiptItem,
+  type ReceiptMethod,
+  type ReceiptsFile,
   type Reason,
   type Row,
   type SourceId,
@@ -42,6 +47,7 @@ import {
   type WokeInfo,
   type WokeItem,
   WAKE_KINDS,
+  RECEIPT_METHODS,
 } from '../shared/contract';
 import {
   BASE_POINTS,
@@ -55,6 +61,9 @@ import {
 } from '../shared/model';
 import { SHARD_COUNT, shardOf } from '../shared/shard';
 import { BRAND, REPO_URL } from '../shared/brand';
+import { RECEIPT_DEFINITIONS } from '../pipeline/src/emit/build';
+import { BACKTEST_COMMAND, SIGNALS } from '../pipeline/src/backtest';
+import { scoreMethods } from '../pipeline/src/receipts';
 
 // ───────────────────────────── clock & randomness ─────────────────────────────
 
@@ -1254,6 +1263,104 @@ function assignEvidence(drafts: Draft[]): void {
 
 // ───────────────────────────── scoring (shared model) ─────────────────────────────
 
+/**
+ * Mock receipts.json: a forward log nine days old and a backtest, from the KEV records above. Its
+ * own random stream, so adding it changed nothing else in the mock tree.
+ */
+function mockReceipts(all: readonly Scored[], rows: ReadonlyMap<string, Row>): ReceiptsFile {
+  const r = mulberry32(0x7ece_1975);
+  const since = NOW - 9 * DAY;
+  const listed = all.filter((s) => s.d.kev && Date.parse(s.d.kev.date_added) >= since).sort((a, b) => b.d.kev!.date_added.localeCompare(a.d.kev!.date_added) || a.d.id.localeCompare(b.d.id));
+  const eligible = listed.filter((s) => s.d.inWindow);
+  const flag = (kevAdded: string, hit: boolean): ReceiptFlag => {
+    if (!hit) return r() < 0.5 ? { at: null, outcome: 'never', lead: null } : { at: `${kevAdded}T14:00:00.000Z`, outcome: 'after', lead: null };
+    const lead = Math.floor(r() * 9);
+    return { at: new Date(Date.parse(kevAdded) - lead * DAY + 3 * HOUR).toISOString(), outcome: lead === 0 ? 'same_day' : 'earlier', lead };
+  };
+  const items: ReceiptItem[] = eligible.map((s) => {
+    const k = s.d.kev!.date_added;
+    return {
+      id: s.d.id,
+      kev_added: k,
+      first_seen: new Date(Math.max(since, Math.floor(s.d.pub / HOUR) * HOUR + HOUR)).toISOString(),
+      flags: { cverdict: flag(k, r() < 0.7), cvss7: flag(k, r() < 0.6), epss10: flag(k, r() < 0.15) },
+      row: rows.get(s.d.id) ?? null,
+    };
+  });
+  const watched = 4_210;
+  const back: BacktestItem[] = all
+    .filter((s) => s.d.kev)
+    .slice(0, 60)
+    .map((s, i) => {
+      const strict = { cverdict: r() < 0.55, cvss7: r() < 0.55, epss10: r() < 0.15 } as Record<ReceiptMethod, boolean>;
+      const upper = Object.fromEntries(RECEIPT_METHODS.map((m) => [m, strict[m] || r() < 0.5])) as Record<ReceiptMethod, boolean>;
+      return {
+        id: s.d.id,
+        kev_added: s.d.kev!.date_added,
+        published: new Date(s.d.pub).toISOString(),
+        old: i % 9 === 0,
+        strict,
+        upper: { ...upper, epss10: strict.epss10 },
+        score: s.score,
+        chips: s.reasons.filter((x) => x.polarity !== 'unknown').map((x) => x.id),
+        cvss: s.d.synth.cvss?.score ?? null,
+        epss: null,
+        epss_date: ymd(Date.parse(s.d.kev!.date_added) - DAY),
+        left_out: r() < 0.4 ? ['ssvc'] : [],
+        row: rows.get(s.d.id) ?? null,
+      };
+    });
+  const set = (key: 'recent' | 'old') => {
+    const xs = back.filter((i) => i.old === (key === 'old'));
+    const scores = (pick: (i: BacktestItem) => Record<ReceiptMethod, boolean>) =>
+      RECEIPT_METHODS.map((method) => {
+        const hits = xs.filter((i) => pick(i)[method]).length;
+        return { method, n: xs.length, before: hits, earlier: hits, same_day: 0, lead: null };
+      });
+    return { key, n: xs.length, strict: scores((i) => i.strict), upper: scores((i) => i.upper) };
+  };
+  return {
+    schema_version: SCHEMA_VERSION,
+    generated_at: GENERATED_AT,
+    score_model: SCORE_MODEL,
+    knob: KNOB_DEFAULT,
+    definitions: RECEIPT_DEFINITIONS,
+    forward: {
+      since: new Date(since).toISOString(),
+      last: GENERATED_AT,
+      runs: 9 * 24 - 2,
+      gaps: [{ from: new Date(NOW - 4 * DAY).toISOString(), to: new Date(NOW - 4 * DAY + 4 * HOUR).toISOString() }],
+      watch_days: WINDOW_DAYS,
+      listed: listed.length,
+      eligible: items.length,
+      methods: scoreMethods(items),
+      volume: [
+        { method: 'cverdict', n: watched, flagged: 93 },
+        { method: 'cvss7', n: watched, flagged: 2_104 },
+        { method: 'epss10', n: watched, flagged: 6 },
+      ],
+      items,
+      uncounted: listed.filter((s) => !s.d.inWindow).map((s) => ({ id: s.d.id, kev_added: s.d.kev!.date_added, reason: 'older' as const, row: null })),
+    },
+    backtest: {
+      hindsight: true,
+      computed_at: new Date(NOW - 2 * DAY).toISOString(),
+      from: ymd(NOW - 180 * DAY),
+      to: ymd(NOW),
+      days: 180,
+      old_years: 2,
+      listed: back.length + 3,
+      excluded: [{ code: 'not_public', reason: 'Published on or after the listing day, so no method could flag it before', ids: ['CVE-2026-0001', 'CVE-2026-0002', 'CVE-2026-0003'] }],
+      sets: [set('recent'), set('old')],
+      volume: { from: new Date(NOW - 180 * DAY).toISOString(), n: 64_000, methods: [{ method: 'cverdict', n: 64_000, flagged: 1_650 }, { method: 'cvss7', n: 64_000, flagged: 33_400 }, { method: 'epss10', n: 64_000, flagged: 130 }] },
+      signals: SIGNALS.map((s) => ({ ...s, affected: s.treatment === 'excluded' ? back.length : s.treatment === 'hindsight' ? Math.floor(r() * 20) : 0 })),
+      epss_missing: [],
+      items: back,
+      command: BACKTEST_COMMAND,
+    },
+  };
+}
+
 interface Scored {
   d: Draft;
   score: number;
@@ -1871,6 +1978,7 @@ function main(): void {
     items: wokeItems,
   };
   writeJson(tmp, 'v1/woke.json', woke);
+  writeJson(tmp, 'v1/receipts.json', mockReceipts([...window, ...older], rowsById));
 
   const shards = Array.from({ length: SHARD_COUNT }, () => ({}) as Record<string, CveDetail>);
   for (const s of [...window, ...older]) shards[parseInt(shardOf(s.d.id), 16)][s.d.id] = toDetail(s);

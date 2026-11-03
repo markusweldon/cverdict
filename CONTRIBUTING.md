@@ -23,6 +23,7 @@ npm run dev                    # http://localhost:5173
 | `npm run pipeline -- [flags]` | Build the data tree (`--help` lists every flag) |
 | `npm run mock -- [dir]` | Write a deterministic mock data tree (default `site/public/data`) |
 | `npm run calibrate -- [flags]` | Print the calibration report for the current score model (`--help` lists the flags) |
+| `npm run backtest -- [flags]` | Print the hindsight backtest behind the Receipts page (`--help` lists the flags) |
 | `npm run dev` | Vite dev server for the site, serving `site/public/data` |
 | `npm run build` | Production build into `site/dist` (`BASE=/repo/` for a sub-path) |
 | `npm run preview` | Serve the production build |
@@ -44,7 +45,7 @@ pipeline/   src/ (sources → normalize → score → batches/stats/changes → 
 site/       the Vite + Preact single-page app
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md
 .github/    ci.yml, refresh.yml (hourly data), issue templates
-scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts
+scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts
 ```
 
 [docs/SPEC.md](docs/SPEC.md) is the implementation contract; read it before larger changes.

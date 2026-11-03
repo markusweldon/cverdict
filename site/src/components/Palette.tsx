@@ -31,6 +31,7 @@ const PAGES: readonly [string, string, string][] = [
   ['Batches', 'batches', 'Patch-day cohorts'],
   ['Explore', 'explore', 'Every CVE in the window'],
   ['The surge', 'surge', 'Volume since 1999'],
+  ['Receipts', 'receipts', 'Did we flag it before CISA did?'],
   ['Method', 'method', 'Formula, chips, sources'],
   ['Feeds', 'feeds', 'JSON, Atom, iCalendar'],
 ];

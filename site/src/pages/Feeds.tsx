@@ -20,6 +20,7 @@ const JSON_FILES: readonly [string, string][] = [
   ['stats.json', 'Monthly volume since 1999, daily window counts, hourly waterfall buckets, top CNAs.'],
   ['changes.json', 'Escalations from the last 7 days of hourly runs.'],
   ['woke.json', 'Old CVEs (published before the window) that gained exploit evidence in the last 30 days, with the dated signals.'],
+  ['receipts.json', 'Receipts: which CVEs CISA added to KEV that each method had flagged first, from the hourly log and the hindsight backtest.'],
 ];
 
 const SHARD_JS = `// FNV-1a 32-bit of the upper-cased ID, mod ${SHARD_COUNT}, as two hex digits.

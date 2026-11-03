@@ -2000,3 +2000,247 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* ── Receipts ── */
+
+.rcpt__headline {
+  max-width: 70ch;
+  font-size: 17px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.rcpt__headline strong {
+  font-weight: 600;
+}
+
+.rcpt__young {
+  padding: 8px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.rcpt__table tbody th {
+  min-width: 170px;
+}
+
+.rcpt__table td.num {
+  vertical-align: middle;
+}
+
+.rcpt__method {
+  display: block;
+  font-weight: 600;
+}
+
+.rcpt__note {
+  display: block;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.rcpt__rules {
+  display: grid;
+  gap: 8px;
+  max-width: 78ch;
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+
+.rcpt__rules code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.rcpt__sub {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rcpt__sub .muted {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.rcpt__hindsight {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--b-watch);
+  border-radius: 999px;
+  background: var(--t-watch);
+  color: var(--ink-watch);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.rcpt__warn {
+  padding: 10px 14px;
+  border-left: 3px solid var(--watch);
+  border-radius: var(--r-sm);
+  background: var(--t-watch);
+}
+
+.rcpt__use {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rcpt__use--time_matched {
+  color: var(--ok);
+}
+
+.rcpt__use--hindsight {
+  color: var(--ink-watch);
+}
+
+.rcpt__use--excluded {
+  color: var(--muted);
+}
+
+.rcpt__signals tbody th {
+  min-width: 150px;
+}
+
+.rcpt__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 0;
+  padding: 0;
+  font-size: 12.5px;
+  list-style: none;
+}
+
+.rcpt__flag--miss {
+  color: var(--muted);
+}
+
+.rcpt__bare {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rcpt__cves tbody th {
+  white-space: nowrap;
+}
+
+.rcpt__old {
+  display: block;
+  color: var(--faint);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+
+.rcpt__mark {
+  white-space: nowrap;
+}
+
+.rcpt__mark--yes {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.rcpt__mark--upper {
+  color: var(--ink-watch);
+}
+
+.rcpt__mark--no {
+  color: var(--faint);
+}
+
+.rcpt__who {
+  display: block;
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+}
+
+/* Phones: each table row becomes a small card, label left, value right. */
+@media (max-width: 640px) {
+  .rcpt__stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .rcpt__stack,
+  .rcpt__stack tbody,
+  .rcpt__stack tr,
+  .rcpt__stack th,
+  .rcpt__stack td {
+    display: block;
+  }
+
+  .rcpt__stack tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rcpt__stack th,
+  .rcpt__stack td {
+    padding: 2px 0;
+    border: 0;
+  }
+
+  .rcpt__stack td[data-label] {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+
+  .rcpt__stack td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    text-align: left;
+  }
+
+  .rcpt__signals td[data-label='How it was used'] {
+    display: block;
+    text-align: left;
+  }
+
+  .rcpt__signals td[data-label='How it was used']::before {
+    content: none;
+  }
+
+  .rcpt__table tbody th,
+  .rcpt__signals tbody th {
+    min-width: 0;
+  }
+
+  .rcpt__who {
+    max-width: none;
+  }
+}
+
+.rcpt__excluded summary {
+  cursor: pointer;
+}
+
+.rcpt__ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 4px 0 6px;
+  font-size: 12.5px;
+}

@@ -91,6 +91,10 @@ On the site:
   30 days: a CISA KEV listing, a first Exploit-DB entry, Metasploit module, Nuclei template or
   vetted PoC repo, or an EPSS jump. The 30-day views cannot see them, yet many KEV additions are
   years old. Each one shows the dated evidence and a link to check it.
+- **Receipts**: how often CVErdict flagged a CVE before CISA added it to KEV, next to "CVSS 7 or
+  more" and "EPSS 10% or more", with lead times, alert volume and every hit and miss. The live
+  record is kept hour by hour from the day it started; a backtest of the last 180 days is shown
+  apart and marked as hindsight.
 - **KEV clock**, **Batches**, **Explore** (every window CVE, searchable), **The surge** (monthly
   volume since 1999), **Method** and **Feeds**.
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.

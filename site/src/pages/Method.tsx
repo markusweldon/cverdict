@@ -10,6 +10,7 @@ import { TierPill } from '../components/Tier';
 import { data } from '../data';
 import { fmtAge, fmtDateTime, fmtInt, signed } from '../format';
 import { useData, useNow, useTitle } from '../hooks';
+import { href } from '../router';
 import { FAMILY_META, FAMILY_ORDER, SOURCE_NAMES, TIER_META } from '../tiers';
 
 const FORMULA = `raw   = ${BASE_POINTS} + X + SEV + SSVC + PRIOR + NOISE
@@ -110,6 +111,7 @@ export default function Method() {
           <a href="#tiers">Tiers</a>
           <a href="#chips">Chips</a>
           <a href="#sources">Sources</a>
+          <a href="#checking">Checking our work</a>
           <a href="#blind-spots">Blind spots</a>
           <a href="#attributions">Attributions</a>
         </nav>
@@ -232,6 +234,14 @@ export default function Method() {
           {meta.status === 'ready' && <> Last run {fmtDateTime(meta.data.generated_at)}.</>}
         </p>
         <Sources />
+      </section>
+
+      <section id="checking" class="prose-section">
+        <h2 class="section__title">Checking our work</h2>
+        <p>
+          A score only earns trust when it is checked. <a href={href('receipts')}>Receipts</a> shows how often {BRAND.name} flagged a CVE before CISA added it to KEV, next to “CVSS 7 or more” and “EPSS 10%
+          or more”, with every hit and every miss. The live record is kept hour by hour. A backtest of the last 180 days is shown apart and marked as hindsight.
+        </p>
       </section>
 
       <section id="blind-spots" class="prose-section">
