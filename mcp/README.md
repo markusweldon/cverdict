@@ -71,7 +71,7 @@ one text block. The result types are in [`shared/contract.ts`](../shared/contrac
 |---|---|---|---|
 | `get_verdict` | `meta.json`, `cve/<xx>.json` | Tier, plain-language verdict, score, `score_math`, every reason chip with points and link, unknowns, KEV, EPSS, CVSS, links to the CVE page, the shard and cve.org. `detail: true` adds the description, affected products, CWE, SSVC, exploits, tags, timeline and references | 1 to 15 IDs, at most 5 with `detail`; `knob` 30 to 80 |
 | `list_signal` | `signal.json`, or `index.json` for Watch, Quiet or a knob below 35 | Window CVEs in the chosen tiers (default Exploited and Likely next), highest score first. Filters: `vendor` text, `published_since`, `kev_only` | `limit` 1 to 50 (default 25), `offset` |
-| `kev_due` | `kev.json` | CISA KEV entries due in the next `within_days` (0 to 60, default 7) and overdue by up to `overdue_days` (0 to 14, default 7), with `days_left` in UTC calendar days | |
+| `kev_due` | `kev.json` | CISA KEV entries due in the next `within_days` (0 to 60, default 7) and overdue by up to `overdue_days` (0 to 14, default 7), soonest first, with `days_left` in UTC calendar days | `limit` 1 to 50 (default 50), `offset` |
 | `woke_up` | `woke.json` | Old CVEs that gained exploitation evidence since `since` (default 7 days before the data was generated), with their dated signals. Filter by `kinds` | `limit` 1 to 50 (default 25), `offset` |
 | `receipts` | `receipts.json` | How often CVErdict, CVSS 7 or more and EPSS 10% or more flagged a CVE before CISA listed it: the forward log and the hindsight backtest, without the per-CVE lists. `id` adds one CVE's entries | |
 | `search_cves` | `index.json` | Window CVEs whose ID, CNA, vendor, product or title contain every word of `query`, highest score first | `query` 2 to 100 characters, at most 8 words; `limit` 1 to 50 (default 20), `offset` |
@@ -148,8 +148,9 @@ The SDK (`@modelcontextprotocol/server`) and `zod` are exact-pinned dev dependen
 repository and are bundled into `dist/cverdict-mcp.mjs`, so the package has no runtime
 dependencies. The site never imports them: `shared/mcp.ts` holds the copy both use.
 
-Publishing later (owner): remove `"private": true` from `mcp/package.json`, run
-`npm run build:mcp` at the root, then `npm publish --provenance` in `mcp/`.
+Publishing later (owner): remove `"private": true` from `mcp/package.json`, then, in a GitHub
+Actions job with `permissions: id-token: write` (npm only makes provenance in CI), run
+`npm ci` and `npm run build:mcp` at the root and `npm publish --provenance` in `mcp/`.
 
 ## License
 

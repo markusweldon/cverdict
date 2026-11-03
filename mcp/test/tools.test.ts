@@ -170,6 +170,18 @@ describe('kev_due', () => {
     expect(none.items.map((i) => i.id)).toEqual(['CVE-2026-0010']);
   });
 
+  it('pages at 50, so a large CISA batch stays within the answer budget', async () => {
+    const tree = files();
+    const kev = tree.get('kev.json') as { entries: { id: string; due_date: string }[] };
+    const one = kev.entries[0];
+    tree.set('kev.json', { ...kev, entries: Array.from({ length: 120 }, (_, i) => ({ ...one, id: `CVE-2026-${20000 + i}`, due_date: '2026-11-05' })) });
+    const t = setup(tree);
+    const first = await t.run((c) => kevDue(c, {}, NOW));
+    expect([first.total, first.offset, first.next_offset, first.items.length]).toEqual([120, 0, 50, 50]);
+    const last = await t.run((c) => kevDue(c, { offset: 100, limit: 50 }, NOW));
+    expect([last.total, last.next_offset, last.items.length, last.items[0].id]).toEqual([120, null, 20, 'CVE-2026-20100']);
+  });
+
   it('moves with the UTC day at midnight, not with the hour', async () => {
     const t = setup();
     const late = await t.run((c) => kevDue(c, { within_days: 0, overdue_days: 0 }, Date.parse('2026-11-03T23:59:59Z')));

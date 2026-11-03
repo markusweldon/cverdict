@@ -770,6 +770,8 @@ export interface McpKevDueResult {
   to: string;
   catalog_version: string | null;
   total: number;
+  offset: number;
+  next_offset: number | null;
   items: McpKevDue[];
 }
 
