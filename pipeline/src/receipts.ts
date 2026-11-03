@@ -412,7 +412,9 @@ export function forwardReceipts(log: ReceiptsLog, kev: KevCatalog, rows: Readonl
   for (const k of kev.entries.values()) {
     const added = normalizeYmd(k.dateAdded);
     if (!added || !inRange(added) || counted.has(k.cveID) || log.entries.has(k.cveID)) continue;
-    uncounted.push({ id: k.cveID, kev_added: added, reason: 'older', row: rows.get(k.cveID) ?? null });
+    // KEV records are always scored, so a listing without a row has no published record.
+    const row = rows.get(k.cveID) ?? null;
+    uncounted.push({ id: k.cveID, kev_added: added, reason: row ? 'older' : 'no_record', row });
   }
   const newest = (a: { kev_added: string; id: string }, b: { kev_added: string; id: string }) => b.kev_added.localeCompare(a.kev_added) || a.id.localeCompare(b.id);
   items.sort(newest);
