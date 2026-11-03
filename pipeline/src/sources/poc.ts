@@ -32,7 +32,7 @@ export async function listPocFiles(dir: string, commit: string, signal?: AbortSi
   return files;
 }
 
-/** Parse one PoC file: non-fork repos with a GitHub URL and creation date, most-starred first. */
+/** Parse one PoC file: non-fork repos with a GitHub URL and creation date (and last push), most-starred first. */
 export function parsePocFile(body: Buffer | string): PocRepo[] {
   let doc: unknown;
   try {
@@ -48,7 +48,7 @@ export function parsePocFile(body: Buffer | string): PocRepo[] {
     const created = normalizeIso(r.created_at);
     if (!url || !GITHUB_REPO_RE.test(url) || !created || repos.has(url)) continue;
     const stars = asNumber(r.stargazers_count);
-    repos.set(url, { url, stars: stars !== null && stars > 0 ? Math.floor(stars) : 0, created, fork: false });
+    repos.set(url, { url, stars: stars !== null && stars > 0 ? Math.floor(stars) : 0, created, fork: false, pushed: normalizeIso(r.pushed_at) });
   }
   return [...repos.values()].sort((a, b) => b.stars - a.stars || a.created.localeCompare(b.created));
 }

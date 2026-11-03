@@ -6,13 +6,13 @@
  * its evidence:
  *
  *   time-matched  KEV prior (other listings before the cutoff), EPSS (the archived file of the day
- *                 before), Exploit-DB (date_added), PoC repos (created_at; vetted by age at the
- *                 cutoff), Metasploit modules whose earliest mod_time is before the cutoff, CISA
+ *                 before), Exploit-DB (date_added), PoC repos created and last pushed before the
+ *                 cutoff (vetted by age at the cutoff), Metasploit modules whose earliest mod_time is before the cutoff, CISA
  *                 SSVC automatable and technical impact timestamped before the day before the
  *                 listing, and the CNA (or CISA-ADP) container when it has not changed since the
  *                 cutoff.
  *   hindsight     everything else that has no usable date: Nuclei templates, other Metasploit
- *                 modules, PoC star counts, SSVC stamped on the day before the listing or later,
+ *                 modules, PoC repos pushed on the listing day or later, PoC star counts, SSVC stamped on the day before the listing or later,
  *                 the SSVC exploitation value in a changed container, CNA and CISA-ADP containers
  *                 changed since. The strict scores leave these out (as
  *                 unknown, never as absent); the `upper` variant ("with undated evidence") uses
@@ -132,15 +132,23 @@ export interface BacktestDecision {
 export function backtestProblems(b: BacktestReceipts): string[] {
   const out: string[] = [];
   if (!b || b.hindsight !== true || !Array.isArray(b.items) || !Array.isArray(b.sets)) return ['backtest is not marked as hindsight or is incomplete'];
+  // Total over any JSON: a carried copy with a null set or item must be recomputed, never throw.
+  const isObj = (v: unknown) => asObject(v) !== null;
+  if (
+    !b.sets.every((s) => isObj(s) && Array.isArray(s.strict) && Array.isArray(s.upper) && [...s.strict, ...s.upper].every(isObj)) ||
+    !b.items.every((i) => isObj(i) && isObj(i.strict) && isObj(i.upper))
+  ) {
+    return ['backtest is incomplete'];
+  }
   const total = b.sets.reduce((a, s) => a + s.n, 0);
-  const excluded = (b.excluded ?? []).reduce((a, e) => a + (Array.isArray(e?.ids) ? e.ids.length : 0), 0);
+  const excluded = (Array.isArray(b.excluded) ? b.excluded : []).reduce((a, e) => a + (Array.isArray(e?.ids) ? e.ids.length : 0), 0);
   if (total !== b.items.length || total + excluded !== b.listed) out.push(`backtest sets (${total}) and exclusions (${excluded}) do not add up to ${b.listed} listings`);
   for (const s of b.sets) {
     const items = b.items.filter((i) => i.old === (s.key === 'old'));
     for (const m of RECEIPT_METHODS) {
       for (const variant of ['strict', 'upper'] as const) {
-        const score = Array.isArray(s[variant]) ? s[variant].find((x) => x.method === m) : undefined;
-        const hits = items.filter((i) => i[variant]?.[m]).length;
+        const score = s[variant].find((x) => x.method === m);
+        const hits = items.filter((i) => i[variant][m]).length;
         if (!score || score.n !== s.n || score.before !== hits || score.lead !== null) out.push(`backtest ${s.key}.${variant}.${m} does not match its items`);
       }
     }
@@ -175,8 +183,8 @@ export function decideBacktest(previous: BacktestReceipts | null, now: Date, for
   const reuse: BacktestPlan['reuse'] = new Map();
   // Publication dates do not move, so a listing that came before its CVE was public stays excluded.
   const skip = new Set<string>();
-  for (const e of previous?.excluded ?? []) if (e?.code === 'not_public' && Array.isArray(e.ids)) for (const id of e.ids) if (typeof id === 'string') skip.add(id);
-  for (const it of previous?.items ?? []) {
+  for (const e of Array.isArray(previous?.excluded) ? previous.excluded : []) if (e?.code === 'not_public' && Array.isArray(e.ids)) for (const id of e.ids) if (typeof id === 'string') skip.add(id);
+  for (const it of Array.isArray(previous?.items) ? previous.items : []) {
     const date = normalizeYmd(it?.epss_date);
     const score = it?.epss === null ? null : asNumber(it?.epss);
     if (typeof it?.id === 'string' && typeof it.kev_added === 'string' && date && date === dayBefore(it.kev_added) && (it.epss === null || score !== null)) {
@@ -267,7 +275,13 @@ export const SIGNALS: readonly Omit<BacktestSignal, 'affected'>[] = [
     key: 'poc',
     label: 'PoC repos on GitHub',
     treatment: 'time_matched',
-    note: 'Repos created before the listing day. A repo may have gained its exploit code later, and repos deleted since cannot be seen.',
+    note: 'Repos created and last changed before the listing day, so all their code is older than the listing. Repos deleted since cannot be seen.',
+  },
+  {
+    key: 'poc_content',
+    label: 'PoC repos changed on or after the listing day',
+    treatment: 'hindsight',
+    note: 'GitHub only gives the time of the last change, so the code may have come after the listing. These repos count only with undated evidence.',
   },
   {
     key: 'poc_stars',
@@ -365,9 +379,13 @@ export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsO
     const date = input.exploitdbAdded.get(e.id) ?? e.date;
     return date !== null && date <= lastDay;
   });
+  // A repo created before the cutoff may only have gained its code later: strictly, it counts only
+  // when its last push is before the cutoff too (all its content is then older than the listing).
   const allRepos = (enr.exploits.poc.get(cve.id) ?? []).filter((r) => before(r.created, cutoffMs));
-  const repos: PocRepo[] = strict ? allRepos.map((r) => ({ ...r, stars: 0 })) : allRepos;
-  if (strict && allRepos.some((r) => r.stars > 0)) leftOut.push('poc_stars');
+  const pushedBefore = allRepos.filter((r) => before(r.pushed, cutoffMs));
+  const repos: PocRepo[] = strict ? pushedBefore.map((r) => ({ ...r, stars: 0 })) : allRepos;
+  if (strict && pushedBefore.length < allRepos.length) leftOut.push('poc_content');
+  if (strict && pushedBefore.some((r) => r.stars > 0)) leftOut.push('poc_stars');
 
   // SSVC. The timestamp dates the assessment, but CISA changes the exploitation value when it lists
   // a CVE, and only today's container can be read. So the exploitation value is time-matched only

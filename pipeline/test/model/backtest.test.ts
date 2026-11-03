@@ -87,6 +87,24 @@ describe('evidence as of the day before the listing', () => {
     expect(upper.exploits.poc.vetted).toBe(1);
   });
 
+  it('strictly counts a PoC repo only when its last push is before the cutoff too; upper counts it anyway', () => {
+    // Listed later than it was created, pushed after the listing: its code may postdate the listing.
+    const late = [repo(before(30), 0, false, 'pushed-later', after(1))];
+    const strict = scoreOf(asOf(kevCve(), { poc: { [ID]: late } }), 'strict');
+    expect(strict.evidence.enr.exploits.poc.has(ID)).toBe(false);
+    expect(strict.leftOut).toContain('poc_content');
+    expect(strict.reasons.some((r) => r.id === 'x.poc')).toBe(false);
+    const upper = scoreOf(asOf(kevCve(), { poc: { [ID]: late } }), 'upper');
+    expect(upper.exploits.poc.vetted).toBe(1);
+    expect(upper.leftOut).not.toContain('poc_content');
+    // No push time at all: unknown, so the same.
+    expect(scoreOf(asOf(kevCve(), { poc: { [ID]: [repo(before(30), 0, false, 'x', null)] } }), 'strict').leftOut).toContain('poc_content');
+    // Pushed before the cutoff: dated.
+    const dated = scoreOf(asOf(kevCve(), { poc: { [ID]: [repo(before(30), 0, false, 'x', before(2))] } }), 'strict');
+    expect(dated.exploits.poc.vetted).toBe(1);
+    expect(dated.leftOut).not.toContain('poc_content');
+  });
+
   it('counts a Metasploit module modified before the cutoff; otherwise strict leaves it out as unknown', () => {
     const spec = { metasploit: { [ID]: [msf('exploit/linux/http/acme')] } };
     const dated = scoreOf(asOf(kevCve(), spec, { metasploitModified: new Map([[ID, before(3)]]) }), 'strict');
@@ -277,6 +295,18 @@ describe('carry-forward', () => {
     expect(retry.carried).toBeNull();
     expect(retry.plan!.reuse.size).toBe(1);
     expect(retry.note).toMatch(/1 EPSS days missing/);
+  });
+
+  it('recomputes a recent copy whose sets or items are not objects, instead of throwing', () => {
+    const recent = new Date(NOW.getTime() - 2 * 86_400_000).toISOString();
+    for (const o of [{ sets: [null] }, { items: [null] }, { sets: [{ key: 'recent', n: 2, strict: [null], upper: zero(2) }] }, { items: [{ id: ID, strict: null, upper: no }] }, { excluded: {} }] as const) {
+      const bad = computed(recent, o as unknown as Partial<BacktestReceipts>);
+      expect(() => backtestProblems(bad)).not.toThrow();
+      expect(backtestProblems(bad).length).toBeGreaterThan(0);
+      const d = decideBacktest(bad, NOW);
+      expect(d.carried).toBeNull();
+      expect(d.plan).not.toBeNull();
+    }
   });
 
   it('retries a day later when a source had no data, and never publishes an empty backtest when KEV is down', () => {

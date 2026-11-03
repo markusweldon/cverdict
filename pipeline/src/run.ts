@@ -8,7 +8,7 @@ import { dirname, resolve } from 'node:path';
 import { BRAND } from '../../shared/brand';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, type Batch, type Meta, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
 import { SCORE_MODEL } from '../../shared/model';
-import { decideBacktest, readPreviousBacktest } from './backtest';
+import { decideBacktest, readPreviousBacktest, type BacktestDecision } from './backtest';
 import { buildOutput } from './emit/build';
 import { writeFiles } from './emit/json';
 import { ingest } from './ingest';
@@ -90,7 +90,14 @@ export async function run(opts: RunOptions): Promise<RunSummary> {
   log.info(`${BRAND.slug} pipeline · model ${SCORE_MODEL} · now ${now.toISOString()} · window ${opts.windowDays}d · knob ${knob}`);
   const previousState = loadState(opts.previous, log);
   const previousBacktest = readPreviousBacktest(opts.previous);
-  const decision = decideBacktest(previousBacktest, now, opts.refreshBacktest);
+  // A carried copy the checks do not understand is recomputed; it must never stop the run.
+  let decision: BacktestDecision;
+  try {
+    decision = decideBacktest(previousBacktest, now, opts.refreshBacktest);
+  } catch (err) {
+    log.warn(`backtest: previous copy not usable (${err instanceof Error ? err.message : String(err)}); refreshing`);
+    decision = decideBacktest(null, now, opts.refreshBacktest);
+  }
   log.info(decision.note);
   const ing = await ingest(ctx, { cvelistDir: opts.cvelistDir, pocDir: opts.pocDir, previousState, backtest: decision.plan ?? undefined });
   const built = buildOutput({ ingest: ing, now, windowDays: opts.windowDays, knob, previous: opts.previous, previousState, siteUrl: base, backtest: decision.carried, previousBacktest });

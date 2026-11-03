@@ -43,6 +43,8 @@ export interface SourceRequest<T> {
   parse: (body: Buffer, cached: CacheMeta | null) => Parsed<T>;
   /** Serve the cached copy without any request while it is younger than this (rate-limited hosts). */
   minIntervalMs?: number;
+  /** With minIntervalMs: reuse the cached copy without a request only when this accepts it. */
+  reuseIf?(value: T): boolean;
   signal?: AbortSignal;
 }
 
@@ -128,7 +130,7 @@ export class HttpClient {
       const age = this.clock() - Date.parse(cached.meta.fetched_at);
       if (age >= 0 && age < req.minIntervalMs) {
         const reused = this.tryParse(req, cached);
-        if (reused.ok) {
+        if (reused.ok && (req.reuseIf?.(reused.result.value as T) ?? true)) {
           log.info(`${req.key}: reusing cached copy (${Math.round(age / 60_000)} min old, refetch every ${req.minIntervalMs / 3_600_000}h)`);
           return { ...reused.result, stale: false };
         }

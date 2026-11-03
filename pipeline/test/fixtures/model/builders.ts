@@ -82,8 +82,9 @@ export function makeKev(id: string, o: Partial<KevRaw> = {}): KevRaw {
   };
 }
 
-export function repo(created: string, stars = 0, fork = false, name = 'poc'): PocRepo {
-  return { url: `https://github.com/someone/${name}`, stars, created, fork };
+/** A PoC repo; last pushed when it was created unless `pushed` says otherwise. */
+export function repo(created: string, stars = 0, fork = false, name = 'poc', pushed: string | null = created): PocRepo {
+  return { url: `https://github.com/someone/${name}`, stars, created, fork, pushed };
 }
 
 export interface EnrichmentSpec {
