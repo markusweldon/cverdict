@@ -1,13 +1,15 @@
 /**
  * Receipts, part 1: the forward log. Real-time observations, no hindsight.
  *
- * Every run records, per CVE in the window, the hour of the first run that saw it and the hour of
- * the first run at which each method flagged it:
+ * Every run records, per CVE in the window, the time (to the minute) of the first run that saw it
+ * and of the first run at which each method flagged it:
  *   cverdict  tier Exploited or Likely next at the default knob (KNOB_DEFAULT);
  *   cvss7     the CVSS base score the site shows (CNA, else CISA-ADP) is 7.0 or more;
  *   epss10    the EPSS score is 0.1 or more (only once EPSS has scored the CVE).
- * When a logged CVE appears in CISA KEV (at any age), the KEV dateAdded and the hour of the run
- * that first saw the listing are recorded.
+ * When a logged CVE appears in CISA KEV (at any age), the KEV dateAdded and the time of the run
+ * that first saw the listing are recorded. Runs can come twice an hour, so times are kept to the
+ * minute, and "before" compares those instants. KEV dates are US Eastern days, so the day of a
+ * run time is taken in that zone when it is compared with one.
  *
  * A CVE is watched while it is in the window: a method that flags it only later is not counted, for
  * every method alike. Entries without a KEV listing are pruned after LOG_RETENTION_DAYS (their
@@ -37,6 +39,7 @@ import { asNumber, asObject } from './util/json';
 import { normalizeCveId } from './util/text';
 
 export const HOUR_MS = 3_600_000;
+export const MINUTE_MS = 60_000;
 /** Entries without a KEV listing are dropped this long after they were first seen. */
 export const LOG_RETENTION_DAYS = 400;
 /** A pause between runs longer than this is recorded as a gap. */
@@ -51,7 +54,7 @@ export const EPSS_LINE = 0.1;
  */
 export const ROW_DAYS = 365;
 
-/** One CVE in the log. Times are whole hours since the Unix epoch (the run's hour, rounded down). */
+/** One CVE in the log. Times are whole minutes since the Unix epoch (the run's minute, rounded down). */
 export interface LogEntry {
   seen: number;
   flags: Record<ReceiptMethod, number | null>;
@@ -71,17 +74,23 @@ export interface ReceiptsLog {
 }
 
 const emptyPruned = (): ReceiptsLog['pruned'] => ({ n: 0, cverdict: 0, cvss7: 0, epss10: 0 });
-export const hourOf = (d: Date | string): number => Math.floor((typeof d === 'string' ? Date.parse(d) : d.getTime()) / HOUR_MS);
-export const hourIso = (h: number): string => new Date(h * HOUR_MS).toISOString();
-const hourDay = (h: number): string => ymd(new Date(h * HOUR_MS));
+export const minuteOf = (d: Date | string): number => Math.floor((typeof d === 'string' ? Date.parse(d) : d.getTime()) / MINUTE_MS);
+export const minuteIso = (m: number): string => new Date(m * MINUTE_MS).toISOString();
+/** CISA dates KEV listings by its own (US Eastern) day. */
+const ET_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
+/** The US Eastern day (YYYY-MM-DD) of a log time, to compare with a KEV dateAdded. */
+export const etDay = (m: number): string => ET_DAY.format(new Date(m * MINUTE_MS));
+/** A CVE ID as CVE List files spell it: no leading zero beyond the 4-digit minimum. */
+const CANONICAL_ID_RE = /^CVE-\d{4}-(?:\d{4}|[1-9]\d{4,})$/;
 /** Length of a gap in hours, to 0.1. */
 const gapHours = (from: string, to: string): number => Math.round((Date.parse(to) - Date.parse(from)) / HOUR_MS * 10) / 10;
 
 // ── Compact encoding ─────────────────────────────────────────────────────────────────────────
 //
 // The log can hold ~200,000 CVEs, so it is columnar: `ids` lists the CVE IDs sorted by year and
-// sequence number, as `YYYY:first,delta,delta… YYYY:…`; `seen` holds hour offsets from `h0`;
-// `cverdict`, `cvss7` and `epss10` hold hour offsets from that entry's `seen` ('' = never). Each
+// sequence number, as `YYYY:first,delta,delta… YYYY:…`; `seen` holds minute offsets from `m0`;
+// `cverdict`, `cvss7` and `epss10` hold minute offsets from that entry's `seen` ('' = never).
+// Only canonical IDs are logged (CANONICAL_ID_RE), so every ID survives the numeric round trip. Each
 // column is one comma-separated string, in `ids` order. KEV listings are a sparse object.
 
 function idKey(id: string): [number, number] {
@@ -152,7 +161,8 @@ export interface EncodedLog {
   /** [count, hours] of every gap since `since`. */
   gap_total: [number, number];
   pruned: ReceiptsLog['pruned'];
-  h0: number;
+  /** Minute of `since`. */
+  m0: number;
   ids: string;
   seen: string;
   cverdict: string;
@@ -163,15 +173,15 @@ export interface EncodedLog {
 
 export function encodeLog(log: ReceiptsLog): EncodedLog {
   const ids = [...log.entries.keys()].sort(compareIds);
-  const h0 = hourOf(log.since);
+  const m0 = minuteOf(log.since);
   const seen: number[] = [];
   const cols: Record<ReceiptMethod, string[]> = { cverdict: [], cvss7: [], epss10: [] };
   const kev: EncodedLog['kev'] = {};
   for (const id of ids) {
     const e = log.entries.get(id)!;
-    seen.push(e.seen - h0);
+    seen.push(e.seen - m0);
     for (const m of RECEIPT_METHODS) cols[m].push(e.flags[m] === null ? '' : String(e.flags[m]! - e.seen));
-    if (e.kev) kev[id] = [e.kev.added, e.kev.seen - h0];
+    if (e.kev) kev[id] = [e.kev.added, e.kev.seen - m0];
   }
   return {
     since: log.since,
@@ -180,7 +190,7 @@ export function encodeLog(log: ReceiptsLog): EncodedLog {
     gaps: log.gaps,
     gap_total: [log.gapTotal.n, log.gapTotal.hours],
     pruned: log.pruned,
-    h0,
+    m0,
     ids: encodeIds(ids),
     seen: seen.join(','),
     cverdict: cols.cverdict.join(','),
@@ -196,8 +206,8 @@ export function decodeLog(data: unknown): ReceiptsLog | null {
   const since = normalizeIso(o?.since);
   const last = normalizeIso(o?.last);
   const runs = asNumber(o?.runs);
-  const h0 = asNumber(o?.h0);
-  if (!o || !since || !last || runs === null || !Number.isInteger(runs) || runs < 1 || h0 !== hourOf(since) || last < since) return null;
+  const m0 = asNumber(o?.m0);
+  if (!o || !since || !last || runs === null || !Number.isInteger(runs) || runs < 1 || m0 !== minuteOf(since) || last < since) return null;
   const ids = typeof o.ids === 'string' ? decodeIds(o.ids) : null;
   if (!ids) return null;
   const seen = decodeColumn(o.seen, ids.length, false);
@@ -206,7 +216,7 @@ export function decodeLog(data: unknown): ReceiptsLog | null {
   const kev = asObject(o.kev) ?? {};
   const entries = new Map<string, LogEntry>();
   ids.forEach((id, i) => {
-    const s = h0 + seen[i]!;
+    const s = m0 + seen[i]!;
     const flags = Object.fromEntries(RECEIPT_METHODS.map((m) => [m, cols[m]![i] === null ? null : s + cols[m]![i]!])) as LogEntry['flags'];
     entries.set(id, { seen: s, flags, kev: null });
   });
@@ -216,7 +226,7 @@ export function decodeLog(data: unknown): ReceiptsLog | null {
     const added = Array.isArray(value) ? normalizeYmd(value[0]) : null;
     const at = Array.isArray(value) ? asNumber(value[1]) : null;
     if (!e || !added || at === null || !Number.isInteger(at) || at < 0) return null;
-    e.kev = { added, seen: h0 + at };
+    e.kev = { added, seen: m0 + at };
   }
   const p = asObject(o.pruned);
   const pruned = emptyPruned();
@@ -238,7 +248,8 @@ export function decodeLog(data: unknown): ReceiptsLog | null {
   return { since, last, runs, gaps, gapTotal: { n: gapTotal.n, hours: gapTotal.hours }, entries, pruned };
 }
 
-export const RECEIPTS_SECTION: StateSection<ReceiptsLog> = { key: 'receipts', version: 1, parse: decodeLog };
+/** Version 2 keeps minutes; a version 1 log (hours, never published) starts fresh. */
+export const RECEIPTS_SECTION: StateSection<ReceiptsLog> = { key: 'receipts', version: 2, parse: decodeLog };
 
 // ── Update ─────────────────────────────────────────────────────────────────────────────────
 
@@ -269,7 +280,7 @@ export function updateLog(previous: ReceiptsLog | null, scored: readonly ScoredC
     notes.push(`the log's last run (${previous.last}) is later than this run; carried over unchanged`);
     return { log: previous, updated: false, notes };
   }
-  const hour = hourOf(now);
+  const minute = minuteOf(now);
   const today = ymd(now);
   const log: ReceiptsLog = previous
     ? {
@@ -290,11 +301,19 @@ export function updateLog(previous: ReceiptsLog | null, scored: readonly ScoredC
   log.last = nowIso;
 
   let added = 0;
+  let odd = 0;
   for (const s of scored) {
     if (!s.cve.inWindow || log.entries.has(s.cve.id)) continue;
-    log.entries.set(s.cve.id, { seen: hour, flags: { cverdict: null, cvss7: null, epss10: null }, kev: null });
+    // A non-canonical ID (CVE-2026-01234) would come back as another ID after encoding, and the
+    // duplicate would make the next run discard the whole log. Real records never use one.
+    if (!CANONICAL_ID_RE.test(s.cve.id)) {
+      odd++;
+      continue;
+    }
+    log.entries.set(s.cve.id, { seen: minute, flags: { cverdict: null, cvss7: null, epss10: null }, kev: null });
     added++;
   }
+  if (odd) notes.push(`${odd} non-canonical CVE IDs not logged`);
 
   // KEV listings for any logged CVE, at whatever age. The catalog first; the CISA-ADP KEV block
   // in the record covers a run without a catalog. Listings dated after `now` do not exist yet.
@@ -302,30 +321,32 @@ export function updateLog(previous: ReceiptsLog | null, scored: readonly ScoredC
   const record = (id: string, date: string | null) => {
     const e = log.entries.get(id);
     if (!e || e.kev || !date || date > today) return;
-    e.kev = { added: date, seen: hour };
+    e.kev = { added: date, seen: minute };
     listings++;
   };
   for (const k of kev.entries.values()) record(k.cveID, normalizeYmd(k.dateAdded));
   for (const s of scored) if (s.cve.adpKev) record(s.cve.id, s.cve.adpKev.dateAdded);
 
   // First flags. A listing this run can see but not record (no usable date, or dated after `now`)
-  // would otherwise give CVErdict a flag that seems to come before the listing: no CVErdict flag is
-  // recorded until the listing is, and then it comes with the listing ('after').
+  // would otherwise give a flag that seems to come before the listing: no method's flag is
+  // recorded until the listing is, and then it comes with the listing ('after'). Every method
+  // is held the same way.
   const newFlags: Record<ReceiptMethod, number> = { cverdict: 0, cvss7: 0, epss10: 0 };
   for (const s of scored) {
     if (!s.cve.inWindow) continue;
-    const e = log.entries.get(s.cve.id)!;
+    const e = log.entries.get(s.cve.id);
+    if (!e) continue;
     const unrecorded = !e.kev && (kev.entries.has(s.cve.id) || s.cve.adpKev !== null);
     const f = flagged(s);
     for (const m of RECEIPT_METHODS) {
-      if (e.flags[m] === null && f[m] && !(m === 'cverdict' && unrecorded)) {
-        e.flags[m] = hour;
+      if (e.flags[m] === null && f[m] && !unrecorded) {
+        e.flags[m] = minute;
         newFlags[m]++;
       }
     }
   }
 
-  const cutoff = hour - LOG_RETENTION_DAYS * 24;
+  const cutoff = minute - LOG_RETENTION_DAYS * 24 * 60;
   let pruned = 0;
   for (const [id, e] of log.entries) {
     if (e.kev || e.seen >= cutoff) continue;
@@ -366,13 +387,14 @@ export function dayDiff(fromDay: string, toDay: string): number {
 
 /**
  * One method on one KEV listing. Flagged before the listing means: by a run earlier than the one
- * that first saw the listing, and on or before the KEV dateAdded. Same definition for every method.
+ * that first saw the listing, and on or before the KEV dateAdded (a US Eastern day). Same
+ * definition for every method.
  */
-export function outcomeOf(flagHour: number | null, kev: { added: string; seen: number }): ReceiptFlag {
-  if (flagHour === null) return { at: null, outcome: 'never', lead: null };
-  const at = hourIso(flagHour);
-  const lead = dayDiff(hourDay(flagHour), kev.added);
-  if (flagHour < kev.seen && lead >= 0) return { at, outcome: lead >= 1 ? 'earlier' : 'same_day', lead };
+export function outcomeOf(flagAt: number | null, kev: { added: string; seen: number }): ReceiptFlag {
+  if (flagAt === null) return { at: null, outcome: 'never', lead: null };
+  const at = minuteIso(flagAt);
+  const lead = dayDiff(etDay(flagAt), kev.added);
+  if (flagAt < kev.seen && lead >= 0) return { at, outcome: lead >= 1 ? 'earlier' : 'same_day', lead };
   return { at, outcome: 'after', lead: null };
 }
 
@@ -387,13 +409,14 @@ export function scoreMethods(items: readonly { flags: Record<ReceiptMethod, Rece
   });
 }
 
-/** A KEV listing the log can judge: the CVE was seen by an earlier run, on or before the listing date. */
+/** A KEV listing the log can judge: the CVE was seen by an earlier run, on or before the listing date (US Eastern). */
 export function isEligible(e: LogEntry): e is LogEntry & { kev: NonNullable<LogEntry['kev']> } {
-  return e.kev !== null && e.seen < e.kev.seen && hourDay(e.seen) <= e.kev.added;
+  return e.kev !== null && e.seen < e.kev.seen && etDay(e.seen) <= e.kev.added;
 }
 
 export function forwardReceipts(log: ReceiptsLog, kev: KevCatalog, rows: ReadonlyMap<string, Row>, now: Date, watchDays: number): ForwardReceipts {
-  const sinceDay = ymd(new Date(log.since));
+  // KEV dates are Eastern days: a log that started at 00:17 UTC started on the Eastern day before.
+  const sinceDay = etDay(minuteOf(log.since));
   const today = ymd(now);
   const inRange = (d: string) => d >= sinceDay && d <= today;
   const rowFrom = ymd(new Date(now.getTime() - ROW_DAYS * DAY_MS));
@@ -411,7 +434,7 @@ export function forwardReceipts(log: ReceiptsLog, kev: KevCatalog, rows: Readonl
     items.push({
       id,
       kev_added: k.added,
-      first_seen: hourIso(e.seen),
+      first_seen: minuteIso(e.seen),
       flags: Object.fromEntries(RECEIPT_METHODS.map((m) => [m, outcomeOf(e.flags[m], k)])) as ReceiptItem['flags'],
       row: k.added >= rowFrom ? (rows.get(id) ?? null) : null,
     });

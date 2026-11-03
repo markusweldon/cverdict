@@ -9,7 +9,7 @@ import {
   encodeIds,
   encodeLog,
   forwardReceipts,
-  hourOf,
+  minuteOf,
   isEligible,
   leadDays,
   LOG_RETENTION_DAYS,
@@ -74,7 +74,7 @@ describe('log encoding', () => {
     expect(decodeLog(good)).not.toBeNull();
     expect(decodeLog({ ...good, seen: '0,0' })).toBeNull(); // column length differs from ids
     expect(decodeLog({ ...good, cverdict: 'x' })).toBeNull();
-    expect(decodeLog({ ...good, h0: good.h0 + 1 })).toBeNull();
+    expect(decodeLog({ ...good, m0: good.m0 + 1 })).toBeNull();
     expect(decodeLog({ ...good, kev: { 'CVE-2026-999999': ['2026-11-03', 0] } })).toBeNull(); // listing for a CVE not in the log
     expect(decodeLog({ ...good, pruned: { n: -1 } })).toBeNull();
     expect(decodeLog('junk')).toBeNull();
@@ -82,20 +82,26 @@ describe('log encoding', () => {
   });
 
   it('keeps a 400-day log of 200,000 CVEs within the state.json budget', () => {
-    // Realistic shape: ~520 new CVEs an hour-ish, spread over 400 days; half cross CVSS 7 on the
-    // first run, 2% are flagged within the window, 0.2% cross EPSS 10% after a few days.
+    // Realistic shape: ~520 new CVEs a day, spread over 400 days of runs about every 30 minutes
+    // (at a jittered minute); half cross CVSS 7 on the first run, 2% are flagged within the
+    // window, 0.2% cross EPSS 10% after a few days. Times are minutes.
     const entries = new Map<string, LogEntry>();
-    const h0 = hourOf(T0);
+    const m0 = minuteOf(T0);
+    const runAt = (run: number) => run * 30 + Math.floor(rand() * 12);
     let seq = 10000;
     let state = 12345;
     const rand = () => ((state = (state * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
     for (let i = 0; i < 200_000; i++) {
       seq += 1 + Math.floor(rand() * 3);
-      const seen = h0 + Math.floor((i / 200_000) * LOG_RETENTION_DAYS * 24 + rand() * 6);
+      const seen = m0 + runAt(Math.floor((i / 200_000) * LOG_RETENTION_DAYS * 48 + rand() * 12));
       const r = rand();
       entries.set(`CVE-${seq > 190000 ? 2027 : 2026}-${seq}`, {
         seen,
-        flags: { cverdict: r < 0.02 ? seen + Math.floor(rand() * 400) : null, cvss7: r < 0.5 ? seen + (rand() < 0.9 ? 0 : 30) : null, epss10: r < 0.002 ? seen + 400 : null },
+        flags: {
+          cverdict: r < 0.02 ? seen + runAt(Math.floor(rand() * 800)) : null,
+          cvss7: r < 0.5 ? seen + (rand() < 0.9 ? 0 : runAt(60)) : null,
+          epss10: r < 0.002 ? seen + runAt(800) : null,
+        },
         kev: null,
       });
     }
@@ -113,7 +119,7 @@ describe('updateLog', () => {
     expect(updated).toBe(true);
     expect(log.since).toBe(T0.toISOString());
     expect(log.runs).toBe(1);
-    expect(log.entries.get('CVE-2026-100001')).toEqual({ seen: hourOf(T0), flags: { cverdict: null, cvss7: null, epss10: null }, kev: null });
+    expect(log.entries.get('CVE-2026-100001')).toEqual({ seen: minuteOf(T0), flags: { cverdict: null, cvss7: null, epss10: null }, kev: null });
     expect(notes[0]).toMatch(/new log starts now/);
   });
 
@@ -128,9 +134,9 @@ describe('updateLog', () => {
       { at: later(4), scored: [hot(later(4))] },
     ]);
     const e = log.entries.get(id)!;
-    expect(e.seen).toBe(hourOf(T0));
-    expect(e.flags.cvss7).toBe(hourOf(later(1)));
-    expect(e.flags.epss10).toBe(hourOf(later(2)));
+    expect(e.seen).toBe(minuteOf(T0));
+    expect(e.flags.cvss7).toBe(minuteOf(later(1)));
+    expect(e.flags.epss10).toBe(minuteOf(later(2)));
     // CVSS 9.8 network + EPSS 40% (cold, so no EPSS points) is still below the knob: not flagged.
     expect(e.flags.cverdict).toBeNull();
 
@@ -149,7 +155,7 @@ describe('updateLog', () => {
       { at: T0, scored: [quiet(id, T0)] },
       { at: later(2), scored: [flaggedNow] },
     ]);
-    expect(log.entries.get(id)!.flags.cverdict).toBe(hourOf(later(2)));
+    expect(log.entries.get(id)!.flags.cverdict).toBe(minuteOf(later(2)));
   });
 
   it('records KEV arrival with the run that first saw it, at any age, from the catalog or the CVE record', () => {
@@ -157,14 +163,14 @@ describe('updateLog', () => {
     const b = 'CVE-2026-100002';
     let log = runs([{ at: T0, scored: [quiet(a, T0), quiet(b, T0)] }]);
     log = updateLog(log, [], kev([makeKev(a, { dateAdded: ymd(later(30)) })]), later(30)).log;
-    expect(log.entries.get(a)!.kev).toEqual({ added: ymd(later(30)), seen: hourOf(later(30)) });
+    expect(log.entries.get(a)!.kev).toEqual({ added: ymd(later(30)), seen: minuteOf(later(30)) });
     // A later run with the same listing does not move it.
     log = updateLog(log, [], kev([makeKev(a, { dateAdded: ymd(later(30)) })]), later(31)).log;
-    expect(log.entries.get(a)!.kev!.seen).toBe(hourOf(later(30)));
+    expect(log.entries.get(a)!.kev!.seen).toBe(minuteOf(later(30)));
     // No catalog, but the CISA-ADP KEV block in the record.
     const adp = score(cveAt(b, later(32), { inWindow: true, adpKev: { dateAdded: ymd(later(32)), reference: null } }), {});
     log = updateLog(log, [adp], kev(), later(32)).log;
-    expect(log.entries.get(b)!.kev).toEqual({ added: ymd(later(32)), seen: hourOf(later(32)) });
+    expect(log.entries.get(b)!.kev).toEqual({ added: ymd(later(32)), seen: minuteOf(later(32)) });
   });
 
   it('ignores KEV entries dated after the run (a frozen --now)', () => {
@@ -199,12 +205,12 @@ describe('updateLog', () => {
 });
 
 describe('outcomes and metrics', () => {
-  const H = hourOf(new Date('2026-11-10T14:00:00Z'));
+  const H = minuteOf(new Date('2026-11-10T14:00:00Z'));
   const listing = { added: '2026-11-10', seen: H };
 
   it('sorts a flag into earlier, same day, after or never', () => {
     expect(outcomeOf(null, listing)).toEqual({ at: null, outcome: 'never', lead: null });
-    expect(outcomeOf(H - 24 * 3, listing)).toMatchObject({ outcome: 'earlier', lead: 3 });
+    expect(outcomeOf(H - 3 * 24 * 60, listing)).toMatchObject({ outcome: 'earlier', lead: 3 });
     // Earlier on the listing day, before the run that saw the listing: same day, 0 days.
     expect(outcomeOf(H - 5, listing)).toMatchObject({ outcome: 'same_day', lead: 0 });
     // The run that saw the listing (the flag came with it) or later: not before.
@@ -234,17 +240,17 @@ describe('outcomes and metrics', () => {
 
   it('builds the forward figures with the same definitions for every method, misses included', () => {
     const ids = ['CVE-2026-100001', 'CVE-2026-100002', 'CVE-2026-100003', 'CVE-2026-100004'];
-    const at = (iso: string) => hourOf(new Date(iso));
+    const at = (iso: string) => minuteOf(new Date(iso));
     const flags = (c: number | null, v: number | null, e: number | null): Record<ReceiptMethod, number | null> => ({ cverdict: c, cvss7: v, epss10: e });
     const entries = new Map<string, LogEntry>([
       // Flagged by CVErdict 4 days early, CVSS at first sight, EPSS never.
-      [ids[0], { seen: at('2026-11-03T03:00:00Z'), flags: flags(at('2026-11-06T03:00:00Z'), at('2026-11-03T03:00:00Z'), null), kev: { added: '2026-11-10', seen: at('2026-11-10T15:00:00Z') } }],
+      [ids[0], { seen: at('2026-11-03T15:00:00Z'), flags: flags(at('2026-11-06T15:00:00Z'), at('2026-11-03T15:00:00Z'), null), kev: { added: '2026-11-10', seen: at('2026-11-10T15:00:00Z') } }],
       // Flagged by CVErdict only with the listing; CVSS same day before it.
-      [ids[1], { seen: at('2026-11-03T03:00:00Z'), flags: flags(at('2026-11-12T15:00:00Z'), at('2026-11-12T09:00:00Z'), null), kev: { added: '2026-11-12', seen: at('2026-11-12T15:00:00Z') } }],
+      [ids[1], { seen: at('2026-11-03T15:00:00Z'), flags: flags(at('2026-11-12T15:00:00Z'), at('2026-11-12T09:00:00Z'), null), kev: { added: '2026-11-12', seen: at('2026-11-12T15:00:00Z') } }],
       // Published and listed in the same run: not counted.
       [ids[2], { seen: at('2026-11-12T15:00:00Z'), flags: flags(at('2026-11-12T15:00:00Z'), null, null), kev: { added: '2026-11-12', seen: at('2026-11-12T15:00:00Z') } }],
       // Never listed.
-      [ids[3], { seen: at('2026-11-03T03:00:00Z'), flags: flags(null, null, at('2026-11-05T03:00:00Z')), kev: null }],
+      [ids[3], { seen: at('2026-11-03T15:00:00Z'), flags: flags(null, null, at('2026-11-05T15:00:00Z')), kev: null }],
     ]);
     const log: ReceiptsLog = { since: '2026-11-03T03:17:00.000Z', last: '2026-11-13T00:17:00.000Z', runs: 200, gaps: [], gapTotal: { n: 0, hours: 0 }, entries, pruned: { n: 0, cverdict: 0, cvss7: 0, epss10: 0 } };
     // An old CVE listed since the log started, and one listed before it started (left out).
