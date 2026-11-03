@@ -316,12 +316,16 @@ describe('api/share', () => {
 describe('vercel.json', () => {
   it('is the user-agent condition of vercel.json, whose bot rule sits after the data rewrites and before the catch-all', () => {
     const vercel = JSON.parse(readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')) as {
-      rewrites: { source: string; destination: string; has?: { type: string; key: string; value: string }[] }[];
+      rewrites: { source: string; destination: string; has?: { type: string; key: string; value: string }[]; missing?: { type: string; key: string }[] }[];
       functions: Record<string, { maxDuration: number }>;
     };
     const i = vercel.rewrites.findIndex((r) => r.destination === '/api/share?id=:id');
     expect(vercel.rewrites[i].source).toBe('/cve/:id([Cc][Vv][Ee]-[0-9]+-[0-9]+)');
     expect(vercel.rewrites[i].has).toEqual([{ type: 'header', key: 'user-agent', value: BOT_UA_VALUE }]);
+    // Vercel merges the original query into the destination's, and the original wins a clash
+    // (vercel dev does Object.assign(destQuery, reqQuery)), so /cve/CVE-A?id=CVE-B would preview
+    // CVE-B under A's link. A link with its own id never reaches the function.
+    expect(vercel.rewrites[i].missing).toEqual([{ type: 'query', key: 'id' }]);
     const data = vercel.rewrites.findIndex((r) => r.source.startsWith('/data/'));
     const feeds = vercel.rewrites.findIndex((r) => r.source.startsWith('/feeds/'));
     const all = vercel.rewrites.findIndex((r) => r.source === '/(.*)');
