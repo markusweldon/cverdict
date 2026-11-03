@@ -1,9 +1,9 @@
 {
   "name": "cverdict-mcp",
   "version": "0.1.0",
-  "private": true,
   "description": "Read-only MCP server for CVErdict: CVE verdicts, reason chips and evidence links from the public data branch, for AI agents.",
   "license": "MIT",
+  "mcpName": "io.github.markusweldon/cverdict",
   "type": "module",
   "bin": { "cverdict-mcp": "dist/cverdict-mcp.mjs" },
   "files": ["dist", "LICENSE", "LICENSE-THIRD-PARTY", "README.md"],

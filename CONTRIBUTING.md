@@ -50,7 +50,7 @@ pipeline/   src/ (sources → normalize → score → batches/stats/changes → 
 site/       the Vite + Preact single-page app
 mcp/        the read-only MCP server for AI agents: src/, test/, the cverdict-mcp package files
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md
-.github/    ci.yml, refresh.yml (hourly data), issue templates
+.github/    ci.yml, refresh.yml (hourly data), release-mcp.yml (npm releases of mcp/), issue templates
 scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts, mcp-measure.ts
 tools/og/   render.mjs: renders the share images in site/public/og/ (own lockfile, run by hand)
 ```
