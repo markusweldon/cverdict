@@ -510,7 +510,8 @@ function OutsideWindow({ id }: { id: string }) {
   return (
     <div class="notice">
       <EmptyState heading title={`${id} is outside the 30-day window`}>
-        We keep every CVE published in the last 30 days, everything in CISA KEV, and old CVEs that gained exploit evidence in the last 30 days. Other records are not scored here. That says nothing about whether they matter.
+        We keep every CVE published in the last 30 days, everything in CISA KEV, and old CVEs that <a href={href('woke')}>woke up</a> in the last 30 days (a CISA KEV listing, an EPSS jump, or their first
+        public exploit). Other records are not scored here. That says nothing about whether they matter.
       </EmptyState>
       <div class="notice__links">
         <a class="btn" href={cveOrgUrl(id)} target="_blank" rel="noopener noreferrer nofollow">

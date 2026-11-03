@@ -473,7 +473,7 @@ export interface UncountedListing {
   reason: 'older' | 'listed_first' | 'no_record';
 }
 
-/** The forward log: real-time observations, recorded hour by hour, no hindsight. */
+/** The forward log: real-time observations, recorded run by run, no hindsight. */
 export interface ForwardReceipts {
   /** First run of the log. Nothing before it is known. */
   since: string;

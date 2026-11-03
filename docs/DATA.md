@@ -33,7 +33,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
 | `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
-| `feeds/woke.xml` | Atom | Newest 100 CVEs from `woke.json` | ~10 KB |
+| `feeds/woke.xml` | Atom | Up to 100 CVEs from `woke.json`: every KEV and Exploit-DB wake first, PoC-only wakes only when Likely next or Exploited | ~10 KB |
 
 The **window** is the 30 days before `meta.generated_at` (`meta.window`). Sizes are from the
 2026-10-26 run (15,790 window CVEs); `index.json` grows with CVE volume, about 47 bytes gzip per

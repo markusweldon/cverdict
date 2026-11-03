@@ -240,7 +240,7 @@ export default function Method() {
         <h2 class="section__title">Checking our work</h2>
         <p>
           A score only earns trust when it is checked. <a href={href('receipts')}>Receipts</a> shows how often {BRAND.name} flagged a CVE before CISA added it to KEV, next to “CVSS 7 or more” and “EPSS 10%
-          or more”, with every hit and every miss. The live record is kept hour by hour. A backtest of the last 180 days is shown apart and marked as hindsight.
+          or more”, with every hit and every miss. The live record notes each run, to the minute. A backtest of the last 180 days is shown apart and marked as hindsight.
         </p>
       </section>
 
