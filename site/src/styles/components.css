@@ -52,9 +52,17 @@
 }
 
 .brand__name {
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+/* "CVE" bold, "rdict" regular: the wordmark in the header and the footer. */
+.wordmark {
+  font-weight: 400;
+}
+
+.wordmark__strong {
+  font-weight: 750;
 }
 
 .status {
@@ -214,8 +222,8 @@
   color: var(--accent);
 }
 
-.foot__name {
-  font-weight: 600;
+.foot__name .wordmark__strong {
+  font-weight: 700;
 }
 
 .foot__tag,

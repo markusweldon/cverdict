@@ -1587,9 +1587,9 @@
 
 /* ── Responsive ── */
 
-/* Ten nav links and the search text fit on one row down to about 1,241 px (22 px spare at the
-   narrowest). Below that the search button keeps only its icon and shortcut. */
-@media (max-width: 1240px) {
+/* Ten nav links and the search text fit on one row down to 1,261 px (20 px spare with a
+   three-character data-age chip). Below that the search button keeps only its icon and shortcut. */
+@media (max-width: 1260px) {
   .searchbtn__text {
     display: none;
   }
@@ -1629,8 +1629,8 @@
 }
 
 /* The header wraps the nav onto its own scrolling row before the links can run under the
-   search button. Ten links without the search text fit on one row down to 1,161 px. */
-@media (max-width: 1160px) {
+   search button. Ten links without the search text fit on one row down to 1,181 px. */
+@media (max-width: 1180px) {
   .top__inner {
     flex-wrap: wrap;
     height: auto;

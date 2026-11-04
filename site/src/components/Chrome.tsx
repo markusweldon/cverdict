@@ -11,6 +11,18 @@ import { IconMoon, IconSearch, IconSource, IconSun, Mark } from './icons';
 
 export const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
+/** The name as a wordmark: "CVE" bold, "rdict" regular, so the pun reads (BRAND.wordmark). */
+function Wordmark({ class: cls, tag = 'span' }: { class: string; tag?: 'span' | 'p' }) {
+  const [strong, rest] = BRAND.wordmark;
+  const Tag = tag;
+  return (
+    <Tag class={`wordmark ${cls}`}>
+      <span class="wordmark__strong">{strong}</span>
+      {rest}
+    </Tag>
+  );
+}
+
 const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
   { name: 'today', path: '', label: 'Today' },
   { name: 'kev', path: 'kev', label: 'KEV Clock' },
@@ -83,7 +95,7 @@ export function Header({ route }: { route: Route }) {
       <div class="top__inner">
         <a class="brand" href={href('')} aria-label={`${BRAND.name}, Today`}>
           <Mark size={22} />
-          <span class="brand__name">{BRAND.name}</span>
+          <Wordmark class="brand__name" />
         </a>
         <DataStatus />
         <nav class="nav" aria-label="Primary" ref={nav}>
@@ -119,17 +131,18 @@ export function Footer() {
         <div class="foot__brand">
           <Mark size={18} />
           <div>
-            <p class="foot__name">{BRAND.name}</p>
+            <Wordmark class="foot__name" tag="p" />
             <p class="foot__tag">{BRAND.tagline}</p>
           </div>
         </div>
         <p class="foot__text">
-          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the Check Deps page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
+          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the <a href={href('check')}>Check Deps</a> page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
           CISA, MITRE, FIRST or any vendor.
         </p>
         <nav class="foot__links" aria-label="Footer">
           <a href={href('method')}>Method</a>
           <a href={href('feeds')}>Feeds &amp; API</a>
+          <a href={href('feeds#mcp')}>MCP server</a>
           <a href={REPO_URL} target="_blank" rel="noopener noreferrer nofollow">
             Source
           </a>
