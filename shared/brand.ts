@@ -4,6 +4,8 @@
  */
 export const BRAND = {
   name: 'CVErdict',
+  /** The name in two parts for the wordmark: the first is set bold, the rest regular ("CVE" + "rdict"). */
+  wordmark: ['CVE', 'rdict'],
   slug: 'cverdict',
   tagline: 'Every CVE gets a verdict. Every verdict comes with receipts.',
   /** One-line pitch for meta descriptions and the README. */
@@ -17,4 +19,6 @@ export const BRAND = {
 } as const;
 
 export const REPO_URL = `https://github.com/${BRAND.repo}`;
+/** Title of the home page: the static head (link previews, crawlers) and the tab once the app runs. */
+export const HOME_TITLE = `${BRAND.name}: the few CVEs that matter today`;
 export const RAW_DATA_URL = `https://raw.githubusercontent.com/${BRAND.repo}/${BRAND.dataBranch}`;

@@ -68,7 +68,7 @@ const h = (type, style, ...children) => {
   return { type, props: { style, children: kids.length === 1 && typeof kids[0] === 'string' ? kids[0] : kids } };
 };
 const logoRow = (size, fontSize) =>
-  h('div', { display: 'flex', alignItems: 'center' }, { type: 'img', props: { src: LOGO, width: size, height: size, style: { marginRight: Math.round(size / 3) } } }, h('div', { display: 'flex', fontSize, fontWeight: 600 }, 'CVErdict'));
+  h('div', { display: 'flex', alignItems: 'center' }, { type: 'img', props: { src: LOGO, width: size, height: size, style: { marginRight: Math.round(size / 3) } } }, h('div', { display: 'flex', fontSize }, h('div', { display: 'flex', fontWeight: 600 }, 'CVE'), h('div', { display: 'flex', fontWeight: 400 }, 'rdict')));
 
 function siteTree() {
   const swatch = (label, color) =>
