@@ -59,10 +59,11 @@ const Check = lazyPage(() => import('./pages/Check'));
 const Surge = lazyPage(() => import('./pages/Surge'));
 const Method = lazyPage(() => import('./pages/Method'));
 const Feeds = lazyPage(() => import('./pages/Feeds'));
+const Mcp = lazyPage(() => import('./pages/Mcp'));
 const NotFound = lazyPage(() => import('./pages/NotFound'));
 // Check is not warmed: its chunk (parsers and version orderings) would add a request to every
 // visit, and only people who open the page need it.
-const LAZY = [Cve, Kev, Woke, Receipts, Batches, Explore, Surge, Method, Feeds, NotFound];
+const LAZY = [Cve, Kev, Woke, Receipts, Batches, Explore, Surge, Method, Feeds, Mcp, NotFound];
 
 function RouteView({ route }: { route: Route }) {
   switch (route.name) {
@@ -88,12 +89,14 @@ function RouteView({ route }: { route: Route }) {
       return <Method />;
     case 'feeds':
       return <Feeds />;
+    case 'mcp':
+      return <Mcp />;
     default:
       return <NotFound path={route.path} />;
   }
 }
 
-const GO: Readonly<Record<string, string>> = { t: '', k: 'kev', w: 'woke', r: 'receipts', b: 'batches', e: 'explore', c: 'check', s: 'surge', m: 'method', f: 'feeds' };
+const GO: Readonly<Record<string, string>> = { t: '', k: 'kev', w: 'woke', r: 'receipts', b: 'batches', e: 'explore', c: 'check', s: 'surge', m: 'method', f: 'feeds', a: 'mcp' };
 const snap = (v: number, d: number) => Math.min(KNOB_MAX, Math.max(KNOB_MIN, Math.round((v + d) / 5) * 5));
 
 function useGlobalKeys(): void {

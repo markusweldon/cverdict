@@ -34,6 +34,7 @@ const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
   { name: 'method', path: 'method', label: 'Method' },
   { name: 'surge', path: 'surge', label: 'The Surge' },
   { name: 'feeds', path: 'feeds', label: 'Feeds & API' },
+  { name: 'mcp', path: 'mcp', label: 'MCP' },
 ];
 
 /** Freshness of the last pipeline run: fresh < 2h, late < 6h, stale beyond. */
@@ -142,7 +143,7 @@ export function Footer() {
         <nav class="foot__links" aria-label="Footer">
           <a href={href('method')}>Method</a>
           <a href={href('feeds')}>Feeds &amp; API</a>
-          <a href={href('feeds#mcp')}>MCP server</a>
+          <a href={href('mcp')}>MCP Server</a>
           <a href={REPO_URL} target="_blank" rel="noopener noreferrer nofollow">
             Source
           </a>

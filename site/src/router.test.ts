@@ -13,6 +13,7 @@ describe('parsePath', () => {
     expect(parsePath('/surge', '/')).toEqual({ name: 'surge' });
     expect(parsePath('/method', '/')).toEqual({ name: 'method' });
     expect(parsePath('/feeds', '/')).toEqual({ name: 'feeds' });
+    expect(parsePath('/mcp', '/')).toEqual({ name: 'mcp' });
   });
 
   it('normalises CVE IDs and keeps invalid ones for the page to explain', () => {

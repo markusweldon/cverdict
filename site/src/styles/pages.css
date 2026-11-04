@@ -1297,6 +1297,20 @@
   overflow-wrap: anywhere;
 }
 
+/* A short bulleted list inside a prose section (MCP Server, "Keep in mind"). */
+.prose-list {
+  display: grid;
+  gap: 6px;
+  max-width: 78ch;
+  padding-left: 18px;
+  list-style: disc;
+  color: var(--muted);
+}
+
+.prose-list li::marker {
+  color: var(--faint, var(--muted));
+}
+
 .steps {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1587,7 +1601,7 @@
 
 /* ── Responsive ── */
 
-/* Ten nav links and the search text fit on one row down to 1,261 px (20 px spare with a
+/* Eleven nav links and the search text fit on one row down to 1,261 px (17 px spare with a
    three-character data-age chip). Below that the search button keeps only its icon and shortcut. */
 @media (max-width: 1260px) {
   .searchbtn__text {
@@ -1629,7 +1643,7 @@
 }
 
 /* The header wraps the nav onto its own scrolling row before the links can run under the
-   search button. Ten links without the search text fit on one row down to 1,181 px. */
+   search button. Eleven links without the search text fit on one row down to 1,181 px. */
 @media (max-width: 1180px) {
   .top__inner {
     flex-wrap: wrap;

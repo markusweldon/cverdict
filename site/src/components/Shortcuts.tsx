@@ -38,6 +38,7 @@ const GROUPS: readonly [string, readonly [string[], string][]][] = [
       [['g', 'm'], 'Method'],
       [['g', 's'], 'The Surge'],
       [['g', 'f'], 'Feeds & API'],
+      [['g', 'a'], 'MCP Server'],
     ],
   ],
 ];

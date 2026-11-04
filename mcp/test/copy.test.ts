@@ -114,6 +114,11 @@ describe('package and docs', () => {
     expect(docs.readme).toContain(`1 to ${LIMITS.ids} CVE IDs`);
     expect(docs.data).toContain(`1 to ${LIMITS.ids} CVE IDs (${LIMITS.detailIds} with \`detail\`)`);
     expect(docs.mcp).toContain(`1 to ${LIMITS.ids} IDs, at most ${LIMITS.detailIds} with \`detail\``);
+    // The MCP Server page shows the snippets and tools; Feeds & API keeps #mcp for old links.
+    const page = read('site/src/pages/Mcp.tsx');
+    expect(page).toContain('MCP_SNIPPETS.map');
+    expect(page).toContain('MCP_TOOLS.map');
+    expect(page).toContain(`1 to ${LIMITS.ids} CVE IDs, at most ${LIMITS.detailIds} with detail`);
     expect(read('site/src/pages/Feeds.tsx')).toContain('id="mcp"');
   });
 });

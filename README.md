@@ -108,8 +108,8 @@ On the site:
   the page downloads one public file, the same for everyone. It knows only the tracked CVEs, so it
   is not a full audit.
 - **KEV Clock**, **Batches**, **Explore** (every window CVE, searchable, filterable by publish
-  day), **The Surge** (monthly volume since 1999), **Method** and **Feeds & API** (Atom and iCalendar
-  feeds, the JSON files and how to add the MCP server).
+  day), **The Surge** (monthly volume since 1999), **Method**, **Feeds & API** (Atom and iCalendar
+  feeds and the JSON files) and **MCP** (how to add the MCP server to an AI agent, and its tools).
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
 
 ![Today: 16,804 CVEs in, 316 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
@@ -244,7 +244,7 @@ claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp
 Tools: `get_verdict` (1 to 15 CVE IDs), `list_signal`, `kev_due`, `woke_up`, `receipts` and
 `search_cves`. Setup for other clients, options and limits: [mcp/README.md](mcp/README.md); what
 each answer contains: [docs/DATA.md](docs/DATA.md#mcp-server); copyable commands on the site:
-[Feeds & API](https://cverdict-psi.vercel.app/feeds#mcp).
+[MCP Server](https://cverdict-psi.vercel.app/mcp).
 
 ## Deploy your own
 

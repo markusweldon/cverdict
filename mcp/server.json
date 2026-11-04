@@ -4,7 +4,7 @@
   "title": "CVErdict",
   "description": "Read-only CVE triage: verdicts from CISA KEV, EPSS and exploit feeds, each reason linked.",
   "version": "0.1.0",
-  "websiteUrl": "https://cverdict-psi.vercel.app/feeds#mcp",
+  "websiteUrl": "https://cverdict-psi.vercel.app/mcp",
   "repository": {
     "url": "https://github.com/markusweldon/cverdict",
     "source": "github",
