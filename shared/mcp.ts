@@ -12,7 +12,7 @@ export const MCP_SERVER = {
   name: `io.github.${BRAND.repo}`,
   title: BRAND.name,
   /** Same as mcp/package.json (checked by a test). */
-  version: '0.1.2',
+  version: '0.1.3',
   /** npm package name: `npx -y cverdict-mcp`. */
   npm: `${BRAND.slug}-mcp`,
   /** Where the server is documented. */
