@@ -19,6 +19,7 @@ export type Route =
   | { name: 'surge' }
   | { name: 'method' }
   | { name: 'feeds' }
+  | { name: 'mcp' }
   | { name: 'notfound'; path: string };
 
 const STATIC: Readonly<Record<string, Route['name']>> = {
@@ -32,6 +33,7 @@ const STATIC: Readonly<Record<string, Route['name']>> = {
   surge: 'surge',
   method: 'method',
   feeds: 'feeds',
+  mcp: 'mcp',
 };
 
 /** Path inside the app, without the base and without leading/trailing slashes: "cve/CVE-2026-1". */

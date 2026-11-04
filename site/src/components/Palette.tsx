@@ -34,7 +34,8 @@ const PAGES: readonly [string, string, string][] = [
   ['Receipts', 'receipts', 'Did we flag it before CISA did?'],
   ['Method', 'method', 'Formula, chips, sources'],
   ['The Surge', 'surge', 'Volume since 1999'],
-  ['Feeds & API', 'feeds', 'JSON, Atom, iCalendar, MCP'],
+  ['Feeds & API', 'feeds', 'JSON, Atom, iCalendar'],
+  ['MCP Server', 'mcp', 'AI agents: install, tools, limits'],
 ];
 
 function buildItems(q: string, rows: readonly Row[]): Item[] {

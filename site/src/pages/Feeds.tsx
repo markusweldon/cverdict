@@ -2,13 +2,13 @@
 import type { ComponentChildren } from 'preact';
 import { RAW_DATA_URL } from '../../../shared/brand';
 import { SIGNAL_MIN_SCORE } from '../../../shared/contract';
-import { MCP_SERVER, MCP_SNIPPETS, MCP_TOOLS } from '../../../shared/mcp';
 import { SHARD_COUNT } from '../../../shared/shard';
 import { copyLink } from '../actions';
-import { ExtLink } from '../components/ExtLink';
 import { IconCalendar, IconCode, IconCopy, IconExternal, IconRss } from '../components/icons';
+import { Snippet } from '../components/Snippet';
 import { DATA_BASE, FEEDS_BASE } from '../data';
 import { useTitle } from '../hooks';
+import { href } from '../router';
 
 const abs = (path: string) => new URL(path, window.location.origin).href;
 
@@ -57,22 +57,6 @@ function UrlRow({ url, label, note, icon, open = url }: { url: string; label: st
   );
 }
 
-function Snippet({ title, code }: { title: string; code: string }) {
-  return (
-    <figure class="snippet">
-      <figcaption>
-        <span>{title}</span>
-        <button type="button" class="btn btn--ghost btn--sm" onClick={() => void copyLink(code, 'Snippet')}>
-          <IconCopy size={12} /> Copy
-        </button>
-      </figcaption>
-      <pre class="code">
-        <code>{code}</code>
-      </pre>
-    </figure>
-  );
-}
-
 export default function Feeds() {
   useTitle('Feeds & API');
   const base = abs(DATA_BASE);
@@ -86,7 +70,7 @@ export default function Feeds() {
         </h1>
         <p class="page__lede">
           Everything on this site is a static file you can fetch: no key, no account, no rate limit beyond your host’s. The same files live on the git data branch. AI agents can read them through the{' '}
-          <a href="#mcp">MCP server</a>.
+          <a href={href('mcp')}>MCP server</a>.
         </p>
       </header>
 
@@ -134,32 +118,9 @@ export default function Feeds() {
         <h2 id="mcp-h" class="section__title">
           AI agents (MCP)
         </h2>
-        <p class="muted">A read-only MCP server gives AI agents the same verdicts, chips and links as this site. Every answer says when the data was generated and which files it came from.</p>
         <p class="muted">
-          It runs on your machine and reads the data branch on GitHub directly, so it keeps working when this site is down. GitHub sees which of the {SHARD_COUNT} shard files it fetches, never your CVE IDs or search words. If GitHub refuses or fails, the same requests go to this site’s /data/ copy. It is the npm package{' '}
-          <ExtLink href={`https://www.npmjs.com/package/${MCP_SERVER.npm}`}>{MCP_SERVER.npm}</ExtLink> and needs Node 22.12 or later.
-        </p>
-        <div class="snippets">
-          {MCP_SNIPPETS.map(([title, code]) => (
-            <Snippet key={title} title={title} code={code} />
-          ))}
-        </div>
-        <ul class="endpoints" aria-label="MCP tools">
-          {MCP_TOOLS.map((t) => (
-            <li class="endpoint" key={t.name}>
-              <span class="endpoint__icon">
-                <IconCode size={16} />
-              </span>
-              <div class="endpoint__body">
-                <p class="endpoint__label">{t.name}</p>
-                <p class="endpoint__note">{t.title}</p>
-              </div>
-              <span />
-            </li>
-          ))}
-        </ul>
-        <p class="muted">
-          Quiet means no evidence yet, never safe. A CVE outside the data comes back as not found, not as safe. Tools, inputs and limits: <ExtLink href={MCP_SERVER.docs}>the server's README</ExtLink>.
+          A read-only MCP server gives AI agents the same verdicts, chips and links as this site, from these same files. How to add it to your agent, its tools and its limits:{' '}
+          <a href={href('mcp')}>MCP Server</a>.
         </p>
       </section>
     </div>

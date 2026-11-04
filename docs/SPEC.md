@@ -237,7 +237,7 @@ Check Deps input card; shards on demand per CVE (cache in memory). Show a skelet
 If a CVE isn't in our shards, show "Outside the 30-day window" with links to cve.org / the raw record.
 
 **Routing** (`router.ts`): History API, base-path aware (`import.meta.env.BASE_URL`), intercept same-origin `<a>` clicks.
-Routes: `/` Today · `/cve/:id` · `/kev` · `/woke` · `/receipts` · `/batches` · `/explore` · `/check` · `/surge` · `/method` · `/feeds`.
+Routes: `/` Today · `/cve/:id` · `/kev` · `/woke` · `/receipts` · `/batches` · `/explore` · `/check` · `/surge` · `/method` · `/feeds` · `/mcp`.
 Unknown → 404 view. Update `document.title` per route.
 
 **Pages**
@@ -282,9 +282,11 @@ Unknown → 404 view. Update `document.title` per route.
   KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status
   from `meta.sources` (fresh/stale), blind spots ("Not in KEV ≠ not exploited", "exposure is yours"), attributions.
-- **Feeds & API (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`; section `#mcp`: how
-  to install the MCP server from npm (`npx -y cverdict-mcp`), with a clone as the last option, and its tools
-  (snippets and tools from `shared/mcp.ts`).
+- **Feeds & API (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`; section `#mcp` (kept
+  for old links) points to the MCP Server page.
+- **MCP Server (`/mcp`)**: how to add the MCP server to an agent from npm (`npx -y cverdict-mcp`), with a clone as the
+  last option; the six tools with their descriptions; where it reads from; its limits (snippets and tool copy from
+  `shared/mcp.ts`).
 
 **Interactions**: keyboard — `j`/`k` move selection, `Enter`/`o` open, `/` focus search, `w` watch vendor,
 `c` copy ticket, `?` shortcuts help, `⌘K`/`Ctrl+K` command palette (jump to CVE id, vendor, page).
