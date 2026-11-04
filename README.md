@@ -6,7 +6,7 @@
 
 <sub>Say it "C-V-E-rdict", like "CVE verdict" run together.</sub>
 
-[**Live site**](https://cverdict-psi.vercel.app) · [Receipts](https://cverdict-psi.vercel.app/receipts) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
+[**Live site**](https://cverdict.dev) · [Receipts](https://cverdict.dev/receipts) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
 
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)
 [![refresh-data](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml)
@@ -158,7 +158,7 @@ CISA's SSVC *active* and its EPSS score) and re-score the 272 CVEs added to KEV 
 run of Oct 26, 2026: **74%** still land in Exploited or Likely next, while only **2.3%** of new CVEs do. Treat that as an upper
 bound, since the evidence was collected after the fact. `npm run calibrate` reproduces it.
 
-The [Receipts page](https://cverdict-psi.vercel.app/receipts) holds the stricter tests. A live
+The [Receipts page](https://cverdict.dev/receipts) holds the stricter tests. A live
 record notes when each method first flags a CVE and whether that came before CISA listed it; the
 page shows how many listings it has judged so far. A backtest, marked as
 hindsight, uses only evidence dated before each listing. In the run of Nov 3, 2026 it gave, for
@@ -244,7 +244,7 @@ claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp
 Tools: `get_verdict` (1 to 15 CVE IDs), `list_signal`, `kev_due`, `woke_up`, `receipts` and
 `search_cves`. Setup for other clients, options and limits: [mcp/README.md](mcp/README.md); what
 each answer contains: [docs/DATA.md](docs/DATA.md#mcp-server); copyable commands on the site:
-[MCP Server](https://cverdict-psi.vercel.app/mcp).
+[MCP Server](https://cverdict.dev/mcp).
 
 ## Deploy your own
 

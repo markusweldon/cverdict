@@ -12,3 +12,11 @@ describe('brand', () => {
     expect(HOME_TITLE).not.toContain('—');
   });
 });
+
+describe('feed IDs', () => {
+  it('keep the first public address after the site moved', () => {
+    // Changing this re-announces every Atom entry to every subscriber (see BRAND.feedIdBase).
+    expect(BRAND.feedIdBase).toBe('https://cverdict-psi.vercel.app');
+    expect(BRAND.siteUrl).not.toBe(BRAND.feedIdBase);
+  });
+});

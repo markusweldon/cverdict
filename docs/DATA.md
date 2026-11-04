@@ -8,7 +8,7 @@ This page explains them.
 # Raw files on the data branch (CORS: any origin)
 https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/meta.json
 # The same files through the site
-https://cverdict-psi.vercel.app/data/v1/meta.json
+https://cverdict.dev/data/v1/meta.json
 ```
 
 Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from upstream sources

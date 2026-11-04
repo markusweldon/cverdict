@@ -1,7 +1,7 @@
 # CVErdict MCP server
 
 A read-only [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents
-the same verdicts as [CVErdict](https://cverdict-psi.vercel.app): tier, score, every reason chip
+the same verdicts as [CVErdict](https://cverdict.dev): tier, score, every reason chip
 with its points and evidence link, and what is unknown. Every answer says when the data was
 generated and which files it came from. No key, no account.
 
@@ -81,7 +81,7 @@ them in the client's `env` block for this server.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CVERDICT_DATA_BASE` | `https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/,https://cverdict-psi.vercel.app/data/v1/` | Comma-separated base URLs ending in `/v1/`, tried in order. https only, or http on `localhost` and `127.0.0.1` (for example `http://localhost:5173/data/v1/` with `npm run mock` and `npm run dev`). For a fork or a mirror |
+| `CVERDICT_DATA_BASE` | `https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/,https://cverdict.dev/data/v1/` | Comma-separated base URLs ending in `/v1/`, tried in order. https only, or http on `localhost` and `127.0.0.1` (for example `http://localhost:5173/data/v1/` with `npm run mock` and `npm run dev`). For a fork or a mirror |
 | `NODE_USE_ENV_PROXY`, `HTTPS_PROXY` | unset | Behind a proxy: `NODE_USE_ENV_PROXY=1` and `HTTPS_PROXY=http://proxy.example:3128`. Needs Node 22.21 or later; older versions ignore `NODE_USE_ENV_PROXY` without a warning. `NODE_EXTRA_CA_CERTS` adds a private CA |
 
 At start the server writes one line to stderr with its version, the Node version, whether it sees a

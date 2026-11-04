@@ -15,7 +15,13 @@ export const BRAND = {
   /** Branch the hourly workflow publishes data to. */
   dataBranch: 'data',
   /** Public site; feed links point here unless SITE_URL is set. */
-  siteUrl: 'https://cverdict-psi.vercel.app',
+  siteUrl: 'https://cverdict.dev',
+  /**
+   * Origin used in the Atom feeds' entry and feed IDs. It never changes once feeds are published,
+   * or every feed reader shows every entry again as new, so it keeps the first public address after
+   * siteUrl moved. A fork sets it to its own first address.
+   */
+  feedIdBase: 'https://cverdict-psi.vercel.app',
 } as const;
 
 export const REPO_URL = `https://github.com/${BRAND.repo}`;

@@ -36,7 +36,7 @@ body:
     id: link
     attributes:
       label: Page, file or CVE
-      placeholder: https://cverdict-psi.vercel.app/cve/CVE-2026-12345
+      placeholder: https://cverdict.dev/cve/CVE-2026-12345
 
   - type: input
     id: data-age

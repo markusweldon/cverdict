@@ -38,7 +38,7 @@ describe('get_verdict', () => {
     expect(sum(l)).toBe(l.score_math.raw);
     expect(sum(q)).toBe(q.score_math.raw);
     expect(q.score).toBe(0);
-    expect(e.links).toEqual({ page: `https://cverdict-psi.vercel.app/cve/${e.id}`, json: `${BASE}cve/${shardOf(e.id)}.json`, cve_org: `https://www.cve.org/CVERecord?id=${e.id}` });
+    expect(e.links).toEqual({ page: `https://cverdict.dev/cve/${e.id}`, json: `${BASE}cve/${shardOf(e.id)}.json`, cve_org: `https://www.cve.org/CVERecord?id=${e.id}` });
     expect(e.detail).toBeUndefined();
   });
 
@@ -225,7 +225,7 @@ describe('receipts', () => {
   it('summarises without the per-CVE lists', async () => {
     const t = setup();
     const r = await t.run((c) => receipts(c, {}, NOW));
-    expect(r.page).toBe('https://cverdict-psi.vercel.app/receipts');
+    expect(r.page).toBe('https://cverdict.dev/receipts');
     expect(Object.keys(r.forward).sort()).toEqual(['eligible', 'gap_total', 'last', 'listed', 'methods', 'runs', 'since', 'volume', 'watch_days']);
     expect(r.backtest).toMatchObject({ hindsight: true, listed: 2, excluded: [{ code: 'not_public', n: 2 }], epss_missing: 1, sources_down: [] });
     expect(JSON.stringify(r)).not.toContain('"items"');

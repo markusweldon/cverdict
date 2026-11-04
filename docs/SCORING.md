@@ -371,7 +371,7 @@ network bug, SSVC total and automatable, a vendor with KEV history, too new for 
 
 ### Receipts: the real-time record and a time-matched backtest
 
-The recall above is an upper bound by construction. The [Receipts page](https://cverdict-psi.vercel.app/receipts)
+The recall above is an upper bound by construction. The [Receipts page](https://cverdict.dev/receipts)
 (`v1/receipts.json`, [DATA.md](DATA.md#receiptsjson)) measures the same question in two stricter ways,
 with the same rules for CVErdict (Exploited or Likely next at knob 50), "CVSS 7 or more" and "EPSS
 10% or more":

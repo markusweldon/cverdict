@@ -18,6 +18,8 @@ const TIER_LABEL: Record<Tier, string> = { exploited: 'Exploited', likely: 'Like
 export interface FeedOptions {
   /** Public site origin (+ base path), no trailing slash. */
   siteUrl: string;
+  /** Origin for the feed and entry IDs (BRAND.feedIdBase), so they survive a move of siteUrl. Default: siteUrl. */
+  idBase?: string;
   now: Date;
 }
 
@@ -138,6 +140,7 @@ function signalUpdated(d: CveDetail, now: Date): string {
 /** Newest 100 exploited/likely CVEs from the window. `details` should be window records only. */
 export function signalFeed(details: readonly CveDetail[], opts: FeedOptions): string {
   const { siteUrl, now } = opts;
+  const idBase = opts.idBase ?? siteUrl;
   const entries = details
     .filter((d) => d.score.tier === 'exploited' || d.score.tier === 'likely')
     .map((d) => ({ d, updated: signalUpdated(d, now) }))
@@ -149,7 +152,7 @@ export function signalFeed(details: readonly CveDetail[], opts: FeedOptions): st
       const tier = TIER_LABEL[d.score.tier];
       const labels = topChipIds(d.reasons).map((id) => d.reasons.find((r) => r.id === id)!.label);
       return {
-        id: tagUri(siteUrl, `signal/${d.id}/${d.score.tier}`),
+        id: tagUri(idBase, `signal/${d.id}/${d.score.tier}`),
         title: [d.id, product, tier].filter(Boolean).join(' · '),
         link: cveUrl(siteUrl, d.id),
         updated,
@@ -160,7 +163,7 @@ export function signalFeed(details: readonly CveDetail[], opts: FeedOptions): st
       };
     });
   return renderFeed({
-    id: `${siteUrl}/${PATHS.signalFeed}`,
+    id: `${idBase}/${PATHS.signalFeed}`,
     title: `${BRAND.name} · exploited and likely-next CVEs`,
     subtitle: BRAND.tagline,
     self: `${siteUrl}/${PATHS.signalFeed}`,
@@ -173,6 +176,7 @@ export function signalFeed(details: readonly CveDetail[], opts: FeedOptions): st
 /** CISA KEV additions from the last 30 days, newest first. */
 export function kevFeed(kev: readonly KevEntry[], opts: FeedOptions): string {
   const { siteUrl, now } = opts;
+  const idBase = opts.idBase ?? siteUrl;
   const since = daysAgo(now, KEV_RECENT_DAYS);
   const entries = kev
     .filter((k) => k.date_added >= since)
@@ -185,7 +189,7 @@ export function kevFeed(kev: readonly KevEntry[], opts: FeedOptions): string {
         ...(k.score !== null ? [`${BRAND.name} score ${k.score}/100.`] : []),
       ];
       return {
-        id: tagUri(siteUrl, `kev/${k.id}`),
+        id: tagUri(idBase, `kev/${k.id}`),
         title: `${k.id} · ${k.vendor} ${k.product} · due ${dayLabel(k.due_date, now)}`,
         link: cveUrl(siteUrl, k.id),
         related: `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${encodeURIComponent(k.id)}`,
@@ -197,7 +201,7 @@ export function kevFeed(kev: readonly KevEntry[], opts: FeedOptions): string {
       };
     });
   return renderFeed({
-    id: `${siteUrl}/${PATHS.kevFeed}`,
+    id: `${idBase}/${PATHS.kevFeed}`,
     title: `${BRAND.name} · CISA KEV additions`,
     subtitle: `CISA Known Exploited Vulnerabilities added in the last ${KEV_RECENT_DAYS} days.`,
     self: `${siteUrl}/${PATHS.kevFeed}`,
@@ -231,6 +235,7 @@ export function wokeFeedItems(woke: WokeFile): WokeItem[] {
 
 export function wokeFeed(woke: WokeFile, opts: FeedOptions): string {
   const { siteUrl, now } = opts;
+  const idBase = opts.idBase ?? siteUrl;
   const entries = wokeFeedItems(woke).map((it): AtomEntry => {
     const r = it.row;
     const product = oneLine(`${r.v} ${r.p}`);
@@ -239,7 +244,7 @@ export function wokeFeed(woke: WokeFile, opts: FeedOptions): string {
     const lines = it.signals.map((sig) => `${dayLabel(sig.at, now)}: ${sig.label}${sig.first_seen ? ' (the day we first saw it)' : ''}.`);
     return {
       // One entry per CVE: a later signal updates it instead of adding a duplicate.
-      id: tagUri(siteUrl, `woke/${it.id}`),
+      id: tagUri(idBase, `woke/${it.id}`),
       title: [it.id, product, `woke up: ${newest.label}`].filter(Boolean).join(' · '),
       link: cveUrl(siteUrl, it.id),
       ...(newest.url ? { related: newest.url } : {}),
@@ -251,7 +256,7 @@ export function wokeFeed(woke: WokeFile, opts: FeedOptions): string {
     };
   });
   return renderFeed({
-    id: `${siteUrl}/${PATHS.wokeFeed}`,
+    id: `${idBase}/${PATHS.wokeFeed}`,
     title: `${BRAND.name} · old CVEs that woke up`,
     subtitle: `CVEs published before the last ${woke.days} days that gained exploitation evidence in that time. Up to ${WOKE_FEED_MAX}: every KEV listing and Exploit-DB entry, and a PoC repo alone only when rated Likely next or Exploited.`,
     self: `${siteUrl}/${PATHS.wokeFeed}`,

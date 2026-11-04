@@ -18,6 +18,7 @@ import {
   type Tier,
   type WokeFile,
 } from '../../../shared/contract';
+import { BRAND } from '../../../shared/brand';
 import { BATCH_MIN, SCORE_MODEL } from '../../../shared/model';
 import { backtestProblems, runBacktest } from '../backtest';
 import { assignBatches, byScoreThenNewest } from '../batches';
@@ -241,7 +242,8 @@ export function buildOutput({
   if (logUpdate.updated) writes.push({ key: RECEIPTS_SECTION.key, version: RECEIPTS_SECTION.version, data: encodeLog(logUpdate.log) });
   files.set(STATE_PATH, serializeState(now, writes, previousState));
   notes.push(...logUpdate.notes.map((n) => `receipts: ${n}`), `receipts: log, figures and state in ${Math.round(performance.now() - r0)} ms`);
-  const feedOpts = { siteUrl: base, now };
+  // IDs keep the first public address (BRAND.feedIdBase); links follow the site.
+  const feedOpts = { siteUrl: base, idBase: BRAND.feedIdBase, now };
   files.set(PATHS.signalFeed, signalFeed(details.filter((d) => byId.get(d.id)?.cve.inWindow), feedOpts));
   files.set(PATHS.kevFeed, kevFeed(kev.entries, feedOpts));
   files.set(PATHS.kevDueIcs, kevDueCalendar(kev.entries, feedOpts));

@@ -2,7 +2,7 @@
 import type { CveDetail, KevInfo, Reason } from './contract';
 
 export const GENERATED_AT = '2026-11-03T06:50:18.883Z';
-export const ORIGIN = 'https://cverdict-psi.vercel.app';
+export const ORIGIN = 'https://cverdict.dev';
 
 const r = (id: string, label: string, family: Reason['family'], points: number, polarity: Reason['polarity'] = 'up', at?: string): Reason => ({
   id,

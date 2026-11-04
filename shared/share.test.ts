@@ -415,10 +415,10 @@ describe('readShareRecord', () => {
 describe('siteOrigin', () => {
   it('prefers SITE_URL, then the production domain, then BRAND.siteUrl', () => {
     expect(siteOrigin({ SITE_URL: 'https://owner.github.io/cverdict/', VERCEL_PROJECT_PRODUCTION_URL: 'x.vercel.app' })).toBe('https://owner.github.io/cverdict');
-    expect(siteOrigin({ VERCEL_PROJECT_PRODUCTION_URL: 'cverdict-psi.vercel.app' })).toBe('https://cverdict-psi.vercel.app');
-    expect(siteOrigin({ SITE_URL: 'javascript:alert(1)', VERCEL_PROJECT_PRODUCTION_URL: '' })).toBe('https://cverdict-psi.vercel.app');
-    expect(siteOrigin({ SITE_URL: 'not a url' })).toBe('https://cverdict-psi.vercel.app');
-    expect(siteOrigin({})).toBe('https://cverdict-psi.vercel.app');
+    expect(siteOrigin({ VERCEL_PROJECT_PRODUCTION_URL: 'cverdict.dev' })).toBe('https://cverdict.dev');
+    expect(siteOrigin({ SITE_URL: 'javascript:alert(1)', VERCEL_PROJECT_PRODUCTION_URL: '' })).toBe('https://cverdict.dev');
+    expect(siteOrigin({ SITE_URL: 'not a url' })).toBe('https://cverdict.dev');
+    expect(siteOrigin({})).toBe('https://cverdict.dev');
   });
 });
 

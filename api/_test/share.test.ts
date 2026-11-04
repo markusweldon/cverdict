@@ -7,7 +7,7 @@ import { SHARE_IMAGES } from '../../shared/share-images';
 import * as F from '../../shared/share.fixtures';
 import { CDN_CACHE_OK, CDN_CACHE_SHORT, createShareHandler, DEADLINE_MS, GET, HEAD, SHARD_MAX_BYTES } from '../share';
 
-const ORIGIN = 'https://cverdict-psi.vercel.app';
+const ORIGIN = 'https://cverdict.dev';
 const TEMPLATE = injectHead(readFileSync(new URL('../../site/index.html', import.meta.url), 'utf8'), genericHead(ORIGIN));
 const ID = 'CVE-2026-109618';
 const rawUrl = (id: string) => `${RAW_DATA_URL}/v1/cve/${shardOf(id)}.json`;
@@ -139,7 +139,7 @@ describe('api/share', () => {
 
   it('builds the same bytes whatever Host and X-Forwarded-Host say', async () => {
     const f = fakeFetch({ [TEMPLATE_URL]: html(), [rawUrl(ID)]: json(shard) });
-    const handler = createShareHandler({ fetch: f.fn, env: { VERCEL_PROJECT_PRODUCTION_URL: 'cverdict-psi.vercel.app' } });
+    const handler = createShareHandler({ fetch: f.fn, env: { VERCEL_PROJECT_PRODUCTION_URL: 'cverdict.dev' } });
     const a = await (await handler(req(`id=${ID}`))).text();
     const b = await (await handler(new Request(`https://evil.example/api/share?id=${ID}`, { headers: { host: 'evil.example', 'x-forwarded-host': 'evil.example' } }))).text();
     expect(b).toBe(a);
@@ -149,7 +149,7 @@ describe('api/share', () => {
   it('uses SITE_URL for every absolute URL and for the template and fallback fetches', async () => {
     const site = 'https://cves.example.org';
     const f = fakeFetch({ [`${site}/index.html`]: html(), [rawUrl(ID)]: status(503), [`${site}/data/v1/cve/${shardOf(ID)}.json`]: json(shard) });
-    const body = await (await createShareHandler({ fetch: f.fn, env: { SITE_URL: `${site}/`, VERCEL_PROJECT_PRODUCTION_URL: 'cverdict-psi.vercel.app' } })(req(`id=${ID}`))).text();
+    const body = await (await createShareHandler({ fetch: f.fn, env: { SITE_URL: `${site}/`, VERCEL_PROJECT_PRODUCTION_URL: 'cverdict.dev' } })(req(`id=${ID}`))).text();
     expect(body).toContain(`<meta property="og:url" content="${site}/cve/${ID}" />`);
     expect(body).toContain(`${site}/og/exploited.png?v=`);
   });
@@ -244,7 +244,7 @@ describe('api/share', () => {
       const res = await createShareHandler({ fetch: f.fn, env: {} })(req(`id=${ID}`));
       const body = await res.text();
       expect(body).toContain('CVE-2026-109618: Exploited, score 100');
-      expect(body).toContain('<p><a href="https://cverdict-psi.vercel.app/">CVErdict</a></p>');
+      expect(body).toContain('<p><a href="https://cverdict.dev/">CVErdict</a></p>');
       expect(res.headers.get('vercel-cdn-cache-control')).toBe(CDN_CACHE_SHORT);
     }
   });

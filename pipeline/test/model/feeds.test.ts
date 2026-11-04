@@ -253,3 +253,21 @@ describe('woke Atom feed', () => {
     expect(xml).toContain('<category term="woke"/>');
   });
 });
+
+describe('feed IDs when the site moves', () => {
+  const entries = [kevEntry({ id: 'CVE-2026-100001', date_added: dateAgo(2) })];
+  const moved = { siteUrl: 'https://new.example', idBase: SITE, now: NOW };
+
+  it('keeps feed and entry IDs on idBase while links follow siteUrl', () => {
+    const xml = kevFeed(entries, moved);
+    expect(xml).toContain(`<id>${SITE}/feeds/kev.xml</id>`);
+    expect(xml).toContain(`<id>tag:example.test,2026:${BRAND.slug}/kev/CVE-2026-100001</id>`);
+    expect(xml).toContain('href="https://new.example/cve/CVE-2026-100001"');
+    expect(xml).not.toContain('tag:new.example');
+  });
+
+  it('gives the same IDs as before the move, so readers see no entry twice', () => {
+    const ids = (x: string) => [...x.matchAll(/<id>([^<]+)<\/id>/g)].map((m) => m[1]);
+    expect(ids(kevFeed(entries, moved))).toEqual(ids(kevFeed(entries, opts)));
+  });
+});

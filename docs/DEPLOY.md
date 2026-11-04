@@ -90,13 +90,13 @@ bounded this way rather than relied on to fail gracefully.
 
 ```sh
 curl -s -A 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)' \
-  https://cverdict-psi.vercel.app/cve/CVE-2026-109618 | grep -E 'og:|twitter:|<title>'
+  https://cverdict.dev/cve/CVE-2026-109618 | grep -E 'og:|twitter:|<title>'
 curl -s -A 'Mastodon/4.3.0 (http.rb/5.2.0; +https://mastodon.social/) Bot' \
-  -o /dev/null -w '%{http_code} %{content_type}\n' https://cverdict-psi.vercel.app/cve/CVE-2026-109618
+  -o /dev/null -w '%{http_code} %{content_type}\n' https://cverdict.dev/cve/CVE-2026-109618
 # A browser gets the static page with the site card:
-curl -s -A 'Mozilla/5.0 Chrome/130.0' https://cverdict-psi.vercel.app/cve/CVE-2026-109618 | grep og:title
+curl -s -A 'Mozilla/5.0 Chrome/130.0' https://cverdict.dev/cve/CVE-2026-109618 | grep og:title
 # The second request in a region should say x-vercel-cache: HIT
-curl -sI -A 'Twitterbot/1.0' https://cverdict-psi.vercel.app/cve/CVE-2026-109618 | grep -i x-vercel-cache
+curl -sI -A 'Twitterbot/1.0' https://cverdict.dev/cve/CVE-2026-109618 | grep -i x-vercel-cache
 ```
 
 Then the platforms' own tools: Facebook's Sharing Debugger, LinkedIn's Post Inspector, a private
@@ -169,8 +169,9 @@ summary shows the published data's age and the health of every source.
 
 ## Forking and renaming
 
-1. Edit [`shared/brand.ts`](../shared/brand.ts): name, wordmark, slug, tagline, `repo` (`owner/name`)
-   and `siteUrl` (the address your site is served from). The site, the pipeline's User-Agent, feed
+1. Edit [`shared/brand.ts`](../shared/brand.ts): name, wordmark, slug, tagline, `repo` (`owner/name`),
+   `siteUrl` (the address your site is served from) and `feedIdBase` (your first public address, kept
+   for good in the Atom feeds' IDs so readers never see old entries again as new). The site, the pipeline's User-Agent, feed
    metadata, links and the MCP server's fallback data base all read from it.
 2. Edit the two rewrite destinations in [`vercel.json`](../vercel.json), which cannot import
    `brand.ts`, to `https://raw.githubusercontent.com/<owner>/<repo>/data/...`.
@@ -352,7 +353,7 @@ After the first deploy with the Check Deps page, run this twice within a minute;
 should say `x-vercel-cache: HIT`, which means the CDN, not GitHub, serves the file:
 
 ```sh
-curl -sI https://cverdict-psi.vercel.app/data/v1/packages.json | grep -i -E 'x-vercel-cache|cache-control'
+curl -sI https://cverdict.dev/data/v1/packages.json | grep -i -E 'x-vercel-cache|cache-control'
 ```
 
 Then compare the Usage tab's edge requests and data transfer for the week before and the week

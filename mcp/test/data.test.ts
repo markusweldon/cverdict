@@ -380,7 +380,7 @@ describe('CVERDICT_DATA_BASE', () => {
   it('defaults to the data branch, then the site', () => {
     expect(basesFromEnv(undefined)).toEqual([...MCP_DATA_BASES]);
     expect(basesFromEnv(' ')).toEqual(MCP_DATA_BASES);
-    expect(MCP_DATA_BASES).toEqual(['https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/', 'https://cverdict-psi.vercel.app/data/v1/']);
+    expect(MCP_DATA_BASES).toEqual(['https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/', 'https://cverdict.dev/data/v1/']);
   });
 
   it('takes https bases and http on localhost only', () => {
