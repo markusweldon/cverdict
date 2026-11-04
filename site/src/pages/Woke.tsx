@@ -92,7 +92,7 @@ export default function Woke() {
           Woke Up
         </h1>
         <p class="page__lede">
-          CVEs published more than 30 days ago that gained exploitation evidence in the last 30 days. The other views only show new CVEs, but attackers keep going after old ones.
+          CVEs published more than 30 days ago that gained exploitation evidence in the last 30 days. The Signal list and Explore cover only the last 30 days, but attackers keep going after old CVEs.
         </p>
         <div class="page__actions">
           <a class="btn" href={atom}>

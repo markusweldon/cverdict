@@ -348,7 +348,7 @@ export default function Today() {
           <header class="panel__head">
             <div>
               <h2 id="wf-h" class="panel__title">Signal waterfall</h2>
-              <p class="panel__sub">Every CVE in the window, {slot}. Grey is noise; lit ticks passed the knob.</p>
+              <p class="panel__sub">Every CVE in the window, {slot}. Grey is noise; lit ticks passed the knob. Pick a column to see that day’s CVEs in Explore.</p>
             </div>
             <ul class="legend legend--inline" aria-hidden="true">
               {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
@@ -380,9 +380,14 @@ export default function Today() {
             <h2 id="feed-h" class="section__title">
               Signal <span class="section__count">{fmtInt(feed.length)}</span>
             </h2>
-            <a class="section__more" href={href('explore')}>
-              Explore all <IconArrowRight size={12} />
-            </a>
+            <span class="section__links">
+              <a class="section__more" href={href('check')}>
+                Check your dependencies <IconArrowRight size={12} />
+              </a>
+              <a class="section__more" href={href('explore')}>
+                Explore all <IconArrowRight size={12} />
+              </a>
+            </span>
           </header>
           <FilterBar filter={{ ...filter, query: q }} onChange={setFilter} counts={toggleCounts} shown={feed.length} />
           {signal.status !== 'ready' ? (

@@ -24,8 +24,9 @@ you ask us not to.
 
 ## Supported versions
 
-Only the latest commit on `main`, the published `data` branch and the official deployments built
-from them. Forks and self-hosted copies are maintained by their owners.
+Only the latest commit on `main`, the published `data` branch, the latest `cverdict-mcp` release on
+npm, and the official deployments built from them. Forks and self-hosted copies are maintained by
+their owners.
 
 ## Scope
 
@@ -41,7 +42,7 @@ In scope:
   workflow-command injection from upstream data, cache poisoning), the data-branch publisher, and
   dependencies we ship.
 - **Hosting configuration**: headers and rewrites in `vercel.json` and the Pages deployment.
-- **The Check page** (`/check`): anything that makes a dropped or pasted file, or anything read
+- **The Check Deps page** (`/check`): anything that makes a dropped or pasted file, or anything read
   from it, leave the browser (in a request, the URL, history or storage), render as markup, or
   freeze the tab.
 - **The link-preview function** (`api/share.ts`): a request that makes it show one CVE's tags

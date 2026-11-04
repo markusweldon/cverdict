@@ -28,7 +28,7 @@ npm run dev                    # http://localhost:5173
 | `npm run build` | Production build into `site/dist` (`BASE=/repo/` for a sub-path) |
 | `npm run preview` | Serve the production build |
 | `npm test` | All unit tests (vitest) |
-| `npm run typecheck` | `tsc --noEmit` over shared, pipeline, site and mcp |
+| `npm run typecheck` | `tsc --noEmit` over shared, pipeline, site, mcp, api and scripts |
 | `npm run -s mcp` | The MCP server over stdio, from source ([mcp/README.md](mcp/README.md)); `-s` keeps npm's banner off stdout |
 | `npm run build:mcp` | The MCP server as one file, `mcp/dist/cverdict-mcp.mjs` |
 
@@ -42,16 +42,17 @@ Pipeline flags that make iteration fast:
 ## Project layout
 
 ```text
-shared/     contract.ts (public data types), model.ts (chips and points), shard.ts, brand.ts,
-            verdict.ts and share.ts (verdict words and link-preview tags),
-            versions.ts and packages.ts (version ranges and package keys for the Check Deps page)
+shared/     contract.ts (public data types), model.ts (chips and points), shard.ts, brand.ts, cna.ts (CNA display
+            names), verdict.ts and share.ts (verdict words and link-preview tags), share-images.ts (share image
+            hashes), versions.ts and packages.ts (version ranges and package keys for the Check Deps page),
+            mcp.ts (MCP snippets and tool copy)
 api/        share.ts: the Vercel Function for link-preview bots (tests in api/_test/)
 pipeline/   src/ (sources → normalize → score → batches/stats/changes → emit → validate), test/
 site/       the Vite + Preact single-page app
 mcp/        the read-only MCP server for AI agents: src/, test/, the cverdict-mcp package files
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md
 .github/    ci.yml, refresh.yml (hourly data), release-mcp.yml (npm releases of mcp/), issue templates
-scripts/    publish-data-branch.sh, mock-data.ts, calibrate.ts, backtest.ts, mcp-measure.ts
+scripts/    publish-data-branch.sh, mock-data.ts, validate-data.ts, calibrate.ts, backtest.ts, mcp-measure.ts
 tools/og/   render.mjs: renders the share images in site/public/og/ (own lockfile, run by hand)
 ```
 
@@ -85,8 +86,10 @@ npx vitest run pipeline/test/model/score.test.ts
 
 Every chip and every family rule must have a unit test. Fixtures in `pipeline/test/fixtures/` are small,
 realistic CVE records, including ones with XSS payloads; add one whenever you fix a parsing bug.
-CI runs `npm run typecheck`, `npm test`, `npm run build`, `npm run build:mcp` with a smoke test of
-the MCP bundle on mock data, `shellcheck` and the data-branch publisher test on every pull request.
+On every pull request, CI runs `npm run typecheck`, `npm test`, `npm run build` and `npm run build:mcp`.
+It also checks the link-preview function as Node ESM and the share block in the built page,
+smoke-tests the MCP bundle on mock data, checks the mock data with `scripts/validate-data.ts`, runs
+`shellcheck`, tests the data-branch publisher and checks that `vercel.json` is valid JSON.
 A change to the MCP tools' output should also pass `npx tsx scripts/mcp-measure.ts`, which checks
 the largest possible answers on the live data against the 20,000-token budget.
 

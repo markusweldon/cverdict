@@ -165,7 +165,8 @@ Failures come back as tool results with `isError: true` and a plain message, for
 ## Development
 
 ```sh
-npm test                      # unit, protocol and spawn tests (mcp/test/)
+npx vitest run mcp/test      # unit, protocol and spawn tests (what the release workflow runs)
+npm test                     # every test in the repository
 npm run build:mcp             # the single-file bundle in mcp/dist/
 npx tsx scripts/mcp-measure.ts                # answer sizes against the live data branch
 npx tsx mcp/test/smoke.ts mcp/dist/cverdict-mcp.mjs <data dir>   # what CI runs on mock data
@@ -180,7 +181,7 @@ dependencies. The site never imports them: `shared/mcp.ts` holds the copy both u
 Maintainers only. Set `version` in `mcp/package.json` and `MCP_SERVER.version` in `shared/mcp.ts`
 to the new version (a test keeps them equal), commit, and push a tag `mcp-v<version>`, for example
 `git tag mcp-v0.1.1 && git push origin mcp-v0.1.1`. The release workflow
-([`.github/workflows/release-mcp.yml`](../.github/workflows/release-mcp.yml)) checks that the tag
+([`.github/workflows/release-mcp.yml`](https://github.com/markusweldon/cverdict/blob/main/.github/workflows/release-mcp.yml)) checks that the tag
 matches the version, runs the MCP tests and the smoke test, packs the bundle and publishes it to
 npm through trusted publishing, with provenance. No npm token is stored anywhere.
 
@@ -192,6 +193,6 @@ authentication and disallow tokens.
 
 ## License
 
-MIT ([LICENSE](LICENSE)). The bundle includes the MCP TypeScript SDK (Apache-2.0, with
+MIT ([LICENSE](https://github.com/markusweldon/cverdict/blob/main/mcp/LICENSE)). The bundle includes the MCP TypeScript SDK (Apache-2.0, with
 contributions under MIT), zod (MIT) and the libraries the SDK vendors; their notices are in
-[LICENSE-THIRD-PARTY](LICENSE-THIRD-PARTY). Data terms: [docs/DATA.md](../docs/DATA.md).
+[LICENSE-THIRD-PARTY](https://github.com/markusweldon/cverdict/blob/main/mcp/LICENSE-THIRD-PARTY). Data terms: [docs/DATA.md](https://github.com/markusweldon/cverdict/blob/main/docs/DATA.md).

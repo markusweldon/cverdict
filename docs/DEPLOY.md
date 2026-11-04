@@ -9,7 +9,9 @@ CVErdict is a static site plus a JSON data branch. Two pieces run independently:
   [Reliable hourly refresh](#reliable-hourly-refresh).
 - **Site**: a Vite build of `site/`, hosted on Vercel or GitHub Pages, that reads the data.
 
-No databases, accounts or API keys are involved, and nothing needs secrets. The only server-side
+The site, the data and the workflows need no databases, accounts, API keys or repository secrets.
+The one exception is optional: the external timer in [Reliable hourly refresh](#reliable-hourly-refresh)
+needs a cron-job.org account and a GitHub token stored there. The only server-side
 code is one optional Vercel Function that link-preview bots reach and people never do (see
 [Link previews](#link-previews)); the site and the data work without it.
 
@@ -24,7 +26,7 @@ code is one optional Vercel Function that link-preview bots reach and people nev
 
 The site itself contains no data. `vercel.json` rewrites `/data/*` and the feed files
 `/feeds/*.xml` and `/feeds/*.ics` to the `data` branch on raw.githubusercontent.com, so every hourly
-publish is live within minutes **without a redeploy**. `/feeds` itself is the site's Feeds page:
+publish is live within minutes **without a redeploy**. `/feeds` itself is the site's Feeds & API page:
 any path that is not a built file or one of those rewrites gets `index.html`. The rewrite target is
 hard-coded:
 
@@ -167,8 +169,9 @@ summary shows the published data's age and the health of every source.
 
 ## Forking and renaming
 
-1. Edit [`shared/brand.ts`](../shared/brand.ts): name, slug, tagline and `repo` (`owner/name`).
-   The site, the pipeline's User-Agent, feed metadata and links all read from it.
+1. Edit [`shared/brand.ts`](../shared/brand.ts): name, wordmark, slug, tagline, `repo` (`owner/name`)
+   and `siteUrl` (the address your site is served from). The site, the pipeline's User-Agent, feed
+   metadata, links and the MCP server's fallback data base all read from it.
 2. Edit the two rewrite destinations in [`vercel.json`](../vercel.json), which cannot import
    `brand.ts`, to `https://raw.githubusercontent.com/<owner>/<repo>/data/...`.
 3. Documentation and templates use the placeholders `CVErdict` and `cverdict`; replace them
@@ -193,7 +196,8 @@ There are no secrets to set. The workflow only uses the built-in `GITHUB_TOKEN`:
   (14 packages with their dependencies, about 25 MB, no install scripts, pinned by
   `package-lock.json`), which the pipeline never imports; Vercel's install does the same. A
   separate lockfile in `mcp/` would keep them out, but needs its own install before the root
-  typecheck and tests; it can come with the npm package.
+  typecheck and tests. The npm package does not need one: the bundle inlines both, so
+  `cverdict-mcp` has no runtime dependencies.
 - `publish` is the only job with `contents: write`, to push the data branch. It runs no npm code,
   only `scripts/publish-data-branch.sh` from a fresh checkout, and gets the build output as an
   artifact.
@@ -276,7 +280,7 @@ Save, then use **Test run** and check for a `204` and a new run in Actions.
 ## Troubleshooting
 
 **The site says the data is hours old.** The site shows the age of `meta.generated_at` in the
-ticker, and the method page shows each source's status. Open Actions → refresh-data:
+ticker, and the Method page shows each source's status. Open Actions → refresh-data:
 
 - A red run means the pipeline failed (the CVE List could not be read, or the output failed
   validation) and the previous data stayed up. The failing step has the log.
@@ -289,6 +293,8 @@ ticker, and the method page shows each source's status. Open Actions → refresh
 - To retry a failed refresh, use *Run workflow*, not *Re-run failed jobs*. A re-run publishes that
   old run's data, and once a newer run has published, the publish step refuses it (it would roll
   back the state carried between runs).
+- If you use the external timer, check its run history on cron-job.org: an expired or wrong token
+  shows there as 401 or 403, and no new *workflow_dispatch* runs appear in Actions.
 
 **No runs at all for days.** GitHub disables scheduled workflows in a **public repository with no
 activity for 60 days**, and sends a warning email beforehand. The hourly bot push to the data branch

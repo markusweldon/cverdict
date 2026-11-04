@@ -84,7 +84,10 @@ export default function Feeds() {
         <h1 class="page__title" tabIndex={-1}>
           Feeds &amp; API
         </h1>
-        <p class="page__lede">Everything on this site is a static file you can fetch: no key, no account, no rate limit beyond your host’s. The same files live on the git data branch.</p>
+        <p class="page__lede">
+          Everything on this site is a static file you can fetch: no key, no account, no rate limit beyond your host’s. The same files live on the git data branch. AI agents can read them through the{' '}
+          <a href="#mcp">MCP server</a>.
+        </p>
       </header>
 
       <section class="prose-section" aria-labelledby="sub-h">
@@ -133,7 +136,8 @@ export default function Feeds() {
         </h2>
         <p class="muted">A read-only MCP server gives AI agents the same verdicts, chips and links as this site. Every answer says when the data was generated and which files it came from.</p>
         <p class="muted">
-          It runs on your machine and reads the data branch on GitHub directly, so it keeps working when this site is down. GitHub sees which of the {SHARD_COUNT} shard files it fetches, never your CVE IDs or search words. If GitHub refuses or fails, the same requests go to this site’s /data/ copy. It is the npm package cverdict-mcp and needs Node 22.12 or later.
+          It runs on your machine and reads the data branch on GitHub directly, so it keeps working when this site is down. GitHub sees which of the {SHARD_COUNT} shard files it fetches, never your CVE IDs or search words. If GitHub refuses or fails, the same requests go to this site’s /data/ copy. It is the npm package{' '}
+          <ExtLink href={`https://www.npmjs.com/package/${MCP_SERVER.npm}`}>{MCP_SERVER.npm}</ExtLink> and needs Node 22.12 or later.
         </p>
         <div class="snippets">
           {MCP_SNIPPETS.map(([title, code]) => (

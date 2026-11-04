@@ -42,7 +42,7 @@ body:
     id: model
     attributes:
       label: Score model
-      description: Shown on the method page and in meta.json (score_model).
+      description: Shown on the Method page and in meta.json (score_model).
       placeholder: v0.1.0
 
   - type: dropdown

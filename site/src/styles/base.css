@@ -317,6 +317,13 @@ strong {
   color: var(--text);
 }
 
+/* Two section links side by side, e.g. Today's Signal head. */
+.section__links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
 .prose {
   white-space: pre-line;
   overflow-wrap: anywhere;

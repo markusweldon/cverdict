@@ -12,8 +12,8 @@
 # own remote with whatever credentials git has; refresh.yml hands an http.extraheader to this
 # script's step only, through GIT_CONFIG_* in the environment.
 #
-# Nothing is pushed when the content fingerprint (row index, KEV file and headline counts,
-# ignoring generated_at) matches the branch. The push is a lease on the commit we compared
+# Nothing is pushed when the content fingerprint (row index, KEV file, headline counts, woke.json,
+# receipts.json, packages.json and state.json, ignoring generation times) matches the branch. The push is a lease on the commit we compared
 # against, so a concurrent publisher can never be silently overwritten, and data older than the
 # branch's (a re-run of an old run's publish job) is refused, so the carried state never goes
 # back in time. Works on the very first run, when the branch does not exist yet.
@@ -138,7 +138,7 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 | \`v1/changes.json\` | Escalations (tier went up, or new exploit evidence) in the last 7 days |
 | \`v1/woke.json\` | Old CVEs (published before the window) that gained exploitation evidence in the last 30 days |
 | \`v1/receipts.json\` | Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV (forward log and hindsight backtest) |
-| \`v1/packages.json\` | Package versions the CVEs with a detail shard affect, from OSV.dev advisories, with each CVE's row (for the in-browser SBOM check) |
+| \`v1/packages.json\` | Package versions the CVEs with a detail shard affect, from OSV.dev advisories, with each CVE's row (for the site's Check Deps page) |
 | \`v1/state.json\` | Internal state carried between runs; unstable, do not build on it |
 | \`feeds/signal.xml\` | Atom: newest Exploited and Likely-next CVEs |
 | \`feeds/kev.xml\` | Atom: KEV additions |
@@ -148,7 +148,7 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 Every JSON file carries \`schema_version\` and \`generated_at\`. Fields, sharding and the
 versioning policy are documented in
 [docs/DATA.md](https://github.com/${repo}/blob/HEAD/docs/DATA.md).
-AI agents can read the same files through the read-only MCP server:
+AI agents can read the same files through the read-only MCP server, \`npx -y cverdict-mcp\`:
 [docs/DATA.md#mcp-server](https://github.com/${repo}/blob/HEAD/docs/DATA.md#mcp-server).
 
 \`\`\`sh

@@ -21,7 +21,7 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 ## 1. Repository layout
 
 ```
-shared/            contract.ts  model.ts  shard.ts  brand.ts   (imported by both sides; no Node/DOM APIs)
+shared/            contract.ts  model.ts  shard.ts  brand.ts  cna.ts   (imported by both sides; no Node/DOM APIs)
                    verdict.ts  share.ts  share-images.ts        (verdict words and link-preview tags; .js imports)
                    versions.ts  packages.ts  mcp.ts             (version ranges and package keys; MCP copy)
 api/               share.ts   (Vercel Function for link-preview bots; tests in api/_test/)
@@ -30,32 +30,35 @@ pipeline/
   src/
     cli.ts                 entry: parses flags, runs the pipeline, prints a summary
     run.ts                 orchestration (fetch → stream CVE list → enrich → score → emit → validate)
+    ingest.ts              fetch every source, stream the CVE list once, normalise window ∪ KEV ∪ woke records
     config.ts              URLs, timeouts, window size, budgets
     util/                  http.ts (fetch w/ timeout+retry+cache), git.ts (clone, ls-tree, cat-file --batch),
                            csv.ts (RFC 4180), text.ts (sanitise/truncate), dates.ts, log.ts, zip.ts (bounded ZIP64)
     sources/               cvelist.ts  kev.ts  epss.ts  metasploit.ts  nuclei.ts  exploitdb.ts  poc.ts  osv.ts
     normalize.ts           CVE v5 JSON → NormalizedCve (internal type)
     score.ts               NormalizedCve + Enrichment → { score, tier, reasons, unknowns }
-    batches.ts  stats.ts  changes.ts  woke.ts  receipts.ts  packages.ts
-    emit/                  json.ts  atom.ts  ics.ts
+    batches.ts  stats.ts  changes.ts  woke.ts  receipts.ts  packages.ts  backtest.ts  state.ts  rows.ts  types.ts
+    emit/                  build.ts (every output file, in memory)  json.ts  atom.ts  ics.ts
     validate.ts            schema/budget/sanity checks on the emitted tree
   test/                    vitest; fixtures/ with small real-looking records (incl. XSS payloads)
 site/
-  index.html  vite.config.ts  public/ (favicon.svg, robots.txt; data/ is gitignored, written by the pipeline)
-  src/       main.tsx  app.tsx  router.ts  data.ts  state.ts  format.ts
+  index.html  vite.config.ts  public/ (favicon.svg, robots.txt, theme-init.js, og/ share images; data/ is gitignored,
+             written by the pipeline)
+  src/       main.tsx  app.tsx  router.ts  data.ts  state.ts  format.ts  drill.ts  woke.ts  receipts.ts
              components/  pages/  styles/  check/ (SBOM and lockfile parsers, matching, session)
 .github/workflows/  ci.yml  refresh.yml  release-mcp.yml
 mcp/                read-only MCP server for AI agents (stdio), reading the published files
   src/                     data.ts (bounded, cached reads)  tools.ts (the six tools)  server.ts (factory)  stdio.ts
   test/                    vitest: fake-fetch unit, protocol and spawn tests; smoke.ts (CI, on mock data)
-  package.json  README.md  LICENSE  LICENSE-THIRD-PARTY   the cverdict-mcp package (not published yet)
-scripts/            publish-data-branch.sh  mcp-measure.ts (MCP answer sizes on real data)
+  package.json  README.md  LICENSE  LICENSE-THIRD-PARTY   the cverdict-mcp package on npm (0.1.0 was published by
+                           hand; later versions come from release-mcp.yml)
+scripts/            publish-data-branch.sh  mock-data.ts  validate-data.ts  calibrate.ts  backtest.ts  mcp-measure.ts
 docs/               SPEC.md  SCORING.md  DATA.md  DEPLOY.md
 vercel.json  README.md  ATTRIBUTIONS.md  LICENSE (MIT)  SECURITY.md  CONTRIBUTING.md
 ```
 
-Single root `package.json` (ESM). Scripts: `pipeline` (tsx), `dev`, `build`, `preview`, `test` (vitest), `typecheck` (tsc),
-`mcp` (the MCP server from source), `build:mcp` (its single-file bundle).
+Single root `package.json` (ESM). Scripts: `pipeline` (tsx), `mock`, `calibrate`, `backtest`, `dev`, `build`, `preview`,
+`test` and `test:watch` (vitest), `typecheck` (tsc), `mcp` (the MCP server from source), `build:mcp` (its single-file bundle).
 Runtime deps: `preact` only. Pipeline uses only Node 22 built-ins (`fetch`, `zlib`, `child_process`, `fs`). The MCP
 server's SDK (`@modelcontextprotocol/server`) and `zod` are exact-pinned dev dependencies, bundled into
 `mcp/dist/cverdict-mcp.mjs`; the site never imports them (`shared/mcp.ts` holds the copy both use).
@@ -67,11 +70,17 @@ server's SDK (`@modelcontextprotocol/server`) and `zod` are exact-pinned dev dep
 ```
 npm run pipeline -- [--out site/public/data] [--previous <dir with previous v1/ output>] [--cache .cache]
                     [--cvelist-dir <existing cvelistV5 git clone>] [--poc-dir <existing PoC-in-GitHub clone>]
-                    [--now 2026-10-26T19:30:00Z] [--window-days 30] [--offline]
+                    [--osv-dir <dir>] [--now 2026-10-26T19:30:00Z] [--window-days 30] [--knob 50]
+                    [--refresh-backtest] [--offline]
 ```
 
 - `--out`: output root. Writes `<out>/v1/...` and `<out>/feeds/...`. Default `site/public/data`.
-- `--previous`: previous output root (the checked-out `data` branch). Used for `changes.json`. Missing is fine.
+- `--previous`: previous output root (the checked-out `data` branch). Used for `changes.json`, the carried
+  `v1/state.json` (Woke Up tracking, the Receipts log) and the carried backtest in `receipts.json`. Missing is fine:
+  each starts fresh.
+- `--osv-dir`: read the OSV.dev dumps from `<dir>/<ecosystem>.zip` instead of downloading them.
+- `--knob`: default knob for stored tiers (30 to 80, default 50).
+- `--refresh-backtest`: recompute the hindsight backtest now instead of carrying it forward.
 - `--cache`: cache dir. `<cache>/sources/` holds last-good raw downloads (+ `.meta.json` with etag/fetched_at);
   `<cache>/git/` holds clones.
 - `--cvelist-dir` / `--poc-dir`: use an existing clone instead of cloning (local dev). Never modify it.
@@ -168,7 +177,7 @@ raw        = 15 + X + SEV + SSVC + PRIOR + NOISE
 score      = E ? min(100, max(raw + 75, 90) + (ransomware Known ? 5 : 0)) : clamp(raw, 0, 100)
 weaponized = x.metasploit or x.nuclei present
 tier       = tierFor(score, E, weaponized, knob)          (shared/contract.ts)
-INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, poc.hype, poc.unvetted, tag.eol (0 points)
+INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hype, poc.unvetted, tag.eol (0 points)
 ```
 
 Chip labels are specific and dated, e.g. `CISA KEV · added Oct 21 · due Oct 24`, `Metasploit: exploit/linux/http/foo (excellent)`,
@@ -197,7 +206,7 @@ included, unknown-polarity chips excluded) for filtering.
 v1/meta.json        Meta (incl. sources[])
 v1/signal.json      RowTable: score ≥ SIGNAL_MIN_SCORE or exploited/weaponized, window only, sorted score desc then pub desc
 v1/index.json       RowTable: every published CVE in the window, sorted pub desc
-v1/cve/<xx>.json    CveShard for window CVEs ∪ KEV CVEs (256 shards via shardOf)
+v1/cve/<xx>.json    CveShard for window CVEs ∪ KEV CVEs ∪ woke.json CVEs (256 shards via shardOf)
 v1/batches.json     BatchesFile (newest first)
 v1/kev.json         KevFile
 v1/stats.json       StatsFile
@@ -213,7 +222,8 @@ feeds/woke.xml      Atom: up to 100 woke-up CVEs (KEV and Exploit-DB wakes first
 ```
 
 Budgets (gzip, checked by `validate.ts`; warn at 80%, fail at 150%): meta ≤ 8 KB, signal ≤ 120 KB, index ≤ 1 MB,
-each shard ≤ 80 KB, stats ≤ 80 KB, packages ≤ 256 KB, total files ≤ 300. XML/ICS must be escaped properly (no raw CVE text in markup).
+each shard ≤ 80 KB, stats ≤ 80 KB, woke ≤ 64 KB, receipts ≤ 64 KB, packages ≤ 256 KB, state ≤ 1 MB, total files ≤ 300
+(full list: `BUDGETS` in `pipeline/src/config.ts`). XML/ICS must be escaped properly (no raw CVE text in markup).
 
 ## 3. Site
 
@@ -221,8 +231,9 @@ Vite + Preact + TypeScript SPA. No UI framework, no chart library. Hand-written 
 Self-hosted fonts via `@fontsource-variable/geist` and `@fontsource-variable/geist-mono`.
 
 **Data loading** (`data.ts`): base = `${import.meta.env.BASE_URL}data/v1/`. Fetch `meta.json` + `signal.json` +
-`stats.json` + `batches.json` + `kev.json` for the home page; `index.json` lazily (explore page, or knob < 35);
-shards on demand per CVE (cache in memory). Show a skeleton while loading and a friendly error state with retry.
+`stats.json` + `batches.json` + `kev.json` + `changes.json` + `woke.json` for Today; `index.json` lazily (Explore, or
+knob < 35); `woke.json` and `receipts.json` on their pages; `packages.json` only on the first interaction with the
+Check Deps input card; shards on demand per CVE (cache in memory). Show a skeleton while loading and a friendly error state with retry.
 If a CVE isn't in our shards, show "Outside the 30-day window" with links to cve.org / the raw record.
 
 **Routing** (`router.ts`): History API, base-path aware (`import.meta.env.BASE_URL`), intercept same-origin `<a>` clicks.
@@ -240,18 +251,26 @@ Unknown → 404 view. Update `document.title` per route.
   (4) the **knob**: rotary control (`role="slider"`, arrow keys ±5, presets Tight 60 / Default 50 / Wide 40),
   URL param `?knob=`; (5) signal feed: rows (tier pill, mono CVE ID, vendor · product, title, top chips, score, age,
   batch tag); filter bar (tier, vendor search, hide WordPress / kernel / AI toggles, watchlist); (6) batch cards
-  ("Microsoft · Oct 13 · 1,407 → 1 exploited · 2 PoC · 58 likely"); (7) KEV Clock strip; (8) "what changed" list.
+  ("Microsoft · Oct 13 · 1,407 → 1 exploited · 2 PoC · 58 likely"); (7) KEV Clock strip; (8) "what changed" list;
+  (9) Woke Up card: old CVEs that woke up in the last 7 days, most urgent first.
 - **CVE (`/cve/:id`)**: verdict line ("Patch now — exploited, KEV due Oct 29" / "Likely next — Metasploit module" /
   "Watch" / "Quiet — no evidence yet (quiet ≠ safe)"); score dial with the arithmetic (base + each chip = total);
   chips grouped by family with sources and links; unknowns; evidence timeline; facts table (CNA, CVSS vector, CWE,
   affected, SSVC, EPSS, KEV); references; buttons: Copy as ticket (Markdown), Copy link, JSON, cve.org, "Disagree?"
   (GitHub issue link prefilled).
 - **KEV Clock (`/kev`)**: due within 72h / overdue (≤7d) / this month; live countdowns; ransomware & forensic flags; ICS link.
+- **Woke Up (`/woke`)**: CVEs published before the window that gained exploitation evidence in the last 30 days
+  (`woke.json`), grouped by week, most urgent first at the knob; `?kind=` filters by signal kind; each row shows its
+  dated signals; notes say since when first-seen kinds are tracked and what the last run could not check; links to
+  `woke.xml`.
 - **Batches (`/batches`)**: cohort cards with tier bars; expand to families and top CVEs.
+- **Receipts (`/receipts`)**: how often CVErdict, CVSS 7 or more and EPSS 10% or more flagged a CVE before CISA
+  listed it (`receipts.json`). Two parts, never mixed: the forward log, and the 180-day backtest marked as hindsight,
+  with strict and "with undated evidence" columns. Every figure shows its n.
 - **Explore (`/explore`)**: all window CVEs; virtualised list (render only visible rows); search (ID/vendor/product/title),
   filters (tier, CNA, vendor, chip, publish day `?day=YYYY-MM-DD` shown as a removable "Published Oct 13" chip;
   an invalid day is ignored), sort (score/date); URL-synced.
-- **Check (`/check`)**: an SBOM (CycloneDX JSON or XML, SPDX JSON or tag-value, package URLs) or a lockfile is read
+- **Check Deps (`/check`)**: an SBOM (CycloneDX JSON or XML, SPDX JSON or tag-value, package URLs) or a lockfile is read
   in the browser (`check/parse.ts`) and matched against `packages.json` with `shared/versions.ts` (`check/match.ts`);
   results grouped by tier at the knob, then "possibly affected, not confirmed", "not checked" and "not affected by a
   tracked CVE". `packages.json` loads on the first interaction with the input card, never on page open; nothing from the
@@ -263,8 +282,9 @@ Unknown → 404 view. Update `document.title` per route.
   KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status
   from `meta.sources` (fresh/stale), blind spots ("Not in KEV ≠ not exploited", "exposure is yours"), attributions.
-- **Feeds (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`; section `#mcp`: how to run
-  the MCP server from a clone, and its tools (from `shared/mcp.ts`).
+- **Feeds & API (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`; section `#mcp`: how
+  to install the MCP server from npm (`npx -y cverdict-mcp`), with a clone as the last option, and its tools
+  (snippets and tools from `shared/mcp.ts`).
 
 **Interactions**: keyboard — `j`/`k` move selection, `Enter`/`o` open, `/` focus search, `w` watch vendor,
 `c` copy ticket, `?` shortcuts help, `⌘K`/`Ctrl+K` command palette (jump to CVE id, vendor, page).
@@ -297,7 +317,9 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
 ## 4. Hosting & automation
 
 - **Data branch.** `refresh.yml` runs hourly (`17 * * * *`) and on dispatch. Scheduled runs only do work in the
-  canonical repository or when the repository variable `REFRESH_SCHEDULE` is `on`. Jobs:
+  canonical repository or when the repository variable `REFRESH_SCHEDULE` is `on`. GitHub starts scheduled runs late
+  or skips them, so an external timer can also call the `workflow_dispatch` API every hour at minute 47
+  (docs/DEPLOY.md, "Reliable hourly refresh"); the schedule gate does not apply to dispatched runs. Jobs:
   - `build` (`contents: read`, `pages: read`): checkout → `npm ci` → detect Pages → restore `.cache/sources`
     (actions/cache, key per run, restore-keys prefix) → fetch the current `data` branch without a token into
     `published/` (if it exists) → `npm run pipeline -- --out out --previous published --cache .cache` → save
@@ -313,7 +335,7 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
     skipped by the schedule gate.
 - **Vercel.** `vercel.json`: build `npm run build`, output `site/dist`; rewrites `/data/:path+` and the feed files
   `/feeds/*.xml|ics` to `https://raw.githubusercontent.com/<repo>/data/...`, then a last catch-all SPA fallback
-  `/(.*)` → `/index.html` (rewrites apply after static files, so `/feeds` is the Feeds page); security headers
+  `/(.*)` → `/index.html` (rewrites apply after static files, so `/feeds` is the Feeds & API page); security headers
   (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'`).
   Result: zero-config: import the repo in Vercel, and fresh data arrives hourly without redeploys.
 - **Link previews.** A rewrite just before the catch-all sends `/cve/<CVE ID>` to `api/share.ts` only when
