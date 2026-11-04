@@ -1,5 +1,5 @@
 name: Bug report
-description: Something on the site, in the data or in the pipeline is broken.
+description: Something on the site, in the data, in the pipeline or in the MCP server is broken.
 title: 'Bug: '
 labels: [bug]
 body:
@@ -25,6 +25,7 @@ body:
       options:
         - Website
         - JSON API or feeds
+        - MCP server (cverdict-mcp)
         - Pipeline or GitHub Actions workflow
         - Self-hosted deployment (Vercel or GitHub Pages)
         - Documentation
@@ -47,8 +48,9 @@ body:
   - type: input
     id: environment
     attributes:
-      label: Browser and OS (site), or Node version and command (pipeline)
-      placeholder: Firefox 144 on macOS 26 · or · Node 22.12, npm run pipeline -- --offline
+      label: Browser and OS (site), Node version and command (pipeline), or MCP client and server version (MCP server)
+      description: The MCP server prints its version to stderr when it starts.
+      placeholder: Firefox 144 on macOS 26 · or · Node 22.12, npm run pipeline -- --offline · or · Claude Code, cverdict-mcp 0.1.0
 
   - type: textarea
     id: logs

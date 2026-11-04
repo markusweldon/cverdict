@@ -1,6 +1,6 @@
 import type { RefObject } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { BRAND } from '../../shared/brand';
+import { BRAND, HOME_TITLE } from '../../shared/brand';
 import { KNOB_DEFAULT } from '../../shared/contract';
 import type { Loader } from './data';
 import { setQuery } from './router';
@@ -113,7 +113,7 @@ export function useCountUp(target: number, durationMs = 600): number {
 
 export function useTitle(title: string | null): void {
   useEffect(() => {
-    document.title = title ? `${title} · ${BRAND.name}` : `${BRAND.name}: ${BRAND.tagline}`;
+    document.title = title ? `${title} · ${BRAND.name}` : HOME_TITLE;
   }, [title]);
 }
 

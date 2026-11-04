@@ -8,7 +8,7 @@
  * record (vendor, product, CNA, chip labels) goes through cleanText() first. Every number in the
  * output comes from the record or from KNOB_DEFAULT and WATCH_FLOOR.
  */
-import { BRAND } from './brand.js';
+import { BRAND, HOME_TITLE } from './brand.js';
 import { cnaName } from './cna.js';
 import { KNOB_DEFAULT, TIERS, type CveDetail, type Tier } from './contract.js';
 import { SHARE_IMAGE_HEIGHT, SHARE_IMAGE_WIDTH, SHARE_IMAGES } from './share-images.js';
@@ -206,7 +206,7 @@ const imageTags = (url: string, alt: string): Tag[] => [
 export function genericHead(origin: string): string {
   const alt = SHARE_IMAGES.site.alt;
   return render([
-    ['title', `${BRAND.name}: the few CVEs that matter today`],
+    ['title', HOME_TITLE],
     ['name', 'description', BRAND.pitch],
     ['property', 'og:site_name', BRAND.name],
     ['property', 'og:type', 'website'],

@@ -1,4 +1,5 @@
 /** Method: how the score works, the full chip table (from shared/model.ts), sources and blind spots. */
+import type { ComponentChildren } from 'preact';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, SIGNAL_MIN_SCORE, WATCH_FLOOR } from '../../../shared/contract';
 import { BRAND, REPO_URL } from '../../../shared/brand';
 import { BASE_POINTS, BATCH_MIN, CHIPS, COLD_START_DAYS, EXPLOITED_BONUS, EXPLOITED_FLOOR, RANSOMWARE_BONUS, SCORE_MODEL } from '../../../shared/model';
@@ -27,10 +28,17 @@ const STEPS: readonly [string, string][] = [
   ['Join public evidence', 'CISA KEV, FIRST EPSS, Metasploit modules, Nuclei templates, Exploit-DB and PoC-in-GitHub, matched by CVE ID.'],
   ['Score with chips', 'Each piece of evidence is a chip worth a fixed number of points. Within a family only the strongest counts; across families points add.'],
   ['Turn the knob', `Exploited CVEs always pass. Weaponized ones (Metasploit or Nuclei) are always at least Likely. Everything else passes when its score reaches the knob (default ${KNOB_DEFAULT}).`],
-  ['Publish static files', 'JSON, Atom and iCalendar files on a git branch. No servers, accounts or API keys — fork it and run your own.'],
+  ['Publish static files', 'JSON, Atom and iCalendar files on a git branch. AI agents can read the same files through a read-only MCP server that runs on your machine. No accounts or API keys. Fork it and run your own.'],
 ];
 
-const BLIND_SPOTS: readonly [string, string][] = [
+const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
+  [
+    'Old CVEs drop out',
+    <>
+      We score CVEs published in the last 30 days and every CVE in CISA KEV. An older CVE comes back only when it gains new exploitation evidence, and then it shows on <a href={href('woke')}>Woke Up</a>. Any other
+      old CVE is not in this data.
+    </>,
+  ],
   ['Not in KEV ≠ not exploited', 'KEV lists only exploitation CISA can confirm, often weeks late. Plenty of exploited bugs never appear.'],
   ['Quiet ≠ safe', 'Quiet means no public evidence yet. A brand-new CVE in an internet-facing product you run can matter before anyone writes an exploit.'],
   ['Exposure is yours', 'We can’t see your assets. A Likely CVE in software you don’t run is noise; a Watch CVE on your perimeter may not be.'],
@@ -38,8 +46,11 @@ const BLIND_SPOTS: readonly [string, string][] = [
   ['PoCs are unverified', 'Proof-of-concept repos are counted, never run. Fake PoCs that carry malware are common — treat every link as hostile.'],
   ['Vendor text is data', 'Descriptions are written by CNAs and sometimes contain hostile markup. Everything is shown as plain text.'],
   [
-    'Check knows only what we track',
-    'The Check Deps page compares an SBOM or lockfile with the CVEs in this data that an OSV.dev advisory ties to a package version, in eight package ecosystems. A clean result there is not a full audit, and “affected” means the version is in the advisory’s range, not that your code reaches the vulnerable part.',
+    'Check Deps knows only what we track',
+    <>
+      The <a href={href('check')}>Check Deps</a> page compares an SBOM or lockfile with the CVEs in this data that an OSV.dev advisory ties to a package version, in eight package ecosystems. A clean result there is
+      not a full audit, and “affected” means the version is in the advisory’s range, not that your code reaches the vulnerable part.
+    </>,
   ],
 ];
 

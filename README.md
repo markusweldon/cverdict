@@ -10,6 +10,7 @@
 
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)
 [![refresh-data](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml)
+[![npm: cverdict-mcp](https://img.shields.io/npm/v/cverdict-mcp?label=npm%3A%20cverdict-mcp)](https://www.npmjs.com/package/cverdict-mcp)
 [![code: MIT](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
 [![scores: CC0](https://img.shields.io/badge/scores-CC0-brightgreen)](#license)
 
@@ -20,7 +21,8 @@ joins it with CISA KEV, EPSS and the public exploit feeds, and sorts the last 30
 tiers: **Exploited**, **Likely next**, **Watch** and **Quiet**. Each score is a plain sum of
 *reason chips* that you can read and click through to the evidence. There is no machine learning,
 no LLM-written text, no NVD dependency and no API key. It is a static site plus an open JSON feed,
-rebuilt hourly by GitHub Actions, so a fork gives you your own copy.
+rebuilt hourly by GitHub Actions, and a read-only MCP server that reads the same feed, so a fork
+gives you your own copy.
 
 ## The problem in numbers
 
@@ -46,7 +48,8 @@ The needles are still there. CVErdict shows you the few that matter today, and e
 
 ## What it does
 
-Every CVE published in the last 30 days, plus every CVE in KEV, gets a score from 0 to 100 and a tier:
+Every CVE published in the last 30 days, every CVE in KEV and every older CVE that woke up in the
+last 30 days gets a score from 0 to 100 and a tier:
 
 | Tier | What it means | What puts a CVE here |
 |---|---|---|
@@ -81,7 +84,7 @@ or `AI-credited: “Claude Security”`, and unknowns such as `Too new: day 13 o
 On the site:
 
 - **Today**: the noise meter (every CVE of the last 30 days → the few worth your time), a signal
-  waterfall of the whole window hour by hour (click a column to see that day's CVEs in Explore, or
+  waterfall of the whole window, each column an hour or more (click a column to see that day's CVEs in Explore, or
   a spike label to open its patch-day batch), the knob, the signal feed with filters and a vendor
   watchlist, patch-day batch cards, the KEV due-date clock, old CVEs that woke up in the last 7 days and
   what changed since the last run.
@@ -105,10 +108,11 @@ On the site:
   the page downloads one public file, the same for everyone. It knows only the tracked CVEs, so it
   is not a full audit.
 - **KEV Clock**, **Batches**, **Explore** (every window CVE, searchable, filterable by publish
-  day), **The Surge** (monthly volume since 1999), **Method** and **Feeds & API**.
+  day), **The Surge** (monthly volume since 1999), **Method** and **Feeds & API** (Atom and iCalendar
+  feeds, the JSON files and how to add the MCP server).
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
 
-![Today: 15,790 CVEs in, 363 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
+![Today: 16,804 CVEs in, 316 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
 
 ![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
 
@@ -150,8 +154,8 @@ CVE-2026-105016 · Microsoft QUIC Remote Code Execution Vulnerability · day 13
 ```
 
 Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing,
-CISA's SSVC *active* and its EPSS score) and re-score all 272 CVEs added to KEV in 2026: **74%**
-still land in Exploited or Likely next, while only **2.3%** of new CVEs do. Treat that as an upper
+CISA's SSVC *active* and its EPSS score) and re-score the 272 CVEs added to KEV in 2026 up to the
+run of Oct 26, 2026: **74%** still land in Exploited or Likely next, while only **2.3%** of new CVEs do. Treat that as an upper
 bound, since the evidence was collected after the fact. `npm run calibrate` reproduces it.
 
 The [Receipts page](https://cverdict-psi.vercel.app/receipts) holds the stricter tests. A live
@@ -240,7 +244,7 @@ claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp
 Tools: `get_verdict` (1 to 15 CVE IDs), `list_signal`, `kev_due`, `woke_up`, `receipts` and
 `search_cves`. Setup for other clients, options and limits: [mcp/README.md](mcp/README.md); what
 each answer contains: [docs/DATA.md](docs/DATA.md#mcp-server); copyable commands on the site:
-[Feeds](https://cverdict-psi.vercel.app/feeds#mcp).
+[Feeds & API](https://cverdict-psi.vercel.app/feeds#mcp).
 
 ## Deploy your own
 
@@ -251,7 +255,9 @@ the feed files under `/feeds/` are rewritten to the `data` branch on raw.githubu
 fresh data arrives every hour without a redeploy. One small function answers link-preview bots
 only, so shared CVE links show their verdict; people never reach it
 ([Link previews](docs/DEPLOY.md#link-previews)). A fresh clone reads this repository's data until
-you point the rewrites in `vercel.json` at your own, so it needs no workflow runs of its own.
+you point it at your own: set `repo` in `shared/brand.ts` and change the `/data/` and `/feeds/`
+rewrites in `vercel.json` (see [Forking and renaming](docs/DEPLOY.md#forking-and-renaming)). Until
+then it needs no workflow runs of its own.
 
 **GitHub Pages.** The repository must be public, because the refresh workflow reads the `data`
 branch anonymously.
@@ -262,6 +268,9 @@ branch anonymously.
    Copies skip the hourly schedule without it.
 4. Actions → **refresh-data** → Run workflow. From then on it publishes the data and redeploys
    the site every hour.
+
+Pages has no functions, so a shared CVE link shows the site card, not its verdict, and CVE pages
+are served with status 404 (they still work in a browser). For links you want to share, use Vercel.
 
 GitHub often runs the hourly schedule late. To refresh every hour, start the workflow from a free
 external timer: [Reliable hourly refresh](docs/DEPLOY.md#reliable-hourly-refresh).
@@ -283,14 +292,17 @@ npm run dev                    # http://localhost:5173
 Both write to `site/public/data/`, which the dev server serves. Useful pipeline flags:
 `--offline` (replay the cache), `--now 2026-10-26T19:30:00Z` (freeze time),
 `--cvelist-dir` / `--poc-dir` (reuse existing clones). `npm run calibrate` takes the same flags
-and prints the calibration tables. `npm test` and `npm run typecheck` run the checks CI runs.
+and prints the calibration tables. `npm test` and `npm run typecheck` run the main checks. CI also
+builds the site and the MCP server, smoke-tests the server and tests the data-branch publisher (see
+`.github/workflows/ci.yml`).
 More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 
 **v1.1**
 
-- **CNA noise panel**: who publishes how much, and how much of it ever matters.
+- **CNA noise panel**: each CNA's volume over the years and how much of it reached KEV (The Surge
+  already ranks the CNAs of the last 30 days).
 - **EPSS sparklines** on CVE pages and rows.
 - **Open Graph images** per CVE. Shared CVE links already carry the verdict, score, KEV and exploit status in
   their preview text, with an image per tier; an image with each CVE's own score may follow.
@@ -315,7 +327,7 @@ More in [CONTRIBUTING.md](CONTRIBUTING.md).
 - **Upstream errors flow through.** Descriptions, product names and CVSS vectors are as the CNA
   published them.
 - **PoC links are unverified third-party code** and may be malware. Never run one outside a lab.
-- **Check is not a scanner.** It knows only the tracked CVEs that an advisory ties to a package
+- **Check Deps is not a scanner.** It knows only the tracked CVEs that an advisory ties to a package
   version, in eight ecosystems. "Affected" means the version is inside the advisory's range, not
   that your code reaches the vulnerable part.
 
@@ -344,4 +356,5 @@ and Empirical Security; CERT/CC for [SSVC](https://github.com/CERTCC/SSVC); Rapi
 [Metasploit](https://github.com/rapid7/metasploit-framework) community;
 [ProjectDiscovery](https://github.com/projectdiscovery/nuclei-templates); OffSec's
 [Exploit-DB](https://www.exploit-db.com/); [nomi-sec/PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub);
-and Vercel for the [Geist](https://vercel.com/font) typefaces. None of them endorse this project.
+[OSV.dev](https://osv.dev/) and the GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisory
+databases it collects; and Vercel for the [Geist](https://vercel.com/font) typefaces. None of them endorse this project.

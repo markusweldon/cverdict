@@ -563,7 +563,7 @@ export default function CvePage({ id }: { id: string }) {
       </nav>
       {!norm ? (
         <EmptyState heading title="That doesn’t look like a CVE ID">
-          CVE IDs look like CVE-2026-12345. {BRAND.name} covers the last 30 days plus everything in CISA KEV.
+          CVE IDs look like CVE-2026-12345. {BRAND.name} covers the last 30 days, everything in CISA KEV and old CVEs that <a href={href('woke')}>woke up</a>.
         </EmptyState>
       ) : detail.status === 'ready' ? (
         detail.data ? (
