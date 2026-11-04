@@ -72,6 +72,8 @@ jobs:
         id: pack
         working-directory: mcp
         run: |
+          # npm pack needs the destination to exist (it exits 254 otherwise).
+          mkdir -p "$RUNNER_TEMP/pkg"
           tarball=$(npm pack --silent --pack-destination "$RUNNER_TEMP/pkg")
           tar -tzf "$RUNNER_TEMP/pkg/$tarball"
           echo "tarball=$tarball" >>"$GITHUB_OUTPUT"
@@ -107,7 +109,8 @@ jobs:
       - name: Publish
         env:
           TARBALL: ${{ needs.build.outputs.tarball }}
-        run: npm publish "pkg/$TARBALL" --access public
+        # ./ makes npm read a file: "pkg/<name>.tgz" alone looks like a GitHub user/repo to it.
+        run: npm publish "./pkg/$TARBALL" --access public
 
   registry:
     name: List on the MCP Registry
