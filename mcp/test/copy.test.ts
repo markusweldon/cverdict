@@ -73,6 +73,16 @@ describe('package and docs', () => {
     expect(pkg.repository).toEqual({ type: 'git', url: 'git+https://github.com/markusweldon/cverdict.git', directory: 'mcp' });
     // The MCP Registry checks that the npm package names the server it lists.
     expect(pkg.mcpName).toBe(MCP_SERVER.name);
+  });
+
+  it('lists the same server, package and version on the MCP Registry (server.json)', () => {
+    const server = JSON.parse(read('mcp/server.json'));
+    expect(server.name).toBe(MCP_SERVER.name);
+    expect(server.version).toBe(pkg.version);
+    expect(server.description.length).toBeLessThanOrEqual(100);
+    expect(server.repository).toMatchObject({ url: 'https://github.com/markusweldon/cverdict', source: 'github', subfolder: 'mcp' });
+    expect(server.packages).toHaveLength(1);
+    expect(server.packages[0]).toMatchObject({ registryType: 'npm', identifier: pkg.name, version: pkg.version, transport: { type: 'stdio' } });
     expect(pkg.bin).toEqual({ 'cverdict-mcp': 'dist/cverdict-mcp.mjs' });
     expect(pkg.files).toEqual(['dist', 'LICENSE', 'LICENSE-THIRD-PARTY', 'README.md']);
     expect(pkg.dependencies).toBeUndefined();

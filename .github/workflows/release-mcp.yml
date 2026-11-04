@@ -1,4 +1,5 @@
-# Publishes the MCP server (mcp/) to npm as cverdict-mcp when a tag mcp-v<version> is pushed.
+# Publishes the MCP server (mcp/) to npm as cverdict-mcp when a tag mcp-v<version> is pushed, then
+# lists that version on the MCP Registry (registry.modelcontextprotocol.io) from mcp/server.json.
 #
 # npm trusted publishing: npm accepts a short-lived token from this workflow instead of a stored
 # npm token, and adds provenance (which commit and workflow built the package). Set it up once on
@@ -7,7 +8,9 @@
 #
 # The build job runs npm ci, the tests and the bundler with a read-only token and no id-token. The
 # publish job runs none of that code: it only downloads the packed tarball and publishes it, so no
-# dependency ever runs where an npm publish token can be minted.
+# dependency ever runs where an npm publish token can be minted. The registry job logs in with the
+# same GitHub OIDC identity (the io.github.markusweldon namespace) and runs only mcp-publisher, pinned
+# and checked against its Sigstore bundle.
 name: release-mcp
 
 on:
@@ -105,3 +108,59 @@ jobs:
         env:
           TARBALL: ${{ needs.build.outputs.tarball }}
         run: npm publish "pkg/$TARBALL" --access public
+
+  registry:
+    name: List on the MCP Registry
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # the registry's GitHub OIDC login for io.github.markusweldon/*
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # npm can take a few minutes to make a new version available, and the registry checks the
+      # package's mcpName against server.json before it lists the version.
+      - name: Wait for the version on npm
+        run: |
+          version=$(jq -r .version mcp/package.json)
+          name=$(jq -r .name mcp/server.json)
+          for _ in $(seq 1 40); do
+            got=$(curl -fsS https://registry.npmjs.org/cverdict-mcp | jq -r --arg v "$version" '.versions[$v].mcpName // empty' || true)
+            if [ "$got" = "$name" ]; then
+              echo "cverdict-mcp@$version is on npm"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::cverdict-mcp@$version did not appear on npm within 10 minutes"
+          exit 1
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Download and verify mcp-publisher
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Log in to the MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server.json
+        working-directory: mcp
+        run: ../mcp-publisher publish

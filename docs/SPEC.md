@@ -50,7 +50,7 @@ site/
 mcp/                read-only MCP server for AI agents (stdio), reading the published files
   src/                     data.ts (bounded, cached reads)  tools.ts (the six tools)  server.ts (factory)  stdio.ts
   test/                    vitest: fake-fetch unit, protocol and spawn tests; smoke.ts (CI, on mock data)
-  package.json  README.md  LICENSE  LICENSE-THIRD-PARTY   the cverdict-mcp package on npm (0.1.0 was published by
+  package.json  README.md  LICENSE  LICENSE-THIRD-PARTY  server.json (MCP Registry)   the cverdict-mcp package on npm (0.1.0 was published by
                            hand; later versions come from release-mcp.yml)
 scripts/            publish-data-branch.sh  mock-data.ts  validate-data.ts  calibrate.ts  backtest.ts  mcp-measure.ts
 docs/               SPEC.md  SCORING.md  DATA.md  DEPLOY.md
@@ -349,4 +349,6 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
   JSON check.
 - **MCP releases.** `release-mcp.yml` on a tag `mcp-v<version>`: a read-only job checks the tag against
   `mcp/package.json`, runs the typecheck, the MCP tests and the smoke test, and packs the bundle; a second job, which
-  runs none of that code, publishes the tarball to npm through trusted publishing (OIDC, with provenance).
+  runs none of that code, publishes the tarball to npm through trusted publishing (OIDC, with provenance); a third
+  lists the version on the MCP Registry from `mcp/server.json` (GitHub OIDC login, `mcp-publisher` pinned and
+  checked against its Sigstore bundle).
