@@ -242,7 +242,7 @@ Unknown → 404 view. Update `document.title` per route.
 
 **Pages**
 - **Today (`/`)**: (1) ticker strip (published 24h · passed 24h · KEV due ≤72h · batches this week · data age); (2) hero
-  noise meter: big mono numbers counting up — "14,281 CVEs in 30 days → 312 worth your time" with a % and
+  noise meter: big mono numbers counting up — "14,281 new CVEs → 312 worth your time" under "Last 30 days · Oct 5 – Nov 4" with a % and
   "1 in N"; (3) **signal waterfall**: Canvas spectrogram of the window (x = hour, stacked ticks; quiet ticks dim
   grey, passed ticks glow in tier colour; hover tooltip with hour + counts; re-colours live as the knob turns;
   a column opens Explore for the UTC day it starts on (`/explore?day=YYYY-MM-DD&sort=score`): click, or Enter on

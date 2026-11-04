@@ -58,7 +58,7 @@ function CountUp({ value, class: cls }: { value: number; class?: string }) {
     ));
   if (shown === value) return <span class={cls}>{digits}</span>;
   // Mid count, assistive tech gets the real number: the hero heading takes focus on arrival and
-  // would otherwise be announced as "0 CVEs published".
+  // would otherwise be announced as "0 new CVEs".
   return (
     <span class={cls}>
       <span aria-hidden="true">{digits}</span>
@@ -113,7 +113,7 @@ function Hero({ meta, counts, level }: { meta: Meta; counts: TierCounts; level: 
       <h1 class="hero__line" id="hero-h" tabIndex={-1}>
         <span class="hero__group">
           <CountUp class="hero__noise" value={total} />
-          <span class="hero__unit">CVEs published</span>
+          <span class="hero__unit">new CVEs</span>
         </span>
         <span class="hero__arrow" aria-label="of which">
           →
