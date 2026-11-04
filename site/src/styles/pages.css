@@ -90,6 +90,8 @@
 }
 
 .hero__line {
+  --hero-noise: clamp(40px, 6vw, 64px);
+  --hero-signal: clamp(52px, 8vw, 92px);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -116,14 +118,18 @@
 }
 
 .hero__noise {
+  /* Geist Mono's baseline sits about 0.1em above the bottom of its 0.95 line box, so the smaller
+     number is lifted by 0.1 of the size difference: both numbers share one baseline and both
+     labels sit the same distance below them. */
+  margin-bottom: calc((var(--hero-signal) - var(--hero-noise)) * 0.1);
   color: var(--muted);
-  font-size: clamp(40px, 6vw, 64px);
+  font-size: var(--hero-noise);
   font-weight: 500;
 }
 
 .hero__signal {
   color: var(--accent);
-  font-size: clamp(52px, 8vw, 92px);
+  font-size: var(--hero-signal);
   font-weight: 650;
   text-shadow:
     0 0 28px color-mix(in srgb, var(--accent) 38%, transparent),
@@ -134,12 +140,16 @@
   color: var(--muted);
   font-size: 13px;
   font-weight: 500;
+  line-height: 1.2;
   letter-spacing: 0;
 }
 
+/* The arrow points out of the middle of the smaller number: its centre sits 0.36 of that number's
+   size above the shared baseline at every width (constants measured with Geist Mono and the 13px
+   label below). */
 .hero__arrow {
-  align-self: center;
-  margin-bottom: 18px;
+  align-self: flex-end;
+  margin-bottom: calc(var(--hero-noise) * 0.41 + var(--hero-signal) * 0.1 - 0.76px);
   color: var(--faint);
   font-family: var(--font-mono);
   font-size: 28px;
