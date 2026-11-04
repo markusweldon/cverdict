@@ -35,7 +35,7 @@ Other clients take an `mcpServers` entry (key names vary by client):
 
 On Windows, clients that cannot start `npx` directly take `"command": "cmd"` and
 `"args": ["/c", "npx", "-y", "cverdict-mcp"]`. `npx -y` runs the newest version; pin one with
-`cverdict-mcp@0.1.0`.
+`cverdict-mcp@<version>` (the versions are on the npm page).
 
 ## Run it from a clone
 
@@ -178,12 +178,15 @@ dependencies. The site never imports them: `shared/mcp.ts` holds the copy both u
 
 ## Releasing
 
-Maintainers only. Set `version` in `mcp/package.json` and `MCP_SERVER.version` in `shared/mcp.ts`
-to the new version (a test keeps them equal), commit, and push a tag `mcp-v<version>`, for example
+Maintainers only. Set the new version in `mcp/package.json`, `MCP_SERVER.version` in
+`shared/mcp.ts`, and both `version` fields in `mcp/server.json` (a test keeps them equal), commit, and
+push a tag `mcp-v<version>`, for example
 `git tag mcp-v0.1.1 && git push origin mcp-v0.1.1`. The release workflow
 ([`.github/workflows/release-mcp.yml`](https://github.com/markusweldon/cverdict/blob/main/.github/workflows/release-mcp.yml)) checks that the tag
 matches the version, runs the MCP tests and the smoke test, packs the bundle and publishes it to
-npm through trusted publishing, with provenance. No npm token is stored anywhere.
+npm through trusted publishing, with provenance. A last job lists the version on the
+[MCP Registry](https://registry.modelcontextprotocol.io) from `mcp/server.json`, logged in with the
+workflow's GitHub OIDC identity. No npm or registry token is stored anywhere.
 
 One-time setup: the first version is published by hand (`npm run build:mcp` at the root, then
 `npm login` and `npm publish` in `mcp/`). Then on npmjs.com, package `cverdict-mcp` → Settings →

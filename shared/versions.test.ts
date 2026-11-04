@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import type { PackageEcosystem } from './contract';
 import { COMPARATORS, MAX_VERSION, compileRanges, extraVersions, inRanges, matchAffect, parseEvent } from './versions';
 
+/**
+ * Best of three timings of `fn`, in ms. Exponential backtracking takes seconds on these inputs; the
+ * best of three keeps one garbage-collection pause or a busy test worker from failing the check.
+ */
+function fastest(fn: () => void): number {
+  let best = Infinity;
+  for (let i = 0; i < 3; i++) {
+    const t0 = performance.now();
+    fn();
+    best = Math.min(best, performance.now() - t0);
+  }
+  return best;
+}
+
 /** Each version is strictly lower than the next under the ecosystem's ordering. */
 function expectAscending(eco: PackageEcosystem, versions: string[]): void {
   const c = COMPARATORS[eco];
@@ -170,10 +184,13 @@ describe('hostile input', () => {
       let worst = 0;
       for (const h of heads) for (const r of runs) for (const t of tails) {
         const v = (h + r.repeat(MAX_VERSION)).slice(0, MAX_VERSION - t.length) + t;
-        const t0 = performance.now();
-        const k = c.parse(v);
-        if (k !== null) c.cmp(k, k);
-        worst = Math.max(worst, performance.now() - t0);
+        worst = Math.max(
+          worst,
+          fastest(() => {
+            const k = c.parse(v);
+            if (k !== null) c.cmp(k, k);
+          }),
+        );
       }
       expect(worst, eco).toBeLessThan(10);
     }
@@ -181,10 +198,9 @@ describe('hostile input', () => {
 
   it('a backtracking-shaped Composer version is checked like any other unreadable version', () => {
     const hostile = `1.0.0-beta${'1'.repeat(100)}x`;
-    const t0 = performance.now();
     expect(COMPARATORS.Packagist.parse(hostile)).toBeNull();
     expect(matchAffect('Packagist', hostile, [['>=0', '<8.5.1']])).toBe('unchecked');
-    expect(performance.now() - t0).toBeLessThan(10);
+    expect(fastest(() => matchAffect('Packagist', hostile, [['>=0', '<8.5.1']]))).toBeLessThan(10);
     // The same family of strings still reads when it is valid.
     expectEqual('Packagist', ['1.0.0-beta1.2', '1.0.0-beta.1.2', '1.0.0-beta-1-2']);
     expectAscending('Packagist', ['1.0.0-beta1', `1.0.0-beta1${'0'.repeat(20)}`]);

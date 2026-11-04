@@ -1,0 +1,32 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.markusweldon/cverdict",
+  "title": "CVErdict",
+  "description": "Read-only CVE triage: verdicts from CISA KEV, EPSS and exploit feeds, each reason linked.",
+  "version": "0.1.0",
+  "websiteUrl": "https://cverdict-psi.vercel.app/feeds#mcp",
+  "repository": {
+    "url": "https://github.com/markusweldon/cverdict",
+    "source": "github",
+    "id": "1440217635",
+    "subfolder": "mcp"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "cverdict-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CVERDICT_DATA_BASE",
+          "description": "Comma-separated data base URLs ending in /v1/, tried in order. For a fork or a mirror.",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
