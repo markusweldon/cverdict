@@ -21,7 +21,7 @@
     "build:mcp": "vite build --config mcp/vite.config.ts"
   },
   "dependencies": {
-    "preact": "^11.0.2"
+    "preact": "^11.1.0"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",
