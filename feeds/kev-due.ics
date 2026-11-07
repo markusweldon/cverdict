@@ -1,0 +1,298 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//CVErdict//KEV due dates//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+NAME:CVErdict · CISA KEV due dates
+X-WR-CALNAME:CVErdict · CISA KEV due dates
+X-WR-CALDESC:Remediation due dates for CISA Known Exploited Vulnerabilities
+ .
+REFRESH-INTERVAL;VALUE=DURATION:PT1H
+X-PUBLISHED-TTL:PT1H
+BEGIN:VEVENT
+UID:CVE-2026-46300-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261031
+DTEND;VALUE=DATE:20261101
+SUMMARY:KEV due: CVE-2026-46300 · Linux Kernel
+DESCRIPTION:Linux Kernel Missing Initialization of a Variable Vulnerability
+ \nAdded to CISA KEV 2026-10-28. Known ransomware use: Unknown.\nCISA asks 
+ for forensic triage (BOD 26-04).\nRequired action: Apply mitigations in ac
+ cordance with vendor instructions\, ensuring compliance with CISA’s BOD 
+ 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guida
+ nce and CISA’s “Forensics Triage Requirements” (see URL in Notes). F
+ ollow applicable BOD 26-04 guidance for cloud services or discontinue use 
+ of the product if mitigations are unavailable. Stakeholders are responsibl
+ e for evaluating each asset's internet exposure and ensuring adherence to 
+ BOD 26-04 patching guidelines.\nhttps://cverdict.dev/cve/CVE-2026-46300
+URL:https://cverdict.dev/cve/CVE-2026-46300
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-76418-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261101
+DTEND;VALUE=DATE:20261102
+SUMMARY:KEV due: CVE-2026-76418 · Cisco Secure Firewall ASA Software and C
+ isco Secure FTD Software
+DESCRIPTION:Cisco Secure Firewall ASA Software and Cisco Secure FTD Softwar
+ e Unchecked Return Value to NULL Pointer Dereference Vulnerability\nAdded 
+ to CISA KEV 2026-10-29. Known ransomware use: Unknown.\nRequired action: A
+ pply mitigations in accordance with vendor instructions\, ensuring complia
+ nce with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (s
+ ee URL in Notes) guidance and CISA’s “Forensics Triage Requirements”
+  (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud servic
+ es or discontinue use of the product if mitigations are unavailable. Stake
+ holders are responsible for evaluating each asset's internet exposure and 
+ ensuring adherence to BOD 26-04 patching guidelines.\nhttps://cverdict.dev
+ /cve/CVE-2026-76418
+URL:https://cverdict.dev/cve/CVE-2026-76418
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-97229-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261101
+DTEND;VALUE=DATE:20261102
+SUMMARY:KEV due: CVE-2026-97229 · GitLab Community Edition and Enterprise 
+ Edition
+DESCRIPTION:GitLab Community Edition and Enterprise Edition Integer Overflo
+ w or Wraparound Vulnerability\nAdded to CISA KEV 2026-10-29. Known ransomw
+ are use: Unknown.\nCISA asks for forensic triage (BOD 26-04).\nRequired ac
+ tion: Apply mitigations in accordance with vendor instructions\, ensuring 
+ compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on 
+ Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirem
+ ents” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud
+  services or discontinue use of the product if mitigations are unavailable
+ . Stakeholders are responsible for evaluating each asset's internet exposu
+ re and ensuring adherence to BOD 26-04 patching guidelines.\nhttps://cverd
+ ict.dev/cve/CVE-2026-97229
+URL:https://cverdict.dev/cve/CVE-2026-97229
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-111357-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261102
+DTEND;VALUE=DATE:20261103
+SUMMARY:KEV due: CVE-2026-111357 · Ivanti Connect Secure
+DESCRIPTION:Ivanti Connect Secure Missing Authentication for Critical Funct
+ ion Vulnerability\nAdded to CISA KEV 2026-10-30. Known ransomware use: Unk
+ nown.\nCISA asks for forensic triage (BOD 26-04).\nRequired action: Apply 
+ mitigations in accordance with vendor instructions\, ensuring compliance w
+ ith CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see UR
+ L in Notes) guidance and CISA’s “Forensics Triage Requirements” (see
+  URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or
+  discontinue use of the product if mitigations are unavailable. Stakeholde
+ rs are responsible for evaluating each asset's internet exposure and ensur
+ ing adherence to BOD 26-04 patching guidelines.\nhttps://cverdict.dev/cve/
+ CVE-2026-111357
+URL:https://cverdict.dev/cve/CVE-2026-111357
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-110936-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261103
+DTEND;VALUE=DATE:20261104
+SUMMARY:KEV due: CVE-2026-110936 · Siemens Software Center
+DESCRIPTION:Siemens Software Center Uncontrolled Search Path Element Vulner
+ ability\nAdded to CISA KEV 2026-10-20. Known ransomware use: Unknown.\nReq
+ uired action: Apply mitigations in accordance with vendor instructions\, e
+ nsuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates B
+ ased on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage 
+ Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance f
+ or cloud services or discontinue use of the product if mitigations are una
+ vailable. Stakeholders are responsible for evaluating each asset's interne
+ t exposure and ensuring adherence to BOD 26-04 patching guidelines.\nhttps
+ ://cverdict.dev/cve/CVE-2026-110936
+URL:https://cverdict.dev/cve/CVE-2026-110936
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-96652-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261103
+DTEND;VALUE=DATE:20261104
+SUMMARY:KEV due: CVE-2026-96652 · Plex Media Server
+DESCRIPTION:Plex Media Server Server-Side Request Forgery (SSRF) Vulnerabil
+ ity\nAdded to CISA KEV 2026-10-20. Known ransomware use: Unknown.\nRequire
+ d action: Apply mitigations in accordance with vendor instructions\, ensur
+ ing compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based
+  on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requ
+ irements” (see URL in Notes). Follow applicable BOD 26-04 guidance for c
+ loud services or discontinue use of the product if mitigations are unavail
+ able. Stakeholders are responsible for evaluating each asset's internet ex
+ posure and ensuring adherence to BOD 26-04 patching guidelines.\nhttps://c
+ verdict.dev/cve/CVE-2026-96652
+URL:https://cverdict.dev/cve/CVE-2026-96652
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-96655-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261103
+DTEND;VALUE=DATE:20261104
+SUMMARY:KEV due: CVE-2026-96655 · Plex Media Server
+DESCRIPTION:Plex Media Server Server-Side Request Forgery (SSRF) Vulnerabil
+ ity\nAdded to CISA KEV 2026-10-20. Known ransomware use: Unknown.\nRequire
+ d action: Apply mitigations in accordance with vendor instructions\, ensur
+ ing compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based
+  on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requ
+ irements” (see URL in Notes). Follow applicable BOD 26-04 guidance for c
+ loud services or discontinue use of the product if mitigations are unavail
+ able. Stakeholders are responsible for evaluating each asset's internet ex
+ posure and ensuring adherence to BOD 26-04 patching guidelines.\nhttps://c
+ verdict.dev/cve/CVE-2026-96655
+URL:https://cverdict.dev/cve/CVE-2026-96655
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-119977-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261106
+DTEND;VALUE=DATE:20261107
+SUMMARY:KEV due: CVE-2026-119977 · WordPress WordPress Core
+DESCRIPTION:WordPress WordPress Core Time-of-check Time-of-use (TOCTOU) Rac
+ e Condition Vulnerability\nAdded to CISA KEV 2026-11-03. Known ransomware 
+ use: Unknown.\nCISA asks for forensic triage (BOD 26-04).\nRequired action
+ : Apply mitigations in accordance with vendor instructions\, ensuring comp
+ liance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk
+  (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements
+ ” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud ser
+ vices or discontinue use of the product if mitigations are unavailable. St
+ akeholders are responsible for evaluating each asset's internet exposure a
+ nd ensuring adherence to BOD 26-04 patching guidelines.\nhttps://cverdict.
+ dev/cve/CVE-2026-119977
+URL:https://cverdict.dev/cve/CVE-2026-119977
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-111497-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261110
+DTEND;VALUE=DATE:20261111
+SUMMARY:KEV due: CVE-2026-111497 · Google Brotli
+DESCRIPTION:Google Brotli Unchecked Return Value Vulnerability\nAdded to CI
+ SA KEV 2026-10-27. Known ransomware use: Unknown.\nRequired action: Apply 
+ mitigations in accordance with vendor instructions\, ensuring compliance w
+ ith CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see UR
+ L in Notes) guidance and CISA’s “Forensics Triage Requirements” (see
+  URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or
+  discontinue use of the product if mitigations are unavailable. Stakeholde
+ rs are responsible for evaluating each asset's internet exposure and ensur
+ ing adherence to BOD 26-04 patching guidelines.\nhttps://cverdict.dev/cve/
+ CVE-2026-111497
+URL:https://cverdict.dev/cve/CVE-2026-111497
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-48356-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261110
+DTEND;VALUE=DATE:20261111
+SUMMARY:KEV due: CVE-2026-48356 · Adobe Commerce and Magento
+DESCRIPTION:Adobe Commerce and Magento Unrestricted Upload of File with Dan
+ gerous Type Vulnerability\nAdded to CISA KEV 2026-10-27. Known ransomware 
+ use: Unknown.\nRequired action: Apply mitigations in accordance with vendo
+ r instructions\, ensuring compliance with CISA’s BOD 26-04 Prioritizing 
+ Security Updates Based on Risk (see URL in Notes) guidance and CISA’s 
+ “Forensics Triage Requirements” (see URL in Notes). Follow applicable 
+ BOD 26-04 guidance for cloud services or discontinue use of the product if
+  mitigations are unavailable. Stakeholders are responsible for evaluating 
+ each asset's internet exposure and ensuring adherence to BOD 26-04 patchin
+ g guidelines.\nhttps://cverdict.dev/cve/CVE-2026-48356
+URL:https://cverdict.dev/cve/CVE-2026-48356
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-41709-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261111
+DTEND;VALUE=DATE:20261112
+SUMMARY:KEV due: CVE-2026-41709 · Broadcom VMware ESX
+DESCRIPTION:Broadcom VMWare ESX Insufficient Logging Vulnerability\nAdded t
+ o CISA KEV 2026-10-28. Known ransomware use: Unknown.\nRequired action: Ap
+ ply mitigations in accordance with vendor instructions\, ensuring complian
+ ce with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (se
+ e URL in Notes) guidance and CISA’s “Forensics Triage Requirements” 
+ (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud service
+ s or discontinue use of the product if mitigations are unavailable. Stakeh
+ olders are responsible for evaluating each asset's internet exposure and e
+ nsuring adherence to BOD 26-04 patching guidelines.\nhttps://cverdict.dev/
+ cve/CVE-2026-41709
+URL:https://cverdict.dev/cve/CVE-2026-41709
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-118527-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261113
+DTEND;VALUE=DATE:20261114
+SUMMARY:KEV due: CVE-2026-118527 · Ivanti Connect Secure
+DESCRIPTION:Ivanti Connect Secure Generation of Predictable Numbers or Iden
+ tifiers Vulnerability\nAdded to CISA KEV 2026-10-30. Known ransomware use:
+  Unknown.\nRequired action: Apply mitigations in accordance with vendor in
+ structions\, ensuring compliance with CISA’s BOD 26-04 Prioritizing Secu
+ rity Updates Based on Risk (see URL in Notes) guidance and CISA’s “For
+ ensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26
+ -04 guidance for cloud services or discontinue use of the product if mitig
+ ations are unavailable. Stakeholders are responsible for evaluating each a
+ sset's internet exposure and ensuring adherence to BOD 26-04 patching guid
+ elines.\nhttps://cverdict.dev/cve/CVE-2026-118527
+URL:https://cverdict.dev/cve/CVE-2026-118527
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2024-27834-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261118
+DTEND;VALUE=DATE:20261119
+SUMMARY:KEV due: CVE-2024-27834 · Apple Multiple Products
+DESCRIPTION:Apple Multiple Products Improper Authentication Vulnerability\n
+ Added to CISA KEV 2026-11-04. Known ransomware use: Unknown.\nRequired act
+ ion: Apply mitigations in accordance with vendor instructions\, ensuring c
+ ompliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on R
+ isk (see URL in Notes) guidance and CISA’s “Forensics Triage Requireme
+ nts” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud 
+ services or discontinue use of the product if mitigations are unavailable.
+  Stakeholders are responsible for evaluating each asset's internet exposur
+ e and ensuring adherence to BOD 26-04 patching guidelines.\nhttps://cverdi
+ ct.dev/cve/CVE-2024-27834
+URL:https://cverdict.dev/cve/CVE-2024-27834
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:CVE-2026-19868-kev-due@cverdict
+DTSTAMP:20261107T124728Z
+DTSTART;VALUE=DATE:20261120
+DTEND;VALUE=DATE:20261121
+SUMMARY:KEV due: CVE-2026-19868 · SonicWall SonicOS SSLVPN
+DESCRIPTION:SonicWall SonicOS SSLVPN Use of Single-factor Authentication Vu
+ lnerability\nAdded to CISA KEV 2026-11-06. Known ransomware use: Unknown.\
+ nRequired action: Apply mitigations in accordance with vendor instructions
+ \, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updat
+ es Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Tri
+ age Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidan
+ ce for cloud services or discontinue use of the product if mitigations are
+  unavailable. Stakeholders are responsible for evaluating each asset's int
+ ernet exposure and ensuring adherence to BOD 26-04 patching guidelines.\nh
+ ttps://cverdict.dev/cve/CVE-2026-19868
+URL:https://cverdict.dev/cve/CVE-2026-19868
+CATEGORIES:CISA KEV
+TRANSP:TRANSPARENT
+END:VEVENT
+END:VCALENDAR
