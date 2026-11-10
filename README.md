@@ -6,19 +6,6 @@
 
 <sub>Say it "C-V-E-rdict", like "CVE verdict" run together.</sub>
 
-![Today: 16,804 CVEs in, 316 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
-
-![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
-
-<details>
-<summary>More screenshots: The Surge, and Today on a phone</summary>
-
-| The Surge | Today on a phone |
-|---|---|
-| ![The Surge: monthly CVE volume since 1999, with KEV additions and AI-credited CVEs](docs/screenshots/surge.png) | ![Today at 390 px wide: the noise meter, the knob and the waterfall](docs/screenshots/mobile.png) |
-
-</details>
-
 [**Live site**](https://cverdict.dev) · [Receipts](https://cverdict.dev/receipts) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
 
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)
@@ -28,6 +15,12 @@
 [![scores: CC0](https://img.shields.io/badge/scores-CC0-brightgreen)](#license)
 
 </div>
+
+![Today: 16,804 CVEs in, 316 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
+
+![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
+
+![The Surge: monthly CVE volume since 1999, with KEV additions and AI-credited CVEs](docs/screenshots/surge.png)
 
 CVErdict is open-source CVE triage for the 2026 flood. Every hour it reads every new CVE record,
 joins it with CISA KEV, EPSS and the public exploit feeds, and sorts the last 30 days into four
