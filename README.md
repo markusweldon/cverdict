@@ -6,6 +6,19 @@
 
 <sub>Say it "C-V-E-rdict", like "CVE verdict" run together.</sub>
 
+![Today: 16,804 CVEs in, 316 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
+
+![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
+
+<details>
+<summary>More screenshots: The Surge, and Today on a phone</summary>
+
+| The Surge | Today on a phone |
+|---|---|
+| ![The Surge: monthly CVE volume since 1999, with KEV additions and AI-credited CVEs](docs/screenshots/surge.png) | ![Today at 390 px wide: the noise meter, the knob and the waterfall](docs/screenshots/mobile.png) |
+
+</details>
+
 [**Live site**](https://cverdict.dev) · [Receipts](https://cverdict.dev/receipts) · [Methodology](docs/SCORING.md) · [Open data API](docs/DATA.md) · [Deploy your own](#deploy-your-own)
 
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)
@@ -112,18 +125,6 @@ On the site:
   feeds and the JSON files) and **MCP** (how to add the MCP server to an AI agent, and its tools).
 - Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
 
-![Today: 16,804 CVEs in, 316 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
-
-![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
-
-<details>
-<summary>More screenshots: The Surge, and Today on a phone</summary>
-
-| The Surge | Today on a phone |
-|---|---|
-| ![The Surge: monthly CVE volume since 1999, with KEV additions and AI-credited CVEs](docs/screenshots/surge.png) | ![Today at 390 px wide: the noise meter, the knob and the waterfall](docs/screenshots/mobile.png) |
-
-</details>
 
 ## How scoring works
 
