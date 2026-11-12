@@ -8,7 +8,7 @@ import { ChipList } from './Chip';
 import { IconEye, IconLayers } from './icons';
 import { TierPill } from './Tier';
 
-/** Score with a hairline meter and a tick where the knob sits. */
+/** Score with a hairline meter and a tick where the evidence bar sits. */
 export function ScoreMeter({ score, knob, tier }: { score: number; knob: number; tier: Tier }) {
   return (
     <span class={`score score--${tier}`} aria-label={`Score ${score} of 100`}>
@@ -59,7 +59,7 @@ export function CveRow({ row, tier, knob, now, selected, watched, isNew, activeC
           </a>
           <span class="row__who">{who}</span>
           {watched && (
-            <span class="row__flag row__flag--watch" data-tip="On your watchlist: shown regardless of the knob">
+            <span class="row__flag row__flag--watch" data-tip="On your watchlist: always shown, whatever the evidence bar">
               <IconEye size={12} />
               <span class="sr-only">Watched</span>
             </span>

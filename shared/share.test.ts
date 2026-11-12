@@ -85,11 +85,11 @@ describe('preview text', () => {
       ],
       LIKELY_SCORE: [
         'CVE-2026-83396: Likely next, score 50',
-        'Likely next: score 50 clears the default knob (50). Oracle Corporation · Oracle Data Integrator. CISA KEV: not listed. No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.',
+        'Likely next: score 50 clears the evidence bar (50). Oracle Corporation · Oracle Data Integrator. CISA KEV: not listed. No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.',
       ],
       WATCH: [
         'CVE-2026-101416: Watch, score 32',
-        'Watch: score 32, below the default knob (50). Oracle Corporation · PeopleSoft Enterprise PeopleTools. CISA KEV: not listed. No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.',
+        'Watch: score 32, below the evidence bar (50). Oracle Corporation · PeopleSoft Enterprise PeopleTools. CISA KEV: not listed. No public exploit in our feeds yet. As of Nov 3, 2026 06:50 UTC.',
       ],
       QUIET_NOTHING: ['CVE-2026-103061: Quiet, score 0', 'Quiet: no evidence yet, and quiet is not safe. Gleam. CISA KEV: not listed. No public exploit in our feeds after 14 days. As of Nov 3, 2026 06:50 UTC.'],
       QUIET_POC: [
@@ -154,7 +154,7 @@ describe('preview text', () => {
     for (const d of [...ALL.map(([, x]) => x), odd]) {
       for (const text of [desc(d), head(d), desc(d, 60)]) expect(text).not.toContain('\u2014');
     }
-    expect(desc(odd)).toContain('Likely next: score 69 clears the default knob (50).');
+    expect(desc(odd)).toContain('Likely next: score 69 clears the evidence bar (50).');
     expect(desc(odd)).toContain('CISA KEV: listed.');
     expect(genericHead(F.ORIGIN) + notInDataHead(F.ORIGIN, 'CVE-2019-0001') + minimalTemplate(F.ORIGIN)).not.toContain('\u2014');
   });
@@ -186,8 +186,8 @@ describe('preview text', () => {
 
   it('follows a turned knob on the CVE page', () => {
     // Before meta.json has loaded there is no run time, so a reason fits.
-    expect(shareDescription(F.WATCH, 'watch', 60, null)).toBe('Watch: score 32, below the knob (60). Oracle Corporation · PeopleSoft Enterprise PeopleTools. CISA KEV: not listed. No public exploit in our feeds yet. High 7.5 · network.');
-    expect(shareDescription(F.LIKELY_SCORE, 'likely', 45, F.GENERATED_AT)).toMatch(/^Likely next: score 50 clears the knob \(45\)\./);
+    expect(shareDescription(F.WATCH, 'watch', 60, null)).toBe('Watch: score 32, below the evidence bar (60). Oracle Corporation · PeopleSoft Enterprise PeopleTools. CISA KEV: not listed. No public exploit in our feeds yet. High 7.5 · network.');
+    expect(shareDescription(F.LIKELY_SCORE, 'likely', 45, F.GENERATED_AT)).toMatch(/^Likely next: score 50 clears the evidence bar \(45\)\./);
   });
 });
 
@@ -209,7 +209,7 @@ describe('verdict helpers', () => {
     const one = (id: string) => verdict({ ...F.LIKELY_SCORE, reasons: [{ id, label: id, polarity: 'up', family: 'X', points: 10, source: 'computed' }] }, 'likely', 50, 2026).reason;
     expect(one('ssvc.poc')).toBe('CISA SSVC says a proof of concept exists');
     expect(one('vendor.poc')).toBe('vendor CVSS says a proof of concept exists');
-    expect(one('x.something_new')).toBe('score 50 clears the default knob (50)');
+    expect(one('x.something_new')).toBe('score 50 clears the evidence bar (50)');
   });
 });
 

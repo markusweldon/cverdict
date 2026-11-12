@@ -4,7 +4,7 @@
  * storage must never break the page.
  */
 import { useEffect, useState } from 'preact/hooks';
-import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, type Row } from '../../shared/contract';
+import { KNOB_DEFAULT, type Row } from '../../shared/contract';
 
 export interface Store<T> {
   get(): T;
@@ -64,19 +64,30 @@ export const storage = createStorage(() => (browser ? window.localStorage : unde
 
 const initialParams = () => new URLSearchParams(browser ? window.location.search : '');
 
-// ── knob ──
+// ── knob (the evidence bar) ──
+
+/**
+ * The site's dial runs 35 to 65. The API, MCP and pipeline still accept KNOB_MIN..KNOB_MAX
+ * (30 to 80); outside 35 to 65 the list barely changes or floods (docs/SCORING.md).
+ */
+export const SITE_KNOB_MIN = 35;
+export const SITE_KNOB_MAX = 65;
+
+/** Clamp any knob value to the site's range. */
+export const clampSiteKnob = (n: number): number => Math.min(SITE_KNOB_MAX, Math.max(SITE_KNOB_MIN, n));
 
 export function parseKnob(raw: string | null): number {
   if (raw === null || raw.trim() === '') return KNOB_DEFAULT;
   const n = Number(raw);
   if (!Number.isFinite(n)) return KNOB_DEFAULT;
-  return Math.min(KNOB_MAX, Math.max(KNOB_MIN, Math.round(n)));
+  return clampSiteKnob(Math.round(n));
 }
 
+/** Low to high, the same way the dial turns. */
 export const KNOB_PRESETS = [
-  { label: 'Tight', value: 60 },
+  { label: 'More', value: 40 },
   { label: 'Default', value: KNOB_DEFAULT },
-  { label: 'Wide', value: 40 },
+  { label: 'Fewer', value: 60 },
 ] as const;
 
 export const knob = createStore(parseKnob(initialParams().get('knob')));

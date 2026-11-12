@@ -1,5 +1,5 @@
 /** Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV, against two common rules. */
-import { RECEIPT_METHODS, type BacktestItem, type BacktestReceipts, type BacktestSignal, type ForwardReceipts, type MethodScore, type ReceiptItem, type ReceiptMethod } from '../../../shared/contract';
+import { KNOB_DEFAULT, RECEIPT_METHODS, type BacktestItem, type BacktestReceipts, type BacktestSignal, type ForwardReceipts, type MethodScore, type ReceiptItem, type ReceiptMethod } from '../../../shared/contract';
 import { REPO_URL } from '../../../shared/brand';
 import { Fragment } from 'preact';
 import { ExtLink } from '../components/ExtLink';
@@ -151,7 +151,7 @@ function HowMeasured({ watchDays }: { watchDays: number }) {
       <ul class="rcpt__rules">
         <li>Each time the pipeline runs, it notes when it first sees each new CVE, and when each method first flags it.</li>
         <li>
-          <strong>CVErdict</strong> flags a CVE when it is Exploited or Likely next at the default knob. <strong>CVSS 7 or more</strong> flags it when the score the site shows reaches 7.0.{' '}
+          <strong>CVErdict</strong> flags a CVE when it is Exploited or Likely next at the default evidence bar ({KNOB_DEFAULT}). <strong>CVSS 7 or more</strong> flags it when the score the site shows reaches 7.0.{' '}
           <strong>EPSS 10% or more</strong> flags it when its EPSS score reaches 10%.
         </li>
         <li>When CISA adds one of those CVEs to KEV, we compare. It counts as flagged before KEV when an earlier run flagged it, on or before the KEV date. A flag that came with the listing does not count.</li>

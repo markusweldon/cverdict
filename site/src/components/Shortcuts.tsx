@@ -20,7 +20,7 @@ const GROUPS: readonly [string, readonly [string[], string][]][] = [
     [
       [[isMac ? '⌘' : 'Ctrl', 'K'], 'Command palette'],
       [['/'], 'Focus search'],
-      [['[', ']'], 'Turn the knob down / up by 5'],
+      [['[', ']'], 'Lower / raise the evidence bar by 5'],
       [['?'], 'This help'],
       [['Esc'], 'Close / leave a field'],
     ],
@@ -76,7 +76,7 @@ export function ShortcutsHelp() {
             </section>
           ))}
         </div>
-        <p class="help__note">The knob also answers to arrow keys when focused (Shift for single steps). On the waterfall, ← → step through time and Enter opens that day in Explore.</p>
+        <p class="help__note">The evidence bar dial also answers to arrow keys when focused (Shift for single steps). On the waterfall, ← → step through time and Enter opens that day in Explore.</p>
       </div>
     </Dialog>
   );

@@ -57,9 +57,9 @@ const SITE = {
 };
 const TIERS = {
   exploited: { name: 'Exploited', line: 'Confirmed exploitation: CISA KEV, CISA SSVC or the vendor.' },
-  likely: { name: 'Likely next', line: 'A Metasploit module or Nuclei template, or enough evidence to clear the default knob.' },
-  watch: { name: 'Watch', line: 'Some evidence, below the default knob.' },
-  quiet: { name: 'Quiet', line: 'Little or no evidence yet, below the default knob. Quiet is not safe.' },
+  likely: { name: 'Likely next', line: 'A Metasploit module or Nuclei template, or a score that clears the evidence bar.' },
+  watch: { name: 'Watch', line: 'Some evidence, below the evidence bar.' },
+  quiet: { name: 'Quiet', line: 'Little or no evidence yet, below the evidence bar. Quiet is not safe.' },
 };
 const FOOTER = 'The CVE, its score and the reasons are in the link text.';
 

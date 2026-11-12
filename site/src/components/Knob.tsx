@@ -89,6 +89,13 @@ export function Knob({ value, min, max, defaultValue, onChange, label, valueText
     drag.current = null;
     setDragging(false);
   };
+  // On phones a vertical swipe scrolls the page (touch-action: pan-y) and the browser cancels the
+  // drag: undo any turn from the first few pixels, so a scroll never moves the setting.
+  const cancel = () => {
+    const d = drag.current;
+    end();
+    if (d) commit(d.start);
+  };
 
   const c = size / 2;
   const rTrack = c - 12;
@@ -115,7 +122,7 @@ export function Knob({ value, min, max, defaultValue, onChange, label, valueText
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={end}
-      onPointerCancel={end}
+      onPointerCancel={cancel}
       onDblClick={() => commit(defaultValue)}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" focusable="false">

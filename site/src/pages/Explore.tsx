@@ -152,7 +152,7 @@ export default function Explore() {
           Explore
         </h1>
         <p class="page__lede">
-          All {fmtInt(total)} CVEs published in the last 30 days — the noise included, so you can check what the knob leaves out.
+          All {fmtInt(total)} CVEs published in the last 30 days, the noise included, so you can check what the evidence bar leaves out.
         </p>
       </header>
 

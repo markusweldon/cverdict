@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN } from '../../shared/contract';
-import { closeOverlay, createStorage, createStore, isWatched, normalizeName, overlay, parseKnob, parseWatch } from './state';
+import { clampSiteKnob, closeOverlay, createStorage, createStore, isWatched, KNOB_PRESETS, normalizeName, overlay, parseKnob, parseWatch, SITE_KNOB_MAX, SITE_KNOB_MIN } from './state';
 
 describe('parseKnob', () => {
   it('clamps, rounds and falls back to the default', () => {
@@ -8,8 +8,48 @@ describe('parseKnob', () => {
     expect(parseKnob('')).toBe(KNOB_DEFAULT);
     expect(parseKnob('abc')).toBe(KNOB_DEFAULT);
     expect(parseKnob('42.6')).toBe(43);
-    expect(parseKnob('5')).toBe(KNOB_MIN);
-    expect(parseKnob('1e9')).toBe(KNOB_MAX);
+    expect(parseKnob('5')).toBe(SITE_KNOB_MIN);
+    expect(parseKnob('1e9')).toBe(SITE_KNOB_MAX);
+    expect(parseKnob('-Infinity')).toBe(KNOB_DEFAULT);
+  });
+
+  it('opens links from the old 30 to 80 range at the nearest end of the site range', () => {
+    expect(parseKnob('30')).toBe(35);
+    expect(parseKnob('34')).toBe(35);
+    expect(parseKnob('35')).toBe(35);
+    expect(parseKnob('65')).toBe(65);
+    expect(parseKnob('70')).toBe(65);
+    expect(parseKnob('80')).toBe(65);
+  });
+
+  it('keeps every value inside the site range as it is', () => {
+    for (let v = SITE_KNOB_MIN; v <= SITE_KNOB_MAX; v++) expect(parseKnob(String(v))).toBe(v);
+  });
+});
+
+describe('site range', () => {
+  it('runs 35 to 65, inside the API range, around the default', () => {
+    expect([SITE_KNOB_MIN, SITE_KNOB_MAX]).toEqual([35, 65]);
+    expect(SITE_KNOB_MIN).toBeGreaterThanOrEqual(KNOB_MIN);
+    expect(SITE_KNOB_MAX).toBeLessThanOrEqual(KNOB_MAX);
+    expect(KNOB_DEFAULT).toBeGreaterThan(SITE_KNOB_MIN);
+    expect(KNOB_DEFAULT).toBeLessThan(SITE_KNOB_MAX);
+    expect((SITE_KNOB_MAX - SITE_KNOB_MIN) % 5).toBe(0);
+  });
+
+  it('clamps to the site range', () => {
+    expect(clampSiteKnob(30)).toBe(35);
+    expect(clampSiteKnob(50)).toBe(50);
+    expect(clampSiteKnob(80)).toBe(65);
+  });
+
+  it('orders the presets low to high, the way the dial turns', () => {
+    expect(KNOB_PRESETS.map((p) => [p.label, p.value])).toEqual([
+      ['More', 40],
+      ['Default', KNOB_DEFAULT],
+      ['Fewer', 60],
+    ]);
+    for (const p of KNOB_PRESETS) expect(clampSiteKnob(p.value)).toBe(p.value);
   });
 });
 

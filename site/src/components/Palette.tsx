@@ -25,7 +25,7 @@ interface Item {
 }
 
 const PAGES: readonly [string, string, string][] = [
-  ['Today', '', 'Signal, knob, waterfall'],
+  ['Today', '', 'Signal, evidence bar, waterfall'],
   ['KEV Clock', 'kev', 'CISA KEV due dates'],
   ['Woke Up', 'woke', 'Old CVEs with new exploit evidence'],
   ['Explore', 'explore', 'Every CVE in the window'],
@@ -70,7 +70,7 @@ function buildItems(q: string, rows: readonly Row[]): Item[] {
       id: `watch-${needle}`,
       group: 'Action',
       label: `${watched ? 'Stop watching' : 'Watch'} “${q.trim()}”`,
-      hint: 'Watched vendors and products bypass the knob',
+      hint: 'Watched vendors and products always show, whatever the evidence bar',
       icon: <IconEye size={14} />,
       run: () => toast(toggleWatch(q) ? `Watching ${q.trim()}` : `Stopped watching ${q.trim()}`, 'info'),
     });
@@ -83,7 +83,7 @@ function buildItems(q: string, rows: readonly Row[]): Item[] {
     { id: 'theme', group: 'Action', label: 'Toggle light / dark theme', icon: <IconMoon size={14} />, run: toggleTheme },
     { id: 'help', group: 'Action', label: 'Keyboard shortcuts', hint: '?', icon: <IconKeyboard size={14} />, run: () => overlay.set('help') },
     { id: 'copy', group: 'Action', label: 'Copy link to this page', icon: <IconLink size={14} />, run: () => void copyText(window.location.href).then((ok) => toast(ok ? 'Link copied' : 'Could not copy', ok ? 'ok' : 'error')) },
-    { id: 'knob', group: 'Action', label: `Reset the knob to ${KNOB_DEFAULT}`, icon: <IconRefresh size={14} />, run: () => knob.set(KNOB_DEFAULT) },
+    { id: 'knob', group: 'Action', label: `Reset the evidence bar to ${KNOB_DEFAULT}`, icon: <IconRefresh size={14} />, run: () => knob.set(KNOB_DEFAULT) },
   ];
   for (const a of actions) if (!ts.length || ts.every((t) => a.label.toLowerCase().includes(t))) out.push(a);
   return out;

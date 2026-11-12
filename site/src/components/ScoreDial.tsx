@@ -9,7 +9,7 @@ function polar(c: number, r: number, deg: number): [number, number] {
   return [c + r * Math.sin(a), c - r * Math.cos(a)];
 }
 
-/** 0–100 gauge in the knob's geometry, with ticks for the watch floor and the current knob. */
+/** 0–100 gauge in the knob's geometry, with ticks for the watch floor and the current evidence bar. */
 export function ScoreDial({ score, tier, knob, size = 168 }: { score: number; tier: Tier; knob: number; size?: number }) {
   const shown = useCountUp(score);
   const c = size / 2;
@@ -34,7 +34,7 @@ export function ScoreDial({ score, tier, knob, size = 168 }: { score: number; ti
   };
   return (
     <div class={`dial dial--${tier}`} style={{ width: `${size}px`, height: `${size}px` }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Score ${score} of 100, tier ${TIER_META[tier].label}. Knob at ${knob}, watch floor ${WATCH_FLOOR}.`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Score ${score} of 100, tier ${TIER_META[tier].label}. Evidence bar at ${knob}, watch floor ${WATCH_FLOOR}.`}>
         <path class="dial__track" d={track} />
         <path class="dial__fill" d={track} style={{ strokeDasharray: `${len}`, strokeDashoffset: `${len * (1 - Math.max(0, Math.min(100, shown)) / 100)}` }} />
         {tick(WATCH_FLOOR, 'dial__tick dial__tick--floor', String(WATCH_FLOOR))}

@@ -22,7 +22,7 @@ const knob = z
   .min(KNOB_MIN)
   .max(KNOB_MAX)
   .optional()
-  .describe(`Evidence needed for Likely next, ${KNOB_MIN} to ${KNOB_MAX}. Default ${KNOB_DEFAULT}, as on the site.`);
+  .describe(`The evidence bar: the score out of 100 a CVE needs to be Likely next, ${KNOB_MIN} to ${KNOB_MAX}. Default ${KNOB_DEFAULT}, as on the site.`);
 const limit = (def: number) => z.number().int().min(1).max(LIMITS.page).optional().describe(`Items per page, 1 to ${LIMITS.page}. Default ${def}.`);
 const offset = z.number().int().min(0).max(LIMITS.offset).optional().describe('Items to skip: next_offset of the previous page.');
 const date = (what: string) =>
@@ -75,7 +75,7 @@ const SCHEMAS = {
       .max(100)
       .refine((q) => q.trim().split(/\s+/).length <= LIMITS.queryWords, `at most ${LIMITS.queryWords} words`)
       .describe(`Words that must all occur (case-insensitive), at most ${LIMITS.queryWords}.`),
-    tiers: tiers.optional().describe('Only these tiers at the knob.'),
+    tiers: tiers.optional().describe('Only these tiers at the evidence bar.'),
     knob,
     limit: limit(20),
     offset,

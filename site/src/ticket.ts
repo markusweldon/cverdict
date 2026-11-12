@@ -18,7 +18,7 @@ export function mdEscape(text: string): string {
     .trim();
 }
 
-/** Inline code on one line: GitHub renders nothing inside it — no links, HTML, comments or mentions. */
+/** Inline code on one line: GitHub renders nothing inside it: no links, HTML, comments or mentions. */
 export const mdCode = (text: string): string => `\`${text.replace(/`/g, '').replace(/[\r\n\t]+/g, ' ')}\``;
 
 export function ticketMarkdown(d: CveDetail, tier: Tier, knob: number, pageUrl: string): string {
@@ -28,7 +28,7 @@ export function ticketMarkdown(d: CveDetail, tier: Tier, knob: number, pageUrl: 
   const lines: string[] = [];
   lines.push(`### ${d.id} · ${mdEscape(what)}`);
   lines.push('');
-  lines.push(`**Verdict:** ${v.head} — ${mdEscape(v.reason)} · score ${d.score.value}/100 (${TIER_META[tier].label}, knob ${knob}, model ${mdEscape(d.score.model)})`);
+  lines.push(`**Verdict:** ${v.head}: ${mdEscape(v.reason)} · score ${d.score.value}/100 (${TIER_META[tier].label}, evidence bar ${knob}, model ${mdEscape(d.score.model)})`);
   const summary = d.title ?? d.description;
   if (summary) lines.push(`**Summary:** ${mdEscape(summary.length > 300 ? `${summary.slice(0, 299)}…` : summary)}`);
   if (d.kev) {
@@ -68,7 +68,7 @@ export function feedbackIssueUrl(d: CveDetail, tier: Tier, knob: number): string
     .filter((r) => r.points !== 0)
     .map((r) => `- ${signed(r.points)} ${mdCode(r.id)}: ${mdCode(r.label)}`)
     .join('\n');
-  const body = `**CVE:** ${d.id}\n**Our verdict:** ${tier} · score ${d.score.value} at knob ${knob} (model ${mdEscape(d.score.model)})\n\n**Chips**\n${chips}\n\n**What looks wrong?**\n<!-- Evidence links help most: an advisory, a KEV entry, an exploit, a patch. -->\n`;
+  const body = `**CVE:** ${d.id}\n**Our verdict:** ${tier} · score ${d.score.value} with the evidence bar at ${knob} (model ${mdEscape(d.score.model)})\n\n**Chips**\n${chips}\n\n**What looks wrong?**\n<!-- Evidence links help most: an advisory, a KEV entry, an exploit, a patch. -->\n`;
   const q = new URLSearchParams({ title: `Score feedback: ${d.id}`, body, labels: 'score-feedback' });
   return `${REPO_URL}/issues/new?${q.toString()}`;
 }

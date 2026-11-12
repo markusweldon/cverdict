@@ -31,7 +31,7 @@ export default function Batches() {
   const loc = useLocation();
   const batches = useData(data.batches);
   const signal = useData(data.signal);
-  // Below knob 35 the signal rows cannot tell which members pass (scores 30–34): count every row.
+  // Below a bar of 35 the signal rows cannot tell which members pass (scores 30–34): count every row.
   const index = useData(level < SIGNAL_MIN_SCORE || data.index.peek() ? data.index : null);
   const complete = index.status === 'ready';
   const meta = useData(data.meta);
@@ -80,10 +80,10 @@ export default function Batches() {
               {windowTotal ? <> ({fmtPct(total / windowTotal)} of the window)</> : null}.{' '}
               {exact ? (
                 <>
-                  At knob {level}, <strong>{fmtInt(passed)}</strong> of them pass — {fmtInt(all.exploited)} exploited.
+                  With the evidence bar at {level}, <strong>{fmtInt(passed)}</strong> of them pass, {fmtInt(all.exploited)} of them exploited.
                 </>
               ) : (
-                <>At knob {level}, counting which of them pass…</>
+                <>With the evidence bar at {level}, counting which of them pass…</>
               )}
             </>
           ) : (

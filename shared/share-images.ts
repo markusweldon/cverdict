@@ -8,7 +8,7 @@ export const SHARE_IMAGE_HEIGHT = 630;
 export const SHARE_IMAGES = {
   site: { path: "/og/site.png", v: "7d215bc8", alt: "CVErdict: every CVE gets a verdict, and every verdict comes with receipts. Tiers: Exploited, Likely next, Watch, Quiet." },
   exploited: { path: "/og/exploited.png", v: "a0b7d60a", alt: "CVErdict verdict: Exploited. Confirmed exploitation: CISA KEV, CISA SSVC or the vendor." },
-  likely: { path: "/og/likely.png", v: "c744a78f", alt: "CVErdict verdict: Likely next. A Metasploit module or Nuclei template, or enough evidence to clear the default knob." },
-  watch: { path: "/og/watch.png", v: "008f360a", alt: "CVErdict verdict: Watch. Some evidence, below the default knob." },
-  quiet: { path: "/og/quiet.png", v: "e730aded", alt: "CVErdict verdict: Quiet. Little or no evidence yet, below the default knob. Quiet is not safe." },
+  likely: { path: "/og/likely.png", v: "753e2609", alt: "CVErdict verdict: Likely next. A Metasploit module or Nuclei template, or a score that clears the evidence bar." },
+  watch: { path: "/og/watch.png", v: "52e77d13", alt: "CVErdict verdict: Watch. Some evidence, below the evidence bar." },
+  quiet: { path: "/og/quiet.png", v: "720fbfca", alt: "CVErdict verdict: Quiet. Little or no evidence yet, below the evidence bar. Quiet is not safe." },
 } as const;

@@ -7,7 +7,7 @@
  * December still reads "Dec 30" in January. No formatter here returns a placeholder for a missing
  * value: it returns null and the caller leaves that part out.
  */
-import { KNOB_DEFAULT, WATCH_FLOOR, type CveDetail, type Reason, type Tier } from './contract.js';
+import { WATCH_FLOOR, type CveDetail, type Reason, type Tier } from './contract.js';
 
 /** Tier names as they read in sentences and previews. */
 export const TIER_NAMES: Readonly<Record<Tier, string>> = { exploited: 'Exploited', likely: 'Likely next', watch: 'Watch', quiet: 'Quiet' };
@@ -58,8 +58,8 @@ export function fmtPercent(fraction: unknown): string | null {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** "the default knob (50)", or "the knob (60)" when the page's knob is turned. */
-const knobText = (knob: number) => (knob === KNOB_DEFAULT ? `the default knob (${knob})` : `the knob (${knob})`);
+/** "the evidence bar (50)": the setting is named in the text, so a turned bar reads the same way. */
+const knobText = (knob: number) => `the evidence bar (${knob})`;
 
 /** The strongest exploit-artifact (X) chip that counted, else any X chip that raised the score. */
 function strongestX(d: CveDetail): Reason | undefined {
@@ -97,7 +97,7 @@ export const hasCountedEvidence = (d: CveDetail): boolean => d.reasons.some((r) 
 
 /**
  * The headline and its reason for `tier` at `knob`: "Patch now" + "exploited, KEV due Oct 29",
- * "Likely next" + "Metasploit module", "Watch" + "score 32, below the default knob (50)",
+ * "Likely next" + "Metasploit module", "Watch" + "score 32, below the evidence bar (50)",
  * "Quiet" + "no evidence yet, and quiet is not safe".
  */
 export function verdict(d: CveDetail, tier: Tier, knob: number, refYear: number): { head: string; reason: string } {

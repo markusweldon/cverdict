@@ -12,7 +12,7 @@ export const METHOD_LABEL: Readonly<Record<ReceiptMethod, string>> = {
 };
 
 export const METHOD_NOTE: Readonly<Record<ReceiptMethod, string>> = {
-  cverdict: 'Exploited or Likely next at the default knob',
+  cverdict: 'Exploited or Likely next at the default evidence bar',
   cvss7: 'Patch everything rated 7.0 or higher',
   epss10: 'Patch everything with an EPSS score of 10% or more',
 };

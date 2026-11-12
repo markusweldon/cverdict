@@ -25,7 +25,7 @@ export async function copyTicket(id: string): Promise<void> {
   }
   const level = knob.get();
   const ok = await copyText(ticketMarkdown(detail, detailTier(detail, level), level, absoluteUrl(cveHref(detail.id))));
-  toast(ok ? `Copied ${detail.id} as a ticket` : 'Couldn’t reach the clipboard — try again', ok ? 'ok' : 'error');
+  toast(ok ? `Copied ${detail.id} as a ticket` : 'Couldn’t reach the clipboard. Try again.', ok ? 'ok' : 'error');
 }
 
 /** Watch or unwatch a row's vendor (its product when no vendor is listed). */
@@ -35,7 +35,7 @@ export function watchVendorOf(row: { v: string; p: string; cna: string }): void 
     toast('This CVE lists no vendor or product to watch', 'info');
     return;
   }
-  toast(toggleWatch(name) ? `Watching ${name} — it now bypasses the knob` : `Stopped watching ${name}`, 'info');
+  toast(toggleWatch(name) ? `Watching ${name}: it now always shows, whatever the evidence bar` : `Stopped watching ${name}`, 'info');
 }
 
 export async function copyLink(url: string, what = 'Link'): Promise<void> {

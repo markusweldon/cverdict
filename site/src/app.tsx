@@ -1,7 +1,6 @@
 /** App shell: routes (Today eager, the rest lazy), global keyboard, focus and scroll management. */
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { KNOB_MAX, KNOB_MIN } from '../../shared/contract';
 import { Footer, Header } from './components/Chrome';
 import { IconRefresh } from './components/icons';
 import { Palette } from './components/Palette';
@@ -14,7 +13,7 @@ import { fmtDateTime } from './format';
 import { useData } from './hooks';
 import Today from './pages/Today';
 import { href, navigate, onNavigate, savedScroll, scrollToHash, startRouter, useRoute, type Route } from './router';
-import { keyTargets, knob, overlay } from './state';
+import { clampSiteKnob, keyTargets, knob, overlay } from './state';
 
 interface Lazy<P> {
   (props: P): preact.JSX.Element;
@@ -97,7 +96,7 @@ function RouteView({ route }: { route: Route }) {
 }
 
 const GO: Readonly<Record<string, string>> = { t: '', k: 'kev', w: 'woke', r: 'receipts', b: 'batches', e: 'explore', c: 'check', s: 'surge', m: 'method', f: 'feeds', a: 'mcp' };
-const snap = (v: number, d: number) => Math.min(KNOB_MAX, Math.max(KNOB_MIN, Math.round((v + d) / 5) * 5));
+const snap = (v: number, d: number) => clampSiteKnob(Math.round((v + d) / 5) * 5);
 
 function useGlobalKeys(): void {
   useEffect(() => {

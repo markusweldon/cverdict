@@ -1,7 +1,7 @@
-/** Today: the noise meter, knob, waterfall, signal feed, batches, KEV Clock and what changed. */
+/** Today: the noise meter, evidence bar, waterfall, signal feed, batches, KEV Clock and what changed. */
 import { Fragment } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, SIGNAL_MIN_SCORE, type Batch, type Meta, type Row, type Tier } from '../../../shared/contract';
+import { KNOB_DEFAULT, SIGNAL_MIN_SCORE, type Batch, type Meta, type Row, type Tier } from '../../../shared/contract';
 import { copyTicket, watchVendorOf } from '../actions';
 import { BatchCard } from '../components/BatchCard';
 import { Changes } from '../components/Changes';
@@ -40,7 +40,7 @@ import {
 import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, fmtSlot, HOUR_MS, oneIn, plural } from '../format';
 import { prefersReducedMotion, useCountUp, useData, useDebounced, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
 import { cveHref, historyValue, href, navigate, setHistoryValue, setQuery, useLocation } from '../router';
-import { KNOB_PRESETS, knob, previousVisit, useStore, watchlist } from '../state';
+import { KNOB_PRESETS, knob, previousVisit, SITE_KNOB_MAX, SITE_KNOB_MIN, useStore, watchlist } from '../state';
 import { TIER_META } from '../tiers';
 
 const PAGE = 40;
@@ -72,7 +72,7 @@ function Ticker({ meta, passed24h, kevSoon, batchesWeek }: { meta: Meta; passed2
   const state = freshness(meta, now);
   const items: { label: string; value: string; tone?: string; to?: string; tip: string }[] = [
     { label: 'Published 24h', value: fmtInt(meta.counts.published_24h), tip: meta.definitions.published_24h ?? '' },
-    { label: 'Passed 24h', value: fmtInt(passed24h), tone: passed24h ? 'lit' : undefined, tip: 'Exploited or Likely at the current knob, published in the last 24 hours' },
+    { label: 'Passed 24h', value: fmtInt(passed24h), tone: passed24h ? 'lit' : undefined, tip: 'Published in the last 24 hours and Exploited or Likely at the current evidence bar. Most CVEs clear the bar days after they are published.' },
     { label: 'KEV due ≤ 72h', value: kevSoon === null ? '…' : fmtInt(kevSoon), tone: kevSoon ? 'warn' : undefined, to: 'kev', tip: 'CISA KEV deadlines in the next three days' },
     { label: 'Batches this week', value: batchesWeek === null ? '…' : fmtInt(batchesWeek), to: 'batches', tip: 'Patch-day cohorts (50+ CVEs from one CNA in a day) in the last 7 days' },
     { label: 'Data age', value: fmtAge(meta.generated_at, now), tone: state === 'fresh' ? 'ok' : state === 'late' ? 'warn' : 'bad', to: 'method#sources', tip: 'Time since the last hourly pipeline run' },
@@ -124,7 +124,7 @@ function Hero({ meta, counts, level }: { meta: Meta; counts: TierCounts; level: 
         </span>
       </h1>
       <p class="hero__sub">
-        <strong>{fmtPct(passed / Math.max(1, total))}</strong> of the flood · <strong>{oneIn(passed, total)}</strong> · at knob <span class="mono">{level}</span>
+        <strong>{fmtPct(passed / Math.max(1, total))}</strong> of the flood · <strong>{oneIn(passed, total)}</strong> · evidence bar at <span class="mono">{level}</span>
       </p>
       <TierBar counts={counts} total={total} />
       <ul class="legend" aria-label="By tier">
@@ -140,31 +140,59 @@ function Hero({ meta, counts, level }: { meta: Meta; counts: TierCounts; level: 
   );
 }
 
-function KnobPanel({ level, passed, total, exact }: { level: number; passed: number; total: number; exact: boolean }) {
+/** Average CVEs a day, rounded: "about 10 a day", "about 4 a day", or "under 1 a day". */
+function perDay(passed: number, days: number): { about: string; n: string } {
+  const n = passed / Math.max(1, days);
+  return n < 1 ? { about: 'under', n: '1' } : { about: 'about', n: fmtInt(Math.round(n)) };
+}
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function PresetCount({ day }: { day: { about: string; n: string } }) {
   return (
-    <section class="knobpanel" aria-label="Evidence threshold">
+    <span class="seg__count">
+      {/* Phones drop "about" to fit; "under" stays. */}
+      <span class={day.about === 'about' ? 'seg__about' : undefined}>{day.about} </span>
+      {day.n} a day
+    </span>
+  );
+}
+
+function KnobPanel({ level, passed, days, presetPassed }: { level: number; passed: number; days: number; presetPassed: (value: number) => number }) {
+  const day = perDay(passed, days);
+  return (
+    <section class="knobpanel" aria-label="Evidence bar">
       <Knob
         value={level}
-        min={KNOB_MIN}
-        max={KNOB_MAX}
+        min={SITE_KNOB_MIN}
+        max={SITE_KNOB_MAX}
         defaultValue={KNOB_DEFAULT}
         marks={KNOB_PRESETS.map((p) => p.value)}
         onChange={(v) => knob.set(v)}
-        label="Evidence threshold (knob)"
-        valueText={`${level}: ${fmtInt(passed)} CVEs pass`}
+        label="Evidence bar"
+        valueText={`${level} of 100, ${day.about} ${day.n} CVEs a day pass`}
       />
       <div class="knobpanel__body">
-        <p class="eyebrow">The knob</p>
+        <div>
+          <p class="eyebrow">Evidence bar</p>
+          <p class="knobpanel__desc">The score out of 100 a CVE needs to be Likely next.</p>
+        </div>
         <p class="knobpanel__read">
-          <span class="knobpanel__num">{fmtInt(passed)}</span> pass<span class="knobpanel__pct"> · <span class="mono">{fmtPct(passed / Math.max(1, total))}</span></span>
-          {!exact && <span class="knobpanel__approx" data-tip="Loading every CVE to count scores between 30 and 34 exactly"> · counting…</span>}
+          <span class={day.about === 'about' ? 'knobpanel__about' : undefined}>{cap(day.about)} </span>
+          <span class="knobpanel__num">{day.n}</span> a day
+          <span class="sr-only">, </span>
+          <span class="knobpanel__pct">
+            <span class="mono">{fmtInt(passed)}</span> in {days} days
+          </span>
         </p>
-        <p class="knobpanel__hint">Turn up for fewer, surer CVEs. Exploited and weaponized always pass; watched vendors bypass the knob.</p>
+        <p class="knobpanel__hint">
+          Raise the bar for fewer CVEs with more evidence. Lower it to catch more. Exploited CVEs and those with a Metasploit module or Nuclei template always pass. Watched vendors always show.
+        </p>
       </div>
-      <div class="seg seg--presets" role="group" aria-label="Knob presets">
+      <div class="seg seg--presets" role="group" aria-label="Evidence bar presets">
         {KNOB_PRESETS.map((p) => (
-          <button key={p.value} type="button" class="seg__btn" aria-pressed={level === p.value ? 'true' : 'false'} onClick={() => knob.set(p.value)}>
-            {p.label} <span class="seg__count">{p.value}</span>
+          <button key={p.value} type="button" class="seg__btn" aria-pressed={level === p.value ? 'true' : 'false'} onClick={() => knob.set(p.value)} data-tip={`Evidence bar at ${p.value}`}>
+            <span class="seg__label">{p.label}</span>
+            <PresetCount day={perDay(presetPassed(p.value), days)} />
           </button>
         ))}
       </div>
@@ -228,7 +256,7 @@ export default function Today() {
   const batches = useData(data.batches);
   const kev = useData(data.kev);
   const changes = useData(data.changes);
-  // Every row is needed for knob < 35 (scores 30–34 are not in signal.json), for the Watch tier
+  // Every row is needed below the signal floor (scores under 35 are not in signal.json), for the Watch tier
   // (scores 25–34) and for watched quiet CVEs.
   const needIndex = level < SIGNAL_MIN_SCORE || watch.length > 0 || filter.tiers.has('watch');
   const index = useData(needIndex && signal.status === 'ready' ? data.index : null);
@@ -251,6 +279,18 @@ export default function Today() {
     if (meta.status !== 'ready' || rows.length === 0) return null;
     return complete ? countTiers(rows, level) : retier(meta.data.counts.window_by_tier, rows, level);
   }, [meta.status, rows, level, complete]);
+
+  // What each preset would pass, for the per-day counts on the preset buttons.
+  const presetCounts = useMemo(() => {
+    const out = new Map<number, number>();
+    if (meta.status !== 'ready' || rows.length === 0) return out;
+    for (const p of KNOB_PRESETS) {
+      const c = complete ? countTiers(rows, p.value) : retier(meta.data.counts.window_by_tier, rows, p.value);
+      out.set(p.value, c.exploited + c.likely);
+    }
+    return out;
+  }, [meta.status, rows, complete]);
+  const presetPassed = (v: number) => presetCounts.get(v) ?? 0;
 
   const feed = useMemo(() => feedRows(rows, filter, level, watch).sort(byScore), [rows, filter, level, watch]);
   // Tier toggle counts: everything the other filters let through, whatever the toggles say.
@@ -276,7 +316,7 @@ export default function Today() {
     selected.current = feed[i]?.row.id ?? null;
     setSel(i);
   };
-  // A new filter or knob starts the list over (but remounting on Back keeps the restored limit).
+  // A new filter or bar starts the list over (but remounting on Back keeps the restored limit).
   const shape = useRef({ filterKey, level });
   useEffect(() => {
     if (shape.current.filterKey !== filterKey) select(-1);
@@ -341,14 +381,14 @@ export default function Today() {
           )}
         </div>
         <div class="today__knob">
-          <KnobPanel level={level} passed={counts ? counts.exploited + counts.likely : 0} total={meta.status === 'ready' ? meta.data.counts.window_published : 0} exact={level >= SIGNAL_MIN_SCORE || complete} />
+          <KnobPanel level={level} passed={counts ? counts.exploited + counts.likely : 0} days={meta.status === 'ready' ? meta.data.window.days : 30} presetPassed={presetPassed} />
         </div>
 
         <section class="panel today__wf" aria-labelledby="wf-h">
           <header class="panel__head">
             <div>
               <h2 id="wf-h" class="panel__title">Signal waterfall</h2>
-              <p class="panel__sub">Every CVE in the window, {slot}. Grey is noise; lit ticks passed the knob. Pick a column to see that day’s CVEs in Explore.</p>
+              <p class="panel__sub">Every CVE in the window, {slot}. Grey is noise; lit ticks cleared the bar. Pick a column to see that day’s CVEs in Explore.</p>
             </div>
             <ul class="legend legend--inline" aria-hidden="true">
               {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
@@ -368,7 +408,7 @@ export default function Today() {
               annotations={annotations}
               onBinHours={setBinHours}
               dayHref={(day) => exploreDayHref(day, level)}
-              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely at knob ${level}.`}
+              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely with the evidence bar at ${level}.`}
             />
           ) : (
             <Loading label="Drawing the waterfall" lines={1} height="176px" />
@@ -401,7 +441,7 @@ export default function Today() {
                 </button>
               }
             >
-              Quiet is not the same as safe — try a wider knob or fewer filters.
+              Quiet is not the same as safe. Try a lower bar or fewer filters.
             </EmptyState>
           ) : (
             <>

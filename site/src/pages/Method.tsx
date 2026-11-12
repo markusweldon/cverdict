@@ -12,6 +12,7 @@ import { data } from '../data';
 import { fmtAge, fmtDateTime, fmtInt, signed } from '../format';
 import { useData, useNow, useTitle } from '../hooks';
 import { href } from '../router';
+import { SITE_KNOB_MAX, SITE_KNOB_MIN } from '../state';
 import { FAMILY_META, FAMILY_ORDER, SOURCE_NAMES, TIER_META } from '../tiers';
 
 const FORMULA = `raw   = ${BASE_POINTS} + X + SEV + SSVC + PRIOR + NOISE
@@ -27,7 +28,7 @@ const STEPS: readonly [string, string][] = [
   ['Read every CVE', 'One streaming pass over the full CVE List V5 git repository each hour — CNA records plus CISA’s ADP enrichment. NVD is not used: it stopped enriching most CVEs in April 2026.'],
   ['Join public evidence', 'CISA KEV, FIRST EPSS, Metasploit modules, Nuclei templates, Exploit-DB and PoC-in-GitHub, matched by CVE ID.'],
   ['Score with chips', 'Each piece of evidence is a chip worth a fixed number of points. Within a family only the strongest counts; across families points add.'],
-  ['Turn the knob', `Exploited CVEs always pass. Weaponized ones (Metasploit or Nuclei) are always at least Likely. Everything else passes when its score reaches the knob (default ${KNOB_DEFAULT}).`],
+  ['Set the evidence bar', `Exploited CVEs always pass. Weaponized ones (Metasploit or Nuclei) are always at least Likely. Everything else passes when its score reaches the evidence bar (default ${KNOB_DEFAULT}).`],
   ['Publish static files', 'JSON, Atom and iCalendar files on a git branch. AI agents can read the same files through a read-only MCP server that runs on your machine. No accounts or API keys. Fork it and run your own.'],
 ];
 
@@ -186,7 +187,7 @@ export default function Method() {
                   <TierPill tier="likely" />
                 </td>
                 <td>
-                  Metasploit/Nuclei, or score ≥ knob ({KNOB_MIN}–{KNOB_MAX}, default {KNOB_DEFAULT})
+                  Metasploit/Nuclei, or score ≥ the evidence bar ({SITE_KNOB_MIN} to {SITE_KNOB_MAX} here, {KNOB_MIN} to {KNOB_MAX} in the API, default {KNOB_DEFAULT})
                 </td>
                 <td>{TIER_META.likely.blurb}</td>
               </tr>
@@ -207,7 +208,7 @@ export default function Method() {
             </tbody>
           </table>
         </div>
-        <p class="muted">The signal feed ships every CVE with score ≥ {SIGNAL_MIN_SCORE} or confirmed/weaponized, so the knob works offline in your browser.</p>
+        <p class="muted">The signal feed ships every CVE with score ≥ {SIGNAL_MIN_SCORE} or confirmed/weaponized, so the evidence bar works offline in your browser.</p>
       </section>
 
       <section id="chips" class="prose-section">

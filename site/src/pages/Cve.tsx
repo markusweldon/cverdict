@@ -483,7 +483,7 @@ function Detail({ d }: { d: CveDetail }) {
           </section>
           {watchNames.length > 0 && (
             <section class="panel" aria-label="Watchlist">
-              <p class="panel__sub">Watched vendors and products bypass the knob on Today.</p>
+              <p class="panel__sub">Watched vendors and products always show on Today, whatever the evidence bar.</p>
               <div class="watchbtns">
                 {watchNames.map((n) => {
                   const on = watch.includes(normalizeName(n));
@@ -536,7 +536,7 @@ export default function CvePage({ id }: { id: string }) {
   const detail = useData(norm ? data.detail(norm) : null);
   const meta = useData(data.meta);
   const level = useStore(knob);
-  // Once the record is in, the title and description say what a link preview says, at this page's knob.
+  // Once the record is in, the title and description say what a link preview says, at this page's evidence bar.
   const d = detail.status === 'ready' ? detail.data : null;
   const tier = d ? detailTier(d, level) : null;
   useTitle(d && tier ? shareTitle(d, tier) : (norm ?? 'Not a CVE ID'));

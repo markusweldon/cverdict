@@ -82,7 +82,7 @@ describe('ticketMarkdown', () => {
 
   it('leads with the verdict, deadline and score', () => {
     expect(md).toContain('### CVE-2026-112850 · code-projects · Shop');
-    expect(md).toContain('**Verdict:** Patch now — exploited, KEV due Oct 28 · score 100/100');
+    expect(md).toContain('**Verdict:** Patch now: exploited, KEV due Oct 28 · score 100/100');
     expect(md).toContain('due **2026-10-28**');
     expect(md).toContain('forensic triage required');
   });
@@ -106,8 +106,8 @@ describe('ticketMarkdown', () => {
 describe('verdict', () => {
   it('explains each tier in words', () => {
     expect(verdict(detail, 'exploited', 50)).toEqual({ head: 'Patch now', reason: 'exploited, KEV due Oct 28' });
-    expect(verdict({ ...detail, kev: null, score: { ...detail.score, value: 38 } }, 'watch', 50).reason).toBe('score 38, below the default knob (50)');
-    expect(verdict({ ...detail, kev: null, score: { ...detail.score, value: 38 } }, 'watch', 60).reason).toBe('score 38, below the knob (60)');
+    expect(verdict({ ...detail, kev: null, score: { ...detail.score, value: 38 } }, 'watch', 50).reason).toBe('score 38, below the evidence bar (50)');
+    expect(verdict({ ...detail, kev: null, score: { ...detail.score, value: 38 } }, 'watch', 60).reason).toBe('score 38, below the evidence bar (60)');
     // Quiet is never "no evidence" while a counted chip raised the score.
     expect(verdict({ ...detail, score: { ...detail.score, value: 20 } }, 'quiet', 50).reason).toBe('score 20, below the watch floor (25), and quiet is not safe');
     expect(verdict({ ...detail, reasons: [] }, 'quiet', 50).reason).toBe('no evidence yet, and quiet is not safe');

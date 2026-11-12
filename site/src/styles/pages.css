@@ -201,8 +201,18 @@
   letter-spacing: -0.02em;
 }
 
-.knobpanel__approx {
-  color: var(--faint);
+/* "About 10 a day" over "301 in 30 days". */
+.knobpanel__pct {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.knobpanel__desc {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
 .knobpanel__hint {
@@ -217,9 +227,20 @@
   flex-wrap: nowrap;
 }
 
+/* Each preset names its result: "More" over "about 20 a day". */
 .seg--presets .seg__btn {
   flex: 1;
+  flex-direction: column;
   justify-content: center;
+  gap: 1px;
+  height: auto;
+  min-height: 40px;
+  padding: 4px 6px;
+}
+
+.seg--presets .seg__count {
+  font-family: inherit;
+  white-space: nowrap;
 }
 
 /* ── CVE ── */
@@ -1758,9 +1779,11 @@
     backdrop-filter: blur(14px);
   }
 
+  /* Vertical swipes scroll the page; sideways drags still turn the dial. */
   .knobpanel .knob {
     width: 52px !important;
     height: 52px !important;
+    touch-action: pan-y;
   }
 
   .knobpanel .knob svg {
@@ -1773,9 +1796,11 @@
   }
 
   .knobpanel .eyebrow,
+  .knobpanel__desc,
   .knobpanel__hint,
   .knobpanel__pct,
-  .seg--presets .seg__count {
+  .knobpanel__about,
+  .seg--presets .seg__about {
     display: none;
   }
 
@@ -1794,8 +1819,13 @@
   }
 
   .seg--presets .seg__btn {
-    padding: 0 4px;
+    min-height: 36px;
+    padding: 2px 4px;
     font-size: 12px;
+  }
+
+  .seg--presets .seg__count {
+    font-size: 10.5px;
   }
 
   .panel__head {

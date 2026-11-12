@@ -316,7 +316,7 @@ export default function Surge() {
                 <h2 id="daily-h" class="panel__title">
                   The last 30 days
                 </h2>
-                <p class="panel__sub">Published per day, and the few that passed at the default knob. Same days, separate scales.</p>
+                <p class="panel__sub">Published per day, and the few that passed at the default evidence bar. Same days, separate scales.</p>
               </div>
             </header>
             <figure class="chart">

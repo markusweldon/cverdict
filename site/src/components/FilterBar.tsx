@@ -122,7 +122,7 @@ function Watchlist({ watchOnly, onWatchOnly }: { watchOnly: boolean; onWatchOnly
       </button>
       {open && (
         <div class="watch__panel" id="watch-panel">
-          <p class="watch__hint">Watched vendors and products bypass the knob. Stored only in this browser.</p>
+          <p class="watch__hint">Watched vendors and products always show, whatever the evidence bar. Stored only in this browser.</p>
           <form class="watch__add" onSubmit={add}>
             <input type="text" value={draft} onInput={(e) => setDraft(e.currentTarget.value)} placeholder="Add a vendor or product" aria-label="Vendor or product to watch" />
             <button type="submit" class="btn btn--sm">

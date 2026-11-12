@@ -5,8 +5,8 @@ import { verdict as sharedVerdict } from '../../shared/verdict';
 
 export const TIER_META: Readonly<Record<Tier, { label: string; verdict: string; blurb: string }>> = {
   exploited: { label: 'Exploited', verdict: 'Patch now', blurb: 'Confirmed exploitation: CISA KEV, CISA SSVC “active”, or the vendor says so.' },
-  likely: { label: 'Likely', verdict: 'Likely next', blurb: 'A public exploit artifact, or enough evidence to clear the knob.' },
-  watch: { label: 'Watch', verdict: 'Watch', blurb: `Some evidence, below the knob but above the watch floor (${WATCH_FLOOR}).` },
+  likely: { label: 'Likely', verdict: 'Likely next', blurb: 'A public exploit artifact, or a score that clears the evidence bar.' },
+  watch: { label: 'Watch', verdict: 'Watch', blurb: `Some evidence, below the evidence bar but above the watch floor (${WATCH_FLOOR}).` },
   quiet: { label: 'Quiet', verdict: 'Quiet', blurb: 'No evidence yet. Quiet ≠ safe.' },
 };
 
