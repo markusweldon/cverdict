@@ -219,8 +219,8 @@ stored in the data files is the one at the default bar. CVEs with a Metasploit m
 are Likely next at any setting, because they can be exploited, or scanned for, at internet scale today.
 Vendors and products on your watchlist always show on Today, whatever the bar.
 
-**Range.** The site's dial runs from 35 to 65 in steps of 5, with presets *More* 40, *Default* 50
-and *Fewer* 60. The pipeline (`--knob`), the data files and the MCP server still accept 30 to 80
+**Range.** The site's dial runs from 35 to 65 in steps of 5, with presets *Broad* 40, *Balanced* 50
+and *Strict* 60. The pipeline (`--knob`), the data files and the MCP server still accept 30 to 80
 (`KNOB_MIN` and `KNOB_MAX`), so nothing that already uses them breaks. A `?knob=` link outside 35 to
 65 opens at the nearest end: `?knob=30` at 35, `?knob=80` at 65. Three landmarks follow from the
 weights in [`shared/model.ts`](../shared/model.ts):

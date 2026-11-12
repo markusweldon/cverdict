@@ -56,9 +56,9 @@ describe('site range', () => {
 
   it('orders the presets low to high, the way the dial turns', () => {
     expect(KNOB_PRESETS.map((p) => [p.label, p.value])).toEqual([
-      ['More', 40],
-      ['Default', KNOB_DEFAULT],
-      ['Fewer', 60],
+      ['Broad', 40],
+      ['Balanced', KNOB_DEFAULT],
+      ['Strict', 60],
     ]);
     for (const p of KNOB_PRESETS) expect(clampSiteKnob(p.value)).toBe(p.value);
   });

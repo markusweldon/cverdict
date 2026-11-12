@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { RECEIPT_METHODS, type BacktestReceipts } from '../../../shared/contract';
+import { KNOB_DEFAULT, RECEIPT_METHODS, type BacktestReceipts } from '../../../shared/contract';
 import { SCORE_MODEL } from '../../../shared/model';
 import {
   BACKTEST_REFRESH_DAYS,
@@ -17,6 +17,7 @@ import {
 } from '../../src/backtest';
 import { buildOutput } from '../../src/emit/build';
 import { buildKevPrior, scoreCve } from '../../src/score';
+import { backtestAt } from '../../../site/src/receipts';
 import type { NormalizedCve } from '../../src/types';
 import { cvss, edb, makeCve, makeEnrichment, makeIngest, makeKev, makeKevCatalog, msf, nucleiTemplate, repo, ssvc, type EnrichmentSpec } from '../fixtures/model/builders';
 
@@ -237,6 +238,29 @@ describe('runBacktest', () => {
     expect(it0.upper).toEqual({ cverdict: true, cvss7: true, epss10: true });
     expect(it0.left_out).toEqual(['nuclei', 'cna_record']);
     expect(b.volume).toMatchObject({ n: 2, methods: [{ method: 'cverdict', flagged: 1 }, { method: 'cvss7', flagged: 2 }, { method: 'epss10', flagged: 0 }] });
+  });
+
+  it('recounts to the stored CVErdict figure at the default bar on the site (Today\'s track-record line)', () => {
+    const ids = ['CVE-2026-100101', 'CVE-2026-100102', 'CVE-2026-100103', 'CVE-2026-100104', 'CVE-2026-100105'];
+    const cves = [
+      kevCve({ id: ids[0], ...cvss(9.8) }),
+      kevCve({ id: ids[1], ...cvss(5.0) }),
+      kevCve({ id: ids[2], ...cvss(9.8), ssvc: ssvc('active', 'yes', 'total', before(2)), adpUpdated: before(1) }),
+      kevCve({ id: ids[3], ...cvss(4.0) }),
+      kevCve({ id: ids[4], ...cvss(7.5), ssvc: ssvc('poc', 'yes', 'total', before(2)), adpUpdated: before(1) }),
+    ];
+    const b = run(
+      cves,
+      ids.map((id) => makeKev(id, { dateAdded: LISTED })),
+      { metasploit: { [ids[3]]: [msf('exploit/linux/http/acme')] }, exploitdb: { [ids[4]]: [edb('9', '2026-10-01')] } },
+      { metasploitModified: new Map([[ids[3], before(3)]]) },
+    );
+    const stored = b.sets.find((s) => s.key === 'recent')!.strict.find((m) => m.method === 'cverdict')!;
+    expect(stored.before).toBeGreaterThan(0);
+    expect(stored.before).toBeLessThan(stored.n);
+    expect(backtestAt(b, KNOB_DEFAULT)).toEqual({ flagged: stored.before, n: stored.n });
+    // Item by item too, so the rule matches and not just the total.
+    for (const i of b.items) expect(backtestAt({ ...b, items: [i] }, KNOB_DEFAULT)?.flagged).toBe(i.strict.cverdict ? 1 : 0);
   });
 });
 

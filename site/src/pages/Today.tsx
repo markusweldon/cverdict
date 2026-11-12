@@ -40,6 +40,7 @@ import {
 import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, fmtSlot, HOUR_MS, oneIn, plural } from '../format';
 import { prefersReducedMotion, useCountUp, useData, useDebounced, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
 import { cveHref, historyValue, href, navigate, setHistoryValue, setQuery, useLocation } from '../router';
+import { backtestAt } from '../receipts';
 import { KNOB_PRESETS, knob, previousVisit, SITE_KNOB_MAX, SITE_KNOB_MIN, useStore, watchlist } from '../state';
 import { TIER_META } from '../tiers';
 
@@ -154,11 +155,14 @@ function dialText(level: number, day: { about: string; n: string } | null): stri
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/** "about 4 CVEs a day", "under 1 CVE a day", or null while not counted. */
+const dayWords = (day: { about: string; n: string } | null): string | null => (day ? `${day.about} ${day.n} ${day.about === 'under' ? 'CVE' : 'CVEs'} a day` : null);
+
 function PresetCount({ day }: { day: { about: string; n: string } | null }) {
   // Not counted yet: an empty line of the same height, so the buttons do not change size when counts arrive.
   if (!day) return <span class="seg__count" aria-hidden="true">{'\u00a0'}</span>;
   return (
-    <span class="seg__count">
+    <span class="seg__count" aria-hidden="true">
       {/* Phones drop "about" to fit; "under" stays. */}
       <span class={day.about === 'about' ? 'seg__about' : undefined}>{day.about} </span>
       {day.n} a day
@@ -166,7 +170,38 @@ function PresetCount({ day }: { day: { about: string; n: string } | null }) {
   );
 }
 
-function KnobPanel({ level, passed, days, presetPassed }: { level: number; passed: number | null; days: number; presetPassed: (value: number) => number | null }) {
+/**
+ * The backtest at the current bar: "Flagged 40 of 125 recent KEV additions before CISA did."
+ * `undefined` while receipts.json loads (an empty line of the same height), `null` hides it.
+ */
+function TrackRecord({ level, track }: { level: number; track: { flagged: number; n: number } | null | undefined }) {
+  if (track === null) return null;
+  if (track === undefined) return <p class="knobpanel__track" aria-hidden="true">{'\u00a0'}</p>;
+  return (
+    <p class="knobpanel__track">
+      <a
+        href={href('receipts#backtest')}
+        data-tip={`Backtest, in hindsight: recent CVEs that CISA added to KEV, scored with the evidence from the day before each listing, at evidence bar ${level}`}
+      >
+        Flagged {fmtInt(track.flagged)} of {fmtInt(track.n)} recent KEV additions before CISA did.
+      </a>
+    </p>
+  );
+}
+
+function KnobPanel({
+  level,
+  passed,
+  days,
+  presetPassed,
+  track,
+}: {
+  level: number;
+  passed: number | null;
+  days: number;
+  presetPassed: (value: number) => number | null;
+  track: { flagged: number; n: number } | null | undefined;
+}) {
   const day = perDay(passed, days);
   return (
     <section class="knobpanel" aria-label="Evidence bar">
@@ -177,18 +212,19 @@ function KnobPanel({ level, passed, days, presetPassed }: { level: number; passe
         defaultValue={KNOB_DEFAULT}
         marks={KNOB_PRESETS.map((p) => p.value)}
         onChange={(v) => knob.set(v)}
+        size={122}
         label="Evidence bar"
         valueText={dialText(level, day)}
       />
       <div class="knobpanel__body">
         <div>
           <p class="eyebrow">Evidence bar</p>
-          <p class="knobpanel__desc">The score out of 100 a CVE needs to be Likely next.</p>
+          <p class="knobpanel__desc">Minimum score (out of 100) to flag a CVE as likely exploited next.</p>
         </div>
         {day && passed !== null ? (
           <p class="knobpanel__read">
             <span class={day.about === 'about' ? 'knobpanel__about' : undefined}>{cap(day.about)} </span>
-            <span class="knobpanel__num">{day.n}</span> a day
+            <span class="knobpanel__num">{day.n}</span> {day.about === 'under' ? 'CVE' : 'CVEs'} a day
             <span class="sr-only">, </span>
             <span class="knobpanel__pct">
               <span class="mono">{fmtInt(passed)}</span> in {days} days
@@ -202,15 +238,28 @@ function KnobPanel({ level, passed, days, presetPassed }: { level: number; passe
           </p>
         )}
       </div>
-      <p class="knobpanel__hint">Raise the bar for fewer CVEs with more evidence. Exploited CVEs and those with a Metasploit module or Nuclei template always pass. Watched vendors always show.</p>
-      <div class="seg seg--presets" role="group" aria-label="Evidence bar presets">
-        {KNOB_PRESETS.map((p) => (
-          <button key={p.value} type="button" class="seg__btn" aria-pressed={level === p.value ? 'true' : 'false'} onClick={() => knob.set(p.value)} data-tip={`Evidence bar at ${p.value}`}>
-            <span class="seg__label">{p.label}</span>
-            <PresetCount day={perDay(presetPassed(p.value), days)} />
-          </button>
-        ))}
+      <p class="knobpanel__hint">Raise it for a shorter list with stronger evidence. Exploited CVEs and those with a Metasploit module or Nuclei template always show.</p>
+      <div class="seg seg--presets" role="group" aria-label={`Evidence bar presets: ${KNOB_PRESETS.map((p) => p.label).join(', ')}`}>
+        {KNOB_PRESETS.map((p) => {
+          const pd = perDay(presetPassed(p.value), days);
+          const words = dayWords(pd);
+          return (
+            <button
+              key={p.value}
+              type="button"
+              class="seg__btn"
+              aria-pressed={level === p.value ? 'true' : 'false'}
+              aria-label={`${p.label}, ${words ? `${words}, ` : ''}evidence bar at ${p.value}`}
+              onClick={() => knob.set(p.value)}
+              data-tip={`${p.label}: evidence bar at ${p.value}`}
+            >
+              <span class="seg__label">{p.label}</span>
+              <PresetCount day={pd} />
+            </button>
+          );
+        })}
       </div>
+      <TrackRecord level={level} track={track} />
     </section>
   );
 }
@@ -306,6 +355,13 @@ export default function Today() {
     return out;
   }, [meta.status, rows, complete]);
   const presetPassed = (v: number) => presetCounts.get(v) ?? null;
+  // The track-record line: receipts.json (about 150 kB, 23 kB gzipped) loads once the signal is in,
+  // so it never competes with the rest of Today. Missing or without a backtest: the line hides.
+  const receipts = useData(signal.status === 'ready' ? data.receipts : null);
+  const track = useMemo(
+    () => (receipts.status === 'ready' ? backtestAt(receipts.data.backtest, level) : receipts.status === 'error' ? null : undefined),
+    [receipts, level],
+  );
 
   const feed = useMemo(() => feedRows(rows, filter, level, watch).sort(byScore), [rows, filter, level, watch]);
   // Tier toggle counts: everything the other filters let through, whatever the toggles say.
@@ -396,7 +452,7 @@ export default function Today() {
           )}
         </div>
         <div class="today__knob">
-          <KnobPanel level={level} passed={counts ? counts.exploited + counts.likely : null} days={meta.status === 'ready' ? meta.data.window.days : 30} presetPassed={presetPassed} />
+          <KnobPanel level={level} passed={counts ? counts.exploited + counts.likely : null} days={meta.status === 'ready' ? meta.data.window.days : 30} presetPassed={presetPassed} track={track} />
         </div>
 
         <section class="panel today__wf" aria-labelledby="wf-h">

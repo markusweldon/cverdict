@@ -90,9 +90,9 @@ export function parseKnob(raw: string | null): number {
 
 /** Low to high, the same way the dial turns. */
 export const KNOB_PRESETS = [
-  { label: 'More', value: 40 },
-  { label: 'Default', value: KNOB_DEFAULT },
-  { label: 'Fewer', value: 60 },
+  { label: 'Broad', value: 40 },
+  { label: 'Balanced', value: KNOB_DEFAULT },
+  { label: 'Strict', value: 60 },
 ] as const;
 
 export const knob = createStore(parseKnob(initialParams().get('knob')));

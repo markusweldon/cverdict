@@ -1,5 +1,6 @@
 /** Pure helpers for the Receipts page: labels, small-sample rules and the headline sentence. */
-import type { BacktestItem, ForwardReceipts, LeadDays, MethodScore, ReceiptFlag, ReceiptMethod } from '../../shared/contract';
+import { tierFor, type BacktestItem, type BacktestReceipts, type ForwardReceipts, type LeadDays, type MethodScore, type ReceiptFlag, type ReceiptMethod } from '../../shared/contract';
+import { CHIP_BY_ID } from '../../shared/model';
 import { fmtDate, fmtInt, fmtPct, plural } from './format';
 
 /** Below this many CVEs a share is not shown: the count is, with a note that the sample is small. */
@@ -86,4 +87,25 @@ export function filterBacktest(items: readonly BacktestItem[], filter: BacktestF
 /** "yes", "only with undated evidence" (`upper`) or "no" for one method on one backtest CVE. */
 export function backtestMark(i: BacktestItem, m: ReceiptMethod): 'yes' | 'upper' | 'no' {
   return i.strict[m] ? 'yes' : i.upper[m] ? 'upper' : 'no';
+}
+
+/**
+ * The backtest's "recent" headline recounted at another evidence bar: how many recent KEV additions
+ * CVErdict would have flagged before CISA listed them. Each item's time-matched score and fired chips
+ * go through the same tierFor() as every tier on the site: an exploitation chip makes it Exploited,
+ * a Metasploit module or Nuclei template makes it at least Likely. At the default bar this equals the
+ * stored strict CVErdict figure. Null when there is no backtest or no recent CVE in it.
+ */
+export function backtestAt(b: BacktestReceipts | null | undefined, knob: number): { flagged: number; n: number } | null {
+  if (!b || !Array.isArray(b.items)) return null;
+  const recent = b.items.filter((i) => !i.old);
+  if (recent.length === 0) return null;
+  let flagged = 0;
+  for (const i of recent) {
+    const exploited = i.chips.some((id) => CHIP_BY_ID[id]?.family === 'E');
+    const weaponized = i.chips.includes('x.metasploit') || i.chips.includes('x.nuclei');
+    const t = tierFor(i.score, exploited, weaponized, knob);
+    if (t === 'exploited' || t === 'likely') flagged++;
+  }
+  return { flagged, n: recent.length };
 }
