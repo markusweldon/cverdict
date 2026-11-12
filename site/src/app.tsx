@@ -13,7 +13,7 @@ import { fmtDateTime } from './format';
 import { useData } from './hooks';
 import Today from './pages/Today';
 import { href, navigate, onNavigate, savedScroll, scrollToHash, startRouter, useRoute, type Route } from './router';
-import { clampSiteKnob, keyTargets, knob, overlay } from './state';
+import { keyTargets, knob, overlay, stepKnob } from './state';
 
 interface Lazy<P> {
   (props: P): preact.JSX.Element;
@@ -96,7 +96,6 @@ function RouteView({ route }: { route: Route }) {
 }
 
 const GO: Readonly<Record<string, string>> = { t: '', k: 'kev', w: 'woke', r: 'receipts', b: 'batches', e: 'explore', c: 'check', s: 'surge', m: 'method', f: 'feeds', a: 'mcp' };
-const snap = (v: number, d: number) => clampSiteKnob(Math.round((v + d) / 5) * 5);
 
 function useGlobalKeys(): void {
   useEffect(() => {
@@ -157,10 +156,10 @@ function useGlobalKeys(): void {
           overlay.set('help');
           break;
         case '[':
-          knob.set((v) => snap(v, -5));
+          knob.set((v) => stepKnob(v, -1));
           break;
         case ']':
-          knob.set((v) => snap(v, 5));
+          knob.set((v) => stepKnob(v, 1));
           break;
         default:
           return;

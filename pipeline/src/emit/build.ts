@@ -99,12 +99,12 @@ function buildMeta({ ingest: ing, window, batches, now, windowStart, windowDays,
   };
   const definitions: Record<keyof Meta['counts'], string> = {
     window_published: `CVE records in PUBLISHED state whose datePublished is within the last ${windowDays} days.`,
-    window_passed: `Of those, the ones in the Exploited or Likely-next tier at the default knob (${knob}).`,
-    window_by_tier: `Window CVEs per tier at the default knob (${knob}).`,
+    window_passed: `Of those, the ones in the Exploited or Likely-next tier at the default evidence bar (${knob}).`,
+    window_by_tier: `Window CVEs per tier at the default evidence bar (${knob}).`,
     published_24h: 'CVEs published in the last 24 hours.',
-    passed_24h: 'Of those, Exploited or Likely next at the default knob.',
+    passed_24h: 'Of those, Exploited or Likely next at the default evidence bar.',
     published_7d: 'CVEs published in the last 7 days.',
-    passed_7d: 'Of those, Exploited or Likely next at the default knob.',
+    passed_7d: 'Of those, Exploited or Likely next at the default evidence bar.',
     published_mtd: 'CVEs published since the start of the current calendar month (UTC).',
     published_ytd: 'CVEs published since January 1 of the current year (UTC).',
     rejected_window: `REJECTED records dated within the last ${windowDays} days (not shown anywhere else).`,
@@ -259,7 +259,7 @@ export function buildOutput({
 
 /** receipts.json `definitions`: what each method and figure means, in plain words. */
 export const RECEIPT_DEFINITIONS: Record<string, string> = {
-  cverdict: `CVErdict: the CVE is in the Exploited or Likely next tier at the default knob (${KNOB_DEFAULT}).`,
+  cverdict: `CVErdict: the CVE is in the Exploited or Likely next tier at the default evidence bar (${KNOB_DEFAULT}).`,
   cvss7: 'CVSS 7 or more: the CVSS base score the site shows (from the CNA, else CISA-ADP) is 7.0 or higher.',
   epss10: 'EPSS 10% or more: the EPSS score is 0.1 or higher. A CVE without an EPSS score is not flagged.',
   before: 'Flagged before the listing: a run earlier than the one that first saw the CISA KEV listing flagged the CVE, on or before the KEV dateAdded.',

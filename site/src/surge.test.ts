@@ -15,7 +15,9 @@ describe('shiftMonth', () => {
 describe('monthProgress', () => {
   it('reads the partial current month from generated_at in UTC', () => {
     const m = months('2026-10', [17050, 6998]);
-    expect(monthProgress(m, '2026-11-12T21:47:32Z')).toEqual({ partial: true, daysElapsed: 12, daysInMonth: 30 });
+    const p = monthProgress(m, '2026-11-12T21:47:32Z');
+    expect(p).toMatchObject({ partial: true, daysElapsed: 12, daysInMonth: 30 });
+    expect(p.elapsed).toBeCloseTo(11 + (21 * 60 + 47.5) / 1440, 3);
   });
   it('uses UTC, not local time, at a day edge', () => {
     const m = months('2026-10', [1, 1]);
@@ -24,7 +26,7 @@ describe('monthProgress', () => {
   });
   it('treats a last row from an earlier month as complete', () => {
     const m = months('2026-09', [1, 1]);
-    expect(monthProgress(m, '2026-11-01T03:00:00Z')).toEqual({ partial: false, daysElapsed: 31, daysInMonth: 31 });
+    expect(monthProgress(m, '2026-11-01T03:00:00Z')).toEqual({ partial: false, daysElapsed: 31, elapsed: 31, daysInMonth: 31 });
   });
   it('knows February in a leap year', () => {
     expect(monthProgress(months('2028-02', [1]), '2028-02-10T00:00:00Z').daysInMonth).toBe(29);
@@ -33,14 +35,23 @@ describe('monthProgress', () => {
 
 describe('onPace', () => {
   it('projects the month and rounds to the nearest 100', () => {
-    expect(onPace(6998, { partial: true, daysElapsed: 12, daysInMonth: 30 })).toBe(17500);
+    expect(onPace(6000, { partial: true, daysElapsed: 12, elapsed: 12, daysInMonth: 30 })).toBe(15000);
+    expect(onPace(6998, monthProgress(months('2026-10', [17050, 6998]), '2026-11-12T21:47:32Z'))).toBe(17600);
+  });
+  it('divides by the time elapsed, not the day of the month, so it does not read low just after midnight', () => {
+    // 00:10 UTC on the 4th: only about 3 days of data, so 50 CVEs is about 500 for the month, not 400.
+    const p = monthProgress(months('2026-10', [1, 50]), '2026-11-04T00:10:00Z');
+    expect(p.daysElapsed).toBe(4);
+    expect(onPace(50, p)).toBe(500);
+    // The same count late on the 3rd day and early on the 4th gives about the same estimate.
+    expect(onPace(1500, monthProgress(months('2026-10', [1, 1500]), '2026-11-04T00:10:00Z'))).toBe(onPace(1500, { ...p, elapsed: 3 }));
   });
   it('is hidden in the first 3 days of a month', () => {
-    expect(onPace(900, { partial: true, daysElapsed: 3, daysInMonth: 30 })).toBeNull();
-    expect(onPace(1200, { partial: true, daysElapsed: 4, daysInMonth: 30 })).toBe(9000);
+    expect(onPace(900, { partial: true, daysElapsed: 3, elapsed: 2.9, daysInMonth: 30 })).toBeNull();
+    expect(onPace(1200, { partial: true, daysElapsed: 4, elapsed: 4, daysInMonth: 30 })).toBe(9000);
   });
   it('is hidden when the month is complete', () => {
-    expect(onPace(17050, { partial: false, daysElapsed: 31, daysInMonth: 31 })).toBeNull();
+    expect(onPace(17050, { partial: false, daysElapsed: 31, elapsed: 31, daysInMonth: 31 })).toBeNull();
   });
 });
 
@@ -110,17 +121,35 @@ describe('windowLabel', () => {
 describe('ledeText', () => {
   it('writes the ratio to one decimal with the months from the data', () => {
     expect(ledeText({ start: '2026-09', end: '2026-10', ratio: 3.7215 })).toBe(
-      'September and October 2026 saw 3.7 times the CVEs of a year earlier, while exploitation stayed rare. Most are long-tail: WordPress plugins and kernel bug fixes. Volume is not risk.',
+      'September and October 2026 saw 3.7 times the CVEs of a year earlier. Exploitation stayed rare. Much of the growth is long-tail, like WordPress plugins and kernel fixes. Volume is not risk.',
     );
-    expect(ledeText({ start: '2026-08', end: '2026-10', ratio: 3.62 })).toMatch(/^August to October 2026 saw 3\.6 times the CVEs of a year earlier,/);
-    expect(ledeText({ start: '2026-12', end: '2027-01', ratio: 2 })).toMatch(/^December 2026 and January 2027 saw 2\.0 times the CVEs of a year earlier,/);
+    expect(ledeText({ start: '2026-08', end: '2026-10', ratio: 3.62 })).toMatch(/^August to October 2026 saw 3\.6 times the CVEs of a year earlier\./);
+    expect(ledeText({ start: '2026-12', end: '2027-01', ratio: 2 })).toMatch(/^December 2026 and January 2027 saw 2\.0 times the CVEs of a year earlier\./);
+    expect(ledeText({ start: '2026-09', end: '2026-10', ratio: 1.1 })).toMatch(/saw 1\.1 times the CVEs/);
   });
   it('does not claim growth when there was none', () => {
-    expect(ledeText({ start: '2026-09', end: '2026-10', ratio: 0.97 })).toMatch(/^September and October 2026 saw about as many CVEs as a year earlier,/);
+    for (const ratio of [0.9, 0.97, 1.04]) {
+      const t = ledeText({ start: '2026-09', end: '2026-10', ratio });
+      expect(t).toBe('September and October 2026 saw about as many CVEs as a year earlier. Exploitation stayed rare. Volume is not risk.');
+    }
+  });
+  it('says volume fell when it fell, and does not call it flat', () => {
+    for (const ratio of [0.5, 0.84]) {
+      const t = ledeText({ start: '2026-09', end: '2026-10', ratio });
+      expect(t).toBe('September and October 2026 saw fewer CVEs than a year earlier. Exploitation stayed rare. Volume is not risk.');
+      expect(t).not.toMatch(/about as many|growth/);
+    }
+  });
+  it('does not say most CVEs are WordPress plugins and kernel fixes, only that much of the growth is', () => {
+    for (const t of [ledeText({ start: '2026-09', end: '2026-10', ratio: 3.7 }), LEDE_FALLBACK]) {
+      expect(t).toContain('Much of the growth is long-tail, like WordPress plugins and kernel fixes.');
+      expect(t).not.toMatch(/\bMost\b/);
+    }
   });
   it('stays short enough for two lines at desktop, even in the longest case', () => {
-    expect(ledeText({ start: '2026-12', end: '2027-01', ratio: 113.7 }).length).toBeLessThanOrEqual(190);
-    expect(LEDE_FALLBACK.length).toBeLessThanOrEqual(190);
+    // Measured at 1181 to 1440 px: 193 characters still wraps to two lines, 197 to three.
+    expect(ledeText({ start: '2026-12', end: '2027-01', ratio: 13.7 }).length).toBeLessThanOrEqual(193);
+    expect(LEDE_FALLBACK.length).toBeLessThanOrEqual(193);
   });
   it('falls back to a plain sentence without a number', () => {
     expect(ledeText(null)).toBe(LEDE_FALLBACK);

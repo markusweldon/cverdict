@@ -40,6 +40,9 @@ function scale(max: number, top: number, bottom: number, log: boolean): Scale {
   return { y: (v: number) => bottom - (v / hi) * (bottom - top), ticks: Array.from({ length: Math.round(hi / step) + 1 }, (_, i) => i * step) };
 }
 
+/** Horizontal offset of the on-pace marker from the last point, in px. */
+const PACE_DX = 6;
+
 function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; generatedAt: string }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const [log, setLog] = useState(false);
@@ -132,7 +135,8 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
                 {p.y}
               </text>
             ))}
-            <path class={`chart__area ${SERIES[volume].cls}`} d={`${path(volume, n)}L${x(n - 1)} ${s.y(0)}L${x(0)} ${s.y(0)}Z`} />
+            {/* The area stops at the last complete month, so the partial month's drop is never a solid wedge. */}
+            <path class={`chart__area ${SERIES[volume].cls}`} d={`${path(volume)}L${x(cut - 1)} ${s.y(0)}L${x(0)} ${s.y(0)}Z`} />
             {series.map((k) => (
               <path key={k} class={`chart__line ${SERIES[k].cls}`} d={path(k)} />
             ))}
@@ -142,9 +146,10 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
                   <path key={k} class={`chart__line chart__line--partial ${SERIES[k].cls}`} d={tail(k)} />
                 ))}
                 {pace !== null && (
+                  // Set a few px right of the last point, so the connector never sits on the near-vertical dashed tail.
                   <g class="chart__pace">
-                    <line x1={x(n - 1)} x2={x(n - 1)} y1={s.y(monthly[n - 1].published)} y2={paceY} />
-                    <circle cx={x(n - 1)} cy={paceY} r={3.5} />
+                    <line x1={x(n - 1) + PACE_DX} x2={x(n - 1) + PACE_DX} y1={s.y(monthly[n - 1].published)} y2={paceY} />
+                    <circle cx={x(n - 1) + PACE_DX} cy={paceY} r={3.5} />
                   </g>
                 )}
                 {series.map((k) => (
@@ -209,12 +214,12 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
             <tbody>
               {[...monthly].reverse().map((m, i) => (
                 <tr key={m.month}>
-                  <th scope="row">
+                  <th scope="row" class="chart__month">
                     {m.month}
                     {i === 0 && cut < n && (
                       <span class="muted">
                         {' '}
-                        so far ({prog.daysElapsed} of {prog.daysInMonth} days)
+                        so far<span class="chart__days"> ({prog.daysElapsed} of {prog.daysInMonth} days)</span>
                       </span>
                     )}
                   </th>

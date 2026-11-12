@@ -215,8 +215,8 @@ function tierFor(score, exploited, weaponized, knob) {
 The **evidence bar** (parameter `knob`) is the score a CVE needs to count as Likely next: a score
 threshold. It defaults to 50. The site keeps the setting in `?knob=` and re-derives every tier
 client-side with the same `tierFor()` from [`shared/contract.ts`](../shared/contract.ts). The tier
-stored in the data files is the one at the default bar. Weaponized CVEs (Metasploit or Nuclei) are
-Likely next at any setting, because they can be exploited, or scanned for, at internet scale today.
+stored in the data files is the one at the default bar. CVEs with a Metasploit module or Nuclei template
+are Likely next at any setting, because they can be exploited, or scanned for, at internet scale today.
 Vendors and products on your watchlist always show on Today, whatever the bar.
 
 **Range.** The site's dial runs from 35 to 65 in steps of 5, with presets *More* 40, *Default* 50
@@ -382,7 +382,7 @@ remaining signals put them in:
   all 288 CVEs added to KEV in 2026, re-scored with KEV, SSVC *active* and EPSS hidden.
 - **Caught early:** the time-matched backtest on the Receipts page (below). Of the 120 recent CVEs
   CISA added to KEV in the 180 days to Nov 3, how many the setting would have listed before CISA did,
-  using only what was known the day before. At 50 this matches the stored `receipts.json` result.
+  using only what was known the day before. At 50 this matched the `receipts.json` of that run (37 of 120).
 
 | Evidence bar | Pass in 30 days | About a day | KEV recall, upper bound (of 288) | Caught early (of 120) |
 |--:|--:|--:|--:|--:|

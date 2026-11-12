@@ -111,7 +111,7 @@ function Hero({ meta, counts, level }: { meta: Meta; counts: TierCounts; level: 
         Last {meta.window.days} days · {fmtDate(meta.window.from)} – {fmtDate(meta.window.to)}
       </p>
       <h1 class="hero__line" id="hero-h" tabIndex={-1}>
-        <a class="hero__group hero__link" href={href('surge')} aria-label={`${fmtInt(total)} new CVEs published. See the surge.`}>
+        <a class="hero__group hero__link" href={href('surge')} aria-label={`${fmtInt(total)} new CVEs published. See The Surge.`}>
           <CountUp class="hero__noise" value={total} />
           <span class="hero__unit">new CVEs published</span>
         </a>
@@ -140,14 +140,23 @@ function Hero({ meta, counts, level }: { meta: Meta; counts: TierCounts; level: 
   );
 }
 
-/** Average CVEs a day, rounded: "about 10 a day", "about 4 a day", or "under 1 a day". */
-function perDay(passed: number, days: number): { about: string; n: string } {
+/** Average CVEs a day, rounded: "about 10 a day", "about 4 a day", or "under 1 a day". Null while the count is not known yet. */
+function perDay(passed: number | null, days: number): { about: string; n: string } | null {
+  if (passed === null) return null;
   const n = passed / Math.max(1, days);
   return n < 1 ? { about: 'under', n: '1' } : { about: 'about', n: fmtInt(Math.round(n)) };
 }
+
+/** Screen reader value for the dial: "50 of 100, about 11 CVEs a day pass", "under 1 CVE a day passes", or "counting". */
+function dialText(level: number, day: { about: string; n: string } | null): string {
+  if (!day) return `${level} of 100, counting`;
+  return day.about === 'under' ? `${level} of 100, under 1 CVE a day passes` : `${level} of 100, about ${day.n} CVEs a day pass`;
+}
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function PresetCount({ day }: { day: { about: string; n: string } }) {
+function PresetCount({ day }: { day: { about: string; n: string } | null }) {
+  // Not counted yet: an empty line of the same height, so the buttons do not change size when counts arrive.
+  if (!day) return <span class="seg__count" aria-hidden="true">{'\u00a0'}</span>;
   return (
     <span class="seg__count">
       {/* Phones drop "about" to fit; "under" stays. */}
@@ -157,7 +166,7 @@ function PresetCount({ day }: { day: { about: string; n: string } }) {
   );
 }
 
-function KnobPanel({ level, passed, days, presetPassed }: { level: number; passed: number; days: number; presetPassed: (value: number) => number }) {
+function KnobPanel({ level, passed, days, presetPassed }: { level: number; passed: number | null; days: number; presetPassed: (value: number) => number | null }) {
   const day = perDay(passed, days);
   return (
     <section class="knobpanel" aria-label="Evidence bar">
@@ -169,25 +178,31 @@ function KnobPanel({ level, passed, days, presetPassed }: { level: number; passe
         marks={KNOB_PRESETS.map((p) => p.value)}
         onChange={(v) => knob.set(v)}
         label="Evidence bar"
-        valueText={`${level} of 100, ${day.about} ${day.n} CVEs a day pass`}
+        valueText={dialText(level, day)}
       />
       <div class="knobpanel__body">
         <div>
           <p class="eyebrow">Evidence bar</p>
           <p class="knobpanel__desc">The score out of 100 a CVE needs to be Likely next.</p>
         </div>
-        <p class="knobpanel__read">
-          <span class={day.about === 'about' ? 'knobpanel__about' : undefined}>{cap(day.about)} </span>
-          <span class="knobpanel__num">{day.n}</span> a day
-          <span class="sr-only">, </span>
-          <span class="knobpanel__pct">
-            <span class="mono">{fmtInt(passed)}</span> in {days} days
-          </span>
-        </p>
-        <p class="knobpanel__hint">
-          Raise the bar for fewer CVEs with more evidence. Lower it to catch more. Exploited CVEs and those with a Metasploit module or Nuclei template always pass. Watched vendors always show.
-        </p>
+        {day && passed !== null ? (
+          <p class="knobpanel__read">
+            <span class={day.about === 'about' ? 'knobpanel__about' : undefined}>{cap(day.about)} </span>
+            <span class="knobpanel__num">{day.n}</span> a day
+            <span class="sr-only">, </span>
+            <span class="knobpanel__pct">
+              <span class="mono">{fmtInt(passed)}</span> in {days} days
+            </span>
+          </p>
+        ) : (
+          // Same lines as the readout, so nothing jumps when the count arrives.
+          <p class="knobpanel__read">
+            <span class="knobpanel__num">…</span>
+            <span class="knobpanel__pct">Counting</span>
+          </p>
+        )}
       </div>
+      <p class="knobpanel__hint">Raise the bar for fewer CVEs with more evidence. Exploited CVEs and those with a Metasploit module or Nuclei template always pass. Watched vendors always show.</p>
       <div class="seg seg--presets" role="group" aria-label="Evidence bar presets">
         {KNOB_PRESETS.map((p) => (
           <button key={p.value} type="button" class="seg__btn" aria-pressed={level === p.value ? 'true' : 'false'} onClick={() => knob.set(p.value)} data-tip={`Evidence bar at ${p.value}`}>
@@ -290,7 +305,7 @@ export default function Today() {
     }
     return out;
   }, [meta.status, rows, complete]);
-  const presetPassed = (v: number) => presetCounts.get(v) ?? 0;
+  const presetPassed = (v: number) => presetCounts.get(v) ?? null;
 
   const feed = useMemo(() => feedRows(rows, filter, level, watch).sort(byScore), [rows, filter, level, watch]);
   // Tier toggle counts: everything the other filters let through, whatever the toggles say.
@@ -381,7 +396,7 @@ export default function Today() {
           )}
         </div>
         <div class="today__knob">
-          <KnobPanel level={level} passed={counts ? counts.exploited + counts.likely : 0} days={meta.status === 'ready' ? meta.data.window.days : 30} presetPassed={presetPassed} />
+          <KnobPanel level={level} passed={counts ? counts.exploited + counts.likely : null} days={meta.status === 'ready' ? meta.data.window.days : 30} presetPassed={presetPassed} />
         </div>
 
         <section class="panel today__wf" aria-labelledby="wf-h">

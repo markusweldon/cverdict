@@ -16,6 +16,11 @@ export const PACE_MIN_DAYS = 4;
 /** The on-pace marker may push the y axis up to this multiple of the busiest real value, no further. */
 export const PACE_AXIS_HEADROOM = 1.2;
 
+const DAY_MS = 86_400_000;
+
+/** Smallest elapsed time the on-pace estimate divides by, so a run just after midnight on the 1st cannot blow it up. */
+const MIN_ELAPSED = 0.25;
+
 const ym = (y: number, m0: number): string => {
   const d = new Date(Date.UTC(y, m0, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -29,8 +34,10 @@ export function shiftMonth(month: string, by: number): string {
 export interface MonthProgress {
   /** True when the last row is the month that generated_at falls in, so it is still filling up. */
   partial: boolean;
-  /** Days of that month covered so far (UTC day of month of generated_at). */
+  /** Whole days of that month covered so far (UTC day of month of generated_at), for labels and the early-month rule. */
   daysElapsed: number;
+  /** Days covered as a fraction, from the month's start (UTC) to generated_at, for the on-pace estimate. */
+  elapsed: number;
   daysInMonth: number;
 }
 
@@ -38,12 +45,14 @@ export interface MonthProgress {
 export function monthProgress(monthly: readonly MonthRow[], generatedAt: string): MonthProgress {
   const last = monthly[monthly.length - 1];
   const at = new Date(generatedAt);
-  if (!last || Number.isNaN(at.getTime())) return { partial: false, daysElapsed: 0, daysInMonth: 0 };
+  if (!last || Number.isNaN(at.getTime())) return { partial: false, daysElapsed: 0, elapsed: 0, daysInMonth: 0 };
   const y = Number(last.month.slice(0, 4));
   const m0 = Number(last.month.slice(5)) - 1;
   const daysInMonth = new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
   const partial = ym(at.getUTCFullYear(), at.getUTCMonth()) === last.month;
-  return { partial, daysElapsed: partial ? at.getUTCDate() : daysInMonth, daysInMonth };
+  if (!partial) return { partial, daysElapsed: daysInMonth, elapsed: daysInMonth, daysInMonth };
+  const elapsed = (at.getTime() - Date.UTC(y, m0, 1)) / DAY_MS;
+  return { partial, daysElapsed: at.getUTCDate(), elapsed: Math.min(daysInMonth, Math.max(MIN_ELAPSED, elapsed)), daysInMonth };
 }
 
 /** The rows that are complete months. */
@@ -56,10 +65,13 @@ export function busiestComplete<T extends MonthRow>(monthly: readonly T[], gener
   return completeMonths(monthly, generatedAt).reduce<T | null>((a, x) => (!a || x.published > a.published ? x : a), null);
 }
 
-/** Straight-line estimate for the partial month, rounded to the nearest 100. Null when the month is complete or too young. */
+/**
+ * Straight-line estimate for the partial month, rounded to the nearest 100. It divides by the fractional time elapsed,
+ * so it does not read low early in a UTC day. Null when the month is complete or too young.
+ */
 export function onPace(count: number, p: MonthProgress): number | null {
-  if (!p.partial || p.daysElapsed < PACE_MIN_DAYS || p.daysInMonth <= 0) return null;
-  return Math.round(((count / p.daysElapsed) * p.daysInMonth) / 100) * 100;
+  if (!p.partial || p.daysElapsed < PACE_MIN_DAYS || p.daysInMonth <= 0 || p.elapsed <= 0) return null;
+  return Math.round(((count / p.elapsed) * p.daysInMonth) / 100) * 100;
 }
 
 export interface Growth {
@@ -104,16 +116,25 @@ export function windowLabel(start: string, end: string): string {
   return sy === ey ? `${fullMonth(start)} ${join} ${fullMonth(end)} ${ey}` : `${fullMonth(start)} ${sy} ${join} ${fullMonth(end)} ${ey}`;
 }
 
-const LEDE_TAIL = 'Most are long-tail: WordPress plugins and kernel bug fixes. Volume is not risk.';
+const LEDE_TAIL = 'Much of the growth is long-tail, like WordPress plugins and kernel fixes. Volume is not risk.';
+const LEDE_CALM = 'Exploitation stayed rare. Volume is not risk.';
 
-/** Lede shown before stats load, or when there is no year-earlier window to compare with. Same length as the numeric one, so nothing jumps. */
-export const LEDE_FALLBACK = 'CVE volume has grown fast while exploitation stayed rare. Most new CVEs are long-tail: WordPress plugins and kernel bug fixes. Volume is not risk.';
+/** Lede shown before stats load, or when there is no year-earlier window to compare with. About the length of the numeric one, so little jumps. */
+export const LEDE_FALLBACK = 'CVE volume has grown fast while exploitation stayed rare. Much of the growth is long-tail, like WordPress plugins and kernel fixes. Volume is not risk.';
 
-/** The page lede, with the growth figure when there is one. Kept under about 190 characters so it stays on two lines at desktop. */
+/** Below this ratio the window counts as flat, below FLAT_LOW as a fall. */
+const FLAT_HIGH = 1.1;
+const FLAT_LOW = 0.9;
+
+/**
+ * The page lede, with the growth figure when there is one. Kept to about 193 characters at most, which
+ * still fits two lines at desktop. Only growth gets the long-tail sentence: a flat or falling window has no growth to explain.
+ */
 export function ledeText(g: Growth | null): string {
   if (!g) return LEDE_FALLBACK;
   const when = windowLabel(g.start, g.end);
   const r = g.ratio.toFixed(1);
-  if (Number(r) < 1.1) return `${when} saw about as many CVEs as a year earlier, and exploitation stayed rare. ${LEDE_TAIL}`;
-  return `${when} saw ${r} times the CVEs of a year earlier, while exploitation stayed rare. ${LEDE_TAIL}`;
+  if (Number(r) < FLAT_LOW) return `${when} saw fewer CVEs than a year earlier. ${LEDE_CALM}`;
+  if (Number(r) < FLAT_HIGH) return `${when} saw about as many CVEs as a year earlier. ${LEDE_CALM}`;
+  return `${when} saw ${r} times the CVEs of a year earlier. Exploitation stayed rare. ${LEDE_TAIL}`;
 }

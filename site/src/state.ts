@@ -76,6 +76,11 @@ export const SITE_KNOB_MAX = 65;
 /** Clamp any knob value to the site's range. */
 export const clampSiteKnob = (n: number): number => Math.min(SITE_KNOB_MAX, Math.max(SITE_KNOB_MIN, n));
 
+/** One step of the [ and ] keys: to the next multiple of 5 in that direction, so 47 goes to 45 or 50, never 40. */
+export function stepKnob(v: number, dir: -1 | 1): number {
+  return clampSiteKnob(dir < 0 ? Math.ceil(v / 5 - 1) * 5 : Math.floor(v / 5 + 1) * 5);
+}
+
 export function parseKnob(raw: string | null): number {
   if (raw === null || raw.trim() === '') return KNOB_DEFAULT;
   const n = Number(raw);

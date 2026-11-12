@@ -21,6 +21,7 @@
 
 .today__hero {
   grid-area: hero;
+  align-self: stretch;
   min-width: 0;
 }
 
@@ -63,6 +64,8 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
+  /* The card fills its grid row so it ends level with the evidence bar panel; the contents stay at the top. */
+  align-content: start;
   background:
     radial-gradient(600px 220px at 85% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%),
     var(--surface);
@@ -194,9 +197,9 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 16px 20px;
+  gap: 8px 18px;
   height: 100%;
-  padding: 20px 22px;
+  padding: 13px 20px;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
@@ -204,7 +207,7 @@
 
 .knobpanel__body {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -229,13 +232,14 @@
 }
 
 .knobpanel__desc {
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--muted);
   font-size: 12.5px;
   line-height: 1.4;
 }
 
 .knobpanel__hint {
+  grid-column: 1 / -1;
   color: var(--faint);
   font-size: 12px;
   line-height: 1.45;
@@ -254,8 +258,9 @@
   justify-content: center;
   gap: 1px;
   height: auto;
-  min-height: 40px;
-  padding: 4px 6px;
+  min-height: 34px;
+  padding: 3px 6px;
+  line-height: 1.15;
 }
 
 .seg--presets .seg__count {
@@ -1146,10 +1151,16 @@
   stroke-width: 2;
 }
 
-/* The current month is still filling up: dashed last segment, hollow point. */
+/* The current month is still filling up: dashed, lighter last segment and a hollow point. */
 .chart__line--partial {
   stroke-dasharray: 4 4;
   stroke-linecap: butt;
+  opacity: 0.55;
+}
+
+/* The month key stays on one line in the data table. */
+.chart__month {
+  white-space: nowrap;
 }
 
 .chart__hollow,
@@ -1864,6 +1875,11 @@
   .knobpanel__pct,
   .knobpanel__about,
   .seg--presets .seg__about {
+    display: none;
+  }
+
+  /* Phones keep "so far" and drop the day count, so the month column stays narrow. */
+  .chart__days {
     display: none;
   }
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN } from '../../shared/contract';
-import { clampSiteKnob, closeOverlay, createStorage, createStore, isWatched, KNOB_PRESETS, normalizeName, overlay, parseKnob, parseWatch, SITE_KNOB_MAX, SITE_KNOB_MIN } from './state';
+import { clampSiteKnob, closeOverlay, createStorage, createStore, isWatched, KNOB_PRESETS, normalizeName, overlay, parseKnob, parseWatch, SITE_KNOB_MAX, SITE_KNOB_MIN, stepKnob } from './state';
 
 describe('parseKnob', () => {
   it('clamps, rounds and falls back to the default', () => {
@@ -41,6 +41,17 @@ describe('site range', () => {
     expect(clampSiteKnob(30)).toBe(35);
     expect(clampSiteKnob(50)).toBe(50);
     expect(clampSiteKnob(80)).toBe(65);
+  });
+
+  it('steps [ and ] to the next multiple of 5, even from an off-step old link value', () => {
+    expect(stepKnob(50, -1)).toBe(45);
+    expect(stepKnob(50, 1)).toBe(55);
+    expect(stepKnob(47, -1)).toBe(45);
+    expect(stepKnob(47, 1)).toBe(50);
+    expect(stepKnob(62, -1)).toBe(60);
+    expect(stepKnob(62, 1)).toBe(65);
+    expect(stepKnob(35, -1)).toBe(35);
+    expect(stepKnob(65, 1)).toBe(65);
   });
 
   it('orders the presets low to high, the way the dial turns', () => {
