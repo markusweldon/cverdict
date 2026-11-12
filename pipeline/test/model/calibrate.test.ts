@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calibrate, enrichmentOf, formatReport, hideExploitation, tierCounts } from '../../../scripts/calibrate';
+import { calibrate, enrichmentOf, formatReport, hideExploitation, KNOBS, tierCounts } from '../../../scripts/calibrate';
 import { scoreCve } from '../../src/score';
 import { NOW, cohort, dateAgo, makeCve, makeEnrichment, makeIngest, makeKev, msf, ssvc } from '../fixtures/model/builders';
 
@@ -77,11 +77,11 @@ describe('calibrate', () => {
     expect(cal.batchMembers).toHaveLength(60);
   });
 
-  it('prints one Markdown row per knob for each table', () => {
+  it('prints one Markdown row per evidence bar stop for each table', () => {
     const md = formatReport(cal, { ing, now: NOW, year: 2026, batchId: null, windowDays: 30 });
     expect(md).toContain('## KEV recall without KEV: 1 CVEs added to KEV in 2026');
     expect(md).toContain('| **50** | 1 | 0 | 0 | 60 | 1 (1.6% · 1 in 61) |');
     expect(md).toContain('## Batch microsoft-2026-10-13: Microsoft · 2026-10-13 · 60 CVEs');
-    expect(md.match(/^\| (\*\*)?\d\d(\*\*)? \|/gm)).toHaveLength(4 * 5);
+    expect(md.match(/^\| (\*\*)?\d\d(\*\*)? \|/gm)).toHaveLength(4 * KNOBS.length);
   });
 });

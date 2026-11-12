@@ -244,12 +244,13 @@ Unknown → 404 view. Update `document.title` per route.
 - **Today (`/`)**: (1) ticker strip (published 24h · passed 24h · KEV due ≤72h · batches this week · data age); (2) hero
   noise meter: big mono numbers counting up — "14,281 new CVEs published → 312 worth your time" under "Last 30 days · Oct 5 – Nov 4" with a % and
   "1 in N"; (3) **signal waterfall**: Canvas spectrogram of the window (x = hour, stacked ticks; quiet ticks dim
-  grey, passed ticks glow in tier colour; hover tooltip with hour + counts; re-colours live as the knob turns;
+  grey, passed ticks glow in tier colour; hover tooltip with hour + counts; re-colours live as the evidence bar turns;
   a column opens Explore for the UTC day it starts on (`/explore?day=YYYY-MM-DD&sort=score`): click, or Enter on
   the focused chart (`role="slider"`, arrow keys pick a column); on touch the first tap selects and the tooltip's
   "See Oct 13" link opens it; spike labels link to their batch card on `/batches`);
-  (4) the **knob**: rotary control (`role="slider"`, arrow keys ±5, presets Tight 60 / Default 50 / Wide 40),
-  URL param `?knob=`; (5) signal feed: rows (tier pill, mono CVE ID, vendor · product, title, top chips, score, age,
+  (4) the **evidence bar**: rotary control (`role="slider"`, 35 to 65 on the site, arrow keys ±5, presets
+  More 40 / Default 50 / Fewer 60, each with its live count a day), URL param `?knob=` (values outside 35 to 65
+  open at the nearest end); (5) signal feed: rows (tier pill, mono CVE ID, vendor · product, title, top chips, score, age,
   batch tag); filter bar (tier, vendor search, hide WordPress / kernel / AI toggles, watchlist); (6) batch cards
   ("Microsoft · Oct 13 · 1,407 → 1 exploited · 2 PoC · 58 likely"); (7) KEV Clock strip; (8) "what changed" list;
   (9) Woke Up card: old CVEs that woke up in the last 7 days, most urgent first.
@@ -260,7 +261,7 @@ Unknown → 404 view. Update `document.title` per route.
   (GitHub issue link prefilled).
 - **KEV Clock (`/kev`)**: due within 72h / overdue (≤7d) / this month; live countdowns; ransomware & forensic flags; ICS link.
 - **Woke Up (`/woke`)**: CVEs published before the window that gained exploitation evidence in the last 30 days
-  (`woke.json`), grouped by week, most urgent first at the knob; `?kind=` filters by signal kind; each row shows its
+  (`woke.json`), grouped by week, most urgent first at the evidence bar; `?kind=` filters by signal kind; each row shows its
   dated signals; notes say since when first-seen kinds are tracked and what the last run could not check; links to
   `woke.xml`.
 - **Batches (`/batches`)**: cohort cards with tier bars; expand to families and top CVEs.
@@ -272,7 +273,7 @@ Unknown → 404 view. Update `document.title` per route.
   an invalid day is ignored), sort (score/date); URL-synced.
 - **Check Deps (`/check`)**: an SBOM (CycloneDX JSON or XML, SPDX JSON or tag-value, package URLs) or a lockfile is read
   in the browser (`check/parse.ts`) and matched against `packages.json` with `shared/versions.ts` (`check/match.ts`);
-  results grouped by tier at the knob, then "possibly affected, not confirmed", "not checked" and "not affected by a
+  results grouped by tier at the evidence bar, then "possibly affected, not confirmed", "not checked" and "not affected by a
   tracked CVE". `packages.json` loads on the first interaction with the input card, never on page open; nothing from the
   file goes into a request, the URL, history or storage; file text renders in the system monospace font
   (`--font-mono-system`) so no web font subset is fetched for it; rows do not prefetch shards; results stay in module
@@ -290,7 +291,7 @@ Unknown → 404 view. Update `document.title` per route.
 
 **Interactions**: keyboard — `j`/`k` move selection, `Enter`/`o` open, `/` focus search, `w` watch vendor,
 `c` copy ticket, `?` shortcuts help, `⌘K`/`Ctrl+K` command palette (jump to CVE id, vendor, page).
-Watchlist (vendors/products) in `localStorage` (try/catch) and `?watch=`; watched items bypass the knob.
+Watchlist (vendors/products) in `localStorage` (try/catch) and `?watch=`; watched items always show, whatever the evidence bar.
 "Since your last visit" badge from `localStorage` timestamp. Respect `prefers-reduced-motion`.
 
 **Visual direction**: "SDR console meets Linear". Dark by default with a light theme toggle (and
@@ -306,7 +307,7 @@ Watchlist (vendors/products) in `localStorage` (try/catch) and `?watch=`; watche
 
 Geist Mono with tabular numerals for IDs, numbers and scores; Geist Sans for UI. Chips: 1px border on a 10–14% tint,
 icon + text (never colour alone). Subtle grain/scanline texture on the hero, soft glow on passed items. Motion: count-up
-600 ms, list re-filter 150 ms, respect reduced motion. Mobile: single column, sticky knob, details full-screen.
+600 ms, list re-filter 150 ms, respect reduced motion. Mobile: single column, sticky evidence bar, details full-screen.
 Accessibility: WCAG AA contrast, focus rings, semantic landmarks, labelled controls.
 
 **Security**: no `innerHTML`; external links `rel="noopener noreferrer nofollow"` + `target="_blank"`; only http(s)

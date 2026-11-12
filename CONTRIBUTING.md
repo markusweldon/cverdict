@@ -37,7 +37,7 @@ Pipeline flags that make iteration fast:
 - `--offline` replays the last downloads from `.cache/` without touching the network.
 - `--now 2026-10-26T19:30:00Z` freezes time, so two runs are comparable.
 - `--cvelist-dir <clone>` and `--poc-dir <clone>` reuse existing git clones (they are never modified).
-- `--window-days 7` shrinks the window for quick experiments; `--knob 60` changes the default knob.
+- `--window-days 7` shrinks the window for quick experiments; `--knob 60` changes the default evidence bar.
 
 ## Project layout
 
@@ -101,7 +101,7 @@ Scores only earn trust if changes to them are measured. A pull request that chan
 1. Bump `SCORE_MODEL` and update the unit tests and [docs/SCORING.md](docs/SCORING.md).
 2. Include a **calibration diff**: run `npm run calibrate -- --offline --now <same instant>` on the
    same frozen inputs before and after the change and paste both reports. The report has:
-   - tier counts and pass rate of every window CVE at knobs 40, 45, 50, 55 and 60;
+   - tier counts and pass rate of every window CVE at each stop of the site's evidence bar, 35 to 65 in steps of 5;
    - recall of the current year's KEV additions without the answer key. Each addition is re-scored
      on its own: its KEV entry and the CISA-ADP KEV block removed, SSVC *active* lowered to *poc*
      (when a public exploit artifact exists) or *none*, and its EPSS score dropped. The KEV prior

@@ -77,7 +77,7 @@ List files are columnar to stay small: `rows[i][j]` is the value of column `cols
 | `v`, `p` | string | Vendor and product of the first affected entry (`""` if unknown) |
 | `t` | string | Title, or the description cut to 160 characters |
 | `s` | number | Evidence score, 0–100 |
-| `tier` | string | `exploited` \| `likely` \| `watch` \| `quiet` at the default knob |
+| `tier` | string | `exploited` \| `likely` \| `watch` \| `quiet` at the default evidence bar |
 | `x` | 0 \| 1 | Any confirmed-exploitation (E) chip fired |
 | `w` | 0 \| 1 | Weaponized: a Metasploit module or Nuclei template exists |
 | `k` | 0 \| 1 | In CISA KEV |
@@ -96,7 +96,7 @@ Map columns by name from `cols`, not by position. In TypeScript, `rowsFromTable(
 jq '.cols as $c | [.rows[] | [$c, .] | transpose | map({(.[0]): .[1]}) | add]' signal.json
 ```
 
-To re-tier at another knob, use `tierFor(s, x === 1, w === 1, knob)` from `shared/contract.ts`:
+To re-tier at another evidence bar (parameter `knob`), use `tierFor(s, x === 1, w === 1, knob)` from `shared/contract.ts`:
 Exploited when `x`; else Likely next when `w` or `s ≥ knob`; else Watch when `s ≥ 25`; else Quiet.
 
 ## `meta.json`
@@ -104,7 +104,7 @@ Exploited when `x`; else Likely next when `w` or `s ≥ knob`; else Watch when `
 | Field | Meaning |
 |---|---|
 | `score_model` | Version of the scoring model (`shared/model.ts`), e.g. `v0.1.0` |
-| `knob_default` | Knob used for every stored `tier` (default 50) |
+| `knob_default` | Evidence bar used for every stored `tier` (default 50) |
 | `window` | `{ from, to, days }` of the window |
 | `counts` | Headline numbers, below |
 | `definitions` | A plain-language definition of every key in `counts` |
@@ -197,7 +197,7 @@ one CNA published on one UTC day, such as a Patch Tuesday.
 |---|---|
 | `id` | `<cna slug>-<YYYY-MM-DD>`, e.g. `microsoft-2026-10-13` |
 | `cna`, `date`, `count` | Who, which day, how many |
-| `by_tier` | Count per tier at the default knob |
+| `by_tier` | Count per tier at the default evidence bar |
 | `families` | Up to 8 most common products: `{ name, count, passed }` |
 | `top` | Up to 5 highest-scoring rows (objects, not columnar) |
 
@@ -292,7 +292,7 @@ curl -s $BASE/woke.json | jq -r --arg since "$(date -u -d '-7 days' +%F)" '
 ## `receipts.json`
 
 How often a CVE that CISA later added to KEV had already been flagged, by three methods with the
-same definitions: `cverdict` (Exploited or Likely next at the default knob, 50), `cvss7` (the CVSS
+same definitions: `cverdict` (Exploited or Likely next at the default evidence bar, 50), `cvss7` (the CVSS
 base score the site shows, CNA else CISA-ADP, is 7.0 or more) and `epss10` (EPSS is 10% or more; a
 CVE without an EPSS score is not flagged). Two parts, never mixed: the **forward log**, recorded in
 real time, and the **backtest**, rebuilt after the fact and marked `hindsight: true`.
@@ -300,7 +300,7 @@ real time, and the **backtest**, rebuilt after the fact and marked `hindsight: t
 
 | Field | Meaning |
 |---|---|
-| `score_model`, `knob` | Score model and knob the `cverdict` method uses |
+| `score_model`, `knob` | Score model and evidence bar the `cverdict` method uses |
 | `definitions` | Plain-language definition of each method and figure |
 | `forward` | `ForwardReceipts`, below |
 | `backtest` | `BacktestReceipts`, below, or `null` until the first backtest |
@@ -564,7 +564,7 @@ curl -s $BASE/signal.json | jq -r '
   .cols as $c | .rows[] | [$c, .] | transpose | map({(.[0]): .[1]}) | add
   | select(.tier == "exploited") | [.id, .s, .v, .p] | @tsv'
 
-# Likely next at a stricter knob of 60
+# Likely next with a stricter evidence bar of 60
 curl -s $BASE/signal.json | jq -r --argjson knob 60 '
   .cols as $c | .rows[] | [$c, .] | transpose | map({(.[0]): .[1]}) | add
   | select(.x == 0 and (.w == 1 or .s >= $knob)) | [.id, .s, .v, .p] | @tsv'

@@ -16,7 +16,7 @@
 
 </div>
 
-![Today: 16,804 CVEs in, 316 worth your time, the knob and the signal waterfall of the whole window](docs/screenshots/home.png)
+![Today: 16,804 CVEs in, 316 worth your time, the evidence bar and the signal waterfall of the whole window](docs/screenshots/home.png)
 
 ![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
 
@@ -60,12 +60,14 @@ last 30 days gets a score from 0 to 100 and a tier:
 | Tier | What it means | What puts a CVE here |
 |---|---|---|
 | **Exploited** | Patch now. | Confirmed exploitation: CISA KEV, CISA's SSVC assessment says *active*, or the vendor says so |
-| **Likely next** | Patch within days. | A Metasploit module or Nuclei template (always at least Likely), or a score at or above the knob |
-| **Watch** | Keep an eye on it. | Score from 25 up to the knob |
+| **Likely next** | Patch within days. | A Metasploit module or Nuclei template (always at least Likely), or a score at or above the evidence bar |
+| **Watch** | Keep an eye on it. | Score from 25 up to the evidence bar |
 | **Quiet** | No evidence yet. **Quiet ≠ safe.** | Score below 25 |
 
-The **knob** (default 50, range 30–80) sets how much evidence "Likely next" needs. Turn it down to
-see more, up to see less; the page re-tiers live and the URL remembers your setting.
+The **evidence bar** is the score out of 100 a CVE needs to be "Likely next". It defaults to 50 and
+the site's dial runs from 35 to 65 (the API and MCP server accept 30 to 80, parameter `knob`). Lower
+it to see more, raise it for fewer CVEs with more evidence behind each; the page re-tiers live and
+the URL remembers your setting. [SCORING.md](docs/SCORING.md#tiers-and-the-evidence-bar) explains the range.
 
 Every score is explained by reason chips, each linked to its source. These are the chips of
 [CVE-2026-88771](https://www.cve.org/CVERecord?id=CVE-2026-88771), a NetScaler ADC remote code
@@ -91,7 +93,7 @@ On the site:
 
 - **Today**: the noise meter (every CVE of the last 30 days → the few worth your time), a signal
   waterfall of the whole window, each column an hour or more (click a column to see that day's CVEs in Explore, or
-  a spike label to open its patch-day batch), the knob, the signal feed with filters and a vendor
+  a spike label to open its patch-day batch), the evidence bar, the signal feed with filters and a vendor
   watchlist, patch-day batch cards, the KEV due-date clock, old CVEs that woke up in the last 7 days and
   what changed since the last run.
 - **CVE pages**: a one-line verdict, the score arithmetic chip by chip, what we could *not* see,
@@ -144,7 +146,7 @@ CVE-2026-105016 · Microsoft QUIC Remote Code Execution Vulnerability · day 13
    +8  Vendor in KEV (×390): Microsoft
     0  Too new: day 13 of 14 — exploit feeds lag
   ───
-   50  Likely next at the default knob
+   50  Likely next at the default evidence bar
 ```
 
 Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing,

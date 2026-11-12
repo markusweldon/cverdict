@@ -5,7 +5,7 @@
  *
  * Runs the pipeline's own ingest and scoreCve() (nothing is re-implemented here) and prints
  * Markdown to stdout; logs go to stderr. Three measurements:
- *   1. tier counts and pass rate of every window CVE at knobs 40–60;
+ *   1. tier counts and pass rate of every window CVE at each stop of the site's evidence bar, 35 to 65;
  *   2. KEV recall without KEV: every CVE added to KEV in the current year, re-scored with its own
  *      KEV listing, the CISA-ADP KEV block, SSVC "active" and its EPSS score hidden;
  *   3. the tiers of one patch-day batch (by default the largest in the window).
@@ -25,12 +25,13 @@ import type { Enrichment, IngestResult, NormalizedCve, ScoredCve } from '../pipe
 import { DAY_MS, parseIsoDate, ymd } from '../pipeline/src/util/dates';
 import { createLogger } from '../pipeline/src/util/log';
 
-export const KNOBS: readonly number[] = [40, 45, 50, 55, 60];
+/** The stops of the site's evidence bar dial (site/src/state.ts), parameter `knob`. */
+export const KNOBS: readonly number[] = [35, 40, 45, 50, 55, 60, 65];
 
 const USAGE = `Usage: npm run calibrate -- [options]
 
 Scores the window and the current year's KEV additions with the pipeline's code and prints a
-Markdown calibration report (tiers and pass rate per knob, KEV recall with KEV hidden, one batch).
+Markdown calibration report (tiers and pass rate per evidence bar, KEV recall with KEV hidden, one batch).
 
 Options:
   --cache <dir>         Cache of last-good downloads and git clones (default: .cache)
@@ -147,9 +148,9 @@ const pct = (part: number, whole: number) => (whole === 0 ? '–' : `${((100 * p
 const passed = (c: TierCounts) => c.exploited + c.likely;
 const knobCell = (knob: number) => (knob === KNOB_DEFAULT ? `**${knob}**` : String(knob));
 
-/** Tier counts per knob; the last column is Exploited + Likely next, as a share (and "1 in N" for volume). */
+/** Tier counts per evidence bar; the last column is Exploited + Likely next, as a share (and "1 in N" for volume). */
 function tierTable(items: readonly Scored[], lastColumn: 'Passing' | 'Recall'): string[] {
-  const lines = [`| Knob | Exploited | Likely next | Watch | Quiet | ${lastColumn} |`, '|--:|--:|--:|--:|--:|--:|'];
+  const lines = [`| Evidence bar | Exploited | Likely next | Watch | Quiet | ${lastColumn} |`, '|--:|--:|--:|--:|--:|--:|'];
   for (const knob of KNOBS) {
     const c = tierCounts(items, knob);
     const p = passed(c);
@@ -193,9 +194,9 @@ export function formatReport(cal: Calibration, { ing, now, year, windowDays }: C
       `Exploited on vendor evidence alone: ${countBy(kevAdds.filter((s) => s.exploited).map((s) => s.reasons[0].id)) || 'none'}.` +
       (cal.kevMissing.length ? ` Not in the CVE List as PUBLISHED: ${cal.kevMissing.join(', ')}.` : ''),
     '',
-    '## Knob sensitivity',
+    '## Evidence bar sensitivity',
     '',
-    '| Knob | New CVEs passing | KEV recall |',
+    '| Evidence bar | New CVEs passing | KEV recall |',
     '|--:|--:|--:|',
     ...KNOBS.map((knob) => {
       const w = passed(tierCounts(window, knob));

@@ -194,7 +194,7 @@ Only applied when there is no exploitation and the X family is ≤ 0, and not wh
 | `poc.unvetted` | Unvetted PoC | 0 | `poc-github` | Only brand-new, unstarred PoC repos exist. Not counted until they age or gain stars. |
 | `tag.eol` | Unsupported product | 0 | `cvelist` | The product was unsupported when the CVE was assigned: there may be no patch — replace or mitigate. |
 
-## Tiers and the knob
+## Tiers and the evidence bar
 
 ```ts
 function tierFor(score, exploited, weaponized, knob) {
@@ -208,17 +208,39 @@ function tierFor(score, exploited, weaponized, knob) {
 | Tier | Rule | Reading |
 |---|---|---|
 | **Exploited** | any E chip | Confirmed exploitation. Patch now. |
-| **Likely next** | Metasploit module or Nuclei template, or score ≥ knob | Exploitation is plausible soon. Patch within days. |
-| **Watch** | 25 ≤ score < knob | Some evidence. Revisit. |
+| **Likely next** | Metasploit module or Nuclei template, or score ≥ the evidence bar | Exploitation is plausible soon. Patch within days. |
+| **Watch** | 25 ≤ score < the evidence bar | Some evidence. Revisit. |
 | **Quiet** | score < 25 | No evidence yet. Quiet ≠ safe. |
 
-The **knob** is the score a CVE needs to count as Likely next. It defaults to 50 and ranges from 30
-to 80; the site offers presets *Tight* 60, *Default* 50 and *Wide* 40, keeps the setting in
-`?knob=`, and re-derives every tier client-side with the same `tierFor()` from
-[`shared/contract.ts`](../shared/contract.ts). The tier stored in the data files is the one at the
-default knob. Weaponized CVEs (Metasploit or Nuclei) are Likely next at any knob, because they can
-be exploited, or scanned for, at internet scale today. Vendors and products on your watchlist
-bypass the knob entirely.
+The **evidence bar** (parameter `knob`) is the score a CVE needs to count as Likely next: a score
+threshold. It defaults to 50. The site keeps the setting in `?knob=` and re-derives every tier
+client-side with the same `tierFor()` from [`shared/contract.ts`](../shared/contract.ts). The tier
+stored in the data files is the one at the default bar. Weaponized CVEs (Metasploit or Nuclei) are
+Likely next at any setting, because they can be exploited, or scanned for, at internet scale today.
+Vendors and products on your watchlist always show on Today, whatever the bar.
+
+**Range.** The site's dial runs from 35 to 65 in steps of 5, with presets *More* 40, *Default* 50
+and *Fewer* 60. The pipeline (`--knob`), the data files and the MCP server still accept 30 to 80
+(`KNOB_MIN` and `KNOB_MAX`), so nothing that already uses them breaks. A `?knob=` link outside 35 to
+65 opens at the nearest end: `?knob=30` at 35, `?knob=80` at 65. Three landmarks follow from the
+weights in [`shared/model.ts`](../shared/model.ts):
+
+- **From 40 up, a CVE that has gone two weeks with no exploit sign can never pass.** The most such a
+  CVE can score is 38: 15 base + 13 critical network bug + 14 SSVC (total, automatable) + 10 product
+  in KEV − 14 for no exploit yet.
+- **From 55 up, every CVE listed has some exploit sign.** Without one (a PoC, Exploit-DB, EPSS, CISA or the vendor saying an
+  exploit exists, exploitation, Metasploit or Nuclei), the most a CVE can score is 52.
+- **80 is the most a CVE can score without being exploited or having a Metasploit module or Nuclei
+  template:** 15 + 28 Exploit-DB + 13 + 14 + 10. At 80 nothing passes on score; only the CVEs that
+  always pass are left.
+
+The ends of the old range did little that was useful. In the 2026-11-10 02:47 UTC window, going
+from 35 to 30 added 761 CVEs (25 more a day), most of them the 418 that score exactly 30 with no
+exploit evidence at all, for 4 more early catches in the backtest below. Below 35 the site also has
+to download every row (`index.json`, 6.1 MB) instead of `signal.json` (0.4 MB). From 65 to 80 the
+list changed by 16 CVEs, and 65 and 70 gave the same list. Between 35 and 65 each step of 5 cuts the
+list by a quarter to a half, and every stop gives a different count. Steps of 5 are enough: about
+97% of scores are even, so an odd setting behaves like the next even one.
 
 ## Cold start
 
@@ -302,7 +324,7 @@ would score 56, Likely next.
     0  Too new: day 13 of 14 — exploit feeds lag
     0  EPSS 1.7% · 76th pct · day 13 — too new to trust   (info)
   ───
-   50  Likely next at the default knob
+   50  Likely next at the default evidence bar
 ```
 
 One day later the cold start ends. If EPSS is still at 1% or more, `epss.mid` (+8) lifts the score
@@ -335,14 +357,15 @@ Exploit modules, PoCs and vendor statements for a CVE listed in KEV in March may
 look-ahead bias is why the points were shrunk 15–30% from the raw likelihood ratios, and why the
 recall figures below would be lower in real time.
 
-**Selectivity.** Of all 15,790 CVEs published in the 30-day window, **363 (2.3%)** pass at knob
-50: 27 Exploited and 336 Likely next. That is 1 in 43 instead of all of them.
+**Selectivity.** In the 2026-11-10 02:47 UTC run, 301 of the 17,076 CVEs published in the 30-day
+window (1.8%) passed at the default bar: 28 Exploited and 273 Likely next, about 10 a day. That is
+1 in 57 instead of all of them.
 
 **Recall without the answer key.** To see whether the score finds exploited CVEs *before* KEV
 does, all 272 CVEs added to KEV in 2026 were re-scored with the direct evidence removed: their own
 KEV entry and the CISA-ADP KEV block, SSVC *active* (lowered to *poc* when a public exploit
 artifact exists, else *none*; every one of the 272 was *active*, and the choice changes no score)
-and their EPSS score. The KEV prior still comes from the rest of the catalogue. At knob 50 the
+and their EPSS score. The KEV prior still comes from the rest of the catalogue. At the default bar (50) the
 remaining signals put them in:
 
 | Tier (KEV, SSVC *active* and EPSS hidden) | 2026 KEV additions | Share |
@@ -352,28 +375,44 @@ remaining signals put them in:
 | Watch | 27 | 9.9% |
 | Quiet | 43 | 15.8% |
 
-**Knob sensitivity.** Pass rate of the window's CVEs against recall of the 2026 KEV additions
-(Exploited + Likely next, with KEV, SSVC *active* and EPSS hidden):
+**Evidence bar sensitivity.** Each stop of the site's dial on the window of the
+**2026-11-10 02:47 UTC** run (17,076 CVEs over 30 days), on two measures:
 
-| Knob | New CVEs passing | KEV recall |
-|--:|--:|--:|
-| 40 | 4.1% (643) | 77.6% (211) |
-| 45 | 3.0% (468) | 75.7% (206) |
-| **50** (default) | **2.3% (363)** | **74.3% (202)** |
-| 55 | 0.8% (123) | 59.9% (163) |
-| 60 | 0.5% (78) | 58.8% (160) |
+- **KEV recall, upper bound:** the method above, run with `npm run calibrate` on that run's inputs:
+  all 288 CVEs added to KEV in 2026, re-scored with KEV, SSVC *active* and EPSS hidden.
+- **Caught early:** the time-matched backtest on the Receipts page (below). Of the 120 recent CVEs
+  CISA added to KEV in the 180 days to Nov 3, how many the setting would have listed before CISA did,
+  using only what was known the day before. At 50 this matches the stored `receipts.json` result.
 
-The default sits at the knee. Going from 50 to 45 adds about 30% more volume for 1.5 points of
-recall (4 more of 272); going to 55 cuts the volume by two-thirds but also 14 points of recall.
-Much of that step is the cold start: 238 window CVEs score exactly 50 or 52. All 58 Likely-next
-CVEs of Microsoft's Oct 13 batch score 50, most with the pattern of CVE-2026-105016 above (critical
-network bug, SSVC total and automatable, a vendor with KEV history, too new for EPSS).
+| Evidence bar | Pass in 30 days | About a day | KEV recall, upper bound (of 288) | Caught early (of 120) |
+|--:|--:|--:|--:|--:|
+| 35 | 1,066 (6.2%) | 36 | 235 (81.6%) | 63 |
+| 40 | 604 (3.5%) | 20 | 226 (78.5%) | 46 |
+| 45 | 416 (2.4%) | 14 | 220 (76.4%) | 39 |
+| **50** (default) | **301 (1.8%)** | **10** | **216 (75.0%)** | **37** |
+| 55 | 166 (1.0%) | 5.5 | 175 (60.8%) | 29 |
+| 60 | 111 (0.65%) | 3.7 | 172 (59.7%) | 19 |
+| 65 | 81 (0.47%) | 2.7 | 160 (55.6%) | 17 |
+
+The 28 Exploited CVEs and the 37 with a Metasploit module or Nuclei template (65 in all) pass at
+any setting, which is why the counts flatten out above 60.
+
+On the upper-bound measure the default sits at the knee. Going from 50 to 45 adds 115 CVEs for 4
+more of the 288 KEV CVEs; going to 55 removes 135 CVEs but loses 41. The drop starts right at 51:
+the KEV CVEs that score exactly 50 or 52 are mostly vendor or product KEV history + High + SSVC
+total − not automatable + a PoC on GitHub. Much of the window at 50 is the cold start: a critical
+network bug with SSVC total and automatable from a vendor with KEV history scores 50 for its first
+two weeks, then most fall to 36 (the pattern of CVE-2026-105016 above). Because the knee is one
+exact sum of weights, a small weight change can move it: re-check it after any change.
+
+On the stricter backtest there is no sharp knee: recall falls steadily as the bar rises, and 50 is
+a fair middle. The counts move from run to run; the site computes them live.
 
 ### Receipts: the real-time record and a time-matched backtest
 
 The recall above is an upper bound by construction. The [Receipts page](https://cverdict.dev/receipts)
 (`v1/receipts.json`, [DATA.md](DATA.md#receiptsjson)) measures the same question in two stricter ways,
-with the same rules for CVErdict (Exploited or Likely next at knob 50), "CVSS 7 or more" and "EPSS
+with the same rules for CVErdict (Exploited or Likely next at the default evidence bar, 50), "CVSS 7 or more" and "EPSS
 10% or more":
 
 - **The forward log** (`pipeline/src/receipts.ts`) records, on every run, when each method first
@@ -431,14 +470,15 @@ The forward log is the measurement that settles it.
 
 Weights live in [`shared/model.ts`](../shared/model.ts); the thresholds that decide whether a chip
 fires (EPSS bands, CVSS bands, PoC vetting, hype) live in [`pipeline/src/score.ts`](../pipeline/src/score.ts),
-and the tier thresholds (knob range, Watch floor) in [`shared/contract.ts`](../shared/contract.ts).
+and the tier thresholds (the API's evidence bar range, Watch floor) in [`shared/contract.ts`](../shared/contract.ts);
+the site's narrower dial range is in [`site/src/state.ts`](../site/src/state.ts).
 A change to either is a new score model.
 
 1. Open an issue first if the change is large, with the reasoning and the evidence behind it.
 2. In the pull request, bump `SCORE_MODEL` (minor version for re-weighting, major for a new family
    or a changed rule) and update the unit tests and this document.
 3. Include a **calibration diff**: the output of `npm run calibrate -- --offline --now <same instant>`
-   before and after the change (tiers and pass rate at knobs 40–60, KEV recall measured as above,
+   before and after the change (tiers and pass rate at evidence bars 35 to 65, KEV recall measured as above,
    the largest batch), plus the 20 CVEs whose tier moved the most, with their chips (compare two
    `npm run pipeline -- --offline --now <same instant>` outputs).
 4. Explain what the change gets wrong as well as what it gets right. A weight that only helps
