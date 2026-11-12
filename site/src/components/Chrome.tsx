@@ -25,16 +25,16 @@ function Wordmark({ class: cls, tag = 'span' }: { class: string; tag?: 'span' | 
 
 const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
   { name: 'today', path: '', label: 'Today' },
+  { name: 'surge', path: 'surge', label: 'The Surge' },
   { name: 'kev', path: 'kev', label: 'KEV Clock' },
   { name: 'woke', path: 'woke', label: 'Woke Up' },
-  { name: 'explore', path: 'explore', label: 'Explore' },
   { name: 'check', path: 'check', label: 'Check Deps' },
+  { name: 'explore', path: 'explore', label: 'Explore' },
   { name: 'batches', path: 'batches', label: 'Batches' },
   { name: 'receipts', path: 'receipts', label: 'Receipts' },
   { name: 'method', path: 'method', label: 'Method' },
-  { name: 'surge', path: 'surge', label: 'The Surge' },
-  { name: 'feeds', path: 'feeds', label: 'Feeds & API' },
   { name: 'mcp', path: 'mcp', label: 'MCP' },
+  { name: 'feeds', path: 'feeds', label: 'Feeds & API' },
 ];
 
 /** Freshness of the last pipeline run: fresh < 2h, late < 6h, stale beyond. */
