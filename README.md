@@ -16,7 +16,7 @@
 
 </div>
 
-![Today: 16,804 CVEs in, 316 worth your time, the evidence bar and the signal waterfall of the whole window](docs/screenshots/home.png)
+![Today: 16,923 new CVEs published, 324 worth your time, the evidence bar and the signal waterfall of the whole window](docs/screenshots/home.png)
 
 ![The page of CVE-2026-88771: the verdict, the evidence chip by chip and how the score adds up](docs/screenshots/cve.png)
 
