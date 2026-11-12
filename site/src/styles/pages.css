@@ -105,6 +105,26 @@
   gap: 2px;
 }
 
+/* The noise number links to The Surge. It looks the same as the plain number until hover or focus. */
+.hero__link:hover .hero__noise,
+.hero__link:focus-visible .hero__noise {
+  color: var(--text);
+}
+
+.hero__link:hover .hero__unit,
+.hero__link:focus-visible .hero__unit {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+.hero__link:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
 .hero__comma {
   margin: 0 -0.14em;
 }

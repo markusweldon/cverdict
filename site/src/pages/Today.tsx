@@ -111,10 +111,10 @@ function Hero({ meta, counts, level }: { meta: Meta; counts: TierCounts; level: 
         Last {meta.window.days} days · {fmtDate(meta.window.from)} – {fmtDate(meta.window.to)}
       </p>
       <h1 class="hero__line" id="hero-h" tabIndex={-1}>
-        <span class="hero__group">
+        <a class="hero__group hero__link" href={href('surge')} aria-label={`${fmtInt(total)} new CVEs published. See the surge.`}>
           <CountUp class="hero__noise" value={total} />
           <span class="hero__unit">new CVEs published</span>
-        </span>
+        </a>
         <span class="hero__arrow" aria-label="of which">
           →
         </span>
