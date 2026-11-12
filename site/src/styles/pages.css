@@ -1146,6 +1146,49 @@
   stroke-width: 2;
 }
 
+/* The current month is still filling up: dashed last segment, hollow point. */
+.chart__line--partial {
+  stroke-dasharray: 4 4;
+  stroke-linecap: butt;
+}
+
+.chart__hollow,
+.chart__cross circle.is-hollow {
+  fill: var(--surface);
+  stroke-width: 2;
+}
+
+.chart__cross circle.is-hollow {
+  stroke: currentColor;
+}
+
+/* On pace estimate: faint and dotted so it never reads as data. */
+.chart__pace {
+  color: var(--text);
+  opacity: 0.4;
+}
+
+.chart__pace line {
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 1 3;
+}
+
+.chart__pace circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-dasharray: 1.5 2;
+}
+
+.chart__tip-pace {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .chart__bar.s-volume {
   fill: color-mix(in srgb, var(--text) 30%, transparent);
   stroke: none;

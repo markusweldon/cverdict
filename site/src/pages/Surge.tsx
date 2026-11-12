@@ -6,6 +6,7 @@ import { data } from '../data';
 import { cnaName, fmtCompact, fmtDate, fmtInt, fmtMonth, fmtPct } from '../format';
 import { useData, useTitle, useWidth } from '../hooks';
 import { href } from '../router';
+import { LEDE_FALLBACK, PACE_AXIS_HEADROOM, busiestComplete, growth, ledeText, monthProgress, onPace } from '../surge';
 
 type Month = StatsFile['monthly'][number];
 type SeriesKey = 'published' | 'reserved' | 'kev_added' | 'ai';
@@ -39,7 +40,7 @@ function scale(max: number, top: number, bottom: number, log: boolean): Scale {
   return { y: (v: number) => bottom - (v / hi) * (bottom - top), ticks: Array.from({ length: Math.round(hi / step) + 1 }, (_, i) => i * step) };
 }
 
-function MonthlyChart({ monthly }: { monthly: readonly Month[] }) {
+function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; generatedAt: string }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const [log, setLog] = useState(false);
   const [volume, setVolume] = useState<'published' | 'reserved'>('published');
@@ -50,9 +51,20 @@ function MonthlyChart({ monthly }: { monthly: readonly Month[] }) {
   const n = monthly.length;
   const w = Math.max(0, width - M.l - M.r);
   const x = (i: number) => M.l + (n > 1 ? (i * w) / (n - 1) : 0);
+  const prog = monthProgress(monthly, generatedAt);
+  // The last month is still filling up: its segment is dashed and its point hollow, so the drop does not read as a crash.
+  const cut = prog.partial && n > 1 ? n - 1 : n;
   const max = Math.max(...monthly.map((m) => Math.max(m[volume], m.kev_added, m.ai)));
-  const s = scale(max, M.t, H - M.b, log);
-  const path = (k: SeriesKey) => monthly.map((m, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${s.y(m[k]).toFixed(1)}`).join('');
+  // On pace marker: Published only. Reserved counts for recent months keep growing for weeks as IDs are
+  // published or backdated to their reservation month, so a straight-line pace would understate them.
+  const pace = volume === 'published' && cut < n ? onPace(monthly[n - 1].published, prog) : null;
+  const s = scale(pace === null ? max : Math.max(max, Math.min(pace, max * PACE_AXIS_HEADROOM)), M.t, H - M.b, log);
+  const paceOff = pace !== null && s.y(pace) < M.t;
+  const paceY = pace !== null ? Math.max(M.t, s.y(pace)) : 0;
+  const pt = (m: Month, i: number, k: SeriesKey) => `${x(i).toFixed(1)} ${s.y(m[k]).toFixed(1)}`;
+  const path = (k: SeriesKey, upTo = cut) => monthly.slice(0, upTo).map((m, i) => `${i ? 'L' : 'M'}${pt(m, i, k)}`).join('');
+  const tail = (k: SeriesKey) => (cut < n ? `M${pt(monthly[n - 2], n - 2, k)}L${pt(monthly[n - 1], n - 1, k)}` : '');
+  const partialLabel = cut < n ? `${fmtMonth(monthly[n - 1].month)} so far` : '';
   // Year labels every 5 years (10 when narrow) plus the current year, dropping any that would touch.
   const every = w < 480 ? 10 : 5;
   const years: { i: number; y: string }[] = [];
@@ -63,6 +75,7 @@ function MonthlyChart({ monthly }: { monthly: readonly Month[] }) {
     years.push({ i, y });
   });
   const h = hover !== null ? monthly[hover] : null;
+  const hPartial = hover !== null && cut < n && hover === n - 1;
 
   const onMove = (e: PointerEvent) => {
     const r = (e.currentTarget as SVGElement).getBoundingClientRect();
@@ -105,7 +118,7 @@ function MonthlyChart({ monthly }: { monthly: readonly Month[] }) {
       </div>
       <div class="chart__plot" ref={ref}>
         {width > 0 && (
-          <svg width={width} height={H} role="img" aria-label={`CVEs ${volume} per month since 1999, with CISA KEV additions and AI-credited CVEs. Peak: ${fmtInt(max)}. Use arrow keys to read months.`} tabIndex={0} onKeyDown={onKey} onBlur={() => setHover(null)} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+          <svg width={width} height={H} role="img" aria-label={`CVEs ${volume} per month since 1999, with CISA KEV additions and AI-credited CVEs. Peak: ${fmtInt(max)}.${cut < n ? ` The last month, ${partialLabel}, is partial: ${prog.daysElapsed} of ${prog.daysInMonth} days, drawn dashed.${pace !== null ? ` On pace for about ${fmtInt(pace)} (estimate).` : ''}` : ''} Use arrow keys to read months.`} tabIndex={0} onKeyDown={onKey} onBlur={() => setHover(null)} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
             {s.ticks.map((t) => (
               <g key={t} class="chart__grid">
                 <line x1={M.l} x2={width - M.r} y1={s.y(t)} y2={s.y(t)} />
@@ -119,15 +132,31 @@ function MonthlyChart({ monthly }: { monthly: readonly Month[] }) {
                 {p.y}
               </text>
             ))}
-            <path class={`chart__area ${SERIES[volume].cls}`} d={`${path(volume)}L${x(n - 1)} ${s.y(0)}L${x(0)} ${s.y(0)}Z`} />
+            <path class={`chart__area ${SERIES[volume].cls}`} d={`${path(volume, n)}L${x(n - 1)} ${s.y(0)}L${x(0)} ${s.y(0)}Z`} />
             {series.map((k) => (
               <path key={k} class={`chart__line ${SERIES[k].cls}`} d={path(k)} />
             ))}
+            {cut < n && (
+              <g class="chart__partial">
+                {series.map((k) => (
+                  <path key={k} class={`chart__line chart__line--partial ${SERIES[k].cls}`} d={tail(k)} />
+                ))}
+                {pace !== null && (
+                  <g class="chart__pace">
+                    <line x1={x(n - 1)} x2={x(n - 1)} y1={s.y(monthly[n - 1].published)} y2={paceY} />
+                    <circle cx={x(n - 1)} cy={paceY} r={3.5} />
+                  </g>
+                )}
+                {series.map((k) => (
+                  <circle key={k} class={`chart__hollow ${SERIES[k].cls}`} cx={x(n - 1)} cy={s.y(monthly[n - 1][k])} r={3.5} />
+                ))}
+              </g>
+            )}
             {hover !== null && (
               <g class="chart__cross">
                 <line x1={x(hover)} x2={x(hover)} y1={M.t} y2={H - M.b} />
                 {series.map((k) => (
-                  <circle key={k} class={SERIES[k].cls} cx={x(hover)} cy={s.y(monthly[hover][k])} r={4} />
+                  <circle key={k} class={`${SERIES[k].cls}${hPartial ? ' is-hollow' : ''}`} cx={x(hover)} cy={s.y(monthly[hover][k])} r={4} />
                 ))}
               </g>
             )}
@@ -135,7 +164,14 @@ function MonthlyChart({ monthly }: { monthly: readonly Month[] }) {
         )}
         {h && hover !== null && (
           <div class={`chart__tip${x(hover) > width - 220 ? ' is-left' : ''}`} style={{ left: `${x(hover)}px` }} aria-live="polite">
-            <div class="chart__tip-head">{fmtMonth(h.month)}</div>
+            <div class="chart__tip-head">{hPartial ? partialLabel : fmtMonth(h.month)}</div>
+            {hPartial && (
+              <div class="chart__tip-row chart__tip-row--muted">
+                <span />
+                <strong>{prog.daysElapsed}</strong>
+                <span>of {prog.daysInMonth} days</span>
+              </div>
+            )}
             {series.map((k) => (
               <div key={k} class="chart__tip-row">
                 <span class={`legend__line ${SERIES[k].cls}`} />
@@ -148,6 +184,11 @@ function MonthlyChart({ monthly }: { monthly: readonly Month[] }) {
               <strong>{fmtInt(h.rejected)}</strong>
               <span>Rejected</span>
             </div>
+            {hPartial && pace !== null && (
+              <div class="chart__tip-pace">
+                On pace for about {fmtInt(pace)} (estimate){paceOff ? ', above the top of the chart' : ''}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -166,9 +207,17 @@ function MonthlyChart({ monthly }: { monthly: readonly Month[] }) {
               </tr>
             </thead>
             <tbody>
-              {[...monthly].reverse().map((m) => (
+              {[...monthly].reverse().map((m, i) => (
                 <tr key={m.month}>
-                  <th scope="row">{m.month}</th>
+                  <th scope="row">
+                    {m.month}
+                    {i === 0 && cut < n && (
+                      <span class="muted">
+                        {' '}
+                        so far ({prog.daysElapsed} of {prog.daysInMonth} days)
+                      </span>
+                    )}
+                  </th>
                   <td class="num">{fmtInt(m.published)}</td>
                   <td class="num">{fmtInt(m.reserved)}</td>
                   <td class="num">{fmtInt(m.rejected)}</td>
@@ -256,7 +305,7 @@ function Tiles({ stats, ytd }: { stats: StatsFile; ytd: number }) {
   const dayFrac = asOf.getUTCDate() / new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate();
   const prev = m.filter((x) => x.month.startsWith(`${year - 1}-`));
   const prevSame = prev.slice(0, monthIdx).reduce((a, x) => a + x.published, 0) + (prev[monthIdx]?.published ?? 0) * dayFrac;
-  const peak = m.reduce((a, x) => (x.published > a.published ? x : a), m[0]);
+  const peak = busiestComplete(m, stats.generated_at) ?? m[0];
   const all = m.reduce((a, x) => a + x.published, 0);
   const tiles: { label: string; value: string; note: string }[] = [
     { label: `${year} so far`, value: fmtInt(ytd), note: prevSame > 0 ? `${ytd >= prevSame ? '+' : ''}${fmtPct(ytd / prevSame - 1)} vs the same days of ${year - 1}` : '' },
@@ -283,6 +332,7 @@ export default function Surge() {
   const meta = useData(data.meta);
   const cnas = useMemo(() => (stats.status === 'ready' ? stats.data.cnas : []), [stats]);
   const maxCna = Math.max(1, ...cnas.map((c) => c.count));
+  const lede = useMemo(() => (stats.status === 'ready' ? ledeText(growth(stats.data.monthly, stats.data.generated_at)) : LEDE_FALLBACK), [stats]);
   return (
     <div class="page page--surge">
       <header class="page__head">
@@ -290,7 +340,7 @@ export default function Surge() {
         <h1 class="page__title" tabIndex={-1}>
           The Surge
         </h1>
-        <p class="page__lede">CVE volume tripled in a year while exploitation stayed rare. Most of the growth is long-tail software, WordPress plugins and kernel bug-fixes — volume is not risk.</p>
+        <p class="page__lede">{lede}</p>
       </header>
       {stats.status === 'error' ? (
         <ErrorState error={stats.error} onRetry={stats.retry} />
@@ -308,7 +358,7 @@ export default function Surge() {
                 <p class="panel__sub">By datePublished (or dateReserved). Switch to log scale to compare KEV additions and AI-credited CVEs on the same axis.</p>
               </div>
             </header>
-            <MonthlyChart monthly={stats.data.monthly} />
+            <MonthlyChart monthly={stats.data.monthly} generatedAt={stats.data.generated_at} />
           </section>
           <section class="panel" aria-labelledby="daily-h">
             <header class="panel__head">
