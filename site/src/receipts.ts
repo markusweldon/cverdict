@@ -98,13 +98,16 @@ export function backtestMark(i: BacktestItem, m: ReceiptMethod): 'yes' | 'upper'
  */
 export function backtestAt(b: BacktestReceipts | null | undefined, knob: number): { flagged: number; n: number } | null {
   if (!b || !Array.isArray(b.items)) return null;
-  const recent = b.items.filter((i) => !i.old);
+  const recent = b.items.filter((i) => i && !i.old);
   if (recent.length === 0) return null;
   let flagged = 0;
   for (const i of recent) {
-    const exploited = i.chips.some((id) => CHIP_BY_ID[id]?.family === 'E');
-    const weaponized = i.chips.includes('x.metasploit') || i.chips.includes('x.nuclei');
-    const t = tierFor(i.score, exploited, weaponized, knob);
+    // A bad or older file must not break Today: missing chips count as none, a missing score as 0.
+    const chips: readonly string[] = Array.isArray(i?.chips) ? i.chips : [];
+    const score = Number.isFinite(i?.score) ? i.score : 0;
+    const exploited = chips.some((id) => CHIP_BY_ID[id]?.family === 'E');
+    const weaponized = chips.includes('x.metasploit') || chips.includes('x.nuclei');
+    const t = tierFor(score, exploited, weaponized, knob);
     if (t === 'exploited' || t === 'likely') flagged++;
   }
   return { flagged, n: recent.length };

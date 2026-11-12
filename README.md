@@ -64,7 +64,7 @@ last 30 days gets a score from 0 to 100 and a tier:
 | **Watch** | Keep an eye on it. | Score from 25 up to the evidence bar |
 | **Quiet** | No evidence yet. **Quiet ≠ safe.** | Score below 25 |
 
-The **evidence bar** is the score out of 100 a CVE needs to be "Likely next". It defaults to 50 and
+The **evidence bar** is the minimum score (out of 100) to flag a CVE as likely exploited next ("Likely next"). It defaults to 50 and
 the site's dial runs from 35 to 65 (the API and MCP server accept 30 to 80, parameter `knob`). Lower
 it to see more, raise it for fewer CVEs with more evidence behind each; the page re-tiers live and
 the URL remembers your setting. [SCORING.md](docs/SCORING.md#tiers-and-the-evidence-bar) explains the range.

@@ -172,11 +172,12 @@ function PresetCount({ day }: { day: { about: string; n: string } | null }) {
 
 /**
  * The backtest at the current bar: "Flagged 40 of 125 recent KEV additions before CISA did."
- * `undefined` while receipts.json loads (an empty line of the same height), `null` hides it.
+ * `undefined` while receipts.json loads and `null` when it failed or has no backtest: both keep an
+ * empty line of the same height, so nothing below moves once the file settles (it shows on phones,
+ * where the panel does not stretch to the hero).
  */
 function TrackRecord({ level, track }: { level: number; track: { flagged: number; n: number } | null | undefined }) {
-  if (track === null) return null;
-  if (track === undefined) return <p class="knobpanel__track" aria-hidden="true">{'\u00a0'}</p>;
+  if (!track) return <p class="knobpanel__track" aria-hidden="true">{'\u00a0'}</p>;
   return (
     <p class="knobpanel__track">
       <a
@@ -359,7 +360,16 @@ export default function Today() {
   // so it never competes with the rest of Today. Missing or without a backtest: the line hides.
   const receipts = useData(signal.status === 'ready' ? data.receipts : null);
   const track = useMemo(
-    () => (receipts.status === 'ready' ? backtestAt(receipts.data.backtest, level) : receipts.status === 'error' ? null : undefined),
+    () => {
+      if (receipts.status === 'error') return null;
+      if (receipts.status !== 'ready') return undefined;
+      // A side line must never break the evidence bar: any surprise in the file hides it.
+      try {
+        return backtestAt(receipts.data?.backtest, level);
+      } catch {
+        return null;
+      }
+    },
     [receipts, level],
   );
 

@@ -81,9 +81,23 @@ describe('backtestAt (the track-record line on Today)', () => {
     }
   });
 
-  it('agrees with the stored strict verdict when that verdict came from the same rule', () => {
+  // Not proof of agreement with the pipeline (that is pipeline/test/model/backtest.test.ts, which runs
+  // runBacktest for real): this only pins that each recent item is counted once, by tierFor's rule.
+  it('counts each recent item once, by the tierFor pass rule', () => {
     const stored = items.map((i) => ({ ...i, strict: { ...i.strict, cverdict: i.chips.some((c) => ['kev.listed', 'ssvc.active', 'x.metasploit', 'x.nuclei'].includes(c)) || i.score >= KNOB_DEFAULT } }));
     expect(backtestAt(bt(stored), KNOB_DEFAULT)!.flagged).toBe(stored.filter((i) => !i.old && i.strict.cverdict).length);
+  });
+
+  it('survives malformed items instead of throwing', () => {
+    const good = item(90, []);
+    const noChips = { ...item(60, []), chips: null } as unknown as BacktestItem;
+    const lost = { ...item(40, ['kev.listed']) } as Partial<BacktestItem>;
+    delete lost.chips;
+    const noScore = { ...item(70, []), score: null } as unknown as BacktestItem;
+    const b = bt([good, noChips, lost as BacktestItem, noScore, null as unknown as BacktestItem]);
+    expect(() => backtestAt(b, 50)).not.toThrow();
+    // null chips count as none and a missing score as 0: only the two scores at or above 50 pass.
+    expect(backtestAt(b, 50)).toEqual({ flagged: 2, n: 4 });
   });
 
   it('is null (the line hides) without a backtest or without recent CVEs', () => {
