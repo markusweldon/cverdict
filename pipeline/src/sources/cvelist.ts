@@ -211,7 +211,7 @@ export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise
 
   requireAtLeast(history.totalRecords, opts.minRecords, 'CVE records');
   log.info(
-    `cvelist: ${history.totalRecords.toLocaleString('en-US')} records in ${since(started)} — ` +
+    `cvelist: ${history.totalRecords.toLocaleString('en-US')} records in ${since(started)}: ` +
       `${scan.windowPublished.toLocaleString('en-US')} published in window, ${scan.cves.length.toLocaleString('en-US')} kept ` +
       `(${scan.lateKev} KEV or woke-up records looked up after the pass), ${scan.rejectedInWindow} rejected in window, ${scan.invalid} invalid` +
       `${scan.future ? `, ${scan.future} published after --now` : ''}`,

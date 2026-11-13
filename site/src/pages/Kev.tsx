@@ -83,7 +83,7 @@ export default function Kev() {
         <h1 class="page__title" tabIndex={-1}>
           KEV Clock
         </h1>
-        <p class="page__lede">Confirmed exploitation with a federal deadline. Listing usually lags the first attacks — not in KEV ≠ not exploited.</p>
+        <p class="page__lede">Confirmed exploitation with a federal deadline. Listing usually lags the first attacks: not in KEV ≠ not exploited.</p>
         <div class="page__actions">
           <a class="btn" href={ics}>
             <IconCalendar size={14} /> Subscribe (.ics)

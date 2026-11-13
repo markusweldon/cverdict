@@ -129,7 +129,7 @@ describe('formatSummary', () => {
     expect(text).toContain('Woke up (old CVEs, new evidence in 30 days): 2 · kev 2, exploitdb 0, metasploit 1, nuclei 0, poc 0, epss 0 · skipped: epss');
     expect(text).toContain('Receipts: log since 2026-10-01T00:17:00.000Z (600 runs) · 5 of 12 KEV additions counted, CVErdict first on 3 · backtest 2026-10-25: CVErdict 40 of 80 (strict)');
     expect(text).toMatch(/exploited\s+20\s+0\.1%/);
-    expect(text).toContain('Pass rate (exploited + likely): 2.0% — 1 in 50');
+    expect(text).toContain('Pass rate (exploited + likely): 2.0%, 1 in 50');
     expect(text).toMatch(/CVE-2026-1001\s+100\s+exploited\s+Microsoft Windows/);
     expect(text).toMatch(/epss\s+stale\s+300,000\s+\(HTTP 403\)/);
     expect(text).toContain('266 files · 1 warnings · 81.2 s');

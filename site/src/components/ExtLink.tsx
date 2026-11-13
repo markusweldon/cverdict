@@ -8,7 +8,7 @@ import { IconExternal } from './icons';
  */
 export function ExtLink({ href, children, class: cls, icon = true }: { href: string; children?: ComponentChildren; class?: string; icon?: boolean }) {
   if (!isHttpUrl(href)) {
-    return <span class={`ext ext--inert${cls ? ` ${cls}` : ''}`} title="Not an http(s) link — shown as text">{children ?? href}</span>;
+    return <span class={`ext ext--inert${cls ? ` ${cls}` : ''}`} title="Not an http(s) link, so it is shown as text">{children ?? href}</span>;
   }
   return (
     <a class={`ext${cls ? ` ${cls}` : ''}`} href={href} target="_blank" rel="noopener noreferrer nofollow">

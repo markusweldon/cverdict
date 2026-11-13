@@ -128,7 +128,7 @@ function Evidence({ d }: { d: CveDetail }) {
                         <span>{SOURCE_NAMES[r.source] ?? r.source}</span>
                         {r.at && <span>{fmtDate(r.at)}</span>}
                         {r.url && <ExtLink href={r.url}>evidence</ExtLink>}
-                        {lost && <span class="reason__lost">counted 0 — a stronger chip in this family won</span>}
+                        {lost && <span class="reason__lost">counted 0: a stronger chip in this family won</span>}
                       </p>
                     </div>
                     {r.polarity !== 'info' && <span class="reason__pts mono">{signed(r.points)}</span>}
@@ -208,7 +208,7 @@ function Exploits({ d }: { d: CveDetail }) {
       {x.poc.count > 0 && (
         <div class="poc">
           <p class="poc__warn">
-            <IconAlert size={14} /> {x.poc.count} PoC repo{x.poc.count === 1 ? '' : 's'} on GitHub ({x.poc.vetted} vetted{x.poc.hype ? ', hype burst' : ''}). Unverified third-party code — fake PoCs often carry malware. Never run them outside an
+            <IconAlert size={14} /> {x.poc.count} PoC repo{x.poc.count === 1 ? '' : 's'} on GitHub ({x.poc.vetted} vetted{x.poc.hype ? ', hype burst' : ''}). Unverified third-party code. Fake PoCs often carry malware. Never run them outside an
             isolated lab.
           </p>
           <ul class="artifacts">
@@ -401,7 +401,7 @@ function Detail({ d }: { d: CveDetail }) {
       <div class={`verdict verdict--${tier}`} role="status">
         <TierIcon tier={tier} size={18} />
         <p class="verdict__text">
-          <strong>{v.head}</strong> — {v.reason}
+          <strong>{v.head}</strong>: {v.reason}
         </p>
         {tier === 'exploited' && d.kev && <Countdown due={d.kev.due_date} class="verdict__clock" />}
       </div>

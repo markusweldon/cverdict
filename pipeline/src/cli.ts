@@ -136,7 +136,7 @@ export function formatSummary(s: RunSummary): string {
     `Published in window: ${n(c.window_published)}  (rejected: ${n(c.rejected_window)}, AI-credited: ${n(c.ai_credited_window)})`,
     ...TIERS.map((t) => `  ${t.padEnd(10)} ${n(c.window_by_tier[t]).padStart(7)}  ${pct(c.window_by_tier[t], c.window_published).padStart(6)}`),
     `Pass rate (exploited + likely): ${pct(c.window_passed, c.window_published)}` +
-      (c.window_passed > 0 ? ` — 1 in ${Math.round(c.window_published / c.window_passed)}` : ''),
+      (c.window_passed > 0 ? `, 1 in ${Math.round(c.window_published / c.window_passed)}` : ''),
     `Last 24h: ${n(c.published_24h)} published, ${n(c.passed_24h)} passed · last 7d: ${n(c.published_7d)} published, ${n(c.passed_7d)} passed`,
     `KEV: ${n(c.kev_total)} entries, ${n(c.kev_adds_30d)} added in the last 30 days · batches: ${n(c.batches_window)}`,
     `Woke up (old CVEs, new evidence in ${s.woke.days} days): ${n(s.woke.items.length)} · ` +

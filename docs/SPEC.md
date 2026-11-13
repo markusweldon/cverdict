@@ -99,7 +99,7 @@ npm run pipeline -- [--out site/public/data] [--previous <dir with previous v1/ 
 | `epss` | `https://epss.empiricalsecurity.com/epss_scores-current.csv.gz` | `https://raw.githubusercontent.com/empiricalsec/epss_scores/main/<YYYY>/epss_scores-<YYYY-MM-DD>.csv.gz` for today, then yesterday, then cache | gunzip; first line `#model_version:v2026.06.15,score_date:2026-10-26T12:03:00Z`; then `cve,epss,percentile` | ≥ 200k rows |
 | `metasploit` | `https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json` | cache | object of modules; `references[]` entries like `CVE-2024-1234`; keep `name, fullname, rank, type, path` | ≥ 3,000 modules |
 | `nuclei` | `https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/cves.json` | cache | **NDJSON**; `ID`, `Info.Severity`, `file_path` | ≥ 2,000 lines |
-| `exploitdb` | `https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv` | cache (GitLab rate-limits quickly; fetch at most every 6h — reuse cache if younger) | RFC 4180 CSV; columns `id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes,...`; `codes` is `;`-separated and contains CVE IDs | ≥ 40k rows |
+| `exploitdb` | `https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv` | cache (GitLab rate-limits quickly; fetch at most every 6h; reuse cache if younger) | RFC 4180 CSV; columns `id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes,...`; `codes` is `;`-separated and contains CVE IDs | ≥ 40k rows |
 | `poc-github` | `git clone --depth 1 --no-checkout https://github.com/nomi-sec/PoC-in-GitHub.git` into `<cache>/git/poc` (or fetch) | cache clone as-is | `git ls-tree -r --name-only` → `YYYY/CVE-….json`; cat-file only IDs we need; each file is an array of GitHub repo objects (`html_url, stargazers_count, created_at, fork`) | ≥ 5,000 files |
 | `osv` | per ecosystem (npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist, NuGet): `https://storage.googleapis.com/osv-vulnerabilities/<eco>/modified_id.csv` head (Range requests to the cursor) and the changed `<eco>/<id>.json`; `<eco>/all.zip` every 7 days or without a copy, a failed one again after a day (`--osv-dir` reads local zips) | the mirror in `<cache>/sources/osv-mirror.json.gz`, per ecosystem | ZIP64 reader (`util/zip.ts`, bounded); records with a CVE alias from GHSA, PYSEC, GO, RUSTSEC, DRUPAL-CORE/CONTRIB only (`shared/packages.ts` ATTRIBUTION); compacted to ID, package names and event strings | ≥ about half of today's records per ecosystem; never < 90% of the cached copy. **Never scored** (`NON_SCORING_SOURCES`), only `v1/packages.json` |
 
@@ -181,7 +181,7 @@ INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hy
 ```
 
 Chip labels are specific and dated, e.g. `CISA KEV · added Oct 21 · due Oct 24`, `Metasploit: exploit/linux/http/foo (excellent)`,
-`EPSS 14.2% · 99th pct`, `Critical 9.8 · network`, `3 PoC repos (2 vetted) — unverified, may be malware`,
+`EPSS 14.2% · 99th pct`, `Critical 9.8 · network`, `3 PoC repos (2 vetted), unverified, may be malware`,
 `Product in KEV (×4)`, `AI-credited: “Claude Opus 5”`, `Part of Microsoft patch day · Oct 13 (1,407)`
 (`bulk release` instead of `patch day` for aggregator CNAs such as VulnCheck or VulDB; names from `shared/cna.ts`).
 `reasons[]` carries every chip that fired (including the ones that lost within a family, with `points: 0`) plus
@@ -242,7 +242,7 @@ Unknown → 404 view. Update `document.title` per route.
 
 **Pages**
 - **Today (`/`)**: (1) ticker strip (published 24h · passed 24h · KEV due ≤72h · batches this week · data age); (2) hero
-  noise meter: big mono numbers counting up — "14,281 new CVEs published → 312 worth your time" under "Last 30 days · Oct 5 – Nov 4" with a % and
+  noise meter: big mono numbers counting up: "14,281 new CVEs published → 312 worth your time" under "Last 30 days · Oct 5 – Nov 4" with a % and
   "1 in N"; (3) **signal waterfall**: Canvas spectrogram of the window (x = hour, stacked ticks; quiet ticks dim
   grey, passed ticks glow in tier colour; hover tooltip with hour + counts; re-colours live as the evidence bar turns;
   a column opens Explore for the UTC day it starts on (`/explore?day=YYYY-MM-DD&sort=score`): click, or Enter on
@@ -255,8 +255,8 @@ Unknown → 404 view. Update `document.title` per route.
   batch tag); filter bar (tier, vendor search, hide WordPress / kernel / AI toggles, watchlist); (6) batch cards
   ("Microsoft · Oct 13 · 1,407 → 1 exploited · 2 PoC · 58 likely"); (7) KEV Clock strip; (8) "what changed" list;
   (9) Woke Up card: old CVEs that woke up in the last 7 days, most urgent first.
-- **CVE (`/cve/:id`)**: verdict line ("Patch now — exploited, KEV due Oct 29" / "Likely next — Metasploit module" /
-  "Watch" / "Quiet — no evidence yet (quiet ≠ safe)"); score dial with the arithmetic (base + each chip = total);
+- **CVE (`/cve/:id`)**: verdict line ("Patch now: exploited, KEV due Oct 29" / "Likely next: Metasploit module" /
+  "Watch" / "Quiet: no evidence yet (quiet ≠ safe)"); score dial with the arithmetic (base + each chip = total);
   chips grouped by family with sources and links; unknowns; evidence timeline; facts table (CNA, CVSS vector, CWE,
   affected, SSVC, EPSS, KEV); references; buttons: Copy as ticket (Markdown), Copy link, JSON, cve.org, "Disagree?"
   (GitHub issue link prefilled).
@@ -290,7 +290,7 @@ Unknown → 404 view. Update `document.title` per route.
   last option; the six tools with their descriptions; where it reads from; its limits (snippets and tool copy from
   `shared/mcp.ts`).
 
-**Interactions**: keyboard — `j`/`k` move selection, `Enter`/`o` open, `/` focus search, `w` watch vendor,
+**Interactions**: keyboard: `j`/`k` move selection, `Enter`/`o` open, `/` focus search, `w` watch vendor,
 `c` copy ticket, `?` shortcuts help, `⌘K`/`Ctrl+K` command palette (jump to CVE id, vendor, page).
 Watchlist (vendors/products) in `localStorage` (try/catch) and `?watch=`; watched items always show, whatever the evidence bar.
 "Since your last visit" badge from `localStorage` timestamp. Respect `prefers-reduced-motion`.

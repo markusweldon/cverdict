@@ -61,7 +61,7 @@ export function FilterBar({ filter, onChange, counts, shown }: Props) {
           Hide
         </span>
         <div class="toggles" role="group" aria-labelledby="hide-label">
-          <Toggle on={filter.hideWordpress} onClick={() => set({ hideWordpress: !filter.hideWordpress })} label="WordPress" tip="Wordfence, WPScan and Patchstack records — about 15% of all volume" />
+          <Toggle on={filter.hideWordpress} onClick={() => set({ hideWordpress: !filter.hideWordpress })} label="WordPress" tip="Wordfence, WPScan and Patchstack records, about 15% of all volume" />
           <Toggle on={filter.hideKernel} onClick={() => set({ hideKernel: !filter.hideKernel })} label="Linux kernel" tip="Linux kernel CNA bug-fix CVEs" />
           <Toggle on={filter.hideAi} onClick={() => set({ hideAi: !filter.hideAi })} label="AI-credited" tip="CVEs whose credits name an AI system (information only)" />
         </div>

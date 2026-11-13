@@ -57,7 +57,7 @@ export const CHIPS: readonly ChipDef[] = [
   c('x.nuclei', 'X', 'up', 30, 'nuclei', 'Nuclei template', 'A ProjectDiscovery Nuclei template exists, so it can be scanned for at internet scale. Forces at least Likely.'),
   c('x.exploitdb', 'X', 'up', 28, 'exploitdb', 'Exploit-DB', 'An Exploit-DB entry references this CVE.'),
   c('epss.high', 'X', 'up', 27, 'epss', 'EPSS ≥ 10%', 'EPSS gives ≥ 10% probability of exploitation activity in the next 30 days (only trusted after 14 days).'),
-  c('x.poc', 'X', 'up', 20, 'poc-github', 'PoC on GitHub', 'At least one public proof-of-concept repo that passes basic vetting. Unverified code — may be malware.'),
+  c('x.poc', 'X', 'up', 20, 'poc-github', 'PoC on GitHub', 'At least one public proof-of-concept repo that passes basic vetting. Unverified code that may be malware.'),
   c('ssvc.poc', 'X', 'up', 10, 'cisa-adp', 'SSVC: PoC', 'CISA SSVC assessment says a public proof of concept exists.'),
   c('vendor.functional', 'X', 'up', 24, 'cvelist', 'Vendor: working exploit', 'The CNA’s CVSS v3 vector says functional or autonomous exploit code exists (E:F/E:H). That is weaponization, not proof of attacks: about a quarter of such CVEs reach KEV. VulDB vectors are ignored.'),
   c('vendor.poc', 'X', 'up', 10, 'cvelist', 'Vendor: PoC', 'The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored.'),
@@ -88,7 +88,7 @@ export const CHIPS: readonly ChipDef[] = [
   // NOISE — only applied when there is no exploitation and no exploit artifact. Strongest (most negative) counts.
   c('noise.hobby', 'NOISE', 'down', -20, 'cvelist', 'Tutorial project', 'Student/tutorial code (SourceCodester, code-projects, PHPGurukul, …) that is rarely deployed.'),
   c('noise.disputed', 'NOISE', 'down', -15, 'cvelist', 'Disputed', 'The CNA tagged this record as disputed.'),
-  c('noise.wordpress', 'NOISE', 'down', -10, 'cvelist', 'WordPress plugin', 'A WordPress plugin or theme — about 15% of all volume; most have small install bases.'),
+  c('noise.wordpress', 'NOISE', 'down', -10, 'cvelist', 'WordPress plugin', 'A WordPress plugin or theme. These are about 15% of all volume, and most have small install bases.'),
   c('noise.kernel', 'NOISE', 'down', -8, 'cvelist', 'Kernel bug-fix', 'A Linux kernel CNA bug-fix CVE without total technical impact.'),
 
   // INFO — context, 0 points.
@@ -98,9 +98,9 @@ export const CHIPS: readonly ChipDef[] = [
   c('kev.forensic', 'INFO', 'info', 0, 'kev', 'Forensic triage', 'CISA asks for forensic triage, not just patching (BOD 26-04).'),
   c('sev.adp', 'INFO', 'info', 0, 'cisa-adp', 'CVSS from CISA', 'The CNA gave no CVSS score; the CISA-ADP score is used instead.'),
   c('epss.cold', 'INFO', 'info', 0, 'epss', 'EPSS (cold)', 'EPSS score shown for context only: the CVE is too new for EPSS to be meaningful.'),
-  c('poc.hype', 'INFO', 'info', 0, 'poc-github', 'PoC hype', 'More than 50 PoC repos appeared within a week. That measures attention, not weaponization — and fake PoCs often carry malware.'),
+  c('poc.hype', 'INFO', 'info', 0, 'poc-github', 'PoC hype', 'More than 50 PoC repos appeared within a week. That measures attention, not weaponization, and fake PoCs often carry malware.'),
   c('poc.unvetted', 'INFO', 'info', 0, 'poc-github', 'Unvetted PoC', 'Only brand-new, unstarred PoC repos exist. Not counted until they age or gain stars.'),
-  c('tag.eol', 'INFO', 'info', 0, 'cvelist', 'Unsupported product', 'The product was unsupported when the CVE was assigned: there may be no patch — replace or mitigate.'),
+  c('tag.eol', 'INFO', 'info', 0, 'cvelist', 'Unsupported product', 'The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate.'),
 ];
 
 export const CHIP_BY_ID: Readonly<Record<string, ChipDef>> = Object.fromEntries(CHIPS.map((d) => [d.id, d]));

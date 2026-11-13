@@ -25,7 +25,7 @@ SSVC   automatable + technical impact (they add)
 NOISE  only when nothing exploits it: hobby code, disputed, WordPress, kernel`;
 
 const STEPS: readonly [string, string][] = [
-  ['Read every CVE', 'One streaming pass over the full CVE List V5 git repository each hour — CNA records plus CISA’s ADP enrichment. NVD is not used: it stopped enriching most CVEs in April 2026.'],
+  ['Read every CVE', 'One streaming pass over the full CVE List V5 git repository each hour: CNA records plus CISA’s ADP enrichment. NVD is not used: it stopped enriching most CVEs in April 2026.'],
   ['Join public evidence', 'CISA KEV, FIRST EPSS, Metasploit modules, Nuclei templates, Exploit-DB and PoC-in-GitHub, matched by CVE ID.'],
   ['Score with chips', 'Each piece of evidence is a chip worth a fixed number of points. Within a family only the strongest counts; across families points add.'],
   ['Set the evidence bar', `Exploited CVEs always pass. CVEs with a Metasploit module or Nuclei template are always at least Likely. Everything else passes when its score reaches the evidence bar (default ${KNOB_DEFAULT}).`],
@@ -44,7 +44,7 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
   ['Quiet ≠ safe', 'Quiet means no public evidence yet. A brand-new CVE in an internet-facing product you run can matter before anyone writes an exploit.'],
   ['Exposure is yours', 'We can’t see your assets. A Likely CVE in software you don’t run is noise; a Watch CVE on your perimeter may not be.'],
   ['Feeds lag', `Exploit feeds and EPSS need about ${COLD_START_DAYS} days to catch up, so new CVEs show “Too new” instead of a penalty.`],
-  ['PoCs are unverified', 'Proof-of-concept repos are counted, never run. Fake PoCs that carry malware are common — treat every link as hostile.'],
+  ['PoCs are unverified', 'Proof-of-concept repos are counted, never run. Fake PoCs that carry malware are common, so treat every link as hostile.'],
   ['Vendor text is data', 'Descriptions are written by CNAs and sometimes contain hostile markup. Everything is shown as plain text.'],
   [
     'Check Deps knows only what we track',
@@ -58,7 +58,7 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
 const ATTRIBUTIONS: readonly [string, string, string][] = [
   ['CVE List V5', 'https://github.com/CVEProject/cvelistV5', 'CVE Program Terms of Use; MITRE’s notice below'],
   ['CISA KEV and Vulnrichment (ADP)', 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog', 'CC0 1.0; no CISA endorsement implied'],
-  ['EPSS', 'https://www.first.org/epss', 'FIRST.org — free use with attribution'],
+  ['EPSS', 'https://www.first.org/epss', 'FIRST.org, free use with attribution'],
   ['Metasploit Framework', 'https://github.com/rapid7/metasploit-framework', 'BSD-3-Clause, Rapid7'],
   ['Nuclei templates', 'https://github.com/projectdiscovery/nuclei-templates', 'MIT, ProjectDiscovery'],
   ['Exploit-DB', 'https://www.exploit-db.com', 'OffSec; only IDs, flags and links are used'],
@@ -159,7 +159,7 @@ export default function Method() {
           <code>{FORMULA}</code>
         </pre>
         <p class="muted">
-          Points are roughly 20·log₁₀ of how much each signal raises the odds of a later KEV listing, shrunk for look-ahead bias — so +20 points is about ten times the odds. Batches are {BATCH_MIN}+ CVEs from one CNA on one UTC day — a vendor patch day or an aggregator’s bulk release.
+          Points are roughly 20·log₁₀ of how much each signal raises the odds of a later KEV listing, shrunk for look-ahead bias, so +20 points is about ten times the odds. Batches are {BATCH_MIN}+ CVEs from one CNA on one UTC day: a vendor patch day or an aggregator’s bulk release.
         </p>
       </section>
 

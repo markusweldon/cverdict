@@ -148,7 +148,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
       `Nuclei ${exploits.nuclei.size} · Exploit-DB ${exploits.exploitdb.size} · PoC ${exploits.poc.size} · ${since(started)}`,
   );
   for (const s of sources) {
-    if (!s.ok || s.stale) log.warn(`ingest: source ${s.id} ${s.ok ? 'stale' : 'unavailable'}${s.error ? ` — ${s.error}` : ''}`);
+    if (!s.ok || s.stale) log.warn(`ingest: source ${s.id} ${s.ok ? 'stale' : 'unavailable'}${s.error ? `: ${s.error}` : ''}`);
   }
 
   return {

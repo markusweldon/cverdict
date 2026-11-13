@@ -159,7 +159,7 @@ describe('X family (exploit artifacts and prediction)', () => {
     ['x.nuclei', { nuclei: { [ID]: [nucleiTemplate(ID)] } }, 30, 'Nuclei template (http · critical): scannable at scale'],
     ['x.exploitdb', { exploitdb: { [ID]: [edb('52012', '2026-10-10', true)] } }, 28, 'Exploit-DB 52012 (verified) · Oct 10'],
     ['epss.high', { epss: { [ID]: [0.142, 0.991] } }, 27, 'EPSS 14.2% · 99th pct'],
-    ['x.poc', { poc: { [ID]: [repo(daysAgo(10))] } }, 20, '1 PoC repo (1 vetted) — unverified, may be malware'],
+    ['x.poc', { poc: { [ID]: [repo(daysAgo(10))] } }, 20, '1 PoC repo (1 vetted), unverified, may be malware'],
     ['epss.mid', { epss: { [ID]: [0.031, 0.912] } }, 8, 'EPSS 3.1% · 91st pct'],
   ];
 
@@ -230,7 +230,7 @@ describe('X family (exploit artifacts and prediction)', () => {
 
   it('x.too_new before day 14 (unknown, 0 points)', () => {
     const s = score(makeCve({ published: daysAgo(3) }));
-    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Too new: day 3 of 14 — exploit feeds lag' });
+    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Too new: day 3 of 14, exploit feeds lag' });
     expect(byId(s, 'x.none')).toBeUndefined();
     expect(s.unknowns).toContain('Exploit feeds have not caught up yet (day 3 of 14).');
   });
@@ -247,7 +247,7 @@ describe('EPSS cold start', () => {
     const s = score(makeCve({ published: daysAgo(5) }), { epss: { [ID]: [0.5, 0.999] } });
     expect(byId(s, 'epss.high')).toBeUndefined();
     expect(byId(s, 'epss.mid')).toBeUndefined();
-    expect(byId(s, 'epss.cold')).toMatchObject({ points: 0, polarity: 'info', label: 'EPSS 50.0% · 99th pct · day 5 — too new to trust' });
+    expect(byId(s, 'epss.cold')).toMatchObject({ points: 0, polarity: 'info', label: 'EPSS 50.0% · 99th pct · day 5, too new to trust' });
     expect(byId(s, 'x.too_new')).toBeDefined();
     expect(s.epss).toMatchObject({ score: 0.5, percentile: 0.999, model: 'v2026.06.15' });
     expect(s.unknowns).toContain('EPSS is not trusted until day 14; this CVE is on day 5.');
@@ -277,7 +277,7 @@ describe('PoC vetting', () => {
   it('brand-new unstarred repos are unvetted (info only) and leave X unsettled, not "no exploit"', () => {
     const s = score(makeCve({ cna: 'Wordfence' }), { poc: { [ID]: [repo(daysAgo(1)), repo(daysAgo(2), 1)] } });
     expect(byId(s, 'x.poc')).toBeUndefined();
-    expect(byId(s, 'poc.unvetted')).toMatchObject({ points: 0, label: '2 new PoC repos, unstarred and < 3 days old — not counted yet' });
+    expect(byId(s, 'poc.unvetted')).toMatchObject({ points: 0, label: '2 new PoC repos, unstarred and < 3 days old, not counted yet' });
     expect(byId(s, 'x.none')).toBeUndefined();
     expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Not settled: 2 PoC repos too new to vet' });
     expect(s.unknowns).toContain('A PoC repo appeared but is not vetted yet: it counts once it is 3 days old or has 2 stars.');
@@ -291,7 +291,7 @@ describe('PoC vetting', () => {
     expect(score(makeCve(), { poc: { [ID]: [repo(daysAgo(1), 2)] } }).exploits.poc.vetted).toBe(1);
     expect(score(makeCve(), { poc: { [ID]: [repo(daysAgo(3), 0)] } }).exploits.poc.vetted).toBe(1);
     const s = score(makeCve(), { poc: { [ID]: [repo(daysAgo(1)), repo(daysAgo(4), 0, false, 'b'), repo(daysAgo(1), 7, false, 'c')] } });
-    expect(byId(s, 'x.poc')!.label).toBe('3 PoC repos (2 vetted) — unverified, may be malware');
+    expect(byId(s, 'x.poc')!.label).toBe('3 PoC repos (2 vetted), unverified, may be malware');
     expect(s.exploits.poc.top.map((r) => r.stars)).toEqual([7, 0, 0]);
   });
 
@@ -479,7 +479,7 @@ describe('PRIOR family', () => {
   it('prior.unknown (0 points) and an unknown when no vendor is named', () => {
     const s = score(makeCve({ affected: [] }));
     expect(s.reasons.filter((r) => r.family === 'PRIOR')).toEqual([
-      expect.objectContaining({ id: 'prior.unknown', points: 0, polarity: 'unknown', label: 'No affected vendor named — KEV history not checked' }),
+      expect.objectContaining({ id: 'prior.unknown', points: 0, polarity: 'unknown', label: 'No affected vendor named, KEV history not checked' }),
     ]);
     expect(s.reasons.at(-1)!.polarity).toBe('unknown');
     expect(s.unknowns).toContain('No affected vendor is named, so KEV history could not be checked.');
@@ -491,7 +491,7 @@ describe('unavailable sources are unknown, not absent', () => {
   it('KEV down: prior.unknown instead of prior.none, and the unknowns name it', () => {
     const s = score(makeCve(), { down: ['kev'] });
     expect(byId(s, 'prior.none')).toBeUndefined();
-    expect(byId(s, 'prior.unknown')).toMatchObject({ points: 0, label: 'kev unavailable this run — KEV history not checked' });
+    expect(byId(s, 'prior.unknown')).toMatchObject({ points: 0, label: 'kev unavailable this run, KEV history not checked' });
     expect(s.raw).toBe(15 - 14 + 1);
     expect(s.unknowns).toContain('kev could not be loaded this run, so its evidence is unknown, not counted as absent.');
   });
@@ -511,7 +511,7 @@ describe('unavailable sources are unknown, not absent', () => {
 
   it('cold start keeps its own label and NOISE rule when feeds are down', () => {
     const s = score(makeCve({ published: daysAgo(3), cna: 'Wordfence' }), { down: ['metasploit'] });
-    expect(byId(s, 'x.too_new')!.label).toBe('Too new: day 3 of 14 — exploit feeds lag');
+    expect(byId(s, 'x.too_new')!.label).toBe('Too new: day 3 of 14, exploit feeds lag');
     expect(pointsOf(s, 'noise.wordpress')).toBe(0);
   });
 });

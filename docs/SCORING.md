@@ -104,7 +104,7 @@ Details that matter when you read a score:
 
 Generated from `shared/model.ts`. "Unknown" chips mark missing evidence and are worth 0.
 
-### E — confirmed exploitation
+### E: confirmed exploitation
 
 Any of the first four puts the CVE in **Exploited**. The first that fires, in this order, carries the +75 and the floor of 90; the others are shown with 0. `kev.ransomware` adds +5 on top, still capped at 100.
 
@@ -116,7 +116,7 @@ Any of the first four puts the CVE in **Exploited**. The first that fires, in th
 | `vendor.itw` | Vendor: in the wild | +75 | `cvelist` | The CNA description says the bug is exploited or “may have been exploited” in the wild. |
 | `kev.ransomware` | Ransomware | +5 | `kev` | CISA marks known use in ransomware campaigns. The flag lags, so its absence means little. |
 
-### X — exploit artifacts and prediction
+### X: exploit artifacts and prediction
 
 Strongest one counts; the rest are shown with 0. `x.too_new` also stands in for `x.none` after the cold start when a PoC repo is still too new to vet or an exploit source could not be loaded.
 
@@ -126,7 +126,7 @@ Strongest one counts; the rest are shown with 0. `x.too_new` also stands in for 
 | `x.nuclei` | Nuclei template | +30 | `nuclei` | A ProjectDiscovery Nuclei template exists, so it can be scanned for at internet scale. Forces at least Likely. |
 | `x.exploitdb` | Exploit-DB | +28 | `exploitdb` | An Exploit-DB entry references this CVE. |
 | `epss.high` | EPSS ≥ 10% | +27 | `epss` | EPSS gives ≥ 10% probability of exploitation activity in the next 30 days (only trusted after 14 days). |
-| `x.poc` | PoC on GitHub | +20 | `poc-github` | At least one public proof-of-concept repo that passes basic vetting. Unverified code — may be malware. |
+| `x.poc` | PoC on GitHub | +20 | `poc-github` | At least one public proof-of-concept repo that passes basic vetting. Unverified code that may be malware. |
 | `ssvc.poc` | SSVC: PoC | +10 | `cisa-adp` | CISA SSVC assessment says a public proof of concept exists. |
 | `vendor.functional` | Vendor: working exploit | +24 | `cvelist` | The CNA’s CVSS v3 vector says functional or autonomous exploit code exists (E:F/E:H). That is weaponization, not proof of attacks: about a quarter of such CVEs reach KEV. VulDB vectors are ignored. |
 | `vendor.poc` | Vendor: PoC | +10 | `cvelist` | The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored. |
@@ -134,7 +134,7 @@ Strongest one counts; the rest are shown with 0. `x.too_new` also stands in for 
 | `x.none` | No exploit yet | −14 | `computed` | Two weeks after publication there is still no public exploit and EPSS is below 1%. |
 | `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: the CVE is less than 14 days old, a PoC repo is too new to vet, or an exploit source could not be loaded this run. |
 
-### SEV — severity
+### SEV: severity
 
 CVSS base score from the CNA (v4.0 > v3.1 > v3.0), else CISA-ADP (v4.0 > v3.1 > v3.0). v2-only scores are shown but not scored.
 
@@ -146,7 +146,7 @@ CVSS base score from the CNA (v4.0 > v3.1 > v3.0), else CISA-ADP (v4.0 > v3.1 > 
 | `sev.low` | Medium/Low | −13 | `cvelist` | CVSS below 7.0. |
 | `sev.none` | No CVSS | unknown | `computed` | Neither the CNA nor CISA-ADP published a CVSS score. |
 
-### SSVC — CISA decision points
+### SSVC: CISA decision points
 
 The two decision points are independent, so they add.
 
@@ -158,7 +158,7 @@ The two decision points are independent, so they add.
 | `ssvc.partial` | Partial impact | −6 | `cisa-adp` | CISA SSVC: limited control or information exposure. |
 | `ssvc.missing` | No SSVC yet | unknown | `computed` | CISA has not published an SSVC assessment yet (usually arrives within a day). |
 
-### PRIOR — KEV history of the vendor and product
+### PRIOR: KEV history of the vendor and product
 
 Counts exclude the CVE itself. `prior.unknown` also covers a run in which the KEV catalogue could not be loaded.
 
@@ -169,7 +169,7 @@ Counts exclude the CVE itself. `prior.unknown` also covers a run in which the KE
 | `prior.none` | Never in KEV | −6 | `kev` | Nothing from this vendor has ever been listed in CISA KEV. |
 | `prior.unknown` | KEV history unknown | unknown | `computed` | The record names no vendor, or the KEV catalog could not be loaded this run, so the KEV history check could not run. |
 
-### NOISE — low-value volume
+### NOISE: low-value volume
 
 Only applied when there is no exploitation and the X family is ≤ 0, and not while the absence of an exploit is still open (an unvetted PoC repo, or an exploit source or EPSS that could not be loaded). It does apply during the cold start. The most negative one counts.
 
@@ -177,10 +177,10 @@ Only applied when there is no exploitation and the X family is ≤ 0, and not wh
 |---|---|--:|---|---|
 | `noise.hobby` | Tutorial project | −20 | `cvelist` | Student/tutorial code (SourceCodester, code-projects, PHPGurukul, …) that is rarely deployed. |
 | `noise.disputed` | Disputed | −15 | `cvelist` | The CNA tagged this record as disputed. |
-| `noise.wordpress` | WordPress plugin | −10 | `cvelist` | A WordPress plugin or theme — about 15% of all volume; most have small install bases. |
+| `noise.wordpress` | WordPress plugin | −10 | `cvelist` | A WordPress plugin or theme. These are about 15% of all volume, and most have small install bases. |
 | `noise.kernel` | Kernel bug-fix | −8 | `cvelist` | A Linux kernel CNA bug-fix CVE without total technical impact. |
 
-### INFO — context (0 points)
+### INFO: context (0 points)
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
@@ -190,9 +190,9 @@ Only applied when there is no exploitation and the X family is ≤ 0, and not wh
 | `kev.forensic` | Forensic triage | 0 | `kev` | CISA asks for forensic triage, not just patching (BOD 26-04). |
 | `sev.adp` | CVSS from CISA | 0 | `cisa-adp` | The CNA gave no CVSS score; the CISA-ADP score is used instead. |
 | `epss.cold` | EPSS (cold) | 0 | `epss` | EPSS score shown for context only: the CVE is too new for EPSS to be meaningful. |
-| `poc.hype` | PoC hype | 0 | `poc-github` | More than 50 PoC repos appeared within a week. That measures attention, not weaponization — and fake PoCs often carry malware. |
+| `poc.hype` | PoC hype | 0 | `poc-github` | More than 50 PoC repos appeared within a week. That measures attention, not weaponization, and fake PoCs often carry malware. |
 | `poc.unvetted` | Unvetted PoC | 0 | `poc-github` | Only brand-new, unstarred PoC repos exist. Not counted until they age or gain stars. |
-| `tag.eol` | Unsupported product | 0 | `cvelist` | The product was unsupported when the CVE was assigned: there may be no patch — replace or mitigate. |
+| `tag.eol` | Unsupported product | 0 | `cvelist` | The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate. |
 
 ## Tiers and the evidence bar
 
@@ -300,7 +300,7 @@ From the run of 2026-10-26 19:30 UTC. Info chips other than EPSS are left out.
    +8  CISA SSVC: total technical impact
    −2  CISA SSVC: not automatable
   +10  Product in KEV (×174): Microsoft Windows
-    0  EPSS 9.8% · 95th pct · day 13 — too new to trust   (info)
+    0  EPSS 9.8% · 95th pct · day 13, too new to trust   (info)
   ───
    56  raw
   +44  CISA KEV · added Oct 13 · due Oct 16        (raw + 75 = 131, capped at 100)
@@ -321,8 +321,8 @@ would score 56, Likely next.
    +8  CISA SSVC: total technical impact
    +6  CISA SSVC: automatable
    +8  Vendor in KEV (×390): Microsoft
-    0  Too new: day 13 of 14 — exploit feeds lag
-    0  EPSS 1.7% · 76th pct · day 13 — too new to trust   (info)
+    0  Too new: day 13 of 14, exploit feeds lag
+    0  EPSS 1.7% · 76th pct · day 13, too new to trust   (info)
   ───
    50  Likely next at the default evidence bar
 ```
@@ -339,7 +339,7 @@ to 58; below 1% and with no public exploit, `x.none` (−14) drops it to 36, whi
    +6  CISA SSVC: automatable
    −6  CISA SSVC: partial technical impact
     0  No CNA score; CISA-ADP CVSS 7.5 used        (info)
-    0  No affected vendor named — KEV history not checked   (unknown)
+    0  No affected vendor named, KEV history not checked   (unknown)
   ───
     2  Quiet
 ```

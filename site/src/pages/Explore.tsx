@@ -262,7 +262,7 @@ export default function Explore() {
         </EmptyState>
       ) : results.length === 0 ? (
         <EmptyState title="No CVEs match">
-          {p.day !== null ? `Nothing from ${dayLabel} matches these filters. Try fewer filters.` : 'Try fewer filters — or a CVE ID from outside the window opens its own page.'}
+          {p.day !== null ? `Nothing from ${dayLabel} matches these filters. Try fewer filters.` : 'Try fewer filters, or a CVE ID from outside the window opens its own page.'}
         </EmptyState>
       ) : (
         <VirtualList

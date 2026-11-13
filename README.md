@@ -78,7 +78,7 @@ CISA KEV · added Sep 27 · due Sep 30
 CISA SSVC: exploitation active · Sep 27
 Metasploit: exploit/freebsd/http/citrix_netscaler_cve_2026_88771 (normal)
 EPSS 82.2% · 99th pct
-12 PoC repos (11 vetted) — unverified, may be malware
+12 PoC repos (11 vetted), unverified, may be malware
 Critical 9.5 · network (v4.0)
 CISA SSVC: total technical impact
 CISA SSVC: automatable
@@ -87,7 +87,7 @@ Product in KEV (×5): Citrix NetScaler
 
 Other CVEs carry chips such as `Vendor CVSS: working exploit code exists (E:F)` (+24: weaponized,
 not yet exploited), context worth 0 points such as `Part of Microsoft patch day · Oct 13 (1,407)`
-or `AI-credited: “Claude Security”`, and unknowns such as `Too new: day 13 of 14 — exploit feeds lag`.
+or `AI-credited: “Claude Security”`, and unknowns such as `Too new: day 13 of 14, exploit feeds lag`.
 
 On the site:
 
@@ -144,7 +144,7 @@ CVE-2026-105016 · Microsoft QUIC Remote Code Execution Vulnerability · day 13
    +8  CISA SSVC: total technical impact
    +6  CISA SSVC: automatable
    +8  Vendor in KEV (×390): Microsoft
-    0  Too new: day 13 of 14 — exploit feeds lag
+    0  Too new: day 13 of 14, exploit feeds lag
   ───
    50  Likely next at the default evidence bar
 ```

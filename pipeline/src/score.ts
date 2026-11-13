@@ -502,14 +502,14 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
   const poc = exploits.poc;
   if (poc.vetted > 0) {
     cands.push(
-      reason('x.poc', `${plural(poc.count, 'PoC repo')} (${formatInt(poc.vetted)} vetted) — unverified, may be malware`, {
+      reason('x.poc', `${plural(poc.count, 'PoC repo')} (${formatInt(poc.vetted)} vetted), unverified, may be malware`, {
         url: pocIndexUrl(cve.id),
         at: f.poc.firstVetted ?? undefined,
       }),
     );
   } else if (poc.count > 0) {
     info.push(
-      reason('poc.unvetted', `${plural(poc.count, 'new PoC repo')}, unstarred and < ${POC_MIN_AGE_DAYS} days old — not counted yet`, {
+      reason('poc.unvetted', `${plural(poc.count, 'new PoC repo')}, unstarred and < ${POC_MIN_AGE_DAYS} days old, not counted yet`, {
         url: pocIndexUrl(cve.id),
         at: f.poc.firstCreated ?? undefined,
       }),
@@ -517,7 +517,7 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
   }
   if (poc.hype) {
     info.push(
-      reason('poc.hype', `PoC hype: > ${HYPE_REPOS} repos within ${HYPE_DAYS} days — attention, not weaponization`, {
+      reason('poc.hype', `PoC hype: > ${HYPE_REPOS} repos within ${HYPE_DAYS} days: attention, not weaponization`, {
         url: pocIndexUrl(cve.id),
         at: f.poc.firstCreated ?? undefined,
       }),
@@ -543,7 +543,7 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
   }
   if (epss && f.cold) {
     info.push(
-      reason('epss.cold', `${epssLabel(epss)} · day ${f.day} — too new to trust`, { url: epssUrl(cve.id), at: epss.date || undefined }),
+      reason('epss.cold', `${epssLabel(epss)} · day ${f.day}, too new to trust`, { url: epssUrl(cve.id), at: epss.date || undefined }),
     );
   }
 
@@ -552,7 +552,7 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
   const pending = down.length > 0 || unvetted > 0;
   if (cands.length > 0) return { result: strongest(cands, 'max'), info, pending };
   const unknown = (label: string) => ({ result: { chips: [reason('x.too_new', label)], points: 0 }, info, pending });
-  if (f.cold) return unknown(`Too new: day ${f.day} of ${COLD_START_DAYS} — exploit feeds lag`);
+  if (f.cold) return unknown(`Too new: day ${f.day} of ${COLD_START_DAYS}, exploit feeds lag`);
   // Nothing fired after the cold start: (weak) evidence of absence, unless part of the evidence is missing.
   if (down.length > 0) return unknown(`Exploit check incomplete: ${down.join(', ')} unavailable this run`);
   if (unvetted > 0) return unknown(`Not settled: ${plural(unvetted, 'PoC repo')} too new to vet`);
@@ -622,8 +622,8 @@ function priorFamily(f: Facts, prior: KevPrior): { result: FamilyResult; vendorN
 
   let r: Reason;
   const kevDown = f.unavailable.get('kev');
-  if (kevDown) r = reason('prior.unknown', `${kevDown} unavailable this run — KEV history not checked`);
-  else if (!firstVendor) r = reason('prior.unknown', 'No affected vendor named — KEV history not checked');
+  if (kevDown) r = reason('prior.unknown', `${kevDown} unavailable this run, KEV history not checked`);
+  else if (!firstVendor) r = reason('prior.unknown', 'No affected vendor named, KEV history not checked');
   else if (product.entry) {
     const { name } = product.entry;
     r = reason('prior.product', `Product in KEV (×${formatInt(product.count)}): ${name}`, { url: kevSearchUrl(name) });
