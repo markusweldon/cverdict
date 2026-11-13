@@ -12,6 +12,8 @@ import {
   kevAsOf,
   readPreviousBacktest,
   runBacktest,
+  SIGNALS,
+  NUCLEI_DATES_DOWN,
   type AsOfInput,
   type BacktestInputs,
 } from '../../src/backtest';
@@ -37,7 +39,7 @@ function asOf(cve: NormalizedCve, spec: EnrichmentSpec = {}, o: Partial<AsOfInpu
   const k = makeKev(ID, { dateAdded: LISTED });
   const enr = makeEnrichment({ kev: [k, ...(spec.kev ?? [])], ...spec });
   const catalog = kevAsOf(enr.kev, LISTED);
-  return { cve, kev: k, enr, kevAsOf: { catalog, prior: buildKevPrior(catalog) }, epss: { date: '2026-10-19', score: null }, metasploitModified: new Map(), exploitdbAdded: new Map(), ...o };
+  return { cve, kev: k, enr, kevAsOf: { catalog, prior: buildKevPrior(catalog) }, epss: { date: '2026-10-19', score: null }, metasploitModified: new Map(), nucleiAdded: new Map(), exploitdbAdded: new Map(), ...o };
 }
 
 const scoreOf = (input: AsOfInput, variant: 'strict' | 'upper') => {
@@ -117,10 +119,35 @@ describe('evidence as of the day before the listing', () => {
     expect(scoreOf(asOf(kevCve(), spec, { metasploitModified: new Map([[ID, after(3)]]) }), 'upper').weaponized).toBe(true);
   });
 
-  it('leaves Nuclei templates out of the strict scores (no dates) and in the undated variant', () => {
+  it('leaves undated Nuclei templates out of the strict scores and in the undated variant', () => {
     const spec = { nuclei: { [ID]: [nucleiTemplate(ID)] } };
-    expect(scoreOf(asOf(kevCve(), spec), 'strict').weaponized).toBe(false);
+    const strict = scoreOf(asOf(kevCve(), spec), 'strict');
+    expect(strict.weaponized).toBe(false);
+    expect(strict.leftOut).toContain('nuclei');
     expect(scoreOf(asOf(kevCve(), spec), 'upper').weaponized).toBe(true);
+    // No dates loaded at all: the same.
+    expect(scoreOf(asOf(kevCve(), spec, { nucleiAdded: null }), 'strict').weaponized).toBe(false);
+  });
+
+  it('counts a Nuclei template in strict only when it landed on main before the listing day', () => {
+    const spec = { nuclei: { [ID]: [nucleiTemplate(ID)] } };
+    const commit = 'a'.repeat(40);
+    const at = (iso: string) => asOf(kevCve(), spec, { nucleiAdded: new Map([[ID, { at: iso, commit }]]) });
+    // Landed the day before the listing (23:59:59 UTC): before the cutoff, so it counts.
+    const dated = scoreOf(at('2026-10-19T23:59:59.000Z'), 'strict');
+    expect(dated.weaponized).toBe(true);
+    expect(dated.leftOut).not.toContain('nuclei');
+    const chip = dated.reasons.find((r) => r.id === 'x.nuclei');
+    expect(chip).toMatchObject({ at: '2026-10-19T23:59:59.000Z', url: `https://github.com/projectdiscovery/nuclei-templates/commit/${commit}` });
+    // Landed on the listing day itself, or later: may come from the listing, so it is left out.
+    for (const iso of [CUTOFF, '2026-10-20T15:00:00.000Z', after(30)]) {
+      const s = scoreOf(at(iso), 'strict');
+      expect(s.weaponized).toBe(false);
+      expect(s.leftOut).toContain('nuclei');
+      expect(scoreOf(at(iso), 'upper').weaponized).toBe(true);
+    }
+    // A date for another CVE does not count.
+    expect(scoreOf(asOf(kevCve(), spec, { nucleiAdded: new Map([['CVE-2026-100009', { at: before(100), commit }]]) }), 'strict').weaponized).toBe(false);
   });
 
   it('trusts an SSVC exploitation value only from an unchanged CISA container; the timestamp dates the rest', () => {
@@ -184,6 +211,7 @@ describe('runBacktest', () => {
     epss: new Map([['2026-10-19', new Map([[ID, 0.3]])]]),
     reuse: new Map(),
     metasploitModified: new Map(),
+    nucleiAdded: new Map(),
     exploitdbAdded: new Map(),
     volumeFrom: '2026-05-07T03:17:00.000Z',
     ...o,
@@ -227,6 +255,24 @@ describe('runBacktest', () => {
     expect(missing.items[0]).toMatchObject({ epss: null, epss_date: null, strict: { epss10: false } });
     expect(missing.epss_missing).toEqual(['2026-10-19']);
     expect(missing.signals.find((s) => s.key === 'epss')?.affected).toBe(1);
+  });
+
+  it('counts a Nuclei template that landed before the listing in strict, and lists missing template dates as a source down', () => {
+    const spec = { nuclei: { [ID]: [nucleiTemplate(ID)] } };
+    const landed = (at: string) => ({ nucleiAdded: new Map([[ID, { at, commit: 'b'.repeat(40) }]]) });
+    const early = run([kevCve()], undefined, spec, landed(before(40)));
+    expect(early.items[0]).toMatchObject({ strict: { cverdict: true }, upper: { cverdict: true }, left_out: [] });
+    expect(early.items[0].chips).toContain('x.nuclei');
+    expect(early.signals.find((s) => s.key === 'nuclei')?.affected).toBe(0);
+    expect(early.sources_down).toEqual([]);
+    const late = run([kevCve()], undefined, spec, landed(after(0)));
+    expect(late.items[0]).toMatchObject({ strict: { cverdict: false }, upper: { cverdict: true }, left_out: ['nuclei'] });
+    expect(late.signals.find((s) => s.key === 'nuclei')?.affected).toBe(1);
+    const none = run([kevCve()], undefined, spec, { nucleiAdded: null });
+    expect(none.items[0]).toMatchObject({ strict: { cverdict: false }, left_out: ['nuclei'] });
+    expect(none.sources_down).toEqual([NUCLEI_DATES_DOWN]);
+    // So the next day's run recomputes it.
+    expect(decideBacktest(none, new Date(NOW.getTime() + 25 * 3_600_000)).carried).toBeNull();
   });
 
   it('adds undated evidence only in the upper variant, and reports alert volume over the period', () => {
@@ -282,7 +328,7 @@ describe('carry-forward', () => {
         { key: 'recent', n: 2, strict: zero(2), upper: zero(2) },
         { key: 'old', n: 0, strict: zero(0), upper: zero(0) },
       ],
-      signals: [],
+      signals: SIGNALS.map((x) => ({ ...x, affected: 0 })),
       epss_missing: [],
       ...o,
     }) as unknown as BacktestReceipts;
@@ -300,6 +346,14 @@ describe('carry-forward', () => {
     // From the future (a clock problem): refresh.
     expect(decideBacktest(computed('2026-12-01T00:00:00Z'), NOW).plan).not.toBeNull();
     expect(decideBacktest(null, NOW).note).toMatch(/no previous backtest/);
+  });
+
+  it('recomputes a recent copy that used evidence differently (here: Nuclei templates before they had dates)', () => {
+    const recent = new Date(NOW.getTime() - 3_600_000).toISOString();
+    const undatedNuclei = SIGNALS.map((x) => ({ ...x, affected: 0, note: x.key === 'nuclei' ? 'The template list has no dates, so templates count only with undated evidence.' : x.note }));
+    expect(decideBacktest(computed(recent, { signals: undatedNuclei }), NOW)).toMatchObject({ carried: null, note: expect.stringMatching(/the way evidence is dated has changed/) });
+    expect(decideBacktest(computed(recent, { signals: [] }), NOW).carried).toBeNull();
+    expect(decideBacktest(computed(recent), NOW).carried).not.toBeNull();
   });
 
   it('recomputes a recent copy from another score model, an inconsistent one, and one with missing EPSS days after a day', () => {
@@ -343,7 +397,7 @@ describe('carry-forward', () => {
 
     const cve = makeCve({ id: ID, published: '2026-10-01T00:00:00Z', ...cvss(9.8) });
     const kev = [makeKev(ID, { dateAdded: LISTED })];
-    const refresh: BacktestInputs = { epss: new Map(), reuse: new Map(), metasploitModified: new Map(), exploitdbAdded: new Map(), volumeFrom: '2026-05-07T03:17:00.000Z' };
+    const refresh: BacktestInputs = { epss: new Map(), reuse: new Map(), metasploitModified: new Map(), nucleiAdded: new Map(), exploitdbAdded: new Map(), volumeFrom: '2026-05-07T03:17:00.000Z' };
     const build = (spec: EnrichmentSpec, previousBacktest: BacktestReceipts | null) =>
       buildOutput({ ingest: { ...makeIngest([cve], { ...spec, kev: spec.down?.includes('kev') ? [] : kev }), backtest: refresh }, now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://x.test', previousBacktest });
     // A source down during a refresh is recorded, so the page can say so and the next day retries.

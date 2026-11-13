@@ -122,9 +122,9 @@ Exploited when `x`; else Likely next when `w` or `s ≥ knob`; else Watch when `
 | `id` | `cvelist`, `cisa-adp`, `kev`, `epss`, `metasploit`, `nuclei`, `exploitdb`, `poc-github`, `osv` |
 | `name`, `url`, `license` | What the source is and its terms |
 | `ok` | Usable data was available this run. When `false`, scores show that source's evidence as unknown (`prior.unknown`, `x.too_new`), never as absent. `osv` is the exception: it only feeds `packages.json`, never a score, so its health never changes a CVE |
-| `stale` | The live fetch failed and the last good copy was used |
+| `stale` | The live fetch failed and the last good copy was used. For `nuclei` also when the template dates could not be brought up to date (then `error` says why); the templates themselves still count |
 | `fetched_at` | When that copy was downloaded (for git sources: the upstream commit time) |
-| `upstream_version` | KEV catalog version, EPSS model and date, git commit, … |
+| `upstream_version` | KEV catalog version, EPSS model and date, git commit (for `nuclei`: the last nuclei-templates commit the template dates include), … |
 | `records` | Number of records parsed |
 | `error` | Why the fetch failed, if it did |
 
@@ -175,11 +175,14 @@ not in the window, not in KEV and not in `woke.json` is not in any shard. The fi
 | `score` | `{ value, tier, raw, model }`: `raw` is the score before the exploitation floor and clamping |
 | `reasons[]` | Every chip, ordered E, X, SEV, SSVC, PRIOR, NOISE, then info and unknown chips |
 | `unknowns[]` | Evidence we could not see, in words |
-| `timeline[]` | `{ at, event, source }`, oldest first |
+| `timeline[]` | `{ at, event, source }`, oldest first. Includes "First Nuclei template added" (the landing date below) |
 | `references[]` | Up to 10 reference URLs from the CNA |
 | `woke` | `{ at, signals[] }` when the CVE is in `woke.json` (same fields as there), else `null` |
 
 A `Reason` is `{ id, label, polarity: up|down|info|unknown, family: E|X|SEV|SSVC|PRIOR|NOISE|INFO, points, source, url?, at? }`.
+`x.nuclei` carries `at`, the time the CVE's first template landed on the `main` branch of
+projectdiscovery/nuclei-templates, and `url`, that commit (the label reads "· added <date>"); without
+a date, `url` is the template and there is no `at`. The date never changes the points.
 Chips that lost to a stronger one in their family are included with `points: 0`, so
 `15 + Σ points` equals `score.raw` for a CVE that is not exploited (`score.value` is that clamped to
 0–100, so the two differ only when `raw` is negative), and equals `score.value` for an exploited
@@ -254,7 +257,8 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
 - Each kind is "first of its kind": a second Metasploit module or a tenth PoC repo does not wake
   a CVE up again.
 - `first_seen: true` means the source has no date for the evidence (Metasploit's `mod_time` is a
-  modification time, Nuclei's index has no dates, two daily EPSS files cannot say which day the
+  modification time, Nuclei's index has no dates (the template landing dates are not used here
+  yet), two daily EPSS files cannot say which day the
   score rose), so `at` is when the pipeline first saw it. These kinds need the previous run's
   state; without it everything already present is treated as known, so a first run never dates
   old evidence as new. The same restart happens for Metasploit or Nuclei when the last run that
@@ -376,7 +380,7 @@ Neither uses the listing.
 | Exploit-DB | Entries with `date_added` (else `date_published`) before the listing day |
 | PoC repos | Repos created and last pushed (`pushed_at`) before the listing day, so all their code is older than the listing; strict vets them by age only (3 days old by then), as star counts are only known for today. Repos pushed on the listing day or later count only in `upper` (signal `poc_content`): their code may postdate the listing |
 | Metasploit | Counted when a module's `mod_time` is before the listing day (it existed); other modules only in `upper` |
-| Nuclei | No dates: only in `upper` |
+| Nuclei | Counted when the CVE's first template landed on `main` of projectdiscovery/nuclei-templates before the listing day: the committer date of the first-parent commit that added it (the merge or squash, not the branch commit), earliest across renames and re-adds. Templates that landed on the listing day or later, or without a date, only in `upper`. When the dates could not be loaded at all, `sources_down` lists "Nuclei template dates" |
 | CISA SSVC automatable and technical impact | Counted when CISA's container has not changed since the listing day, or the assessment is timestamped before the day before the listing. CISA often stamps the assessment it rewrites for a listing with the day before (17 of the 139 listings in the 2026-11-03 backtest, against 20 over the 29 days before that), so that day cannot vouch for it. Else only in `upper` |
 | CISA SSVC exploitation (`poc`, `active`) | Counted only when CISA has not changed its container since the listing day. CISA updates this value when it lists a CVE and often dates it the day before, so the timestamp cannot vouch for it. In `upper`, an `active` that cannot be shown to predate the listing is lowered to `poc` (a public exploit exists) or `none` |
 | CNA CVSS, CVSS exploit maturity, "exploited in the wild" text | Counted when the CNA has not changed its container since the listing day (`providerMetadata.dateUpdated`); else only in `upper` |

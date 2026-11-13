@@ -14,7 +14,7 @@ import { NOW, cohort, cvss, makeCve, makeIngest, makeKev } from '../fixtures/mod
 const ID = 'CVE-2026-100001';
 const cves = [...cohort(20), makeCve({ id: ID, published: '2026-10-01T00:00:00Z', ...cvss(9.8) }), makeCve({ id: 'CVE-2021-44228', published: '2021-12-10T00:00:00.000Z', inWindow: false })];
 const kev = [makeKev(ID, { dateAdded: '2026-10-20' }), makeKev('CVE-2021-44228', { dateAdded: '2021-12-10', dueDate: '2021-12-24' })];
-const refresh: BacktestInputs = { epss: new Map(), reuse: new Map(), metasploitModified: new Map(), exploitdbAdded: new Map(), volumeFrom: '2026-05-07T03:17:00.000Z' };
+const refresh: BacktestInputs = { epss: new Map(), reuse: new Map(), metasploitModified: new Map(), nucleiAdded: new Map(), exploitdbAdded: new Map(), volumeFrom: '2026-05-07T03:17:00.000Z' };
 
 function osvWith(up: boolean): { data: OsvData; status: SourceStatus } {
   const data = emptyOsvData(up ? 'no copy' : 'fetch failed');

@@ -36,7 +36,7 @@ Pipeline flags that make iteration fast:
 
 - `--offline` replays the last downloads from `.cache/` without touching the network.
 - `--now 2026-10-26T19:30:00Z` freezes time, so two runs are comparable.
-- `--cvelist-dir <clone>` and `--poc-dir <clone>` reuse existing git clones (they are never modified).
+- `--cvelist-dir <clone>`, `--poc-dir <clone>` and `--nuclei-dir <clone>` reuse existing git clones (they are never modified).
 - `--window-days 7` shrinks the window for quick experiments; `--knob 60` changes the default evidence bar.
 
 ## Project layout

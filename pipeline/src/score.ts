@@ -25,6 +25,8 @@ import {
   RANSOMWARE_BONUS,
   chip,
 } from '../../shared/model';
+import { NUCLEI } from './config';
+import type { NucleiAdded } from './sources/nuclei-history';
 import type { Enrichment, KevCatalog, KevPrior, KevPriorEntry, KevRaw, NormalizedCve, PocRepo, ScoredCve } from './types';
 import { DAY_MS, addDays, daysBetween, parseIsoDate, ymd } from './util/dates';
 
@@ -376,6 +378,8 @@ interface Facts {
   kev: KevInfo | null;
   epss: EpssInfo | null;
   exploits: ExploitEvidence;
+  /** When the CVE's first Nuclei template landed on main, when known and not after `now`. */
+  nucleiAdded: NucleiAdded | null;
   poc: PocSummary;
   /** Unavailable sources (id → name). */
   unavailable: ReadonlyMap<SourceId, string>;
@@ -389,6 +393,7 @@ function gatherFacts(cve: NormalizedCve, enr: Enrichment, now: Date): Facts {
     ? { score: e.epss, percentile: e.percentile, date: enr.epss.scoreDate ?? '', model: enr.epss.model ?? '' }
     : null;
   const poc = summarisePoc(enr.exploits.poc.get(cve.id) ?? [], now);
+  const added = enr.exploits.nucleiAdded?.get(cve.id) ?? null;
   return {
     cve,
     now,
@@ -404,6 +409,7 @@ function gatherFacts(cve: NormalizedCve, enr: Enrichment, now: Date): Facts {
       exploitdb: [...(enr.exploits.exploitdb.get(cve.id) ?? [])],
       poc: poc.evidence,
     },
+    nucleiAdded: added && Date.parse(added.at) <= now.getTime() ? added : null,
     poc,
     unavailable: enr.unavailable,
   };
@@ -478,9 +484,12 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
     const best = exploits.nuclei[0];
     const protocol = best.path.split('/')[0];
     const detail = [protocol, best.severity].filter(Boolean).join(' · ');
+    // Dated by the commit that first put a template for this CVE on main; the link goes to it.
+    const added = f.nucleiAdded;
     cands.push(
-      reason('x.nuclei', `Nuclei template${detail ? ` (${detail})` : ''}: scannable at scale${more(exploits.nuclei.length)}`, {
-        url: best.url,
+      reason('x.nuclei', `Nuclei template${detail ? ` (${detail})` : ''}${added ? ` · added ${dayLabel(added.at, now)}` : ''}: scannable at scale${more(exploits.nuclei.length)}`, {
+        url: added ? `${NUCLEI.commitBase}/${added.commit}` : best.url,
+        at: added?.at,
       }),
     );
   }
@@ -717,6 +726,7 @@ function timelineFor(f: Facts): ScoredCve['timeline'] {
   add(f.poc.firstCreated, 'First PoC repo created on GitHub', 'poc-github');
   const edb = f.exploits.exploitdb.filter((e) => e.date).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))[0];
   if (edb) add(edb.date, `Exploit-DB ${edb.id} published`, 'exploitdb');
+  if (f.nucleiAdded && f.exploits.nuclei.length > 0) add(f.nucleiAdded.at, 'First Nuclei template added', 'nuclei');
   if (f.kevRaw) {
     add(f.kevRaw.dateAdded, 'Added to CISA KEV', 'kev');
     const due = parseIsoDate(f.kevRaw.dueDate);

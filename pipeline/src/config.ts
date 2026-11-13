@@ -87,6 +87,26 @@ export const NUCLEI = {
   urls: ['https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/cves.json'],
   /** Template `file_path` values are relative to this. */
   blobBase: 'https://github.com/projectdiscovery/nuclei-templates/blob/main',
+  /**
+   * Template landing dates come from the repository's own history: a blobless clone (trees and
+   * commits, no file contents) under `<cache>/git/<historyDir>`, walked along the first parents of
+   * `branch`. The dates are kept in `<cache>/sources/<datesFile>` and updated from the last commit
+   * walked, so a run with that file only fetches the commits since then.
+   */
+  remote: 'https://github.com/projectdiscovery/nuclei-templates.git',
+  branch: 'main',
+  historyDir: 'nuclei-templates',
+  datesFile: 'nuclei-dates.json',
+  commitBase: 'https://github.com/projectdiscovery/nuclei-templates/commit',
+  /** Per git command. A cold clone and walk took about 15 s (2026-11-13). */
+  gitTimeoutMs: 5 * 60_000,
+  /**
+   * With a dates file and no clone, clone only this many commits deep (about 180 first-parent
+   * commits, two days of main, 35 MB, 5 s on 2026-11-13); the rest is fetched only when the last
+   * walked commit is not in it. GitHub's --shallow-since cut this repository at about 25 commits
+   * whatever the date, so it is not used.
+   */
+  shallowDepth: 100,
 } as const;
 
 export const EXPLOITDB = {
@@ -190,6 +210,8 @@ export interface SanityLimits {
   epssRows: number;
   metasploitModules: number;
   nucleiTemplates: number;
+  /** CVEs with a template landing date after a full walk of the Nuclei history (4,678 on 2026-11-13). */
+  nucleiDates: number;
   exploitdbRows: number;
   pocFiles: number;
   /**
@@ -208,6 +230,7 @@ export const SANITY: SanityLimits = {
   epssRows: 200_000,
   metasploitModules: 3_000,
   nucleiTemplates: 2_000,
+  nucleiDates: 2_000,
   exploitdbRows: 40_000,
   pocFiles: 5_000,
   osvRecords: { npm: 3_000, PyPI: 6_500, Maven: 3_500, Go: 4_000, 'crates.io': 800, RubyGems: 500, Packagist: 3_000, NuGet: 500 },

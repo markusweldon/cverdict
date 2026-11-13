@@ -94,6 +94,8 @@ export interface EnrichmentSpec {
   epss?: Record<string, [number, number]>;
   metasploit?: Record<string, ExploitEvidence['metasploit']>;
   nuclei?: Record<string, ExploitEvidence['nuclei']>;
+  /** id → when its first Nuclei template landed on main. */
+  nucleiAdded?: Record<string, { at: string; commit: string }>;
   exploitdb?: Record<string, ExploitEvidence['exploitdb']>;
   poc?: Record<string, PocRepo[]>;
   /** Sources with no usable copy this run (named after their id). */
@@ -120,6 +122,7 @@ export function makeEnrichment(spec: EnrichmentSpec = {}): Enrichment {
     exploits: {
       metasploit: new Map(Object.entries(spec.metasploit ?? {})),
       nuclei: new Map(Object.entries(spec.nuclei ?? {})),
+      ...(spec.nucleiAdded ? { nucleiAdded: new Map(Object.entries(spec.nucleiAdded)) } : {}),
       exploitdb: new Map(Object.entries(spec.exploitdb ?? {})),
       poc: new Map(Object.entries(spec.poc ?? {})),
     },

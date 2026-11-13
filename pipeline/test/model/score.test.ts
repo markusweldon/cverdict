@@ -171,6 +171,25 @@ describe('X family (exploit artifacts and prediction)', () => {
     expect(familyPoints(s, 'X')).toBe(points);
   });
 
+  it('dates x.nuclei by the commit that landed the first template, without changing its points', () => {
+    const commit = 'c0ffee'.padEnd(40, '0');
+    const undated = score(makeCve(), { nuclei: { [ID]: [nucleiTemplate(ID)] } });
+    const dated = score(makeCve(), { nuclei: { [ID]: [nucleiTemplate(ID)] }, nucleiAdded: { [ID]: { at: '2024-03-05T10:00:00.000Z', commit } } });
+    expect(byId(dated, 'x.nuclei')).toMatchObject({
+      points: 30,
+      label: 'Nuclei template (http · critical) · added Mar 5, 2024: scannable at scale',
+      url: `https://github.com/projectdiscovery/nuclei-templates/commit/${commit}`,
+      at: '2024-03-05T10:00:00.000Z',
+    });
+    expect(byId(undated, 'x.nuclei')?.at).toBeUndefined();
+    expect([dated.score, dated.tier, dated.weaponized]).toEqual([undated.score, undated.tier, undated.weaponized]);
+    expect(dated.timeline).toContainEqual({ at: '2024-03-05T10:00:00.000Z', event: 'First Nuclei template added', source: 'nuclei' });
+    // A date without a template, or after "now", is not shown.
+    expect(score(makeCve(), { nucleiAdded: { [ID]: { at: '2024-03-05T10:00:00.000Z', commit } } }).timeline.some((t) => t.source === 'nuclei')).toBe(false);
+    const future = score(makeCve(), { nuclei: { [ID]: [nucleiTemplate(ID)] }, nucleiAdded: { [ID]: { at: '2999-01-01T00:00:00.000Z', commit } } });
+    expect(byId(future, 'x.nuclei')).toMatchObject({ label: 'Nuclei template (http · critical): scannable at scale' });
+  });
+
   it.each([['F'], ['H']])('vendor.functional for CVSS v3 E:%s: weaponization, not exploitation', (e) => {
     // Fortinet's CVE-2026-106170 shape: v3 E:F, SSVC exploitation none.
     const s = score(makeCve({ cnaExploitMaturity: [e], ssvc: ssvc('none', 'no', 'partial') }));

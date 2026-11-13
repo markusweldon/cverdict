@@ -1,7 +1,7 @@
 /**
  * The hindsight backtest behind the Receipts page (pipeline/src/backtest.ts), on demand.
  *
- *   npm run backtest -- [--cvelist-dir <clone>] [--poc-dir <clone>] [--cache <dir>] [--now <iso>] [--previous <dir>] [--json <file>] [--offline]
+ *   npm run backtest -- [--cvelist-dir <clone>] [--poc-dir <clone>] [--nuclei-dir <clone>] [--cache <dir>] [--now <iso>] [--previous <dir>] [--json <file>] [--offline]
  *
  * For every CISA KEV addition of the last 180 days, it re-scores the CVE with the evidence of the
  * day before the listing (see the header of pipeline/src/backtest.ts for exactly which signals are
@@ -35,6 +35,7 @@ Options:
   --cache <dir>         Cache of last-good downloads and git clones (default: .cache)
   --cvelist-dir <dir>   Use an existing cvelistV5 git clone (never modified)
   --poc-dir <dir>       Use an existing PoC-in-GitHub git clone (never modified)
+  --nuclei-dir <dir>    Use an existing nuclei-templates git clone for template dates (never modified)
   --now <iso>           Freeze "now", e.g. 2026-11-03T12:00:00Z (default: current time)
   --previous <dir>      A previous output root: EPSS values in its receipts.json are reused
   --json <file>         Also write the result (the receipts.json "backtest" object) to this file
@@ -100,6 +101,7 @@ export async function main(argv: string[]): Promise<number> {
         cache: { type: 'string', default: '.cache' },
         'cvelist-dir': { type: 'string' },
         'poc-dir': { type: 'string' },
+        'nuclei-dir': { type: 'string' },
         now: { type: 'string' },
         previous: { type: 'string' },
         json: { type: 'string' },
@@ -125,7 +127,7 @@ export async function main(argv: string[]): Promise<number> {
   const windowStart = new Date(now.getTime() - DEFAULT_WINDOW_DAYS * DAY_MS);
   const ing = await ingest(
     { now, windowDays: DEFAULT_WINDOW_DAYS, windowStart, cacheDir: values.cache, offline: values.offline, log },
-    { cvelistDir: values['cvelist-dir'], pocDir: values['poc-dir'], backtest: plan! },
+    { cvelistDir: values['cvelist-dir'], pocDir: values['poc-dir'], nucleiDir: values['nuclei-dir'], backtest: plan! },
   );
   if (!ing.backtest) throw new Error('backtest inputs missing');
   const enr = enrichmentOf(ing);

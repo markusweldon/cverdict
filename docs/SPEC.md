@@ -70,6 +70,7 @@ server's SDK (`@modelcontextprotocol/server`) and `zod` are exact-pinned dev dep
 ```
 npm run pipeline -- [--out site/public/data] [--previous <dir with previous v1/ output>] [--cache .cache]
                     [--cvelist-dir <existing cvelistV5 git clone>] [--poc-dir <existing PoC-in-GitHub clone>]
+                    [--nuclei-dir <existing nuclei-templates clone>]
                     [--osv-dir <dir>] [--now 2026-10-26T19:30:00Z] [--window-days 30] [--knob 50]
                     [--refresh-backtest] [--offline]
 ```
@@ -83,7 +84,7 @@ npm run pipeline -- [--out site/public/data] [--previous <dir with previous v1/ 
 - `--refresh-backtest`: recompute the hindsight backtest now instead of carrying it forward.
 - `--cache`: cache dir. `<cache>/sources/` holds last-good raw downloads (+ `.meta.json` with etag/fetched_at);
   `<cache>/git/` holds clones.
-- `--cvelist-dir` / `--poc-dir`: use an existing clone instead of cloning (local dev). Never modify it.
+- `--cvelist-dir` / `--poc-dir` / `--nuclei-dir`: use an existing clone instead of cloning (local dev). Never modify it.
 - `--now`: freeze "now" (tests, reproducible runs). Default: current time.
 - `--offline`: never hit the network; use cache only (fail if missing).
 - Exit code 0 when output was written and validated (even with stale sources); non-zero only when the CVE List
@@ -99,6 +100,7 @@ npm run pipeline -- [--out site/public/data] [--previous <dir with previous v1/ 
 | `epss` | `https://epss.empiricalsecurity.com/epss_scores-current.csv.gz` | `https://raw.githubusercontent.com/empiricalsec/epss_scores/main/<YYYY>/epss_scores-<YYYY-MM-DD>.csv.gz` for today, then yesterday, then cache | gunzip; first line `#model_version:v2026.06.15,score_date:2026-10-26T12:03:00Z`; then `cve,epss,percentile` | ≥ 200k rows |
 | `metasploit` | `https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json` | cache | object of modules; `references[]` entries like `CVE-2024-1234`; keep `name, fullname, rank, type, path` | ≥ 3,000 modules |
 | `nuclei` | `https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/cves.json` | cache | **NDJSON**; `ID`, `Info.Severity`, `file_path` | ≥ 2,000 lines |
+| `nuclei` (template dates, `sources/nuclei-history.ts`) | blobless clone (`--filter=blob:none --no-checkout --single-branch`) of `https://github.com/projectdiscovery/nuclei-templates.git` `main` into `<cache>/git/nuclei-templates` (if it exists: `git fetch origin main`); with a dates file and no clone, `--depth 100` | the dates in `<cache>/sources/nuclei-dates.json` (and the clone as it is), marked stale; `--nuclei-dir` reads an existing clone | `git log --first-parent --diff-merges=first-parent --no-renames --diff-filter=A --name-only` from the last walked commit (else all of `main`); a CVE ID in a `.yaml` file name dates its CVE by the committer date of the first-parent commit (the merge or squash on main), earliest across paths. Clamped to never go back along the chain. If `main` no longer runs through the last walked commit on first parents, that batch is dated by its newest commit; if the commit is gone, everything is walked again | ≥ 2,000 CVEs dated; else the previous dates are kept |
 | `exploitdb` | `https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv` | cache (GitLab rate-limits quickly; fetch at most every 6h; reuse cache if younger) | RFC 4180 CSV; columns `id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes,...`; `codes` is `;`-separated and contains CVE IDs | ≥ 40k rows |
 | `poc-github` | `git clone --depth 1 --no-checkout https://github.com/nomi-sec/PoC-in-GitHub.git` into `<cache>/git/poc` (or fetch) | cache clone as-is | `git ls-tree -r --name-only` → `YYYY/CVE-….json`; cat-file only IDs we need; each file is an array of GitHub repo objects (`html_url, stargazers_count, created_at, fork`) | ≥ 5,000 files |
 | `osv` | per ecosystem (npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist, NuGet): `https://storage.googleapis.com/osv-vulnerabilities/<eco>/modified_id.csv` head (Range requests to the cursor) and the changed `<eco>/<id>.json`; `<eco>/all.zip` every 7 days or without a copy, a failed one again after a day (`--osv-dir` reads local zips) | the mirror in `<cache>/sources/osv-mirror.json.gz`, per ecosystem | ZIP64 reader (`util/zip.ts`, bounded); records with a CVE alias from GHSA, PYSEC, GO, RUSTSEC, DRUPAL-CORE/CONTRIB only (`shared/packages.ts` ATTRIBUTION); compacted to ID, package names and event strings | ≥ about half of today's records per ecosystem; never < 90% of the cached copy. **Never scored** (`NON_SCORING_SOURCES`), only `v1/packages.json` |

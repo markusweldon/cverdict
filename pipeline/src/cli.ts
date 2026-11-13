@@ -26,6 +26,7 @@ Options:
   --cache <dir>         Cache for last-good downloads and git clones (default: ${DEFAULT_CACHE})
   --cvelist-dir <dir>   Use an existing cvelistV5 git clone (never modified)
   --poc-dir <dir>       Use an existing PoC-in-GitHub git clone (never modified)
+  --nuclei-dir <dir>    Use an existing nuclei-templates git clone for template dates (never modified)
   --osv-dir <dir>       Read the OSV.dev dumps from <dir>/<ecosystem>.zip instead of downloading
                         them (the mirror itself lives in <cache>/sources/)
   --now <iso>           Freeze "now", e.g. 2026-10-26T19:30:00Z; no offset means UTC (default: current time)
@@ -60,6 +61,7 @@ export function parseCli(argv: string[]): RunOptions | null {
         cache: { type: 'string', default: DEFAULT_CACHE },
         'cvelist-dir': { type: 'string' },
         'poc-dir': { type: 'string' },
+        'nuclei-dir': { type: 'string' },
         'osv-dir': { type: 'string' },
         now: { type: 'string' },
         'window-days': { type: 'string', default: String(DEFAULT_WINDOW_DAYS) },
@@ -91,6 +93,7 @@ export function parseCli(argv: string[]): RunOptions | null {
     cache: values.cache,
     cvelistDir: values['cvelist-dir'],
     pocDir: values['poc-dir'],
+    nucleiDir: values['nuclei-dir'],
     osvDir: values['osv-dir'],
     now,
     windowDays,

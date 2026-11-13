@@ -7,11 +7,12 @@
  *
  *   time-matched  KEV prior (other listings before the cutoff), EPSS (the archived file of the day
  *                 before), Exploit-DB (date_added), PoC repos created and last pushed before the
- *                 cutoff (vetted by age at the cutoff), Metasploit modules whose earliest mod_time is before the cutoff, CISA
+ *                 cutoff (vetted by age at the cutoff), Metasploit modules whose earliest mod_time is before the cutoff,
+ *                 Nuclei templates whose first template landed on main before the cutoff, CISA
  *                 SSVC automatable and technical impact timestamped before the day before the
  *                 listing, and the CNA (or CISA-ADP) container when it has not changed since the
  *                 cutoff.
- *   hindsight     everything else that has no usable date: Nuclei templates, other Metasploit
+ *   hindsight     everything else that has no usable date: other Nuclei templates, other Metasploit
  *                 modules, PoC repos pushed on the listing day or later, PoC star counts, SSVC stamped on the day before the listing or later,
  *                 the SSVC exploitation value in a changed container, CNA and CISA-ADP containers
  *                 changed since. The strict scores leave these out (as
@@ -54,6 +55,7 @@ import { CVSS_LINE, EPSS_LINE } from './receipts';
 import { firedChipIds } from './rows';
 import { buildKevPrior, scoreCve } from './score';
 import { parseEpssBodyOn } from './sources/epss';
+import type { NucleiAdded } from './sources/nuclei-history';
 import type { Enrichment, ExploitIndex, KevCatalog, KevPrior, KevRaw, Logger, NormalizedCve, PocRepo, ScoredCve } from './types';
 import { addDays, DAY_MS, normalizeIso, normalizeYmd, ymd } from './util/dates';
 import type { HttpClient } from './util/http';
@@ -83,10 +85,15 @@ export interface BacktestInputs {
   reuse: BacktestPlan['reuse'];
   /** Earliest Metasploit mod_time per CVE (ingested records only). */
   metasploitModified: Map<string, string>;
+  /** When each CVE's first Nuclei template landed on main (ingested records only); null when the dates could not be loaded. */
+  nucleiAdded: ReadonlyMap<string, NucleiAdded> | null;
   /** Exploit-DB id → date_added. */
   exploitdbAdded: Map<string, string>;
   volumeFrom: string;
 }
+
+/** In `sources_down` when the Nuclei template dates could not be loaded. */
+export const NUCLEI_DATES_DOWN = 'Nuclei template dates';
 
 const reuseKey = (id: string, added: string) => `${id}@${added}`;
 const cutoffOf = (dateAdded: string) => new Date(`${dateAdded}T00:00:00Z`);
@@ -156,6 +163,12 @@ export function backtestProblems(b: BacktestReceipts): string[] {
   return out;
 }
 
+/** True when the previous backtest used evidence differently (a signal added, dropped or redefined). */
+function signalsChanged(previous: BacktestReceipts): boolean {
+  const prev = Array.isArray(previous.signals) ? previous.signals : [];
+  return prev.length !== SIGNALS.length || SIGNALS.some((s, i) => prev[i]?.key !== s.key || prev[i]?.treatment !== s.treatment || prev[i]?.note !== s.note);
+}
+
 /**
  * Carry the previous backtest while it is younger than BACKTEST_REFRESH_DAYS. Refresh when there is
  * none, when it is from the future, from another score model or inconsistent, and a day after a
@@ -172,6 +185,8 @@ export function decideBacktest(previous: BacktestReceipts | null, now: Date, for
         ? `computed ${previous.computed_at}`
         : previous.score_model !== SCORE_MODEL
           ? `score model ${previous.score_model ?? 'unknown'}, now ${SCORE_MODEL}`
+          : signalsChanged(previous)
+            ? 'the way evidence is dated has changed'
           : Array.isArray(previous.epss_missing) && previous.epss_missing.length > 0 && age >= DAY_MS
             ? `${previous.epss_missing.length} EPSS days missing`
             : Array.isArray(previous.sources_down) && previous.sources_down.length > 0 && age >= DAY_MS
@@ -295,7 +310,12 @@ export const SIGNALS: readonly Omit<BacktestSignal, 'affected'>[] = [
     treatment: 'hindsight',
     note: 'Counted when a module was changed before the listing day, which proves it existed. Other modules count only with undated evidence.',
   },
-  { key: 'nuclei', label: 'Nuclei templates', treatment: 'hindsight', note: 'The template list has no dates, so templates count only with undated evidence.' },
+  {
+    key: 'nuclei',
+    label: 'Nuclei templates',
+    treatment: 'hindsight',
+    note: "Counted when the CVE's first template landed on the main branch of the template repository before the listing day (the date of the commit that put it there). Other templates count only with undated evidence.",
+  },
   {
     key: 'ssvc',
     label: 'CISA SSVC automatable and technical impact',
@@ -345,6 +365,8 @@ export interface AsOfInput {
   /** EPSS of the day before (null: no file); `scores` holds the CVE when EPSS scored it that day. */
   epss: { date: string; score: number | null } | null;
   metasploitModified: ReadonlyMap<string, string>;
+  /** Null when the template dates could not be loaded (every template is then undated). */
+  nucleiAdded: ReadonlyMap<string, NucleiAdded> | null;
   exploitdbAdded: ReadonlyMap<string, string>;
 }
 
@@ -369,11 +391,14 @@ export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsO
     leftOut.push('metasploit');
     unavailable.set('metasploit', 'Metasploit (no usable date)');
   }
+  // A template counts once the first one for the CVE had landed on main before the cutoff.
   let nuclei = enr.exploits.nuclei.get(cve.id) ?? [];
-  if (nuclei.length > 0 && strict) {
+  const nucleiAdded = input.nucleiAdded?.get(cve.id);
+  const nucleiDated = nuclei.length > 0 && before(nucleiAdded?.at, cutoffMs);
+  if (nuclei.length > 0 && !nucleiDated && strict) {
     nuclei = [];
     leftOut.push('nuclei');
-    unavailable.set('nuclei', 'Nuclei templates (no dates)');
+    unavailable.set('nuclei', 'Nuclei templates (no usable date)');
   }
   const exploitdb = (enr.exploits.exploitdb.get(cve.id) ?? []).filter((e) => {
     const date = input.exploitdbAdded.get(e.id) ?? e.date;
@@ -445,6 +470,7 @@ export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsO
       exploits: {
         metasploit: new Map(metasploit.length ? [[cve.id, metasploit]] : []),
         nuclei: new Map(nuclei.length ? [[cve.id, nuclei]] : []),
+        nucleiAdded: new Map(nuclei.length && nucleiAdded ? [[cve.id, nucleiAdded]] : []),
         exploitdb: new Map(exploitdb.length ? [[cve.id, exploitdb]] : []),
         poc: new Map(repos.length ? [[cve.id, repos]] : []),
       } satisfies ExploitIndex,
@@ -520,7 +546,16 @@ export function runBacktest({ now, kev, cves, enr, inputs, scored, rows }: Backt
       epssMissing.add(day);
       affected.set('epss', (affected.get('epss') ?? 0) + 1);
     }
-    const input: AsOfInput = { cve, kev: k, enr, kevAsOf: asOfKev(k.dateAdded), epss, metasploitModified: inputs.metasploitModified, exploitdbAdded: inputs.exploitdbAdded };
+    const input: AsOfInput = {
+      cve,
+      kev: k,
+      enr,
+      kevAsOf: asOfKev(k.dateAdded),
+      epss,
+      metasploitModified: inputs.metasploitModified,
+      nucleiAdded: inputs.nucleiAdded,
+      exploitdbAdded: inputs.exploitdbAdded,
+    };
     const strict = evidenceAsOf(input, 'strict');
     const upper = evidenceAsOf(input, 'upper');
     const s = scoreCve(strict.cve, strict.enr, { now: cutoff, knob: KNOB_DEFAULT });
@@ -584,7 +619,8 @@ export function runBacktest({ now, kev, cves, enr, inputs, scored, rows }: Backt
     // The listing and today's EPSS are set aside for every CVE in the backtest.
     signals: SIGNALS.map((s) => ({ ...s, affected: s.key === 'kev' || s.key === 'epss_today' || s.treatment === 'today' ? items.length : (affected.get(s.key) ?? 0) })),
     epss_missing: [...epssMissing].sort(),
-    sources_down: [...enr.unavailable.values()].sort(),
+    // Missing template dates make every template undated: list them so the refresh is retried.
+    sources_down: [...enr.unavailable.values(), ...(inputs.nucleiAdded === null && !enr.unavailable.has('nuclei') ? [NUCLEI_DATES_DOWN] : [])].sort(),
     items,
     command: BACKTEST_COMMAND,
   };

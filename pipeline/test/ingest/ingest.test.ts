@@ -18,6 +18,7 @@ const LIMITS: SanityLimits = {
   epssRows: 1,
   metasploitModules: 1,
   nucleiTemplates: 1,
+  nucleiDates: 1,
   exploitdbRows: 1,
   pocFiles: 1,
   osvRecords: Object.fromEntries(PACKAGE_ECOSYSTEMS.map((e) => [e, 0])) as SanityLimits['osvRecords'],
@@ -64,6 +65,11 @@ function pocRepo() {
     '2026/CVE-2026-110447.json': JSON.stringify([repo('real', false, 4), repo('forker', true, 50)]),
     '2026/CVE-2026-94216.json': JSON.stringify([repo('other', false, 1)]),
   });
+}
+
+/** A nuclei-templates-shaped repo with one CVE template (and a helper file that is not one). */
+function nucleiRepo() {
+  return repoWithClone({ 'http/cves/2026/CVE-2026-0257.yaml': 'id: CVE-2026-0257', 'helpers/payloads/CVE-2026-1.txt': 'x' });
 }
 
 type Route = () => Response | Error | Promise<Response>;
@@ -117,8 +123,9 @@ describe('ingestWith (end to end on tiny repositories)', () => {
   it('streams the CVE List, keeps window ∪ KEV records, builds history and restricted enrichment', async () => {
     const cvelist = cvelistRepo();
     const poc = pocRepo();
+    const nuclei = nucleiRepo();
     const { ctx, http } = setup();
-    const result = await ingestWith(ctx, { cvelistDir: cvelist.clone, pocDir: poc.clone }, { http, limits: LIMITS });
+    const result = await ingestWith(ctx, { cvelistDir: cvelist.clone, pocDir: poc.clone, nucleiDir: nuclei.clone }, { http, limits: LIMITS });
 
     const kept = new Map(result.cves.map((c) => [c.id, c]));
     const inWindow = result.cves.filter((c) => c.inWindow).map((c) => c.id).sort();
@@ -156,6 +163,8 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect([...result.epss.scores.keys()].sort()).toEqual(['CVE-2026-0257', 'CVE-2026-100878', 'CVE-2026-109733', 'CVE-2026-110447', 'CVE-2026-58644', 'CVE-2026-94216']);
     expect([...result.exploits.metasploit.keys()]).toEqual(['CVE-2026-110447']);
     expect([...result.exploits.nuclei.keys()]).toEqual(['CVE-2026-0257']);
+    expect([...(result.exploits.nucleiAdded ?? [])]).toEqual([['CVE-2026-0257', { at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/), commit: nuclei.commit }]]);
+    expect(result.backtest).toBeUndefined();
     expect([...result.exploits.exploitdb.keys()]).toEqual(['CVE-2026-100878']);
     expect(result.exploits.poc).toEqual(
       new Map([
@@ -172,6 +181,7 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(status.kev).toMatchObject({ url: KEV.urls[1], records: 6, upstream_version: '2026.10.23' });
     expect(status.epss).toMatchObject({ url: EPSS.daily('2026-10-25'), records: 8, upstream_version: 'v2026.06.15 2026-10-26' });
     expect(status['poc-github']).toMatchObject({ records: 2, upstream_version: poc.commit });
+    expect(status.nuclei).toMatchObject({ upstream_version: nuclei.commit, stale: false });
     expect(status.cvelist.fetched_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(status.osv).toMatchObject({ records: 1, upstream_version: '2026-10-20T00:00:00Z' });
     expect(result.osv.mirror.ecosystems.npm?.records).toEqual([['GHSA-aaaa-bbbb-cccc', '2026-10-20T00:00:00Z', ['CVE-2026-110447'], [['collabora-client', [['>=0', '<2.0.0']]]]]]);
@@ -185,8 +195,9 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const deps = (s: typeof fast) => ({ http: s.http, limits: LIMITS });
     // A missing PoC directory: without one, ingest would clone PoC-in-GitHub over the network.
     const noPoc = path.join(tempDir(), 'missing');
-    const a = await ingestWith(fast.ctx, { cvelistDir: cvelist.clone, pocDir: noPoc }, deps(fast));
-    const b = await ingestWith(slow.ctx, { cvelistDir: cvelist.clone, pocDir: noPoc }, deps(slow));
+    const nucleiDir = nucleiRepo().clone;
+    const a = await ingestWith(fast.ctx, { cvelistDir: cvelist.clone, pocDir: noPoc, nucleiDir }, deps(fast));
+    const b = await ingestWith(slow.ctx, { cvelistDir: cvelist.clone, pocDir: noPoc, nucleiDir }, deps(slow));
     const ids = (r: typeof a) => r.cves.map((c) => `${c.id}:${c.inWindow}`).sort();
     expect(ids(b)).toEqual(ids(a));
     expect(b.cves.find((c) => c.id === 'CVE-2026-37106')?.inWindow).toBe(false);
@@ -197,21 +208,25 @@ describe('ingestWith (end to end on tiny repositories)', () => {
   it('runs offline from the cache written by a previous run, marking HTTP sources stale', async () => {
     const cvelist = cvelistRepo();
     const poc = pocRepo();
+    const nuclei = nucleiRepo();
     const first = setup();
-    await ingestWith(first.ctx, { cvelistDir: cvelist.clone, pocDir: poc.clone }, { http: first.http, limits: LIMITS });
+    await ingestWith(first.ctx, { cvelistDir: cvelist.clone, pocDir: poc.clone, nucleiDir: nuclei.clone }, { http: first.http, limits: LIMITS });
 
     const offline = setup({ offline: true, cacheDir: first.ctx.cacheDir });
     const result = await ingestWith(offline.ctx, { cvelistDir: cvelist.clone, pocDir: poc.clone }, { http: offline.http, limits: LIMITS });
     expect(offline.requested).toEqual([]);
     expect(result.cves).toHaveLength(11);
-    const http = result.sources.filter((s) => ['kev', 'epss', 'metasploit', 'nuclei', 'exploitdb'].includes(s.id));
+    const http = result.sources.filter((s) => ['kev', 'epss', 'metasploit', 'exploitdb'].includes(s.id));
     expect(http.every((s) => s.ok && s.stale && s.error === null)).toBe(true);
+    // Offline without a clone: the template dates written by the first run, marked as a cached copy.
+    expect(result.sources.find((s) => s.id === 'nuclei')).toMatchObject({ ok: true, stale: true, upstream_version: nuclei.commit, error: 'template dates from a cached copy' });
+    expect(result.exploits.nucleiAdded?.get('CVE-2026-0257')?.commit).toBe(nuclei.commit);
   });
 
   it('keeps going when optional sources are down, reporting them as unavailable', async () => {
     const cvelist = cvelistRepo();
     const { ctx, http, log } = setup({ routes: {} });
-    const result = await ingestWith(ctx, { cvelistDir: cvelist.clone, pocDir: path.join(tempDir(), 'missing') }, { http, limits: LIMITS });
+    const result = await ingestWith(ctx, { cvelistDir: cvelist.clone, pocDir: path.join(tempDir(), 'missing'), nucleiDir: path.join(tempDir(), 'missing') }, { http, limits: LIMITS });
     const failed = result.sources.filter((s) => !s.ok).map((s) => s.id);
     expect(failed).toEqual(['kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'poc-github', 'osv']);
     // Without the KEV catalog, only the window and CISA-ADP KEV blocks decide what is kept.
@@ -225,13 +240,14 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const { ctx, http } = setup();
     // A missing PoC directory: without one, ingest would clone PoC-in-GitHub over the network.
     const pocDir = path.join(tempDir(), 'missing');
-    await expect(ingestWith(ctx, { cvelistDir: tempDir(), pocDir }, { http, limits: LIMITS })).rejects.toThrow(/git rev-parse/);
-    await expect(ingestWith(ctx, { cvelistDir: path.join(tempDir(), 'nope'), pocDir }, { http, limits: LIMITS })).rejects.toThrow(/is not a directory/);
+    const nucleiDir = pocDir;
+    await expect(ingestWith(ctx, { cvelistDir: tempDir(), pocDir, nucleiDir }, { http, limits: LIMITS })).rejects.toThrow(/git rev-parse/);
+    await expect(ingestWith(ctx, { cvelistDir: path.join(tempDir(), 'nope'), pocDir, nucleiDir }, { http, limits: LIMITS })).rejects.toThrow(/is not a directory/);
 
     const cvelist = cvelistRepo();
     const again = setup();
     await expect(
-      ingestWith(again.ctx, { cvelistDir: cvelist.clone, pocDir }, { http: again.http, limits: { ...LIMITS, cvelistRecords: 1000 } }),
+      ingestWith(again.ctx, { cvelistDir: cvelist.clone, pocDir, nucleiDir }, { http: again.http, limits: { ...LIMITS, cvelistRecords: 1000 } }),
     ).rejects.toThrow(/only 18 CVE records/);
   });
 });

@@ -176,7 +176,7 @@ Only free, public data. Nothing from NVD.
 | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Confirmed exploitation, due dates, ransomware use, vendor history | hourly | CC0-1.0 |
 | [EPSS](https://www.first.org/epss/) (FIRST) | Probability of exploitation activity in the next 30 days | hourly (published daily) | Free use with attribution |
 | [Metasploit Framework](https://github.com/rapid7/metasploit-framework) | Modules that reference a CVE | hourly | BSD-3-Clause |
-| [Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) | Templates that reference a CVE | hourly | MIT |
+| [Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) | Templates that reference a CVE, and when the first one for each CVE landed (from the repository's history) | hourly | MIT |
 | [Exploit-DB](https://gitlab.com/exploit-database/exploitdb) | Entries that reference a CVE (IDs and links only) | every 6 h | GPL-2.0 |
 | [PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub) | Public proof-of-concept repositories per CVE | hourly | CC0-1.0 |
 | [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions affected by the tracked CVEs, for the Check Deps page only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
@@ -287,7 +287,7 @@ npm run dev                    # http://localhost:5173
 
 Both write to `site/public/data/`, which the dev server serves. Useful pipeline flags:
 `--offline` (replay the cache), `--now 2026-10-26T19:30:00Z` (freeze time),
-`--cvelist-dir` / `--poc-dir` (reuse existing clones). `npm run calibrate` takes the same flags
+`--cvelist-dir` / `--poc-dir` / `--nuclei-dir` (reuse existing clones). `npm run calibrate` takes the same flags
 and prints the calibration tables. `npm test` and `npm run typecheck` run the main checks. CI also
 builds the site and the MCP server, smoke-tests the server and tests the data-branch publisher (see
 `.github/workflows/ci.yml`).

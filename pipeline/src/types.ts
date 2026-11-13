@@ -18,6 +18,7 @@ import type {
 } from '../../shared/contract';
 
 import type { OsvData } from './sources/osv';
+import type { NucleiAdded } from './sources/nuclei-history';
 import type { LoadedState } from './state';
 import type { BacktestInputs, BacktestPlan } from './backtest';
 import type { WakeDetection } from './woke';
@@ -43,6 +44,8 @@ export interface IngestOptions {
   cvelistDir?: string;
   /** Use this existing PoC-in-GitHub clone instead of cloning/fetching (never modified). */
   pocDir?: string;
+  /** Use this existing nuclei-templates clone for template dates instead of cloning/fetching (never modified). */
+  nucleiDir?: string;
   /** Read OSV.dev dumps from `<osvDir>/<ecosystem>.zip` instead of downloading them. */
   osvDir?: string;
   /** State carried from the previous run (state.ts); missing means a fresh start. */
@@ -152,6 +155,8 @@ export interface MetasploitData {
 export interface ExploitIndex {
   metasploit: Map<string, ExploitEvidence['metasploit']>;
   nuclei: Map<string, ExploitEvidence['nuclei']>;
+  /** When each CVE's first Nuclei template landed on main (only dated CVEs; may be absent). */
+  nucleiAdded?: Map<string, NucleiAdded>;
   exploitdb: Map<string, ExploitEvidence['exploitdb']>;
   /** Repos per CVE id (only for ids we ingested). */
   poc: Map<string, PocRepo[]>;

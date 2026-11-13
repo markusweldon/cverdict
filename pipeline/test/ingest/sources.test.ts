@@ -8,7 +8,7 @@ import { HttpClient, type FetchLike } from '../../src/util/http';
 import { parseExploitDb, parseExploitDbBody } from '../../src/sources/exploitdb';
 import { parseKevBody, parseKevCatalog } from '../../src/sources/kev';
 import { parseMetasploit, parseMetasploitBody } from '../../src/sources/metasploit';
-import { parseNuclei } from '../../src/sources/nuclei';
+import { nucleiStatus, parseNuclei } from '../../src/sources/nuclei';
 import { parsePocFile } from '../../src/sources/poc';
 import { SanityError } from '../../src/sources/source';
 import type { CacheMeta } from '../../src/util/http';
@@ -219,6 +219,18 @@ describe('Nuclei', () => {
     ]);
     expect(byCve.get('CVE-2026-0257')?.[0].path).toBe('javascript/cves/2026/CVE-2026-0257.yaml');
     expect(byCve.has('CVE-2026-0001')).toBe(false);
+  });
+
+  it('folds the template dates into the source status: stale or missing dates mark it stale, never down', () => {
+    const index = { id: 'nuclei', name: 'Nuclei templates', url: 'u', ok: true, stale: false, fetched_at: '2026-11-13T00:00:00.000Z', upstream_version: null, records: 5, error: null, license: 'MIT' } as const;
+    const head = 'a'.repeat(40);
+    const dates = new Map([['CVE-2021-44228', { at: '2021-12-10T00:00:00.000Z', commit: head }]]);
+    expect(nucleiStatus(index, { dates, head, stale: false, error: null })).toEqual({ ...index, upstream_version: head });
+    expect(nucleiStatus(index, { dates, head, stale: true, error: 'git fetch failed' })).toMatchObject({ ok: true, stale: true, error: 'template dates from a cached copy (git fetch failed)' });
+    expect(nucleiStatus(index, { dates: null, head: null, stale: true, error: 'no cached template dates' })).toMatchObject({ ok: true, stale: true, upstream_version: null, error: 'template dates unavailable (no cached template dates)' });
+    expect(nucleiStatus({ ...index, stale: true, error: 'HTTP 503' }, { dates, head, stale: true, error: null }).error).toBe('HTTP 503; template dates from a cached copy');
+    const down = { ...index, ok: false, error: 'no cached copy' };
+    expect(nucleiStatus(down, { dates, head, stale: false, error: null })).toBe(down);
   });
 });
 

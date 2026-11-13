@@ -1,9 +1,11 @@
 /** ProjectDiscovery Nuclei CVE templates (`cves.json`, NDJSON: one template per line). */
 import { NUCLEI, type SanityLimits } from '../config';
+import type { SourceStatus } from '../../../shared/contract';
 import type { ExploitIndex } from '../types';
 import type { HttpClient, Parsed } from '../util/http';
 import { asObject, asString } from '../util/json';
 import { normalizeCveId, sanitizeLine } from '../util/text';
+import type { NucleiDatesResult } from './nuclei-history';
 import { pushTo, requireAtLeast, statusFromFetch, type SourceResult } from './source';
 
 const TEMPLATE_PATH_RE = /^[\w./-]+\.ya?ml$/;
@@ -48,4 +50,19 @@ export async function loadNuclei(http: HttpClient, limits: SanityLimits, signal?
     signal,
   });
   return { data: fetched.value, status: statusFromFetch(NUCLEI.info, fetched) };
+}
+
+/**
+ * The index's status with the template dates folded in (sources/nuclei-history.ts): missing or
+ * stale dates leave the templates as they are but mark the source stale, with the reason.
+ */
+export function nucleiStatus(index: SourceStatus, dated: NucleiDatesResult): SourceStatus {
+  if (!index.ok) return index;
+  const status = { ...index, upstream_version: dated.head ?? index.upstream_version };
+  if (dated.stale || !dated.dates) {
+    const why = `template dates ${dated.dates ? 'from a cached copy' : 'unavailable'}${dated.error ? ` (${dated.error})` : ''}`;
+    status.stale = true;
+    status.error = status.error ? `${status.error}; ${why}` : why;
+  }
+  return status;
 }

@@ -24,6 +24,7 @@ export interface RunOptions {
   cache: string;
   cvelistDir?: string;
   pocDir?: string;
+  nucleiDir?: string;
   /** Read OSV.dev dumps from `<osvDir>/<ecosystem>.zip` instead of downloading them. */
   osvDir?: string;
   now?: Date;
@@ -102,7 +103,7 @@ export async function run(opts: RunOptions): Promise<RunSummary> {
     decision = decideBacktest(null, now, opts.refreshBacktest);
   }
   log.info(decision.note);
-  const ing = await ingest(ctx, { cvelistDir: opts.cvelistDir, pocDir: opts.pocDir, osvDir: opts.osvDir, previousState, backtest: decision.plan ?? undefined });
+  const ing = await ingest(ctx, { cvelistDir: opts.cvelistDir, pocDir: opts.pocDir, nucleiDir: opts.nucleiDir, osvDir: opts.osvDir, previousState, backtest: decision.plan ?? undefined });
   const built = buildOutput({ ingest: ing, now, windowDays: opts.windowDays, knob, previous: opts.previous, previousState, siteUrl: base, backtest: decision.carried, previousBacktest });
   for (const note of built.notes) log.info(note);
   log.info(`scored ${built.scored.length} records (${built.meta.counts.window_published} in window), ${built.batches.length} batches, ${built.woke.items.length} woke up`);

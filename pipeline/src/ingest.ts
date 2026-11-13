@@ -9,7 +9,8 @@ import { loadEpss, loadEpssOn } from './sources/epss';
 import { loadExploitDb } from './sources/exploitdb';
 import { loadKev } from './sources/kev';
 import { loadMetasploit } from './sources/metasploit';
-import { loadNuclei } from './sources/nuclei';
+import { loadNuclei, nucleiStatus } from './sources/nuclei';
+import { loadNucleiDates } from './sources/nuclei-history';
 import { loadOsv } from './sources/osv';
 import { openPoc, readPocRepos } from './sources/poc';
 import { loadEpssAsOf, type BacktestInputs } from './backtest';
@@ -53,6 +54,8 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   const epssP = loadEpss(http, ctx.now, limits, signal);
   const metasploitP = loadMetasploit(http, limits, signal);
   const nucleiP = loadNuclei(http, limits, signal);
+  // When each CVE's first template landed (git history); only the backtest and the chip date need it.
+  const nucleiDatesP = loadNucleiDates({ cacheDir: ctx.cacheDir, offline: ctx.offline, log, limits, repoDir: opts.nucleiDir, signal });
   const exploitDbP = loadExploitDb(http, limits, signal);
   const pocP = openPoc(ctx, opts.pocDir, limits, signal);
   // OSV.dev advisories for packages.json; its own 5-minute budget, and never scored.
@@ -100,7 +103,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   // Backtest refresh only: EPSS of the days before recent KEV listings, downloaded while the CVE List streams.
   const plan = opts.backtest;
   const epssAsOfP = plan ? kevP.then((kev) => loadEpssAsOf(http, kev.data, ctx.now, plan, limits, log, signal)) : Promise.resolve(null);
-  const pending = [kevP, epssP, metasploitP, nucleiP, exploitDbP, pocP, pocReadP, epssPastP, wakeP, epssAsOfP, osvP];
+  const pending = [kevP, epssP, metasploitP, nucleiP, nucleiDatesP, exploitDbP, pocP, pocReadP, epssPastP, wakeP, epssAsOfP, osvP];
 
   let repo: CvelistRepo;
   let scan: CvelistScan;
@@ -125,7 +128,18 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   }
 
   const ids = new Set(scan.cves.map((c) => c.id));
-  const [kev, epss, metasploit, nuclei, exploitDb, pocRead, wake, epssAsOf, osv] = await Promise.all([kevP, epssP, metasploitP, nucleiP, exploitDbP, pocReadP, wakeP, epssAsOfP, osvP]);
+  const [kev, epss, metasploit, nuclei, nucleiDates, exploitDb, pocRead, wake, epssAsOf, osv] = await Promise.all([
+    kevP,
+    epssP,
+    metasploitP,
+    nucleiP,
+    nucleiDatesP,
+    exploitDbP,
+    pocReadP,
+    wakeP,
+    epssAsOfP,
+    osvP,
+  ]);
 
   const epssTable: EpssTable = {
     model: epss.data?.model ?? null,
@@ -135,11 +149,12 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   const exploits: ExploitIndex = {
     metasploit: restrict(metasploit.data?.byCve ?? null, ids),
     nuclei: restrict(nuclei.data, ids),
+    nucleiAdded: restrict(nucleiDates.dates, ids),
     exploitdb: restrict(exploitDb.data?.byCve ?? null, ids),
     poc: restrict(pocRead.repos, ids),
   };
   const kevCatalog: KevCatalog = kev.data ?? { version: null, dateReleased: null, entries: new Map() };
-  const sources = [...cvelistStatuses(repo, scan), kev.status, epss.status, metasploit.status, nuclei.status, exploitDb.status, pocRead.status, osv.status];
+  const sources = [...cvelistStatuses(repo, scan), kev.status, epss.status, metasploit.status, nucleiStatus(nuclei.status, nucleiDates), exploitDb.status, pocRead.status, osv.status];
 
   const kevInWindow = scan.cves.filter((c) => c.inWindow && (kevCatalog.entries.has(c.id) || c.adpKev)).length;
   log.info(
@@ -168,6 +183,8 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
             epss: epssAsOf,
             reuse: plan.reuse,
             metasploitModified: restrict(metasploit.data?.firstModified ?? null, ids),
+            // Null when no dates could be read: the backtest then lists them as missing.
+            nucleiAdded: nucleiDates.dates ? restrict(nucleiDates.dates, ids) : null,
             exploitdbAdded: exploitDb.data?.added ?? new Map(),
             volumeFrom: plan.volumeFrom.toISOString(),
           } satisfies BacktestInputs,

@@ -175,7 +175,7 @@ describe('backtest: evidence', () => {
     expect(asOf.entries.size).toBe(0);
     const cve = makeCve({ id: ID, published: days(-40), cnaUpdated: days(-39), adpKev: { dateAdded: LISTED, reference: null }, affected: [{ vendor: 'Acme', product: 'Gateway', versions: [] } as never] });
     for (const variant of ['strict', 'upper'] as const) {
-      const e = evidenceAsOf({ cve, kev: k, enr, kevAsOf: { catalog: asOf, prior: buildKevPrior(asOf) }, epss: null, metasploitModified: new Map(), exploitdbAdded: new Map() }, variant);
+      const e = evidenceAsOf({ cve, kev: k, enr, kevAsOf: { catalog: asOf, prior: buildKevPrior(asOf) }, epss: null, metasploitModified: new Map(), nucleiAdded: new Map(), exploitdbAdded: new Map() }, variant);
       expect(e.cve.adpKev).toBeNull();
       expect(e.enr.kev.entries.has(ID)).toBe(false);
       expect(e.enr.prior.vendors.size).toBe(0);
@@ -187,7 +187,7 @@ describe('backtest: evidence', () => {
     const cve = makeCve({ id: ID, published: days(-40), cnaUpdated: days(-39), adpUpdated: days(1), ssvc: ssvc('active', 'yes', 'total', days(-1)), ...cvss(9.8) });
     const enr = makeEnrichment({ kev: [k] });
     const s = score(cve, { kev: [k] });
-    const inputs: BacktestInputs = { epss: new Map([[ymd(new Date(cutoff - 1)), new Map()]]), reuse: new Map(), metasploitModified: new Map(), exploitdbAdded: new Map(), volumeFrom: days(-200) };
+    const inputs: BacktestInputs = { epss: new Map([[ymd(new Date(cutoff - 1)), new Map()]]), reuse: new Map(), metasploitModified: new Map(), nucleiAdded: new Map(), exploitdbAdded: new Map(), volumeFrom: days(-200) };
     const b = runBacktest({ now: new Date(days(10)), kev: enr.kev, cves: new Map([[ID, cve]]), enr, inputs, scored: [s], rows: new Map([[ID, toRow(s)]]) });
     expect(b.score_model).toBe(SCORE_MODEL);
     expect(b.items[0].left_out).toContain('ssvc');
