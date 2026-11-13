@@ -271,7 +271,7 @@
   white-space: nowrap;
 }
 
-/* "Flagged 40 of 125 recent KEV additions before CISA did." at the current bar, linked to Receipts. */
+/* "Flagged 40 recent KEV additions before CISA listed them." at the current bar, linked to Receipts. */
 .knobpanel__track {
   grid-column: 1 / -1;
   min-height: 1lh;

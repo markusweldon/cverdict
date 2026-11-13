@@ -171,20 +171,18 @@ function PresetCount({ day }: { day: { about: string; n: string } | null }) {
 }
 
 /**
- * The backtest at the current bar: "Flagged 40 of 125 recent KEV additions before CISA did."
- * `undefined` while receipts.json loads and `null` when it failed or has no backtest: both keep an
- * empty line of the same height, so nothing below moves once the file settles (it shows on phones,
- * where the panel does not stretch to the hero).
+ * The backtest at the current bar: "Flagged 40 recent KEV additions before CISA listed them."
+ * `undefined` while receipts.json loads and `null` when it failed or has no backtest (or nothing was
+ * flagged): all keep an empty line of the same height, so nothing below moves once the file settles
+ * (it shows on phones, where the panel does not stretch to the hero).
  */
-function TrackRecord({ level, track }: { level: number; track: { flagged: number; n: number } | null | undefined }) {
-  if (!track) return <p class="knobpanel__track" aria-hidden="true">{'\u00a0'}</p>;
+function TrackRecord({ track }: { track: { flagged: number; n: number } | null | undefined }) {
+  if (!track || track.flagged === 0) return <p class="knobpanel__track" aria-hidden="true">{'\u00a0'}</p>;
+  const one = track.flagged === 1;
   return (
     <p class="knobpanel__track">
-      <a
-        href={href('receipts#backtest')}
-        data-tip={`Backtest, in hindsight: recent CVEs that CISA added to KEV, scored with the evidence from the day before each listing, at evidence bar ${level}`}
-      >
-        Flagged {fmtInt(track.flagged)} of {fmtInt(track.n)} recent KEV additions before CISA did.
+      <a href={href('receipts#backtest')} data-tip="From our 180-day backtest, using only evidence from before each listing. See Receipts.">
+        Flagged {fmtInt(track.flagged)} recent KEV {one ? 'addition' : 'additions'} before CISA listed {one ? 'it' : 'them'}.
       </a>
     </p>
   );
@@ -262,7 +260,7 @@ function KnobPanel({
           );
         })}
       </div>
-      <TrackRecord level={level} track={track} />
+      <TrackRecord track={track} />
     </section>
   );
 }

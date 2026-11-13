@@ -250,7 +250,7 @@ Unknown → 404 view. Update `document.title` per route.
   "See Oct 13" link opens it; spike labels link to their batch card on `/batches`);
   (4) the **evidence bar**: rotary control (`role="slider"`, 35 to 65 on the site, arrow keys ±5, presets
   Broad 40 / Balanced 50 / Strict 60, each with its live count a day, and under them the backtest at the current
-  setting: "Flagged 40 of 125 recent KEV additions before CISA did.", linked to Receipts), URL param `?knob=` (values outside 35 to 65
+  setting: "Flagged 40 recent KEV additions before CISA listed them.", linked to Receipts), URL param `?knob=` (values outside 35 to 65
   open at the nearest end); (5) signal feed: rows (tier pill, mono CVE ID, vendor · product, title, top chips, score, age,
   batch tag); filter bar (tier, vendor search, hide WordPress / kernel / AI toggles, watchlist); (6) batch cards
   ("Microsoft · Oct 13 · 1,407 → 1 exploited · 2 PoC · 58 likely"); (7) KEV Clock strip; (8) "what changed" list;
