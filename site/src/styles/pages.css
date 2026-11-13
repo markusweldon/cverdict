@@ -9,12 +9,15 @@
 
 .today__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  /* The top row splits about 4:3, so the evidence bar has room for its dial and copy: 665 / 499 px
+     in the 1,184 px container, 627 / 470 px at 1,181 px. The lower row keeps the side column at
+     380 px: at 4:3 the chips under most Signal rows would wrap to a second line. */
+  grid-template-columns: calc((100% - 20px) * 4 / 7) minmax(0, 1fr) 380px;
   grid-template-areas:
-    'hero knob'
-    'wf wf'
-    'feed side'
-    'batches batches';
+    'hero knob knob'
+    'wf wf wf'
+    'feed feed side'
+    'batches batches batches';
   gap: 16px 20px;
   align-items: start;
 }
@@ -287,6 +290,31 @@
 .knobpanel__track a:hover {
   color: var(--text);
   text-decoration-color: currentColor;
+}
+
+/* Beside the hero the panel is 470 to 499 px wide: the full 136 px dial (set in Today.tsx) and
+   roomier spacing. 6 px between the rows keeps it level with the hero card at 272 px; 8 px would
+   make the row 278 px. Narrower layouts keep the compact values above. */
+@media (min-width: 1181px) {
+  .knobpanel {
+    padding: 13px 20px;
+  }
+
+  .knobpanel__body {
+    gap: 8px;
+  }
+
+  .knobpanel__desc {
+    line-height: 1.4;
+  }
+
+  .knobpanel__hint {
+    line-height: 1.45;
+  }
+
+  .seg--presets .seg__btn {
+    padding: 3px 6px;
+  }
 }
 
 /* ── CVE ── */

@@ -38,7 +38,7 @@ import {
   type TierCounts,
 } from '../filters';
 import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, fmtSlot, HOUR_MS, oneIn, plural } from '../format';
-import { prefersReducedMotion, useCountUp, useData, useDebounced, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
+import { prefersReducedMotion, useCountUp, useData, useDebounced, useKnobUrl, useListController, useMediaQuery, useNow, useTitle } from '../hooks';
 import { cveHref, historyValue, href, navigate, setHistoryValue, setQuery, useLocation } from '../router';
 import { backtestAt } from '../receipts';
 import { KNOB_PRESETS, knob, previousVisit, SITE_KNOB_MAX, SITE_KNOB_MIN, useStore, watchlist } from '../state';
@@ -204,6 +204,8 @@ function KnobPanel({
   track: { flagged: number; n: number } | null | undefined;
 }) {
   const day = perDay(passed, days);
+  // The full-size dial fits beside the hero (two columns from 1,181 px); stacked and on phones it stays compact.
+  const wide = useMediaQuery('(min-width: 1181px)');
   return (
     <section class="knobpanel" aria-label="Evidence bar">
       <Knob
@@ -213,7 +215,7 @@ function KnobPanel({
         defaultValue={KNOB_DEFAULT}
         marks={KNOB_PRESETS.map((p) => p.value)}
         onChange={(v) => knob.set(v)}
-        size={122}
+        size={wide ? 136 : 122}
         label="Evidence bar"
         valueText={dialText(level, day)}
       />
