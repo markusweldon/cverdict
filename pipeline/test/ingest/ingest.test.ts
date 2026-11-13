@@ -218,9 +218,12 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(result.cves).toHaveLength(11);
     const http = result.sources.filter((s) => ['kev', 'epss', 'metasploit', 'exploitdb'].includes(s.id));
     expect(http.every((s) => s.ok && s.stale && s.error === null)).toBe(true);
-    // Offline without a clone: the template dates written by the first run, marked as a cached copy.
-    expect(result.sources.find((s) => s.id === 'nuclei')).toMatchObject({ ok: true, stale: true, upstream_version: nuclei.commit, error: 'template dates from a cached copy' });
-    expect(result.exploits.nucleiAdded?.get('CVE-2026-0257')?.commit).toBe(nuclei.commit);
+    // The first run read its templates clone with --nuclei-dir, which never saves the dates: offline
+    // and without a clone there are none, so the templates count without dates and the source says so.
+    expect(result.sources.find((s) => s.id === 'nuclei')).toMatchObject({ ok: true, stale: true, fetched_at: null, upstream_version: null, error: 'template dates unavailable (no cached template dates)' });
+    expect(result.exploits.nucleiAdded?.size ?? 0).toBe(0);
+    expect([...result.exploits.nuclei.keys()]).toEqual(['CVE-2026-0257']);
+    void nuclei;
   });
 
   it('keeps going when optional sources are down, reporting them as unavailable', async () => {

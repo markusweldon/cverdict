@@ -26,7 +26,7 @@ Options:
   --cache <dir>         Cache for last-good downloads and git clones (default: ${DEFAULT_CACHE})
   --cvelist-dir <dir>   Use an existing cvelistV5 git clone (never modified)
   --poc-dir <dir>       Use an existing PoC-in-GitHub git clone (never modified)
-  --nuclei-dir <dir>    Use an existing nuclei-templates git clone for template dates (never modified)
+  --nuclei-dir <dir>    Use an existing nuclei-templates git clone for template dates (never modified; its dates are not cached)
   --osv-dir <dir>       Read the OSV.dev dumps from <dir>/<ecosystem>.zip instead of downloading
                         them (the mirror itself lives in <cache>/sources/)
   --now <iso>           Freeze "now", e.g. 2026-10-26T19:30:00Z; no offset means UTC (default: current time)

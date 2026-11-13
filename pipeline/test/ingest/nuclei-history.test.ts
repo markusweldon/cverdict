@@ -7,7 +7,10 @@ import {
   cveFromTemplatePath,
   landingTimes,
   loadNucleiDates,
+  isPullMerge,
+  mainChain,
   mergeLandings,
+  parseCommitGraph,
   readDatesFile,
   walkHistory,
   type NucleiAdded,
@@ -144,6 +147,57 @@ describe('landingTimes and mergeLandings', () => {
   });
 });
 
+describe('isPullMerge, parseCommitGraph and mainChain', () => {
+  const [a, b, c, d, e] = ['a', 'b', 'c', 'd', 'e'].map((x) => x.repeat(40));
+  it('recognises the merges that pulled upstream main into local work', () => {
+    for (const subject of [
+      "Merge branch 'main' of https://github.com/projectdiscovery/nuclei-templates",
+      "Merge branch 'master' of https://github.com/projectdiscovery/nuclei-templates",
+      "Merge branch 'main' of github.com:projectdiscovery/nuclei-templates.git",
+      "Merge branch 'main' of https://github.com/projectdiscovery/nuclei-templates into main",
+      "Merge remote-tracking branch 'origin/main'",
+      "Merge remote-tracking branch 'upstream/master' into patch-1",
+    ]) {
+      expect(isPullMerge(subject), subject).toBe(true);
+    }
+    for (const subject of [
+      'Merge pull request #123 from someone/main',
+      "Merge branch 'main' of https://github.com/someone/nuclei-templates",
+      "Merge branch 'patch-1' of https://github.com/projectdiscovery/nuclei-templates",
+      "Merge branch 'main' into fix-typo",
+      "Merge branch 'maintenance'",
+      'update templates',
+    ]) {
+      expect(isPullMerge(subject), subject).toBe(false);
+    }
+  });
+
+  it('follows first parents, and the second parent of a pull merge', () => {
+    // e (pull merge: local d, upstream c) → c (PR merge: main b, branch a) → b
+    const graph = parseCommitGraph(
+      [
+        `${e} 50 ${d} ${c}\tMerge branch 'main' of https://github.com/projectdiscovery/nuclei-templates`,
+        `${d} 40 ${b}\tlocal work`,
+        `${c} 30 ${b} ${a}\tMerge pull request #1 from someone/patch-1`,
+        `${a} 20 ${b}\tbranch work`,
+        `${b} 10\troot`,
+        '',
+      ].join('\n'),
+    );
+    expect(graph.get(e)).toEqual({ ct: 50, parents: [d, c], pull: true });
+    expect(graph.get(c)?.pull).toBe(false);
+    expect(mainChain(graph, e)).toEqual([
+      { sha: e, ct: 50, parent: c },
+      { sha: c, ct: 30, parent: b },
+      { sha: b, ct: 10, parent: null },
+    ]);
+    // A range: the chain stops where the listed commits end.
+    graph.delete(b);
+    expect(mainChain(graph, e).at(-1)).toEqual({ sha: c, ct: 30, parent: b });
+    expect(() => parseCommitGraph('nonsense 1\tx')).toThrow();
+  });
+});
+
 describe('walkHistory on a local repository', () => {
   it('dates a CVE by its first landing across moves, deletions and re-adds', async () => {
     const up = upstream();
@@ -231,6 +285,66 @@ describe('walkHistory on a local repository', () => {
     expect(out.dates.get('CVE-2025-0003')).toMatchObject({ at: iso('2025-01-20T00:00:00Z') });
     expect(out.dates.get('CVE-2025-0004')?.at).toBe(iso('2025-01-05T00:00:00Z'));
     expect(m0).toMatch(/^[0-9a-f]{40}$/);
+  });
+});
+
+describe('walkHistory with a maintainer who pulls main before pushing', () => {
+  /** Upstream, plus a maintainer clone that commits a template locally and pulls main twice before pushing. */
+  const scenario = () => {
+    const up = upstream();
+    up.commit('2025-08-01T00:00:00Z', { add: { 'README.md': 'x' } });
+    const local = path.join(path.dirname(up.dir), 'maintainer');
+    gitAt(path.dirname(up.dir), null, 'clone', '-q', up.url, local);
+    const at = (date: string | null, ...args: string[]) => gitAt(local, date, ...args);
+    mkdirSync(path.join(local, 'http/cves/2025'), { recursive: true });
+    writeFileSync(path.join(local, 'http/cves/2025/CVE-2025-54309.yaml'), 'id: CVE-2025-54309');
+    at(null, 'add', '-A');
+    const authored = at('2025-08-28T16:17:00Z', 'commit', '-q', '--no-gpg-sign', '-m', 'add CVE-2025-54309');
+    // Meanwhile main moves on, and the maintainer pulls it in twice without pushing.
+    const u1 = up.commit('2025-08-29T00:00:00Z', { add: { 'http/cves/2025/CVE-2025-0101.yaml': 'u1' } });
+    const pull = (date: string) => {
+      at(null, 'fetch', '-q', 'origin');
+      at(date, 'merge', '-q', '--no-ff', '--no-gpg-sign', '-m', "Merge branch 'main' of https://github.com/projectdiscovery/nuclei-templates", 'origin/main');
+    };
+    pull('2025-08-30T14:48:00Z');
+    const u2 = up.commit('2025-08-31T00:00:00Z', { add: { 'http/cves/2025/CVE-2025-0102.yaml': 'u2' } });
+    pull('2025-09-01T02:45:00Z');
+    const pushed = at(null, 'rev-parse', 'HEAD');
+    // The push: main is fast-forwarded to the maintainer's last pull merge.
+    const push = () => {
+      up.git(null, 'fetch', '-q', local, 'main');
+      up.git(null, 'merge', '-q', '--ff-only', 'FETCH_HEAD');
+    };
+    return { up, authored, u1, u2, pushed, push };
+  };
+
+  it('dates the local commit by the last pull merge that main did not have it in, not by its commit time', async () => {
+    const { up, authored, pushed, push } = scenario();
+    push();
+    expect(up.git(null, 'log', '-1', '--format=%s')).toMatch(/^Merge branch 'main' of /);
+    const out = await walk(up.dir);
+    expect(out.mode).toBe('full');
+    // Committed on Aug 28, pulled over twice, on main only from the push of the second pull merge.
+    expect(out.dates.get('CVE-2025-54309')).toEqual({ at: iso('2025-09-01T02:45:00Z'), commit: pushed });
+    expect(out.dates.get('CVE-2025-54309')?.commit).not.toBe(authored);
+    // Chain: the pushed merge, then main as it was (u2, u1, the first commit): the first pull merge was never on main.
+    expect(out.commits).toBe(4);
+    // Main's own commits keep their times.
+    expect(out.dates.get('CVE-2025-0101')?.at).toBe(iso('2025-08-29T00:00:00Z'));
+    expect(out.dates.get('CVE-2025-0102')?.at).toBe(iso('2025-08-31T00:00:00Z'));
+  });
+
+  it('gives the same dates whether the history is walked at once or hour by hour', async () => {
+    const { up, push, u1, u2 } = scenario();
+    const atU1 = asFile(await walk(up.dir, null, u1));
+    const atU2 = asFile(await walk(up.dir, atU1, u2));
+    push();
+    const hourly = await walk(up.dir, atU2);
+    const full = await walk(up.dir);
+    // The pushed merge sits right on the last head seen: an ordinary hourly step.
+    expect(hourly).toMatchObject({ mode: 'incremental', commits: 1 });
+    expect(full.mode).toBe('full');
+    expect(Object.fromEntries([...hourly.dates].map(([k, v]) => [k, v.at]))).toEqual(Object.fromEntries([...full.dates].map(([k, v]) => [k, v.at])));
   });
 });
 
@@ -323,7 +437,7 @@ describe('loadNucleiDates (cache clone, dates file, fallbacks)', () => {
 
   it('starts from nothing without a usable dates file, and never throws', async () => {
     const { up, load, file } = setup();
-    expect(await load({ offline: true })).toEqual({ dates: null, head: null, stale: true, error: 'no cached template dates' });
+    expect(await load({ offline: true })).toEqual({ dates: null, head: null, stale: true, as_of: null, error: 'no cached template dates' });
     expect(await load({ remote: `file://${path.join(tempDir(), 'gone')}` })).toMatchObject({ dates: null, stale: true, error: expect.stringMatching(/git clone/) });
     up.commit('2025-01-01T00:00:00Z', { add: { 'http/cves/2025/CVE-2025-0001.yaml': 'a' } });
     mkdirSync(path.dirname(file), { recursive: true });
@@ -339,5 +453,47 @@ describe('loadNucleiDates (cache clone, dates file, fallbacks)', () => {
     const out = await load({ repoDir: up.dir, remote: 'file:///nowhere' });
     expect(out).toMatchObject({ head: c1, stale: false, error: null });
     expect(existsSync(clone)).toBe(false);
+  });
+
+  it('never writes the cached dates from a clone given with --nuclei-dir', async () => {
+    const { up, load, file } = setup();
+    const c1 = up.commit('2025-01-01T00:00:00Z', { add: { 'http/cves/2025/CVE-2025-0001.yaml': 'a' } });
+    up.commit('2025-02-01T00:00:00Z', { add: { 'http/cves/2025/CVE-2025-0002.yaml': 'b' } });
+    await load();
+    const saved = readFileSync(file, 'utf8');
+    // An older checkout of the same history, and a fork with its own commit: read, not saved.
+    const older = path.join(tempDir(), 'older');
+    gitAt(path.dirname(older), null, 'clone', '-q', up.url, older);
+    gitAt(older, null, 'reset', '-q', '--hard', c1);
+    const fork = await load({ repoDir: older });
+    expect(fork).toMatchObject({ head: c1, stale: false });
+    expect(fork.dates?.has('CVE-2025-0002')).toBe(false);
+    writeFileSync(path.join(older, 'http/cves/2025/CVE-2025-0009.yaml'), 'fork');
+    gitAt(older, null, 'add', '-A');
+    gitAt(older, '2025-03-01T00:00:00Z', 'commit', '-q', '--no-gpg-sign', '-m', 'fork');
+    expect((await load({ repoDir: older })).dates?.has('CVE-2025-0009')).toBe(true);
+    expect(readFileSync(file, 'utf8')).toBe(saved);
+  });
+
+  it('says when stale dates were last current, so their age can be checked', async () => {
+    const { up, load, file } = setup();
+    up.commit('2025-01-01T00:00:00Z', { add: { 'http/cves/2025/CVE-2025-0001.yaml': 'a' } });
+    let now = NOW;
+    const at = (o: Parameters<typeof load>[0] = {}) =>
+      loadNucleiDates({ cacheDir: path.dirname(path.dirname(file)), offline: o.offline ?? false, log: captureLogger(), limits: o.limits ?? LIMITS, remote: o.remote ?? up.url, now: () => now });
+    expect((await at()).as_of).toBe(new Date(NOW).toISOString());
+    // Fresh again an hour later with nothing new upstream: still current, and the file says so.
+    now = NOW + 3_600_000;
+    expect(await at()).toMatchObject({ stale: false, as_of: new Date(now).toISOString() });
+    expect((await readDatesFile(file))?.checked_at).toBe(new Date(now).toISOString());
+    const lastGood = new Date(now).toISOString();
+    // Then three days of failed fetches: the dates stay as of the last good check.
+    now = NOW + 72 * 3_600_000;
+    const gone = `file://${path.join(tempDir(), 'gone')}`;
+    expect(await at({ remote: gone })).toMatchObject({ stale: true, as_of: lastGood });
+    expect(await at({ offline: true })).toMatchObject({ stale: true, as_of: lastGood });
+    expect(await at({ limits: { ...LIMITS, nucleiDates: 5 } })).toMatchObject({ stale: true, as_of: lastGood });
+    expect((await readDatesFile(file))?.checked_at).toBe(lastGood);
+    void load;
   });
 });

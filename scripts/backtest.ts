@@ -35,7 +35,7 @@ Options:
   --cache <dir>         Cache of last-good downloads and git clones (default: .cache)
   --cvelist-dir <dir>   Use an existing cvelistV5 git clone (never modified)
   --poc-dir <dir>       Use an existing PoC-in-GitHub git clone (never modified)
-  --nuclei-dir <dir>    Use an existing nuclei-templates git clone for template dates (never modified)
+  --nuclei-dir <dir>    Use an existing nuclei-templates git clone for template dates (never modified; its dates are not cached)
   --now <iso>           Freeze "now", e.g. 2026-11-03T12:00:00Z (default: current time)
   --previous <dir>      A previous output root: EPSS values in its receipts.json are reused
   --json <file>         Also write the result (the receipts.json "backtest" object) to this file

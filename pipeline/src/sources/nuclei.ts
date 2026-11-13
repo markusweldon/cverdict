@@ -54,7 +54,9 @@ export async function loadNuclei(http: HttpClient, limits: SanityLimits, signal?
 
 /**
  * The index's status with the template dates folded in (sources/nuclei-history.ts): missing or
- * stale dates leave the templates as they are but mark the source stale, with the reason.
+ * stale dates leave the templates as they are but mark the source stale, with the reason, and
+ * `fetched_at` becomes the time the dates were last current (null without any), so the freshness
+ * watchdog's limit on stale sources applies to the dates too.
  */
 export function nucleiStatus(index: SourceStatus, dated: NucleiDatesResult): SourceStatus {
   if (!index.ok) return index;
@@ -62,6 +64,7 @@ export function nucleiStatus(index: SourceStatus, dated: NucleiDatesResult): Sou
   if (dated.stale || !dated.dates) {
     const why = `template dates ${dated.dates ? 'from a cached copy' : 'unavailable'}${dated.error ? ` (${dated.error})` : ''}`;
     status.stale = true;
+    status.fetched_at = dated.dates && dated.as_of ? [dated.as_of, index.fetched_at].filter((t): t is string => t !== null).sort()[0] : null;
     status.error = status.error ? `${status.error}; ${why}` : why;
   }
   return status;

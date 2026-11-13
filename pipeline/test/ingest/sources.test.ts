@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -225,12 +226,48 @@ describe('Nuclei', () => {
     const index = { id: 'nuclei', name: 'Nuclei templates', url: 'u', ok: true, stale: false, fetched_at: '2026-11-13T00:00:00.000Z', upstream_version: null, records: 5, error: null, license: 'MIT' } as const;
     const head = 'a'.repeat(40);
     const dates = new Map([['CVE-2021-44228', { at: '2021-12-10T00:00:00.000Z', commit: head }]]);
-    expect(nucleiStatus(index, { dates, head, stale: false, error: null })).toEqual({ ...index, upstream_version: head });
-    expect(nucleiStatus(index, { dates, head, stale: true, error: 'git fetch failed' })).toMatchObject({ ok: true, stale: true, error: 'template dates from a cached copy (git fetch failed)' });
-    expect(nucleiStatus(index, { dates: null, head: null, stale: true, error: 'no cached template dates' })).toMatchObject({ ok: true, stale: true, upstream_version: null, error: 'template dates unavailable (no cached template dates)' });
-    expect(nucleiStatus({ ...index, stale: true, error: 'HTTP 503' }, { dates, head, stale: true, error: null }).error).toBe('HTTP 503; template dates from a cached copy');
+    const fresh = { dates, head, stale: false, as_of: '2026-11-13T00:00:00.000Z', error: null };
+    expect(nucleiStatus(index, fresh)).toEqual({ ...index, upstream_version: head });
+    // Stale dates carry the time they were last current, so the watchdog's 48 h limit applies to them.
+    expect(nucleiStatus(index, { dates, head, stale: true, as_of: '2026-11-10T05:00:00.000Z', error: 'git fetch failed' })).toMatchObject({
+      ok: true,
+      stale: true,
+      fetched_at: '2026-11-10T05:00:00.000Z',
+      error: 'template dates from a cached copy (git fetch failed)',
+    });
+    // Never later than the index itself.
+    expect(nucleiStatus({ ...index, stale: true, fetched_at: '2026-11-01T00:00:00.000Z' }, { ...fresh, stale: true, as_of: '2026-11-10T05:00:00.000Z' }).fetched_at).toBe('2026-11-01T00:00:00.000Z');
+    expect(nucleiStatus(index, { dates: null, head: null, stale: true, as_of: null, error: 'no cached template dates' })).toMatchObject({
+      ok: true,
+      stale: true,
+      fetched_at: null,
+      upstream_version: null,
+      error: 'template dates unavailable (no cached template dates)',
+    });
+    expect(nucleiStatus({ ...index, stale: true, error: 'HTTP 503' }, { ...fresh, stale: true }).error).toBe('HTTP 503; template dates from a cached copy');
     const down = { ...index, ok: false, error: 'no cached copy' };
-    expect(nucleiStatus(down, { dates, head, stale: false, error: null })).toBe(down);
+    expect(nucleiStatus(down, fresh)).toBe(down);
+  });
+
+  // The watchdog's own jq program from the workflow, run on statuses nucleiStatus builds.
+  const hasJq = spawnSync('jq', ['--version']).status === 0;
+  it.skipIf(!hasJq)('lets the freshness watchdog fail the run when the template dates stay stale for more than 48 h', () => {
+    const yml = readFileSync(path.join(FIXTURES, '../../../../.github/workflows/refresh.yml'), 'utf8');
+    const program = /annotations=\$\(jq -r [^']*'([\s\S]*?)' <<<"\$meta"\)/.exec(yml)?.[1];
+    expect(program).toBeTruthy();
+    const now = Date.parse('2026-11-13T12:00:00Z');
+    const index = { id: 'nuclei', name: 'Nuclei templates', url: 'u', ok: true, stale: false, fetched_at: '2026-11-13T11:30:00.000Z', upstream_version: null, records: 5, error: null, license: 'MIT' } as const;
+    const dates = new Map([['CVE-2021-44228', { at: '2021-12-10T00:00:00.000Z', commit: 'a'.repeat(40) }]]);
+    const annotate = (dated: Parameters<typeof nucleiStatus>[1]) => {
+      const meta = { generated_at: '2026-11-13T11:30:00.000Z', sources: [nucleiStatus(index, dated)] };
+      const r = spawnSync('jq', ['-r', '--argjson', 'now', String(now / 1000), '--argjson', 'max_age', '3', '--argjson', 'max_stale', '48', program!], { input: JSON.stringify(meta), encoding: 'utf8' });
+      expect(r.status, r.stderr).toBe(0);
+      return r.stdout.trim();
+    };
+    expect(annotate({ dates, head: null, stale: false, as_of: '2026-11-13T11:30:00.000Z', error: null })).toBe('');
+    expect(annotate({ dates, head: null, stale: true, as_of: '2026-11-12T12:00:00.000Z', error: 'git fetch failed' })).toMatch(/^::warning title=Source stale \(nuclei\)/);
+    expect(annotate({ dates, head: null, stale: true, as_of: '2026-11-10T12:00:00.000Z', error: 'git fetch failed' })).toMatch(/^::error title=Source stale \(nuclei\)/);
+    expect(annotate({ dates: null, head: null, stale: true, as_of: null, error: 'no cached template dates' })).toMatch(/^::error title=Source stale \(nuclei\)/);
   });
 });
 

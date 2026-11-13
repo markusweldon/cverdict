@@ -18,6 +18,8 @@ export interface GitRunOptions {
   cwd?: string;
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Written to the command's stdin (`git()` only). */
+  input?: string;
 }
 
 interface Exit {
@@ -78,10 +80,15 @@ function failure(args: readonly string[], exit: Exit, stderr: string): GitError 
 
 /** Run git to completion and return its trimmed stdout. For commands with small output. */
 export async function git(args: readonly string[], opts: GitRunOptions = {}): Promise<string> {
-  const proc = spawnGit(args, opts, 'ignore');
+  const proc = spawnGit(args, opts, opts.input === undefined ? 'ignore' : 'pipe');
   const stderr = collectStderr(proc);
   const out: Buffer[] = [];
   proc.stdout?.on('data', (chunk: Buffer) => out.push(chunk));
+  if (opts.input !== undefined && proc.stdin) {
+    // A git that exits early closes stdin; its exit status reports why.
+    proc.stdin.on('error', () => {});
+    proc.stdin.end(opts.input);
+  }
   const exit = await exitOf(proc);
   if (exit.error || exit.code !== 0) throw failure(args, exit, stderr());
   return Buffer.concat(out).toString('utf8').trim();
