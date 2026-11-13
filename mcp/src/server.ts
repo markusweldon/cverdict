@@ -22,7 +22,7 @@ const knob = z
   .min(KNOB_MIN)
   .max(KNOB_MAX)
   .optional()
-  .describe(`The evidence bar: the score out of 100 a CVE needs to be Likely next, ${KNOB_MIN} to ${KNOB_MAX}. Default ${KNOB_DEFAULT}, as on the site.`);
+  .describe(`The evidence bar: the minimum score (out of 100) to flag a CVE as likely exploited next (the Likely next tier), ${KNOB_MIN} to ${KNOB_MAX}. Default ${KNOB_DEFAULT}, as on the site. Exploited CVEs and those with a Metasploit module or Nuclei template pass at any value.`);
 const limit = (def: number) => z.number().int().min(1).max(LIMITS.page).optional().describe(`Items per page, 1 to ${LIMITS.page}. Default ${def}.`);
 const offset = z.number().int().min(0).max(LIMITS.offset).optional().describe('Items to skip: next_offset of the previous page.');
 const date = (what: string) =>

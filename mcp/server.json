@@ -3,7 +3,7 @@
   "name": "io.github.markusweldon/cverdict",
   "title": "CVErdict",
   "description": "Read-only CVE triage: verdicts from CISA KEV, EPSS and exploit feeds, each reason linked.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "websiteUrl": "https://cverdict.dev/mcp",
   "repository": {
     "url": "https://github.com/markusweldon/cverdict",
@@ -15,7 +15,7 @@
     {
       "registryType": "npm",
       "identifier": "cverdict-mcp",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "transport": {
         "type": "stdio"
       },
