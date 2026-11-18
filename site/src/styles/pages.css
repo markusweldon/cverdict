@@ -760,6 +760,12 @@
   box-shadow: 0 0 8px var(--exploited);
 }
 
+/* CIRCL entries that only report attempts or suspicion: watch colour, no glow. */
+.timeline__item--circl-weak::after,
+.timeline__item--siberkapan::after {
+  background: var(--watch);
+}
+
 .timeline__item--poc-github::after,
 .timeline__item--exploitdb::after,
 .timeline__item--metasploit::after,

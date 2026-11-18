@@ -362,6 +362,9 @@ function Detail({ d }: { d: CveDetail }) {
   const page = absoluteUrl(cveHref(d.id));
   const summary = d.title ?? d.description.split(/(?<=\.)\s/)[0];
   const timeline = [...d.timeline].sort((x, y) => Date.parse(x.at) - Date.parse(y.at));
+  // CIRCL lists attempts-only and suspected entries too: only a listing that set the Exploited chip gets the red dot.
+  const circlExploited = d.reasons.some((r) => r.id === 'circl.listed');
+  const dot = (source: string) => (source === 'circl-kev' && !circlExploited ? 'circl-weak' : source);
 
   return (
     <article class={`cve cve--${tier}`}>
@@ -448,7 +451,7 @@ function Detail({ d }: { d: CveDetail }) {
             </header>
             <ol class="timeline">
               {timeline.map((t, i) => (
-                <li key={`${t.at}-${i}`} class={`timeline__item timeline__item--${t.source}`}>
+                <li key={`${t.at}-${i}`} class={`timeline__item timeline__item--${dot(t.source)}`}>
                   <time dateTime={t.at}>{fmtDate(t.at)}</time>
                   <span class="timeline__event">{t.event}</span>
                   <span class="timeline__src">{SOURCE_NAMES[t.source] ?? t.source}</span>
