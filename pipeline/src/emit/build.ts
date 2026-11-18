@@ -15,6 +15,8 @@ import {
   type ReceiptsFile,
   type PackagesFile,
   type Row,
+  type SourceId,
+  type SourceStatus,
   type Tier,
   type WokeFile,
 } from '../../../shared/contract';
@@ -43,6 +45,18 @@ const isPassed = (t: Tier) => t === 'exploited' || t === 'likely';
 
 /** Their outages must not change any CVE's output, so they are left out of Enrichment.unavailable. */
 export { NON_SCORING_SOURCES };
+
+/**
+ * Sources that feed only information chips (0 points, no tier): an outage cannot change a verdict,
+ * so it is not reported as unknown evidence on every CVE or in the backtest's `sources_down`. They
+ * stay in meta.sources, so the Method page and the header still show their health.
+ */
+export const INFO_ONLY_SOURCES: ReadonlySet<SourceId> = new Set<SourceId>(['siberkapan']);
+
+/** Enrichment.unavailable: the failed sources whose evidence a verdict depends on (id → name). */
+export function unavailableSources(sources: readonly SourceStatus[]): Map<SourceId, string> {
+  return new Map(sources.filter((s) => !s.ok && !NON_SCORING_SOURCES.has(s.id) && !INFO_ONLY_SOURCES.has(s.id)).map((s) => [s.id, s.name]));
+}
 const byNewest = (a: ScoredCve, b: ScoredCve) => b.cve.published.localeCompare(a.cve.published) || a.cve.id.localeCompare(b.cve.id);
 const inSignal = (s: ScoredCve) => s.score >= SIGNAL_MIN_SCORE || s.exploited || s.weaponized;
 
@@ -172,7 +186,7 @@ export function buildOutput({
   previousBacktest = null,
 }: BuildInput): BuiltOutput {
   const windowStart = new Date(now.getTime() - windowDays * DAY_MS);
-  const unavailable = new Map(ing.sources.filter((s) => !s.ok && !NON_SCORING_SOURCES.has(s.id)).map((s) => [s.id, s.name]));
+  const unavailable = unavailableSources(ing.sources);
   const enr: Enrichment = { kev: ing.kev, epss: ing.epss, exploits: ing.exploits, prior: buildKevPrior(ing.kev), unavailable };
   // A frozen --now may predate records in the clone: those do not exist yet from our point of view.
   const all = ing.cves.filter((c) => Date.parse(c.published) <= now.getTime()).map((c) => scoreCve(c, enr, { now, knob }));

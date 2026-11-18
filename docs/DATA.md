@@ -183,10 +183,12 @@ A `Reason` is `{ id, label, polarity: up|down|info|unknown, family: E|X|SEV|SSVC
 `x.nuclei` carries `at`, the time the CVE's first template landed on the `main` branch of
 projectdiscovery/nuclei-templates, and `url`, that commit (the label reads "· added <date>"); without
 a date, `url` is the template and there is no `at`. The date never changes the points.
-Four chips come from known-exploited catalogs other than CISA KEV, and their label names the
+Five chips come from known-exploited catalogs other than CISA KEV, and their label names the
 catalog (with its licence where it asks for attribution): `eukev.listed` ("Listed in ENISA EU KEV",
-E family, `url` the EUVD entry), `circl.listed` ("Listed by CIRCL (CC0) as exploited", E family) and the
-information-only `circl.suspected` and `honeypot.siberkapan` ("SiberKapan honeypots (CC BY 4.0):
+E family, `url` the EUVD entry), `circl.listed` ("Listed by CIRCL (CC0) as exploited", E family, a
+confirmed entry whose evidence is more than attempts) and the information-only `circl.suspected`,
+`circl.attempts` ("CIRCL (CC0): exploitation attempts seen", a confirmed entry whose only evidence
+is attempts, such as sinkhole hits) and `honeypot.siberkapan` ("SiberKapan honeypots (CC-BY-4.0):
 attempts seen", 0 points). Their `at` is the day the catalog added the CVE when it gives one it can
 vouch for; an EU KEV listing that the EUVD dump dates only by its CISA KEV date has no `at`. For
 `honeypot.siberkapan`, `at` is the first attempt the sensors saw.
@@ -388,7 +390,7 @@ Neither uses the listing.
 | PoC repos | Repos created and last pushed (`pushed_at`) before the listing day, so all their code is older than the listing; strict vets them by age only (3 days old by then), as star counts are only known for today. Repos pushed on the listing day or later count only in `upper` (signal `poc_content`): their code may postdate the listing |
 | Metasploit | Counted when a module's `mod_time` is before the listing day (it existed); other modules only in `upper` |
 | Nuclei | Counted when the CVE's first template landed on `main` of projectdiscovery/nuclei-templates before the listing day: the committer date of the commit on main that added it (the merge or squash, not the branch commit; for a maintainer's local work pulled over and pushed, the pushed merge), earliest across renames and re-adds. Templates that landed on the listing day or later, or without a date, only in `upper`. When the dates could not be loaded at all, `sources_down` lists "Nuclei template dates" |
-| ENISA EU KEV, CIRCL and SiberKapan listings (signal `catalogs`) | Counted when the catalog dated the listing before the listing day (EU KEV's own date; BCP-07 `asserted_at` for the CIRCL catalogs). A listing it does not date (an EU KEV entry the EUVD dump dates only by its CISA date, a CIRCL entry without `asserted_at`) counts only in `upper`; one dated on the listing day or later in neither |
+| ENISA EU KEV, CIRCL and SiberKapan listings (signal `catalogs`) | Counted when the catalog dated the listing before the listing day (EU KEV's own date; BCP-07 `asserted_at` for the CIRCL catalogs). A listing it does not date (a CIRCL entry without `asserted_at`) counts only in `upper`; one dated on the listing day or later in neither, and so does an EU KEV entry the EUVD dump dates only by its CISA date (EU KEV listed it on the CISA day or later) |
 | CISA SSVC automatable and technical impact | Counted when CISA's container has not changed since the listing day, or the assessment is timestamped before the day before the listing. CISA often stamps the assessment it rewrites for a listing with the day before (17 of the 139 listings in the 2026-11-03 backtest, against 20 over the 29 days before that), so that day cannot vouch for it. Else only in `upper` |
 | CISA SSVC exploitation (`poc`, `active`) | Counted only when CISA has not changed its container since the listing day. CISA updates this value when it lists a CVE and often dates it the day before, so the timestamp cannot vouch for it. In `upper`, an `active` that cannot be shown to predate the listing is lowered to `poc` (a public exploit exists) or `none` |
 | CNA CVSS, CVSS exploit maturity, "exploited in the wild" text | Counted when the CNA has not changed its container since the listing day (`providerMetadata.dateUpdated`); else only in `upper` |
@@ -406,7 +408,7 @@ Neither uses the listing.
 | `volume` | `{ from, n, methods }`: of the CVEs published from `from` on, how many each method flags with today's evidence (hindsight too). `null` when it was not measured |
 | `signals[]` | `{ key, label, treatment: time_matched \| hindsight \| excluded \| today, note, affected }`: how each kind of evidence was used, and for how many CVEs it was left out (or set aside; for `today`, every CVE) |
 | `epss_missing[]` | Days whose EPSS file could not be loaded. For those CVEs CVErdict treats EPSS as unknown and `epss10` counts them as not flagged |
-| `sources_down[]` | Names of sources that had no usable data (not even a cached copy) when it was computed: their evidence is missing from every figure |
+| `sources_down[]` | Names of sources that had no usable data (not even a cached copy) when it was computed: their evidence is missing from every figure. Sources that feed only information chips (SiberKapan) are not listed, since they cannot change a figure |
 | `items[]` | Per CVE, newest listing first: `{ id, kev_added, published, old, strict, upper, score, chips, cvss, epss, epss_date, left_out, row }`. `strict` and `upper` map each method to `true`/`false`; `score` and `chips` are CVErdict's strict score; `left_out` lists the `signals` keys the strict score had to leave out |
 | `command` | How to reproduce it: `npm run backtest` (`scripts/backtest.ts`) |
 

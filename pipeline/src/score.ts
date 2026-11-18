@@ -446,7 +446,8 @@ function exploitationCandidates(f: Facts): Reason[] {
   if (eu) {
     out.push(reason('eukev.listed', `Listed in ENISA EU KEV${eu.added ? ` · added ${dayLabel(eu.added, now)}` : ''}`, { url: eu.url, at: eu.added ?? undefined }));
   }
-  const circl = f.catalogs.find((l) => l.catalog === 'circl-kev' && l.status === 'confirmed');
+  // Only a confirmed entry backed by more than attempts (BCP-07: attempts do not imply success).
+  const circl = f.catalogs.find((l) => l.catalog === 'circl-kev' && l.status === 'confirmed' && !l.attemptsOnly);
   if (circl) {
     out.push(reason('circl.listed', `Listed by CIRCL (CC0) as exploited${circl.added ? ` · added ${dayLabel(circl.added, now)}` : ''}`, { url: circl.url, at: circl.added ?? undefined }));
   }
@@ -693,14 +694,16 @@ function kevInfoChips(f: Facts): Reason[] {
 /** Catalog listings that do not confirm exploitation: information only. */
 function catalogInfoChips(f: Facts): Reason[] {
   const out: Reason[] = [];
-  const circl = f.catalogs.find((l) => l.catalog === 'circl-kev' && l.status === 'suspected');
-  if (circl) {
+  const circl = f.catalogs.find((l) => l.catalog === 'circl-kev' && (l.status === 'suspected' || l.attemptsOnly));
+  if (circl?.status === 'suspected') {
     out.push(reason('circl.suspected', `CIRCL (CC0): exploitation suspected${circl.added ? ` · ${dayLabel(circl.added, f.now)}` : ''}`, { url: circl.url, at: circl.added ?? undefined }));
+  } else if (circl) {
+    out.push(reason('circl.attempts', `CIRCL (CC0): exploitation attempts seen${circl.added ? ` · ${dayLabel(circl.added, f.now)}` : ''}`, { url: circl.url, at: circl.added ?? undefined }));
   }
   const honeypot = f.catalogs.find((l) => l.catalog === 'siberkapan');
   if (honeypot) {
     const at = honeypot.seen ?? honeypot.added ?? undefined;
-    const label = `SiberKapan honeypots (CC BY 4.0): attempts seen${at ? ` since ${dayLabel(at, f.now)}` : ''}${honeypot.status === 'suspected' ? ', suspected' : ''}`;
+    const label = `SiberKapan honeypots (CC-BY-4.0): attempts seen${at ? ` since ${dayLabel(at, f.now)}` : ''}${honeypot.status === 'suspected' ? ', suspected' : ''}`;
     out.push(reason('honeypot.siberkapan', label, { url: honeypot.url, at }));
   }
   return out;
@@ -757,7 +760,10 @@ function timelineFor(f: Facts): ScoredCve['timeline'] {
   if (f.nucleiAdded && f.exploits.nuclei.length > 0) add(f.nucleiAdded.at, 'First Nuclei template added', 'nuclei');
   for (const l of f.catalogs) {
     if (l.catalog === 'eu-kev') add(l.added, 'Added to ENISA EU KEV', 'eu-kev');
-    else if (l.catalog === 'circl-kev') add(l.added, `Listed by CIRCL as ${l.status === 'confirmed' ? 'exploited' : 'suspected'}`, 'circl-kev');
+    else if (l.catalog === 'circl-kev') {
+      const as = l.status !== 'confirmed' ? 'as suspected' : l.attemptsOnly ? 'with exploitation attempts seen' : 'as exploited';
+      add(l.added, `Listed by CIRCL ${as}`, 'circl-kev');
+    }
     else add(l.seen, 'First exploitation attempt seen by SiberKapan honeypots', 'siberkapan');
   }
   if (f.kevRaw) {

@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Meta, SourceStatus } from '../../../shared/contract';
 import type { BacktestInputs } from '../../src/backtest';
-import { buildOutput, NON_SCORING_SOURCES } from '../../src/emit/build';
+import { buildOutput, INFO_ONLY_SOURCES, NON_SCORING_SOURCES, unavailableSources } from '../../src/emit/build';
 import { PATHS } from '../../src/emit/json';
 import { emptyOsvData, type OsvData } from '../../src/sources/osv';
 import { NOW, cohort, cvss, makeCve, makeIngest, makeKev } from '../fixtures/model/builders';
@@ -64,6 +64,20 @@ describe('OSV never feeds a score', () => {
     expect(meta(down).sources.find((s) => s.id === 'osv')).toMatchObject({ ok: false });
     expect(up.packages.cves.rows.map((r) => r[0])).toEqual(['CVE-2021-44228']);
     expect(down.packages.packages).toEqual({});
+  });
+
+  it('an outage of an information-only source (SiberKapan) is no unknown on any CVE, but shows in meta.sources', () => {
+    expect([...INFO_ONLY_SOURCES]).toEqual(['siberkapan']);
+    const up = buildOutput({ ingest: { ...makeIngest(cves, { kev }), backtest: refresh }, now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://x.test' });
+    const base = makeIngest(cves, { kev, down: ['siberkapan'] });
+    const down = buildOutput({ ingest: { ...base, backtest: refresh }, now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://x.test' });
+    expect(down.receipts.backtest?.sources_down).toEqual([]);
+    expect(down.scored.every((s) => !s.unknowns.some((u) => /siberkapan|could not be loaded/i.test(u)))).toBe(true);
+    expect(down.scored.map((s) => [s.cve.id, s.score, s.tier, s.unknowns])).toEqual(up.scored.map((s) => [s.cve.id, s.score, s.tier, s.unknowns]));
+    const meta = JSON.parse(down.files.get(PATHS.meta)!) as Meta;
+    expect(meta.sources.find((s) => s.id === 'siberkapan')).toMatchObject({ ok: false });
+    // CIRCL's own catalog feeds an E chip: its outage is still unknown evidence.
+    expect(unavailableSources([...base.sources, { ...base.sources.find((s) => s.id === 'siberkapan')!, id: 'circl-kev', name: 'CIRCL KEV' }]).has('circl-kev')).toBe(true);
   });
 
   it('still reports a scoring source that is down as unknown evidence (the filter is not too wide)', () => {

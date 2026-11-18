@@ -193,13 +193,22 @@ describe('other known-exploited catalogs', () => {
     expect(suspected.score).toBe(score(makeCve()).score);
   });
 
+  it('circl.attempts: a confirmed CIRCL entry backed only by attempts is information only', () => {
+    const plain = score(makeCve());
+    const s = score(makeCve(), { catalogs: { [ID]: [listing('circl-kev', '2026-03-12', { attemptsOnly: true })] } });
+    expect(byId(s, 'circl.listed')).toBeUndefined();
+    expect(byId(s, 'circl.attempts')).toMatchObject({ label: 'CIRCL (CC0): exploitation attempts seen · Mar 12', family: 'INFO', points: 0, at: '2026-03-12', source: 'circl-kev' });
+    expect([s.score, s.tier, s.exploited]).toEqual([plain.score, plain.tier, false]);
+    expect(s.timeline.map((e) => e.event)).toContain('Listed by CIRCL with exploitation attempts seen');
+  });
+
   it('honeypot.siberkapan: attempts seen are information only, dated by the first one seen', () => {
     const plain = score(makeCve());
     const s = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', null, { seen: '2026-08-09' })] } });
-    expect(byId(s, 'honeypot.siberkapan')).toMatchObject({ label: 'SiberKapan honeypots (CC BY 4.0): attempts seen since Aug 9', points: 0, at: '2026-08-09', source: 'siberkapan' });
+    expect(byId(s, 'honeypot.siberkapan')).toMatchObject({ label: 'SiberKapan honeypots (CC-BY-4.0): attempts seen since Aug 9', points: 0, at: '2026-08-09', source: 'siberkapan' });
     expect([s.score, s.tier, s.exploited]).toEqual([plain.score, plain.tier, false]);
     const weak = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', null, { seen: null, status: 'suspected' })] } });
-    expect(byId(weak, 'honeypot.siberkapan')!.label).toBe('SiberKapan honeypots (CC BY 4.0): attempts seen, suspected');
+    expect(byId(weak, 'honeypot.siberkapan')!.label).toBe('SiberKapan honeypots (CC-BY-4.0): attempts seen, suspected');
   });
 
   it('ignores a listing dated after now (a frozen --now), and keeps an undated one', () => {

@@ -78,14 +78,17 @@ export async function loadEuKev(http: HttpClient, limits: SanityLimits, signal?:
  * EU KEV listings with the dates the dump can vouch for. The dump gives one date, the earliest
  * across CISA KEV and EU KEV: it is EU KEV's own date for an EU-only row, and for a row in both
  * when it is before the CVE's CISA `dateAdded` (then it cannot be CISA's). Otherwise EU KEV listed
- * it on the CISA day or later, on a day the dump does not give, and the listing is undated.
+ * it on the CISA day or later, on a day the dump does not give: the listing is undated, with the
+ * CISA date as `notBefore`.
  */
 export function euKevListings(raw: ReadonlyMap<string, EuKevRaw>, kev: KevCatalog | null): Map<string, CatalogListing> {
   const out = new Map<string, CatalogListing>();
   for (const [id, e] of raw) {
     const cisa = kev?.entries.get(id)?.dateAdded;
     const added = e.dateAdded && (e.euOnly || (cisa !== undefined && e.dateAdded < cisa)) ? e.dateAdded : null;
-    out.set(id, { catalog: 'eu-kev', added, status: 'confirmed', url: e.euvdId ? EU_KEV.entryUrl(e.euvdId) : EU_KEV.info.home });
+    const listing: CatalogListing = { catalog: 'eu-kev', added, status: 'confirmed', url: e.euvdId ? EU_KEV.entryUrl(e.euvdId) : EU_KEV.info.home };
+    if (added === null && !e.euOnly && cisa !== undefined && e.dateAdded && e.dateAdded >= cisa) listing.notBefore = cisa;
+    out.set(id, listing);
   }
   return out;
 }
@@ -99,12 +102,27 @@ interface CirclCatalog {
   entryUrl: (cve: string) => string;
 }
 
-const rank = (s: CatalogListing['status']) => (s === 'confirmed' ? 1 : 0);
+/** BCP-07 evidence signals that report exploitation that worked, not just attempts at it. */
+const SUCCESS_SIGNALS = new Set(['successful_exploitation', 'confirmed_compromise']);
+
+/**
+ * True when an entry's evidence is all attempts: at least one evidence item, none with a signal of
+ * successful exploitation or confirmed compromise. An entry with no evidence is CIRCL's bare
+ * assertion and is not attempts-only.
+ */
+export function attemptsOnly(evidence: unknown): boolean {
+  const items = asArray(evidence).map(asObject).filter((o): o is Record<string, unknown> => o !== null);
+  return items.length > 0 && !items.some((o) => SUCCESS_SIGNALS.has(asString(o.signal) ?? ''));
+}
+
+/** Confirmed exploitation beats confirmed attempts, which beat suspected. */
+const rank = (l: CatalogListing) => (l.status !== 'confirmed' ? 0 : l.attemptsOnly ? 1 : 2);
 
 /**
  * The CVE entries of one catalog from a `/api/kev/` page. A page that holds fewer entries than
  * `metadata.count` is truncated and rejected (the catalog would look smaller than it is). Per
- * CVE, a confirmed entry beats a suspected one, then the earliest `asserted_at` wins.
+ * CVE, a confirmed entry beats a suspected one (and one with success evidence beats one with only
+ * attempts), then the earliest `asserted_at` wins.
  */
 export function parseCirclKev(doc: unknown, catalog: CirclCatalog): { entries: Map<string, CatalogListing>; newest: string | null } {
   const root = asObject(doc);
@@ -127,11 +145,12 @@ export function parseCirclKev(doc: unknown, catalog: CirclCatalog): { entries: M
     const seen = normalizeYmd(ts?.first_seen_at);
     if (added && (!newest || added > newest)) newest = added;
     const listing: CatalogListing = { catalog: catalog.id, added, status: reason, url: catalog.entryUrl(id), seen };
+    if (attemptsOnly(e.evidence)) listing.attemptsOnly = true;
     const prev = entries.get(id);
     const better =
       !prev ||
-      rank(listing.status) > rank(prev.status) ||
-      (rank(listing.status) === rank(prev.status) && listing.added !== null && (prev.added === null || listing.added < prev.added));
+      rank(listing) > rank(prev) ||
+      (rank(listing) === rank(prev) && listing.added !== null && (prev.added === null || listing.added < prev.added));
     if (better) entries.set(id, listing);
   }
   return { entries, newest };

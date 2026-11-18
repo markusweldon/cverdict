@@ -333,7 +333,7 @@ export const SIGNALS: readonly Omit<BacktestSignal, 'affected'>[] = [
     key: 'catalogs',
     label: 'Other known-exploited catalogs (ENISA EU KEV, CIRCL, SiberKapan)',
     treatment: 'hindsight',
-    note: "Counted when the catalog's own date for the listing is before the listing day. A listing without a date it can vouch for (an EU KEV entry dated on or after the CISA day, an entry without asserted_at) counts only with undated evidence.",
+    note: "Counted when the catalog's own date for the listing is before the listing day. A listing without a date it can vouch for (a CIRCL entry without asserted_at) counts only with undated evidence. An EU KEV entry the EUVD dump dates on or after the CISA day was listed on the CISA day or later, so it counts in neither.",
   },
   {
     key: 'cna_record',
@@ -408,9 +408,10 @@ export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsO
     unavailable.set('nuclei', 'Nuclei templates (no usable date)');
   }
   // Other known-exploited catalogs: a listing counts once the catalog dated it before the cutoff;
-  // one it does not date counts only with undated evidence, one dated later in neither variant.
-  const listed = enr.exploits.catalogs?.get(cve.id) ?? [];
-  const catalogs = listed.filter((l) => (l.added === null ? !strict : l.added <= lastDay));
+  // one it does not date counts only with undated evidence, one dated later, or known not to precede
+  // the listing day (`notBefore`), in neither variant.
+  const listed = (enr.exploits.catalogs?.get(cve.id) ?? []).filter((l) => (l.added === null ? !(l.notBefore && l.notBefore > lastDay) : l.added <= lastDay));
+  const catalogs = listed.filter((l) => l.added !== null || !strict);
   if (strict && listed.some((l) => l.added === null)) leftOut.push('catalogs');
   const exploitdb = (enr.exploits.exploitdb.get(cve.id) ?? []).filter((e) => {
     const date = input.exploitdbAdded.get(e.id) ?? e.date;

@@ -86,8 +86,9 @@ Carnegie Mellon University.
 - **Source:** the catalog of [CIRCL](https://www.circl.lu/) (Computer Incident Response Center
   Luxembourg) in [Vulnerability-Lookup](https://vulnerability.circl.lu/known-exploited-vulnerabilities-catalog/?catalog_uuid=1a89b78e-f703-45f3-bb86-59eb712668bd),
   read through its public API (GCVE BCP-07 entries).
-- **We use and republish:** CVE IDs, the status (confirmed or suspected), the listing date and a link
-  to the Vulnerability-Lookup page, as the `circl.listed` and `circl.suspected` reason chips.
+- **We use and republish:** CVE IDs, the status (confirmed or suspected), whether the evidence is
+  only exploitation attempts, the listing date and a link to the Vulnerability-Lookup page, as the
+  `circl.listed`, `circl.attempts` and `circl.suspected` reason chips.
 - **License:** [CC0 1.0](https://spdx.org/licenses/CC0-1.0.html), as the catalog states. The chip still
   says "Listed by CIRCL (CC0)". Vulnerability-Lookup itself is AGPL-3.0 software; no code of it is used.
 
@@ -98,7 +99,7 @@ Carnegie Mellon University.
 - **We use and republish:** CVE IDs, the status, the day the first attempt was seen and a link, as
   the information-only `honeypot.siberkapan` chip (0 points).
 - **License:** [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), as the catalog states.
-  Attribution: "SiberKapan honeypots (CC BY 4.0)" on the chip, and SiberKapan on the Method page.
+  Attribution: "SiberKapan honeypots (CC-BY-4.0)" on the chip, and SiberKapan on the Method page.
   Changes: only the fields above are kept.
 
 ## EPSS (FIRST)

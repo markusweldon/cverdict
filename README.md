@@ -177,8 +177,8 @@ Only free, public data. Nothing from NVD.
 | [CISA Vulnrichment](https://github.com/cisagov/vulnrichment) (ADP container in each record) | SSVC decision points; CVSS when the CNA gave none | hourly | CC0-1.0 |
 | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Confirmed exploitation, due dates, ransomware use, vendor history | hourly | CC0-1.0 |
 | [ENISA EU KEV](https://euvd.enisa.europa.eu/) (EUVD) | Exploitation reported by ENISA or a national CSIRT of the EU CSIRTs Network, and the date it was listed | every 6 h (published daily) | ENISA material, reproduced with acknowledgement of the source |
-| [CIRCL known exploited catalog](https://vulnerability.circl.lu/known-exploited-vulnerabilities-catalog/?catalog_uuid=1a89b78e-f703-45f3-bb86-59eb712668bd) | Exploitation CIRCL (Luxembourg's national CERT) confirms or suspects | every 12 h | CC0-1.0 |
-| [SiberKapan honeypot catalog](https://siberkapan.org/kev-catalog) (through CIRCL Vulnerability-Lookup) | Exploitation attempts seen by honeypots in Turkey, shown for information only | every 12 h | CC-BY-4.0 |
+| [CIRCL known exploited catalog](https://vulnerability.circl.lu/known-exploited-vulnerabilities-catalog/?catalog_uuid=1a89b78e-f703-45f3-bb86-59eb712668bd) | Exploitation CIRCL (Computer Incident Response Center Luxembourg, the CERT for Luxembourg's private sector) confirms or suspects | every 12 h | CC0-1.0 |
+| [SiberKapan honeypot catalog](https://siberkapan.org/kev-catalog) (through CIRCL Vulnerability-Lookup) | Exploitation attempts seen by honeypot and web server sensors in Turkey, shown for information only | every 12 h | CC-BY-4.0 |
 | [EPSS](https://www.first.org/epss/) (FIRST) | Probability of exploitation activity in the next 30 days | hourly (published daily) | Free use with attribution |
 | [Metasploit Framework](https://github.com/rapid7/metasploit-framework) | Modules that reference a CVE | hourly | BSD-3-Clause |
 | [Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) | Templates that reference a CVE, and when the first one for each CVE landed (from the repository's history) | hourly | MIT |

@@ -20,6 +20,7 @@ import { assignBatches } from '../pipeline/src/batches';
 import { DEFAULT_WINDOW_DAYS } from '../pipeline/src/config';
 import { ingest } from '../pipeline/src/ingest';
 import { firedChipIds } from '../pipeline/src/rows';
+import { unavailableSources } from '../pipeline/src/emit/build';
 import { buildKevPrior, scoreCve } from '../pipeline/src/score';
 import type { Enrichment, IngestResult, NormalizedCve, ScoredCve } from '../pipeline/src/types';
 import { DAY_MS, parseIsoDate, ymd } from '../pipeline/src/util/dates';
@@ -61,7 +62,7 @@ export function enrichmentOf(ing: IngestResult): Enrichment {
     epss: ing.epss,
     exploits: ing.exploits,
     prior: buildKevPrior(ing.kev),
-    unavailable: new Map(ing.sources.filter((s) => !s.ok).map((s) => [s.id, s.name])),
+    unavailable: unavailableSources(ing.sources),
   };
 }
 

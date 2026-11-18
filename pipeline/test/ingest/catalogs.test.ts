@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CIRCL_KEV, EU_KEV, SANITY, SIBERKAPAN, type SanityLimits } from '../../src/config';
-import { euKevListings, loadCirclKev, loadEuKev, loadSiberKapan, mergeCatalogs, parseCirclKev, parseEuKevBody, parseEuKevDump } from '../../src/sources/catalogs';
+import { attemptsOnly, euKevListings, loadCirclKev, loadEuKev, loadSiberKapan, mergeCatalogs, parseCirclKev, parseEuKevBody, parseEuKevDump } from '../../src/sources/catalogs';
 import { SanityError } from '../../src/sources/source';
 import { HttpClient, type FetchLike } from '../../src/util/http';
 import { makeKev, makeKevCatalog } from '../fixtures/model/builders';
@@ -54,6 +54,13 @@ describe('ENISA EU KEV (EUVD dump)', () => {
     // Without the CISA catalog nothing shared can be dated.
     expect(added(null)).toEqual({ 'CVE-2026-1': null, 'CVE-2026-2': null, 'CVE-2026-3': null, 'CVE-2026-4': '2026-09-25' });
     expect(euKevListings(raw, kev).get('CVE-2026-1')?.url).toBe('https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-1');
+    // A row in both catalogs dated on or after the CISA day: undated, but known not to precede the
+    // CISA date, which it keeps as a lower bound. Without the CISA date there is no bound.
+    const notBefore = (k: typeof kev | null) => Object.fromEntries([...euKevListings(raw, k)].map(([id, l]) => [id, l.notBefore]));
+    expect(notBefore(kev)).toEqual({ 'CVE-2026-1': undefined, 'CVE-2026-2': '2026-09-25', 'CVE-2026-3': undefined, 'CVE-2026-4': undefined });
+    expect(Object.values(notBefore(null)).every((v) => v === undefined)).toBe(true);
+    const later = euKevListings(new Map([['CVE-2026-2', { euvdId: null, dateAdded: '2026-10-01', euOnly: false }]]), kev).get('CVE-2026-2');
+    expect(later).toMatchObject({ added: null, notBefore: '2026-09-25' });
   });
 
   it('rejects a dump that is not an array or is implausibly small', () => {
@@ -95,6 +102,44 @@ describe('CIRCL Vulnerability-Lookup catalogs', () => {
     });
     const { entries } = parseCirclKev({ data: [entry(null), entry('2026-10-09T00:00:00Z'), entry('2026-10-01T00:00:00Z'), entry('2026-10-05T00:00:00Z')] }, CIRCL);
     expect(entries.get('CVE-2026-5005')?.added).toBe('2026-10-01');
+  });
+
+  it('marks a confirmed entry backed only by attempts (sinkhole hits), and prefers one with success evidence', () => {
+    const sinkhole = { type: 'sinkhole', source: 'cti-feed.circl.lu', signal: 'in_the_wild_attempts', confidence: 1.0 };
+    const success = { type: 'incident_response', source: 'Host logs', signal: 'successful_exploitation' };
+    const compromise = { type: 'incident_response', signal: 'confirmed_compromise' };
+    expect(attemptsOnly([sinkhole])).toBe(true);
+    expect(attemptsOnly([sinkhole, { type: 'public_report', signal: 'something_else' }])).toBe(true);
+    expect(attemptsOnly([sinkhole, success])).toBe(false);
+    expect(attemptsOnly([compromise])).toBe(false);
+    // No evidence is CIRCL's own assertion, not attempts.
+    expect(attemptsOnly([])).toBe(false);
+    expect(attemptsOnly(undefined)).toBe(false);
+    const entry = (id: string, asserted: string, evidence: unknown[]) => ({
+      vulnerability: { vulnId: id },
+      gcve: { origin_uuid: CIRCL_KEV.origin },
+      status: { exploited: true, status_reason: 'confirmed' },
+      timestamps: { asserted_at: asserted },
+      evidence,
+    });
+    const { entries } = parseCirclKev(
+      {
+        data: [
+          entry('CVE-2017-17215', '2026-03-12T10:42:33+00:00', [sinkhole]),
+          entry('CVE-2026-0257', '2026-09-01T15:43:46+00:00', [compromise]),
+          entry('CVE-2026-6692', '2026-11-10T14:41:10+00:00', []),
+          entry('CVE-2026-7001', '2026-03-01T00:00:00Z', [sinkhole]),
+          entry('CVE-2026-7001', '2026-04-01T00:00:00Z', [success]),
+        ],
+      },
+      CIRCL,
+    );
+    expect(entries.get('CVE-2017-17215')).toMatchObject({ status: 'confirmed', attemptsOnly: true, added: '2026-03-12' });
+    expect(entries.get('CVE-2026-0257')?.attemptsOnly).toBeUndefined();
+    expect(entries.get('CVE-2026-6692')?.attemptsOnly).toBeUndefined();
+    // Success evidence beats an earlier attempts-only entry for the same CVE.
+    expect(entries.get('CVE-2026-7001')).toMatchObject({ added: '2026-04-01' });
+    expect(entries.get('CVE-2026-7001')?.attemptsOnly).toBeUndefined();
   });
 
   it('rejects a truncated page and a body without data', () => {

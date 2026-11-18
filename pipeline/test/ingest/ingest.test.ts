@@ -195,13 +195,13 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(status['circl-kev']).toMatchObject({ records: 2, upstream_version: '2026-10-25', license: 'CC0-1.0 (CIRCL, via Vulnerability-Lookup)' });
     expect(status.siberkapan).toMatchObject({ records: 1, upstream_version: null });
     // Restricted to ingested records; EU KEV dates checked against CISA KEV (110447: before the CISA
-    // day, so dated; 0257: the CISA day, so undated; 100878: EU only).
+    // day, so dated; 0257: the CISA day, so undated and not before it; 100878: EU only).
     expect(Object.fromEntries(result.exploits.catalogs ?? [])).toEqual({
       'CVE-2026-110447': [
         { catalog: 'eu-kev', added: '2026-10-20', status: 'confirmed', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-61001' },
-        { catalog: 'siberkapan', added: null, status: 'confirmed', url: 'https://vulnerability.circl.lu/vuln/cve-2026-110447', seen: '2026-10-05' },
+        { catalog: 'siberkapan', added: null, status: 'confirmed', url: 'https://vulnerability.circl.lu/vuln/cve-2026-110447', seen: '2026-10-05', attemptsOnly: true },
       ],
-      'CVE-2026-0257': [{ catalog: 'eu-kev', added: null, status: 'confirmed', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-0801' }],
+      'CVE-2026-0257': [{ catalog: 'eu-kev', added: null, notBefore: '2026-05-29', status: 'confirmed', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-0801' }],
       'CVE-2026-100878': [{ catalog: 'eu-kev', added: '2026-10-24', status: 'confirmed', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-58113' }],
       'CVE-2026-109733': [{ catalog: 'circl-kev', added: '2026-10-25', status: 'confirmed', url: 'https://vulnerability.circl.lu/vuln/cve-2026-109733', seen: '2026-10-20' }],
       'CVE-2026-94220': [{ catalog: 'circl-kev', added: '2026-10-22', status: 'suspected', url: 'https://vulnerability.circl.lu/vuln/cve-2026-94220', seen: null }],

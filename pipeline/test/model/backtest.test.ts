@@ -18,6 +18,7 @@ import {
   type BacktestInputs,
 } from '../../src/backtest';
 import { buildOutput } from '../../src/emit/build';
+import { euKevListings } from '../../src/sources/catalogs';
 import { buildKevPrior, scoreCve } from '../../src/score';
 import { backtestAt } from '../../../site/src/receipts';
 import type { NormalizedCve } from '../../src/types';
@@ -150,6 +151,27 @@ describe('evidence as of the day before the listing', () => {
     expect(scoreOf(asOf(kevCve(), { catalogs: { [ID]: [listing('circl-kev', before(3).slice(0, 10))] } }), 'strict').exploited).toBe(true);
     const honeypot = scoreOf(asOf(kevCve(), { catalogs: { [ID]: [listing('siberkapan', null, { seen: before(60).slice(0, 10) })] } }), 'upper');
     expect([honeypot.exploited, honeypot.score]).toEqual([false, scoreOf(asOf(kevCve()), 'upper').score]);
+  });
+
+  it('drops an EU KEV listing known not to precede the KEV day (same EUVD date as CISA) in both variants', () => {
+    // euKevListings: a row in both catalogs with the CISA date is undated, with the CISA date as a lower bound.
+    const raw = new Map([[ID, { euvdId: 'EUVD-2026-1', dateAdded: LISTED, euOnly: false }]]);
+    const eu = euKevListings(raw, makeKevCatalog([makeKev(ID, { dateAdded: LISTED })])).get(ID)!;
+    expect(eu).toMatchObject({ added: null, notBefore: LISTED });
+    const input = asOf(kevCve(), { catalogs: { [ID]: [eu] } });
+    for (const variant of ['strict', 'upper'] as const) {
+      const s = scoreOf(input, variant);
+      expect(s.exploited).toBe(false);
+      expect(s.reasons.some((r) => r.id === 'eukev.listed')).toBe(false);
+      expect(s.leftOut).not.toContain('catalogs');
+    }
+    // A lower bound before the listing day still leaves it to upper.
+    const early = asOf(kevCve(), { catalogs: { [ID]: [listing('eu-kev', null, { notBefore: before(5).slice(0, 10) })] } });
+    expect(scoreOf(early, 'strict').exploited).toBe(false);
+    expect(scoreOf(early, 'upper').exploited).toBe(true);
+    // A CIRCL entry confirmed on attempts only never sets the tier, even dated early.
+    const attempts = asOf(kevCve(), { catalogs: { [ID]: [listing('circl-kev', before(30).slice(0, 10), { attemptsOnly: true })] } });
+    expect(scoreOf(attempts, 'upper').exploited).toBe(false);
   });
 
   it('counts a Nuclei template in strict only when it landed on main before the listing day', () => {

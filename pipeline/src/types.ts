@@ -161,15 +161,28 @@ export interface CatalogListing {
   /**
    * The day the catalog added the CVE (YYYY-MM-DD), when the catalog dates it in a way that can be
    * trusted: EU KEV's own date, BCP-07 `asserted_at`. Null otherwise; then the backtest counts the
-   * listing only with undated evidence.
+   * listing only with undated evidence (unless `notBefore` rules it out).
    */
   added: string | null;
+  /**
+   * A day the catalog is known not to have listed the CVE before (YYYY-MM-DD), when `added` is
+   * null: an EU KEV row of the EUVD dump dated on or after the CVE's CISA date was listed by EU KEV
+   * on the CISA day or later, so the CISA date is a lower bound. The backtest drops a listing whose
+   * lower bound is on or after the KEV listing day in both variants.
+   */
+  notBefore?: string;
   /** BCP-07 status: `confirmed` or `suspected` (EU KEV entries are confirmed). */
   status: 'confirmed' | 'suspected';
   /** Link to the entry. */
   url: string;
   /** Earliest exploitation activity the catalog reports (BCP-07 `first_seen_at`, YYYY-MM-DD), for display only. */
   seen?: string | null;
+  /**
+   * True when every BCP-07 evidence item of the entry reports attempts (`in_the_wild_attempts`,
+   * e.g. a sinkhole) and none successful exploitation or a confirmed compromise. BCP-07: attempts
+   * do not imply success, so such an entry is information only even when `confirmed`.
+   */
+  attemptsOnly?: boolean;
 }
 
 export interface ExploitIndex {
