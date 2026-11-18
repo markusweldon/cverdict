@@ -157,10 +157,11 @@ bound, since the evidence was collected after the fact. `npm run calibrate` repr
 The [Receipts page](https://cverdict.dev/receipts) holds the stricter tests. A live
 record notes when each method first flags a CVE and whether that came before CISA listed it; the
 page shows how many listings it has judged so far. A backtest, marked as
-hindsight, uses only evidence dated before each listing. In the run of Nov 3, 2026 it gave, for
-the 120 recent CVEs CISA added to KEV in the previous 180 days: CVErdict 37 flagged before the
-listing, "CVSS 7 or more" 65, "EPSS 10% or more" 17. CVSS 7 or more catches more, but flags 52% of
-all new CVEs against CVErdict's 2.6%. `npm run backtest` reproduces it.
+hindsight, uses only evidence dated before each listing. On Nov 13, 2026 it gave, for the 130
+recent CVEs CISA added to KEV in the previous 180 days: CVErdict 48 flagged before the listing,
+"CVSS 7 or more" 73, "EPSS 10% or more" 17. CVSS 7 or more catches more, but flags about half of
+all new CVEs against CVErdict's 2.5%. The Receipts page always shows the latest run.
+`npm run backtest` reproduces it.
 
 The full methodology, every chip with its points, the calibration and the known blind spots are in
 [docs/SCORING.md](docs/SCORING.md).
