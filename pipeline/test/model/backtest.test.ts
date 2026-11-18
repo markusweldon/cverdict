@@ -21,7 +21,7 @@ import { buildOutput } from '../../src/emit/build';
 import { buildKevPrior, scoreCve } from '../../src/score';
 import { backtestAt } from '../../../site/src/receipts';
 import type { NormalizedCve } from '../../src/types';
-import { cvss, edb, makeCve, makeEnrichment, makeIngest, makeKev, makeKevCatalog, msf, nucleiTemplate, repo, ssvc, type EnrichmentSpec } from '../fixtures/model/builders';
+import { cvss, edb, listing, makeCve, makeEnrichment, makeIngest, makeKev, makeKevCatalog, msf, nucleiTemplate, repo, ssvc, type EnrichmentSpec } from '../fixtures/model/builders';
 
 const NOW = new Date('2026-11-03T03:17:00Z');
 const ID = 'CVE-2026-100001';
@@ -127,6 +127,29 @@ describe('evidence as of the day before the listing', () => {
     expect(scoreOf(asOf(kevCve(), spec), 'upper').weaponized).toBe(true);
     // No dates loaded at all: the same.
     expect(scoreOf(asOf(kevCve(), spec, { nucleiAdded: null }), 'strict').weaponized).toBe(false);
+  });
+
+  it('counts another catalog\'s listing only when the catalog dated it before the listing day; undated ones only in upper', () => {
+    const at = (added: string | null) => asOf(kevCve(), { catalogs: { [ID]: [listing('eu-kev', added)] } });
+    // Dated the day before the KEV listing: strict and upper both count it, and it sets the tier.
+    const early = scoreOf(at('2026-10-19'), 'strict');
+    expect(early.exploited).toBe(true);
+    expect(early.reasons[0]).toMatchObject({ id: 'eukev.listed', at: '2026-10-19' });
+    expect(early.leftOut).not.toContain('catalogs');
+    // Dated on the listing day or later: in neither variant (it may follow the CISA listing).
+    for (const day of [LISTED, '2026-10-25']) {
+      expect(scoreOf(at(day), 'strict').exploited).toBe(false);
+      expect(scoreOf(at(day), 'upper').exploited).toBe(false);
+    }
+    // Undated: left out of strict (and said so), counted with undated evidence.
+    const undated = scoreOf(at(null), 'strict');
+    expect(undated.exploited).toBe(false);
+    expect(undated.leftOut).toContain('catalogs');
+    expect(scoreOf(at(null), 'upper').exploited).toBe(true);
+    // A CIRCL confirmation dated before the cutoff counts too; a SiberKapan sighting never moves a score.
+    expect(scoreOf(asOf(kevCve(), { catalogs: { [ID]: [listing('circl-kev', before(3).slice(0, 10))] } }), 'strict').exploited).toBe(true);
+    const honeypot = scoreOf(asOf(kevCve(), { catalogs: { [ID]: [listing('siberkapan', null, { seen: before(60).slice(0, 10) })] } }), 'upper');
+    expect([honeypot.exploited, honeypot.score]).toEqual([false, scoreOf(asOf(kevCve()), 'upper').score]);
   });
 
   it('counts a Nuclei template in strict only when it landed on main before the listing day', () => {
@@ -273,6 +296,15 @@ describe('runBacktest', () => {
     expect(none.sources_down).toEqual([NUCLEI_DATES_DOWN]);
     // So the next day's run recomputes it.
     expect(decideBacktest(none, new Date(NOW.getTime() + 25 * 3_600_000)).carried).toBeNull();
+  });
+
+  it('turns a CVE EU KEV listed before CISA into a strict hit, and counts undated listings as left out', () => {
+    const b = run([kevCve()], undefined, { catalogs: { [ID]: [listing('eu-kev', '2026-10-10')] } });
+    expect(b.items[0]).toMatchObject({ strict: { cverdict: true }, upper: { cverdict: true }, left_out: [] });
+    expect(b.items[0].chips).toContain('eukev.listed');
+    const undated = run([kevCve()], undefined, { catalogs: { [ID]: [listing('eu-kev', null)] } });
+    expect(undated.items[0]).toMatchObject({ strict: { cverdict: false }, upper: { cverdict: true }, left_out: ['catalogs'] });
+    expect(undated.signals.find((s) => s.key === 'catalogs')).toMatchObject({ treatment: 'hindsight', affected: 1 });
   });
 
   it('adds undated evidence only in the upper variant, and reports alert volume over the period', () => {

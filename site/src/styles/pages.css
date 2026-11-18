@@ -753,7 +753,9 @@
   bottom: calc(100% - 14px);
 }
 
-.timeline__item--kev::after {
+.timeline__item--kev::after,
+.timeline__item--eu-kev::after,
+.timeline__item--circl-kev::after {
   background: var(--exploited);
   box-shadow: 0 0 8px var(--exploited);
 }

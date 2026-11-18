@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { calibrate, enrichmentOf, formatReport, hideExploitation, KNOBS, tierCounts } from '../../../scripts/calibrate';
 import { scoreCve } from '../../src/score';
-import { NOW, cohort, dateAgo, makeCve, makeEnrichment, makeIngest, makeKev, msf, ssvc } from '../fixtures/model/builders';
+import { NOW, cohort, dateAgo, listing, makeCve, makeEnrichment, makeIngest, makeKev, msf, ssvc } from '../fixtures/model/builders';
 
 const ids = (reasons: { id: string; points: number }[]) => reasons.filter((r) => r.points !== 0).map((r) => r.id);
 
@@ -27,6 +27,13 @@ describe('hideExploitation', () => {
     expect(ids(s.reasons)).toEqual(['x.none', 'sev.high', 'ssvc.total', 'ssvc.automatable', 'prior.product']);
     expect(s.reasons.find((r) => r.id === 'prior.product')?.label).toContain('(×1)');
     expect(s.score).toBe(15 - 14 + 1 + 8 + 6 + 10);
+  });
+
+  it('hides the other known-exploited catalogs too', () => {
+    const enr = makeEnrichment({ ...spec, catalogs: { [listed.id]: [listing('eu-kev', dateAgo(20)), listing('circl-kev', dateAgo(9))] } });
+    const hidden = hideExploitation(listed, enr);
+    expect(scoreCve(hidden.cve, hidden.enr, { now: NOW }).exploited).toBe(false);
+    expect(enr.exploits.catalogs?.has(listed.id)).toBe(true);
   });
 
   it('lowers SSVC active to poc when a public exploit artifact exists', () => {

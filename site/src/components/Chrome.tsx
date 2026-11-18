@@ -137,8 +137,8 @@ export function Footer() {
           </div>
         </div>
         <p class="foot__text">
-          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the <a href={href('check')}>Check Deps</a> page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
-          CISA, MITRE, FIRST or any vendor.
+          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, ENISA EU KEV, the CIRCL (CC0) and SiberKapan (CC BY 4.0) catalogs, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the <a href={href('check')}>Check Deps</a> page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
+          CISA, ENISA, CIRCL, MITRE, FIRST or any vendor.
         </p>
         <nav class="foot__links" aria-label="Footer">
           <a href={href('method')}>Method</a>

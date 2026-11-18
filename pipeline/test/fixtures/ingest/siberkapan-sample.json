@@ -1,0 +1,13 @@
+{
+  "metadata": { "count": 1, "page": 1, "per_page": 1000 },
+  "data": [
+    {
+      "uuid": "445fb5aa-f90e-4afa-a3c0-899a854db010",
+      "vulnerability": { "vulnId": "CVE-2026-110447", "altId": [] },
+      "gcve": { "origin_uuid": "fc16d4f5-594d-5807-9bf1-71af4407c589", "gna": 1 },
+      "status": { "exploited": true, "status_reason": "confirmed", "status_updated_at": "2026-10-25T13:23:10+00:00" },
+      "timestamps": { "recorded_at": "2026-10-25T18:06:28+00:00", "last_seen_at": "2026-10-24T01:38:14+00:00", "first_seen_at": "2026-10-05T01:38:14+00:00" },
+      "evidence": [{ "type": "honeypot", "source": "SiberKapan", "signal": "in_the_wild_attempts", "confidence": 0.8 }]
+    }
+  ]
+}

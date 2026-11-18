@@ -1,6 +1,6 @@
 # Scoring methodology
 
-Score model **v0.1.0**. The single source of truth is [`shared/model.ts`](../shared/model.ts)
+Score model **v0.2.0** (v0.1.0 plus the ENISA EU KEV and CIRCL catalog chips; see [Other known-exploited catalogs](#other-known-exploited-catalogs)). The single source of truth is [`shared/model.ts`](../shared/model.ts)
 (chips and points) and [`pipeline/src/score.ts`](../pipeline/src/score.ts) (when each chip fires).
 The site's Method page renders its chip table from the same file. If this document and the code
 disagree, the code is right and this document has a bug.
@@ -24,8 +24,8 @@ and it knows nothing about your environment.
    names no vendor and a source that could not be loaded are *unknown* chips worth 0 points, listed
    under "what we could not see" (a missing EPSS score is listed there too). Quiet means no
    evidence *yet*.
-6. **Free public data only.** CVE List V5 (CNA and CISA-ADP containers), CISA KEV, EPSS, Metasploit,
-   Nuclei, Exploit-DB and PoC-in-GitHub. Nothing from NVD, which stopped enriching most CVEs in
+6. **Free public data only.** CVE List V5 (CNA and CISA-ADP containers), CISA KEV, ENISA's EU KEV,
+   the CIRCL and SiberKapan catalogs, EPSS, Metasploit, Nuclei, Exploit-DB and PoC-in-GitHub. Nothing from NVD, which stopped enriching most CVEs in
    April 2026.
 
 ## The formula
@@ -106,11 +106,13 @@ Generated from `shared/model.ts`. "Unknown" chips mark missing evidence and are 
 
 ### E: confirmed exploitation
 
-Any of the first four puts the CVE in **Exploited**. The first that fires, in this order, carries the +75 and the floor of 90; the others are shown with 0. `kev.ransomware` adds +5 on top, still capped at 100.
+Any of the first six puts the CVE in **Exploited**. The first that fires, in this order, carries the +75 and the floor of 90; the others are shown with 0. `kev.ransomware` adds +5 on top, still capped at 100.
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
 | `kev.listed` | CISA KEV | +75 | `kev` | Listed in CISA Known Exploited Vulnerabilities (or the CISA-ADP KEV block in the CVE record). |
+| `eukev.listed` | EU KEV | +75 | `eu-kev` | Listed in ENISA’s EU Known Exploited Vulnerabilities catalog: ENISA or a national CSIRT of the EU CSIRTs Network reported exploitation. ENISA material, reproduced with acknowledgement. |
+| `circl.listed` | CIRCL KEV | +75 | `circl-kev` | CIRCL, Luxembourg’s national CERT, lists it as confirmed exploited in its own known-exploited catalog (CC0-1.0). |
 | `ssvc.active` | SSVC: active | +75 | `cisa-adp` | CISA Vulnrichment SSVC assessment says exploitation is active. |
 | `vendor.exploited` | Vendor: exploited | +75 | `cvelist` | The CNA’s own CVSS v4 vector says the bug is being attacked (E:A). VulDB vectors are ignored. |
 | `vendor.itw` | Vendor: in the wild | +75 | `cvelist` | The CNA description says the bug is exploited or “may have been exploited” in the wild. |
@@ -192,7 +194,48 @@ Only applied when there is no exploitation and the X family is ≤ 0, and not wh
 | `epss.cold` | EPSS (cold) | 0 | `epss` | EPSS score shown for context only: the CVE is too new for EPSS to be meaningful. |
 | `poc.hype` | PoC hype | 0 | `poc-github` | More than 50 PoC repos appeared within a week. That measures attention, not weaponization, and fake PoCs often carry malware. |
 | `poc.unvetted` | Unvetted PoC | 0 | `poc-github` | Only brand-new, unstarred PoC repos exist. Not counted until they age or gain stars. |
+| `circl.suspected` | CIRCL: suspected | 0 | `circl-kev` | CIRCL lists exploitation as suspected, not confirmed (CC0-1.0). Information only. |
+| `honeypot.siberkapan` | Honeypot attempts | 0 | `siberkapan` | SiberKapan’s honeypot and web sensors in Turkey saw exploitation attempts (CC-BY-4.0). Attempts are not proof that an attack worked, and one sensor network gives too little data to set points: information only. |
 | `tag.eol` | Unsupported product | 0 | `cvelist` | The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate. |
+
+## Other known-exploited catalogs
+
+CISA KEV is not the only public list of exploited CVEs. v0.2.0 reads three more, chosen by two
+rules: the licence must allow reuse (CC0, CC-BY, or an equivalent grant with attribution), and the
+entries must assert exploitation, not just mention a CVE. Each chip names its catalog in the label,
+with the licence where it asks for attribution.
+
+| Catalog | Licence | Chip | Why that weight |
+|---|---|---|---|
+| [ENISA EU KEV](https://euvd.enisa.europa.eu/), from the EUVD KEV dump | ENISA legal notice: reproduction authorised with acknowledgement | `eukev.listed`, E family | Entries are exploitation reported by ENISA or a national CSIRT of the EU CSIRTs Network (CERT.PL, NCSC-NL, CSIRT-IE, CERT-AT, …), as successful exploitation or confirmed compromise. That is the same kind of claim as a CISA KEV listing, by the same kind of party, so it sets Exploited like KEV. |
+| [CIRCL known exploited catalog](https://vulnerability.circl.lu/known-exploited-vulnerabilities-catalog/?catalog_uuid=1a89b78e-f703-45f3-bb86-59eb712668bd) | CC0-1.0 | `circl.listed` (status *confirmed*), E family; `circl.suspected`, 0 points | CIRCL is Luxembourg's national CERT. A *confirmed* entry is a CERT asserting exploitation in the wild (GCVE BCP-07), so it counts like KEV. *Suspected* is by definition not a confirmation, and there are two such entries: too few to measure a likelihood ratio, so information only. |
+| [SiberKapan honeypot catalog](https://siberkapan.org/kev-catalog), through CIRCL | CC-BY-4.0 | `honeypot.siberkapan`, 0 points | Exploitation *attempts* against one sensor network in Turkey. BCP-07 is explicit that attempts do not imply success and that honeypot volume is not higher confidence. Its 14 CVEs are all old, 13 already in CISA KEV and listed there years before SiberKapan saw them, so there is no data to estimate a likelihood ratio without look-ahead bias. Information only until there is. |
+
+Left out: CIRCL's copy of CISA KEV (a duplicate of `kev`); the Shadowserver and Previdian catalogs
+and CIRCL's sightings (no licence stated anywhere we could find; Previdian's terms also forbid use
+in a competing catalog and CIRCL measures it as a 99.9% mirror of CISA KEV).
+
+**Dates.** A listing is dated only by a date the catalog can vouch for: EU KEV's own listing date,
+or BCP-07 `asserted_at` ("mirrors date added in KEV lists"), never `first_seen_at`, which may be
+estimated after the fact. The EUVD dump gives one date per CVE, the earliest across CISA KEV and EU
+KEV: it is EU KEV's own date for an EU-only entry, or when it is before the CISA date; for the other
+EU entries (listed on the CISA day or later) the chip is undated. The backtest counts a listing in
+the strict figures only when that date is before the KEV listing day, an undated one only with
+undated evidence, and one dated on the listing day or later in neither.
+
+**Effect**, measured offline on the frozen inputs of the backtest of Nov 13, 2026 (`--now
+2026-11-13T20:00Z`, catalogs as of Nov 18; listings dated later are ignored):
+
+- In the 30-day window (16,910 CVEs) one CVE gains a chip, CVE-2026-110936 (`eukev.listed`,
+  already in CISA KEV), and no CVE changes tier or score. Every EU-only and CIRCL-only CVE was
+  published before the window and is not in CISA KEV, so it is not in the data at all (see the
+  blind spots). Over all 18,862 CVEs with a detail record (window, KEV, woke up): `eukev.listed` 66,
+  `circl.listed` 23, `honeypot.siberkapan` 13, `circl.suspected` 2, all on CVEs CISA KEV also lists,
+  so no tier changes.
+- In the backtest, EU KEV listed 8 of the 130 recent KEV additions before CISA did, which CVErdict
+  had missed: strict 48 → 56 of 130 (36.9% → 43.1%), with undated evidence 94 → 99. Old CVEs are
+  unchanged (15 and 17 of 20). The evidence bar at 40, 50 and 60 catches 56 → 64, 48 → 56 and
+  36 → 46. Alert volume over the 180 days: 1,809 → 1,813 CVEs.
 
 ## Tiers and the evidence bar
 
@@ -463,6 +506,9 @@ The forward log is the measurement that settles it.
   products inconsistently, so a prior can be missed (no bonus) or matched too broadly: the
   whole-word prefix fallback reads "Progress Planner" as Progress and "Linux Mint" as Linux, and an
   umbrella vendor's KEV history covers all of its products.
+- **Catalog-only CVEs outside the window.** A CVE listed only in ENISA EU KEV or CIRCL's catalog
+  (not in CISA KEV) is scored when it is in the 30-day window or woke up, but an older one is not
+  pulled into the data the way a CISA KEV listing is.
 - **Text heuristics are English.** The "in the wild" pattern and the noise patterns read the English
   description only.
 

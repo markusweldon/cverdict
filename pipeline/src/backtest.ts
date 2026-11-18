@@ -8,12 +8,13 @@
  *   time-matched  KEV prior (other listings before the cutoff), EPSS (the archived file of the day
  *                 before), Exploit-DB (date_added), PoC repos created and last pushed before the
  *                 cutoff (vetted by age at the cutoff), Metasploit modules whose earliest mod_time is before the cutoff,
- *                 Nuclei templates whose first template landed on main before the cutoff, CISA
+ *                 Nuclei templates whose first template landed on main before the cutoff, listings
+ *                 in the other known-exploited catalogs dated before the cutoff, CISA
  *                 SSVC automatable and technical impact timestamped before the day before the
  *                 listing, and the CNA (or CISA-ADP) container when it has not changed since the
  *                 cutoff.
  *   hindsight     everything else that has no usable date: other Nuclei templates, other Metasploit
- *                 modules, PoC repos pushed on the listing day or later, PoC star counts, SSVC stamped on the day before the listing or later,
+ *                 modules, catalog listings the catalog does not date, PoC repos pushed on the listing day or later, PoC star counts, SSVC stamped on the day before the listing or later,
  *                 the SSVC exploitation value in a changed container, CNA and CISA-ADP containers
  *                 changed since. The strict scores leave these out (as
  *                 unknown, never as absent); the `upper` variant ("with undated evidence") uses
@@ -329,6 +330,12 @@ export const SIGNALS: readonly Omit<BacktestSignal, 'affected'>[] = [
     note: 'Counted only when CISA has not changed its part of the record since the listing day. CISA updates this value when it lists a CVE, and often dates it the day before, so its date cannot be trusted.',
   },
   {
+    key: 'catalogs',
+    label: 'Other known-exploited catalogs (ENISA EU KEV, CIRCL, SiberKapan)',
+    treatment: 'hindsight',
+    note: "Counted when the catalog's own date for the listing is before the listing day. A listing without a date it can vouch for (an EU KEV entry dated on or after the CISA day, an entry without asserted_at) counts only with undated evidence.",
+  },
+  {
     key: 'cna_record',
     label: 'CNA CVSS, CVSS exploit maturity and "exploited in the wild" text',
     treatment: 'hindsight',
@@ -400,6 +407,11 @@ export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsO
     leftOut.push('nuclei');
     unavailable.set('nuclei', 'Nuclei templates (no usable date)');
   }
+  // Other known-exploited catalogs: a listing counts once the catalog dated it before the cutoff;
+  // one it does not date counts only with undated evidence, one dated later in neither variant.
+  const listed = enr.exploits.catalogs?.get(cve.id) ?? [];
+  const catalogs = listed.filter((l) => (l.added === null ? !strict : l.added <= lastDay));
+  if (strict && listed.some((l) => l.added === null)) leftOut.push('catalogs');
   const exploitdb = (enr.exploits.exploitdb.get(cve.id) ?? []).filter((e) => {
     const date = input.exploitdbAdded.get(e.id) ?? e.date;
     return date !== null && date <= lastDay;
@@ -472,6 +484,7 @@ export function evidenceAsOf(input: AsOfInput, variant: 'strict' | 'upper'): AsO
         nuclei: new Map(nuclei.length ? [[cve.id, nuclei]] : []),
         nucleiAdded: new Map(nuclei.length && nucleiAdded ? [[cve.id, nucleiAdded]] : []),
         exploitdb: new Map(exploitdb.length ? [[cve.id, exploitdb]] : []),
+        catalogs: new Map(catalogs.length ? [[cve.id, catalogs]] : []),
         poc: new Map(repos.length ? [[cve.id, repos]] : []),
       } satisfies ExploitIndex,
       unavailable,

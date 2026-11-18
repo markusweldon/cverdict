@@ -30,6 +30,12 @@ export type SourceId =
   | 'nuclei'
   | 'exploitdb'
   | 'poc-github'
+  /** ENISA EU Known Exploited Vulnerabilities (EUVD). */
+  | 'eu-kev'
+  /** CIRCL's own known-exploited catalog in Vulnerability-Lookup. */
+  | 'circl-kev'
+  /** SiberKapan's honeypot catalog in CIRCL Vulnerability-Lookup. */
+  | 'siberkapan'
   /** OSV.dev advisories behind v1/packages.json. Never feeds a score, chip or unknown. */
   | 'osv'
   | 'computed';

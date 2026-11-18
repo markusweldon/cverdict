@@ -4,7 +4,7 @@ import { CHIP_BY_ID, type ChipDef } from '../../shared/model';
 import { verdict as sharedVerdict } from '../../shared/verdict';
 
 export const TIER_META: Readonly<Record<Tier, { label: string; verdict: string; blurb: string }>> = {
-  exploited: { label: 'Exploited', verdict: 'Patch now', blurb: 'Confirmed exploitation: CISA KEV, CISA SSVC “active”, or the vendor says so.' },
+  exploited: { label: 'Exploited', verdict: 'Patch now', blurb: 'Confirmed exploitation: CISA KEV, ENISA EU KEV, CIRCL, CISA SSVC “active”, or the vendor says so.' },
   likely: { label: 'Likely', verdict: 'Likely next', blurb: 'A public exploit artifact, or a score that clears the evidence bar.' },
   watch: { label: 'Watch', verdict: 'Watch', blurb: `Some evidence, below the evidence bar but above the watch floor (${WATCH_FLOOR}).` },
   quiet: { label: 'Quiet', verdict: 'Quiet', blurb: 'No evidence yet. Quiet ≠ safe.' },
@@ -31,6 +31,9 @@ export const SOURCE_NAMES: Readonly<Record<SourceId, string>> = {
   nuclei: 'Nuclei',
   exploitdb: 'Exploit-DB',
   'poc-github': 'PoC-in-GitHub',
+  'eu-kev': 'ENISA EU KEV',
+  'circl-kev': 'CIRCL KEV',
+  siberkapan: 'SiberKapan',
   osv: 'OSV.dev',
   computed: 'Computed',
 };

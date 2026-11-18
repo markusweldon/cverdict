@@ -8,7 +8,7 @@
  */
 import type { Family, Polarity, SourceId } from './contract';
 
-export const SCORE_MODEL = 'v0.1.0';
+export const SCORE_MODEL = 'v0.2.0';
 
 export const BASE_POINTS = 15;
 /** Added to the raw score when any E-family chip fires… */
@@ -47,6 +47,8 @@ const c = (
 export const CHIPS: readonly ChipDef[] = [
   // E — confirmed exploitation. Any one puts the CVE in the `exploited` tier.
   c('kev.listed', 'E', 'up', EXPLOITED_BONUS, 'kev', 'CISA KEV', 'Listed in CISA Known Exploited Vulnerabilities (or the CISA-ADP KEV block in the CVE record).'),
+  c('eukev.listed', 'E', 'up', EXPLOITED_BONUS, 'eu-kev', 'EU KEV', 'Listed in ENISA’s EU Known Exploited Vulnerabilities catalog: ENISA or a national CSIRT of the EU CSIRTs Network reported exploitation. ENISA material, reproduced with acknowledgement.'),
+  c('circl.listed', 'E', 'up', EXPLOITED_BONUS, 'circl-kev', 'CIRCL KEV', 'CIRCL, Luxembourg’s national CERT, lists it as confirmed exploited in its own known-exploited catalog (CC0-1.0).'),
   c('ssvc.active', 'E', 'up', EXPLOITED_BONUS, 'cisa-adp', 'SSVC: active', 'CISA Vulnrichment SSVC assessment says exploitation is active.'),
   c('vendor.exploited', 'E', 'up', EXPLOITED_BONUS, 'cvelist', 'Vendor: exploited', 'The CNA’s own CVSS v4 vector says the bug is being attacked (E:A). VulDB vectors are ignored.'),
   c('vendor.itw', 'E', 'up', EXPLOITED_BONUS, 'cvelist', 'Vendor: in the wild', 'The CNA description says the bug is exploited or “may have been exploited” in the wild.'),
@@ -100,6 +102,8 @@ export const CHIPS: readonly ChipDef[] = [
   c('epss.cold', 'INFO', 'info', 0, 'epss', 'EPSS (cold)', 'EPSS score shown for context only: the CVE is too new for EPSS to be meaningful.'),
   c('poc.hype', 'INFO', 'info', 0, 'poc-github', 'PoC hype', 'More than 50 PoC repos appeared within a week. That measures attention, not weaponization, and fake PoCs often carry malware.'),
   c('poc.unvetted', 'INFO', 'info', 0, 'poc-github', 'Unvetted PoC', 'Only brand-new, unstarred PoC repos exist. Not counted until they age or gain stars.'),
+  c('circl.suspected', 'INFO', 'info', 0, 'circl-kev', 'CIRCL: suspected', 'CIRCL lists exploitation as suspected, not confirmed (CC0-1.0). Information only.'),
+  c('honeypot.siberkapan', 'INFO', 'info', 0, 'siberkapan', 'Honeypot attempts', 'SiberKapan’s honeypot and web sensors in Turkey saw exploitation attempts (CC-BY-4.0). Attempts are not proof that an attack worked, and one sensor network gives too little data to set points: information only.'),
   c('tag.eol', 'INFO', 'info', 0, 'cvelist', 'Unsupported product', 'The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate.'),
 ];
 

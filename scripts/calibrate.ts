@@ -72,8 +72,8 @@ function without<V>(map: ReadonlyMap<string, V>, key: string): Map<string, V> {
 }
 
 /**
- * A KEV CVE as it looked before anyone confirmed its exploitation: no KEV entry of its own and
- * no CISA-ADP KEV block, SSVC exploitation "active" lowered to "poc" when a public exploit
+ * A KEV CVE as it looked before anyone confirmed its exploitation: no KEV entry of its own, no
+ * CISA-ADP KEV block, no listing in the other known-exploited catalogs, SSVC exploitation "active" lowered to "poc" when a public exploit
  * artifact exists (else "none"), and no EPSS score, which reacts to the same exploitation. The
  * KEV prior stays the one built from the full catalogue; scoreCve() never counts the CVE itself.
  */
@@ -88,6 +88,8 @@ export function hideExploitation(cve: NormalizedCve, enr: Enrichment): { cve: No
       ...enr,
       kev: { ...enr.kev, entries: without(enr.kev.entries, cve.id) },
       epss: { ...enr.epss, scores: without(enr.epss.scores, cve.id) },
+      // The other known-exploited catalogs answer the same question as KEV.
+      exploits: enr.exploits.catalogs ? { ...enr.exploits, catalogs: without(enr.exploits.catalogs, cve.id) } : enr.exploits,
     },
   };
 }

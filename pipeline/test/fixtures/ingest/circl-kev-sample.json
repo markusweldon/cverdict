@@ -1,0 +1,48 @@
+{
+  "metadata": { "count": 6, "page": 1, "per_page": 1000 },
+  "data": [
+    {
+      "uuid": "60bbb50f-3a85-4228-b282-eed24618071c",
+      "vulnerability": { "vulnId": "CVE-2026-109733", "altId": [] },
+      "gcve": { "origin_uuid": "1a89b78e-f703-45f3-bb86-59eb712668bd", "gna": 1 },
+      "status": { "exploited": true, "status_reason": "confirmed", "status_updated_at": "2026-10-25T14:41:10+00:00" },
+      "timestamps": { "asserted_at": "2026-10-25T14:41:10+00:00", "first_seen_at": "2026-10-20T07:28:23+00:00" },
+      "evidence": []
+    },
+    {
+      "uuid": "a1",
+      "vulnerability": { "vulnId": "CVE-2026-94220" },
+      "gcve": { "origin_uuid": "1a89b78e-f703-45f3-bb86-59eb712668bd" },
+      "status": { "exploited": true, "status_reason": "suspected" },
+      "timestamps": { "asserted_at": "2026-10-22T09:00:00+00:00" }
+    },
+    {
+      "uuid": "a2",
+      "vulnerability": { "vulnId": "GCVE-1-2026-20026" },
+      "gcve": { "origin_uuid": "1a89b78e-f703-45f3-bb86-59eb712668bd" },
+      "status": { "exploited": true, "status_reason": "confirmed" },
+      "timestamps": { "asserted_at": "2026-09-09T00:00:00+00:00" }
+    },
+    {
+      "uuid": "a3",
+      "vulnerability": { "vulnId": "CVE-2026-103664" },
+      "gcve": { "origin_uuid": "405284c2-e461-4670-8979-7fd2c9755a60" },
+      "status": { "exploited": true, "status_reason": "confirmed" },
+      "timestamps": { "asserted_at": "2026-10-01T00:00:00+00:00" }
+    },
+    {
+      "uuid": "a4",
+      "vulnerability": { "vulnId": "CVE-2026-108706" },
+      "gcve": { "origin_uuid": "1a89b78e-f703-45f3-bb86-59eb712668bd" },
+      "status": { "exploited": false, "status_reason": "withdrawn" },
+      "timestamps": { "asserted_at": "2026-10-01T00:00:00+00:00" }
+    },
+    {
+      "uuid": "a5",
+      "vulnerability": { "vulnId": "CVE-2026-109733" },
+      "gcve": { "origin_uuid": "1a89b78e-f703-45f3-bb86-59eb712668bd" },
+      "status": { "exploited": true, "status_reason": "suspected" },
+      "timestamps": { "asserted_at": "2026-10-01T00:00:00+00:00" }
+    }
+  ]
+}

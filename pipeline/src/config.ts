@@ -117,6 +117,60 @@ export const EXPLOITDB = {
   minIntervalMs: 6 * 3_600_000,
 } as const;
 
+/**
+ * ENISA's EU Known Exploited Vulnerabilities, from the EUVD consolidated KEV dump (CISA KEV and EU
+ * KEV in one list, refreshed daily at 07:00 UTC). Only entries whose `sources` include `eukev_kev`
+ * are used. `dateAdded` is the earliest date across both sources, so it dates the EU listing only
+ * for an EU-only entry, or when it is before the CVE's CISA date (sources/catalogs.ts).
+ */
+export const EU_KEV = {
+  info: {
+    id: 'eu-kev',
+    name: 'ENISA EU KEV',
+    home: 'https://euvd.enisa.europa.eu/',
+    license: 'ENISA material: reproduction authorised, provided the source is acknowledged (https://www.enisa.europa.eu/about-enisa/legal-notice/legal-notice)',
+  } satisfies SourceInfo,
+  urls: ['https://euvdservices.enisa.europa.eu/api/kev/dump'],
+  entryUrl: (euvdId: string) => `https://euvd.enisa.europa.eu/vulnerability/${euvdId}`,
+  /** The dump changes once a day: reuse a copy younger than this without a request. */
+  minIntervalMs: 6 * 3_600_000,
+} as const;
+
+/**
+ * CIRCL Vulnerability-Lookup KEV catalogs (GCVE BCP-07 entries), one catalog per request through
+ * the `vulnerability_lookup_origin` filter. Anonymous use is limited to 20 requests a minute and
+ * the API policy asks not to mirror the dataset: two requests every 12 hours stay far below that.
+ * Only catalogs whose licence CIRCL states are used (CISA's copy duplicates `kev`).
+ */
+const circlKevUrl = (origin: string) => `https://vulnerability.circl.lu/api/kev/?vulnerability_lookup_origin=${origin}&per_page=1000`;
+const CIRCL_MIN_INTERVAL_MS = 12 * 3_600_000;
+
+export const CIRCL_KEV = {
+  info: {
+    id: 'circl-kev',
+    name: 'CIRCL known exploited catalog',
+    home: 'https://vulnerability.circl.lu/known-exploited-vulnerabilities-catalog/?catalog_uuid=1a89b78e-f703-45f3-bb86-59eb712668bd',
+    license: 'CC0-1.0 (CIRCL, via Vulnerability-Lookup)',
+  } satisfies SourceInfo,
+  origin: '1a89b78e-f703-45f3-bb86-59eb712668bd',
+  urls: [circlKevUrl('1a89b78e-f703-45f3-bb86-59eb712668bd')],
+  entryUrl: (cve: string) => `https://vulnerability.circl.lu/vuln/${cve.toLowerCase()}`,
+  minIntervalMs: CIRCL_MIN_INTERVAL_MS,
+} as const;
+
+export const SIBERKAPAN = {
+  info: {
+    id: 'siberkapan',
+    name: 'SiberKapan honeypot catalog',
+    home: 'https://siberkapan.org/kev-catalog',
+    license: 'CC-BY-4.0 (SiberKapan, via CIRCL Vulnerability-Lookup)',
+  } satisfies SourceInfo,
+  origin: 'fc16d4f5-594d-5807-9bf1-71af4407c589',
+  urls: [circlKevUrl('fc16d4f5-594d-5807-9bf1-71af4407c589')],
+  entryUrl: (cve: string) => `https://vulnerability.circl.lu/vuln/${cve.toLowerCase()}`,
+  minIntervalMs: CIRCL_MIN_INTERVAL_MS,
+} as const;
+
 export const POC: GitSourceConfig = {
   info: {
     id: 'poc-github',
@@ -214,6 +268,12 @@ export interface SanityLimits {
   nucleiDates: number;
   exploitdbRows: number;
   pocFiles: number;
+  /** EU KEV entries in the EUVD dump (82 on 2026-11-18), and the dump's rows in all (1,799). */
+  euKevEntries: number;
+  euvdDumpRows: number;
+  /** CVE entries in CIRCL's own catalog (33 on 2026-11-18) and in SiberKapan's (14). */
+  circlKevEntries: number;
+  siberkapanEntries: number;
   /**
    * OSV records kept (non-withdrawn, with a CVE alias and a package of the ecosystem) in a full
    * dump: about half of the 2026-11-03 counts. A dump below its floor, or below
@@ -233,6 +293,10 @@ export const SANITY: SanityLimits = {
   nucleiDates: 2_000,
   exploitdbRows: 40_000,
   pocFiles: 5_000,
+  euKevEntries: 40,
+  euvdDumpRows: 1_000,
+  circlKevEntries: 15,
+  siberkapanEntries: 5,
   osvRecords: { npm: 3_000, PyPI: 6_500, Maven: 3_500, Go: 4_000, 'crates.io': 800, RubyGems: 500, Packagist: 3_000, NuGet: 500 },
   osvMinRatioOfCached: 0.9,
 };

@@ -59,7 +59,7 @@ last 30 days gets a score from 0 to 100 and a tier:
 
 | Tier | What it means | What puts a CVE here |
 |---|---|---|
-| **Exploited** | Patch now. | Confirmed exploitation: CISA KEV, CISA's SSVC assessment says *active*, or the vendor says so |
+| **Exploited** | Patch now. | Confirmed exploitation: CISA KEV, ENISA's EU KEV, CIRCL's catalog, CISA's SSVC assessment says *active*, or the vendor says so |
 | **Likely next** | Patch within days. | A Metasploit module or Nuclei template (always at least Likely), or a score at or above the evidence bar |
 | **Watch** | Keep an eye on it. | Score from 25 up to the evidence bar |
 | **Quiet** | No evidence yet. **Quiet ≠ safe.** | Score below 25 |
@@ -157,8 +157,9 @@ bound, since the evidence was collected after the fact. `npm run calibrate` repr
 The [Receipts page](https://cverdict.dev/receipts) holds the stricter tests. A live
 record notes when each method first flags a CVE and whether that came before CISA listed it; the
 page shows how many listings it has judged so far. A backtest, marked as
-hindsight, uses only evidence dated before each listing. On Nov 13, 2026 it gave, for the 130
-recent CVEs CISA added to KEV in the previous 180 days: CVErdict 48 flagged before the listing,
+hindsight, uses only evidence dated before each listing. On the inputs of Nov 13, 2026, with ENISA's
+EU KEV dates (score model v0.2.0), it gave, for the 130 recent CVEs CISA added to KEV in the
+previous 180 days: CVErdict 56 flagged before the listing (48 without EU KEV),
 "CVSS 7 or more" 73, "EPSS 10% or more" 17. CVSS 7 or more catches more, but flags about half of
 all new CVEs against CVErdict's 2.5%. The Receipts page always shows the latest run.
 `npm run backtest` reproduces it.
@@ -175,6 +176,9 @@ Only free, public data. Nothing from NVD.
 | [CVE List V5](https://github.com/CVEProject/cvelistV5) | Every CVE record: CNA data, CVSS, exploit maturity, credits | hourly | [CVE Terms of Use](https://www.cve.org/Legal/TermsOfUse) |
 | [CISA Vulnrichment](https://github.com/cisagov/vulnrichment) (ADP container in each record) | SSVC decision points; CVSS when the CNA gave none | hourly | CC0-1.0 |
 | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Confirmed exploitation, due dates, ransomware use, vendor history | hourly | CC0-1.0 |
+| [ENISA EU KEV](https://euvd.enisa.europa.eu/) (EUVD) | Exploitation reported by ENISA or a national CSIRT of the EU CSIRTs Network, and the date it was listed | every 6 h (published daily) | ENISA material, reproduced with acknowledgement of the source |
+| [CIRCL known exploited catalog](https://vulnerability.circl.lu/known-exploited-vulnerabilities-catalog/?catalog_uuid=1a89b78e-f703-45f3-bb86-59eb712668bd) | Exploitation CIRCL (Luxembourg's national CERT) confirms or suspects | every 12 h | CC0-1.0 |
+| [SiberKapan honeypot catalog](https://siberkapan.org/kev-catalog) (through CIRCL Vulnerability-Lookup) | Exploitation attempts seen by honeypots in Turkey, shown for information only | every 12 h | CC-BY-4.0 |
 | [EPSS](https://www.first.org/epss/) (FIRST) | Probability of exploitation activity in the next 30 days | hourly (published daily) | Free use with attribution |
 | [Metasploit Framework](https://github.com/rapid7/metasploit-framework) | Modules that reference a CVE | hourly | BSD-3-Clause |
 | [Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) | Templates that reference a CVE, and when the first one for each CVE landed (from the repository's history) | hourly | MIT |
@@ -348,7 +352,9 @@ Security issues go through [private reporting](SECURITY.md).
 
 CVErdict stands entirely on public work: the [CVE Program](https://www.cve.org/) and its CNAs;
 CISA for [KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) and
-[Vulnrichment](https://github.com/cisagov/vulnrichment); the [FIRST EPSS SIG](https://www.first.org/epss/)
+[Vulnrichment](https://github.com/cisagov/vulnrichment); ENISA and the EU CSIRTs Network for the
+[EU KEV](https://euvd.enisa.europa.eu/); CIRCL for [Vulnerability-Lookup](https://vulnerability.circl.lu/)
+and its known exploited catalog; [SiberKapan](https://siberkapan.org/kev-catalog); the [FIRST EPSS SIG](https://www.first.org/epss/)
 and Empirical Security; CERT/CC for [SSVC](https://github.com/CERTCC/SSVC); Rapid7 and the
 [Metasploit](https://github.com/rapid7/metasploit-framework) community;
 [ProjectDiscovery](https://github.com/projectdiscovery/nuclei-templates); OffSec's

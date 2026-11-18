@@ -165,6 +165,11 @@ these files stays under its own terms:
 - **CISA KEV and Vulnrichment** (KEV entries, SSVC): CC0-1.0. Use of the information does not
   authorize you to use the CISA Logo or DHS Seal, nor should such use be interpreted as an
   endorsement by CISA or DHS.
+- **Other known-exploited catalogs** (listings, dates and links only, as reason chips):
+  [ENISA EU KEV](https://euvd.enisa.europa.eu/) (ENISA material, reproduced with acknowledgement
+  of the source), the [CIRCL known exploited catalog](https://vulnerability.circl.lu/) (CC0-1.0)
+  and the [SiberKapan honeypot catalog](https://siberkapan.org/kev-catalog) (CC-BY-4.0, through
+  CIRCL Vulnerability-Lookup).
 - **EPSS**: by the [FIRST EPSS SIG](https://www.first.org/epss), free to use with attribution.
 - **Exploit feeds**: identifiers and links only, no exploit code. Metasploit Framework
   (BSD-3-Clause, © Rapid7, Inc.), Nuclei templates (MIT, © ProjectDiscovery, Inc.), Exploit-DB

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PACKAGE_ECOSYSTEMS } from '../../../shared/contract';
-import { EPSS, KEV, OSV, SANITY, type SanityLimits } from '../../src/config';
+import { CIRCL_KEV, EPSS, EU_KEV, KEV, OSV, SANITY, SIBERKAPAN, type SanityLimits } from '../../src/config';
 import { ingestWith } from '../../src/ingest';
 import type { RunContext } from '../../src/types';
 import { addDays } from '../../src/util/dates';
@@ -21,6 +21,10 @@ const LIMITS: SanityLimits = {
   nucleiDates: 1,
   exploitdbRows: 1,
   pocFiles: 1,
+  euKevEntries: 1,
+  euvdDumpRows: 1,
+  circlKevEntries: 1,
+  siberkapanEntries: 1,
   osvRecords: Object.fromEntries(PACKAGE_ECOSYSTEMS.map((e) => [e, 0])) as SanityLimits['osvRecords'],
 };
 
@@ -100,6 +104,9 @@ function upstream(kevDelayMs = 0): Record<string, Route> {
     'https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json': ok(JSON.stringify(msf)),
     'https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/cves.json': ok(fixtureFile('nuclei-sample.json')),
     'https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv': ok(edb),
+    [EU_KEV.urls[0]]: ok(fixtureFile('euvd-kev-sample.json')),
+    [CIRCL_KEV.urls[0]]: ok(fixtureFile('circl-kev-sample.json')),
+    [SIBERKAPAN.urls[0]]: ok(fixtureFile('siberkapan-sample.json')),
   };
 }
 
@@ -174,7 +181,7 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     );
 
     const status = Object.fromEntries(result.sources.map((s) => [s.id, s]));
-    expect(result.sources.map((s) => s.id)).toEqual(['cvelist', 'cisa-adp', 'kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'poc-github', 'osv']);
+    expect(result.sources.map((s) => s.id)).toEqual(['cvelist', 'cisa-adp', 'kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'eu-kev', 'circl-kev', 'siberkapan', 'poc-github', 'osv']);
     expect(result.sources.every((s) => s.ok && !s.stale && s.license.length > 0 && s.error === null)).toBe(true);
     expect(status.cvelist).toMatchObject({ records: 18, upstream_version: cvelist.commit });
     expect(status['cisa-adp'].records).toBe(13);
@@ -184,6 +191,21 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(status.nuclei).toMatchObject({ upstream_version: nuclei.commit, stale: false });
     expect(status.cvelist.fetched_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(status.osv).toMatchObject({ records: 1, upstream_version: '2026-10-20T00:00:00Z' });
+    expect(status['eu-kev']).toMatchObject({ url: EU_KEV.urls[0], records: 3, upstream_version: '2026-10-24' });
+    expect(status['circl-kev']).toMatchObject({ records: 2, upstream_version: '2026-10-25', license: 'CC0-1.0 (CIRCL, via Vulnerability-Lookup)' });
+    expect(status.siberkapan).toMatchObject({ records: 1, upstream_version: null });
+    // Restricted to ingested records; EU KEV dates checked against CISA KEV (110447: before the CISA
+    // day, so dated; 0257: the CISA day, so undated; 100878: EU only).
+    expect(Object.fromEntries(result.exploits.catalogs ?? [])).toEqual({
+      'CVE-2026-110447': [
+        { catalog: 'eu-kev', added: '2026-10-20', status: 'confirmed', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-61001' },
+        { catalog: 'siberkapan', added: null, status: 'confirmed', url: 'https://vulnerability.circl.lu/vuln/cve-2026-110447', seen: '2026-10-05' },
+      ],
+      'CVE-2026-0257': [{ catalog: 'eu-kev', added: null, status: 'confirmed', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-0801' }],
+      'CVE-2026-100878': [{ catalog: 'eu-kev', added: '2026-10-24', status: 'confirmed', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-58113' }],
+      'CVE-2026-109733': [{ catalog: 'circl-kev', added: '2026-10-25', status: 'confirmed', url: 'https://vulnerability.circl.lu/vuln/cve-2026-109733', seen: '2026-10-20' }],
+      'CVE-2026-94220': [{ catalog: 'circl-kev', added: '2026-10-22', status: 'suspected', url: 'https://vulnerability.circl.lu/vuln/cve-2026-94220', seen: null }],
+    });
     expect(result.osv.mirror.ecosystems.npm?.records).toEqual([['GHSA-aaaa-bbbb-cccc', '2026-10-20T00:00:00Z', ['CVE-2026-110447'], [['collabora-client', [['>=0', '<2.0.0']]]]]]);
     expect(PACKAGE_ECOSYSTEMS.map((e) => result.osv.statuses[e].advisories)).toEqual([1, 0, 0, 0, 0, 0, 0, 0]);
   });
@@ -216,7 +238,9 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const result = await ingestWith(offline.ctx, { cvelistDir: cvelist.clone, pocDir: poc.clone }, { http: offline.http, limits: LIMITS });
     expect(offline.requested).toEqual([]);
     expect(result.cves).toHaveLength(11);
-    const http = result.sources.filter((s) => ['kev', 'epss', 'metasploit', 'exploitdb'].includes(s.id));
+    const http = result.sources.filter((s) => ['kev', 'epss', 'metasploit', 'exploitdb', 'eu-kev', 'circl-kev', 'siberkapan'].includes(s.id));
+    expect(http).toHaveLength(7);
+    expect(result.exploits.catalogs?.size).toBe(5);
     expect(http.every((s) => s.ok && s.stale && s.error === null)).toBe(true);
     // The first run read its templates clone with --nuclei-dir, which never saves the dates: offline
     // and without a clone there are none, so the templates count without dates and the source says so.
@@ -231,7 +255,8 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     const { ctx, http, log } = setup({ routes: {} });
     const result = await ingestWith(ctx, { cvelistDir: cvelist.clone, pocDir: path.join(tempDir(), 'missing'), nucleiDir: path.join(tempDir(), 'missing') }, { http, limits: LIMITS });
     const failed = result.sources.filter((s) => !s.ok).map((s) => s.id);
-    expect(failed).toEqual(['kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'poc-github', 'osv']);
+    expect(failed).toEqual(['kev', 'epss', 'metasploit', 'nuclei', 'exploitdb', 'eu-kev', 'circl-kev', 'siberkapan', 'poc-github', 'osv']);
+    expect(result.exploits.catalogs?.size).toBe(0);
     // Without the KEV catalog, only the window and CISA-ADP KEV blocks decide what is kept.
     expect(result.cves.some((c) => c.id === 'CVE-2026-37106')).toBe(false);
     expect(result.cves.some((c) => c.id === 'CVE-2026-58644')).toBe(true);

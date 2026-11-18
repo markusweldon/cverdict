@@ -4,7 +4,7 @@
  */
 import type { Cvss, ExploitEvidence, SourceId, SourceStatus } from '../../../../shared/contract';
 import { buildKevPrior, scoreCve } from '../../../src/score';
-import type { Enrichment, IngestResult, KevCatalog, KevRaw, NormalizedCve, PocRepo, ScoredCve } from '../../../src/types';
+import type { CatalogListing, Enrichment, IngestResult, KevCatalog, KevRaw, NormalizedCve, PocRepo, ScoredCve } from '../../../src/types';
 import { emptyOsvData, type OsvData } from '../../../src/sources/osv';
 import { EMPTY_WOKE_STATE, type WakeDetection } from '../../../src/woke';
 
@@ -98,6 +98,8 @@ export interface EnrichmentSpec {
   nucleiAdded?: Record<string, { at: string; commit: string }>;
   exploitdb?: Record<string, ExploitEvidence['exploitdb']>;
   poc?: Record<string, PocRepo[]>;
+  /** id → listings in the other known-exploited catalogs (EU KEV, CIRCL, SiberKapan). */
+  catalogs?: Record<string, CatalogListing[]>;
   /** Sources with no usable copy this run (named after their id). */
   down?: SourceId[];
   /** Wake detection result handed to buildOutput (default: nothing woke up). */
@@ -125,6 +127,7 @@ export function makeEnrichment(spec: EnrichmentSpec = {}): Enrichment {
       ...(spec.nucleiAdded ? { nucleiAdded: new Map(Object.entries(spec.nucleiAdded)) } : {}),
       exploitdb: new Map(Object.entries(spec.exploitdb ?? {})),
       poc: new Map(Object.entries(spec.poc ?? {})),
+      ...(spec.catalogs ? { catalogs: new Map(Object.entries(spec.catalogs)) } : {}),
     },
     prior: buildKevPrior(kev),
     unavailable: new Map((spec.down ?? []).map((id) => [id, id])),
@@ -138,6 +141,14 @@ export const msf = (fullname: string, rank: number | null = 600, type = 'exploit
   type,
   url: `https://github.com/rapid7/metasploit-framework/blob/master/modules/${fullname}.rb`,
   date,
+});
+
+export const listing = (catalog: CatalogListing['catalog'], added: string | null, o: Partial<CatalogListing> = {}): CatalogListing => ({
+  catalog,
+  added,
+  status: 'confirmed',
+  url: `https://example.test/${catalog}`,
+  ...o,
 });
 
 export const nucleiTemplate = (id: string, severity: string | null = 'critical'): ExploitEvidence['nuclei'][number] => ({

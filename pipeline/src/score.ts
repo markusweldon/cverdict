@@ -27,7 +27,7 @@ import {
 } from '../../shared/model';
 import { NUCLEI } from './config';
 import type { NucleiAdded } from './sources/nuclei-history';
-import type { Enrichment, KevCatalog, KevPrior, KevPriorEntry, KevRaw, NormalizedCve, PocRepo, ScoredCve } from './types';
+import type { CatalogListing, Enrichment, KevCatalog, KevPrior, KevPriorEntry, KevRaw, NormalizedCve, PocRepo, ScoredCve } from './types';
 import { DAY_MS, addDays, daysBetween, parseIsoDate, ymd } from './util/dates';
 
 /** EPSS bands for epss.high / epss.mid; below EPSS_MID counts as "no exploit signal". */
@@ -380,6 +380,8 @@ interface Facts {
   exploits: ExploitEvidence;
   /** When the CVE's first Nuclei template landed on main, when known and not after `now`. */
   nucleiAdded: NucleiAdded | null;
+  /** Listings in the other known-exploited catalogs, without those dated after `now`. */
+  catalogs: CatalogListing[];
   poc: PocSummary;
   /** Unavailable sources (id → name). */
   unavailable: ReadonlyMap<SourceId, string>;
@@ -410,6 +412,7 @@ function gatherFacts(cve: NormalizedCve, enr: Enrichment, now: Date): Facts {
       poc: poc.evidence,
     },
     nucleiAdded: added && Date.parse(added.at) <= now.getTime() ? added : null,
+    catalogs: (enr.exploits.catalogs?.get(cve.id) ?? []).filter((l) => l.added === null || l.added <= ymd(now)),
     poc,
     unavailable: enr.unavailable,
   };
@@ -437,6 +440,15 @@ function exploitationCandidates(f: Facts): Reason[] {
         at: added ?? undefined,
       }),
     );
+  }
+  // Other known-exploited catalogs; the label carries the attribution each one asks for.
+  const eu = f.catalogs.find((l) => l.catalog === 'eu-kev');
+  if (eu) {
+    out.push(reason('eukev.listed', `Listed in ENISA EU KEV${eu.added ? ` · added ${dayLabel(eu.added, now)}` : ''}`, { url: eu.url, at: eu.added ?? undefined }));
+  }
+  const circl = f.catalogs.find((l) => l.catalog === 'circl-kev' && l.status === 'confirmed');
+  if (circl) {
+    out.push(reason('circl.listed', `Listed by CIRCL (CC0) as exploited${circl.added ? ` · added ${dayLabel(circl.added, now)}` : ''}`, { url: circl.url, at: circl.added ?? undefined }));
   }
   if (cve.ssvc?.exploitation === 'active') {
     const at = cve.ssvc.timestamp ?? undefined;
@@ -678,6 +690,22 @@ function kevInfoChips(f: Facts): Reason[] {
   return out;
 }
 
+/** Catalog listings that do not confirm exploitation: information only. */
+function catalogInfoChips(f: Facts): Reason[] {
+  const out: Reason[] = [];
+  const circl = f.catalogs.find((l) => l.catalog === 'circl-kev' && l.status === 'suspected');
+  if (circl) {
+    out.push(reason('circl.suspected', `CIRCL (CC0): exploitation suspected${circl.added ? ` · ${dayLabel(circl.added, f.now)}` : ''}`, { url: circl.url, at: circl.added ?? undefined }));
+  }
+  const honeypot = f.catalogs.find((l) => l.catalog === 'siberkapan');
+  if (honeypot) {
+    const at = honeypot.seen ?? honeypot.added ?? undefined;
+    const label = `SiberKapan honeypots (CC BY 4.0): attempts seen${at ? ` since ${dayLabel(at, f.now)}` : ''}${honeypot.status === 'suspected' ? ', suspected' : ''}`;
+    out.push(reason('honeypot.siberkapan', label, { url: honeypot.url, at }));
+  }
+  return out;
+}
+
 function cveInfoChips(f: Facts): Reason[] {
   const { cve } = f;
   const out: Reason[] = [];
@@ -727,6 +755,11 @@ function timelineFor(f: Facts): ScoredCve['timeline'] {
   const edb = f.exploits.exploitdb.filter((e) => e.date).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))[0];
   if (edb) add(edb.date, `Exploit-DB ${edb.id} published`, 'exploitdb');
   if (f.nucleiAdded && f.exploits.nuclei.length > 0) add(f.nucleiAdded.at, 'First Nuclei template added', 'nuclei');
+  for (const l of f.catalogs) {
+    if (l.catalog === 'eu-kev') add(l.added, 'Added to ENISA EU KEV', 'eu-kev');
+    else if (l.catalog === 'circl-kev') add(l.added, `Listed by CIRCL as ${l.status === 'confirmed' ? 'exploited' : 'suspected'}`, 'circl-kev');
+    else add(l.seen, 'First exploitation attempt seen by SiberKapan honeypots', 'siberkapan');
+  }
   if (f.kevRaw) {
     add(f.kevRaw.dateAdded, 'Added to CISA KEV', 'kev');
     const due = parseIsoDate(f.kevRaw.dueDate);
@@ -790,6 +823,7 @@ export function scoreCve(cve: NormalizedCve, enr: Enrichment, opts: { now: Date;
     ...prior.result.chips,
     ...noise.chips,
     ...kevInfoChips(f),
+    ...catalogInfoChips(f),
     ...cveInfoChips(f),
     ...sev.info,
     ...x.info,

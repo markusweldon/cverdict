@@ -26,7 +26,7 @@ NOISE  only when nothing exploits it: hobby code, disputed, WordPress, kernel`;
 
 const STEPS: readonly [string, string][] = [
   ['Read every CVE', 'One streaming pass over the full CVE List V5 git repository each hour: CNA records plus CISA’s ADP enrichment. NVD is not used: it stopped enriching most CVEs in April 2026.'],
-  ['Join public evidence', 'CISA KEV, FIRST EPSS, Metasploit modules, Nuclei templates, Exploit-DB and PoC-in-GitHub, matched by CVE ID.'],
+  ['Join public evidence', 'CISA KEV, ENISA’s EU KEV and the CIRCL and SiberKapan catalogs, FIRST EPSS, Metasploit modules, Nuclei templates, Exploit-DB and PoC-in-GitHub, matched by CVE ID.'],
   ['Score with chips', 'Each piece of evidence is a chip worth a fixed number of points. Within a family only the strongest counts; across families points add.'],
   ['Set the evidence bar', `Exploited CVEs always pass. CVEs with a Metasploit module or Nuclei template are always at least Likely. Everything else passes when its score reaches the evidence bar (default ${KNOB_DEFAULT}).`],
   ['Publish static files', 'JSON, Atom and iCalendar files on a git branch. AI agents can read the same files through a read-only MCP server that runs on your machine. No accounts or API keys. Fork it and run your own.'],
@@ -58,6 +58,9 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
 const ATTRIBUTIONS: readonly [string, string, string][] = [
   ['CVE List V5', 'https://github.com/CVEProject/cvelistV5', 'CVE Program Terms of Use; MITRE’s notice below'],
   ['CISA KEV and Vulnrichment (ADP)', 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog', 'CC0 1.0; no CISA endorsement implied'],
+  ['ENISA EU KEV (EUVD)', 'https://euvd.enisa.europa.eu/', 'ENISA material, reproduced with acknowledgement of the source (ENISA legal notice)'],
+  ['CIRCL known exploited catalog', 'https://vulnerability.circl.lu/known-exploited-vulnerabilities-catalog/?catalog_uuid=1a89b78e-f703-45f3-bb86-59eb712668bd', 'CC0-1.0, CIRCL (Computer Incident Response Center Luxembourg), via Vulnerability-Lookup'],
+  ['SiberKapan honeypot catalog', 'https://siberkapan.org/kev-catalog', 'CC-BY-4.0, SiberKapan, via CIRCL Vulnerability-Lookup; information only, never points'],
   ['EPSS', 'https://www.first.org/epss', 'FIRST.org, free use with attribution'],
   ['Metasploit Framework', 'https://github.com/rapid7/metasploit-framework', 'BSD-3-Clause, Rapid7'],
   ['Nuclei templates', 'https://github.com/projectdiscovery/nuclei-templates', 'MIT, ProjectDiscovery'],

@@ -211,6 +211,13 @@ describe('verdict helpers', () => {
     expect(one('vendor.poc')).toBe('vendor CVSS says a proof of concept exists');
     expect(one('x.something_new')).toBe('score 50 clears the evidence bar (50)');
   });
+
+  it('names the catalog that confirmed exploitation when CISA KEV has not listed it', () => {
+    const by = (id: string, source: 'eu-kev' | 'circl-kev') =>
+      verdict({ ...F.EXPLOITED_VENDOR, reasons: [{ id, label: id, polarity: 'up', family: 'E', points: 68, source }] }, 'exploited', 50, 2026).reason;
+    expect(by('eukev.listed', 'eu-kev')).toBe('exploited, listed in ENISA EU KEV');
+    expect(by('circl.listed', 'circl-kev')).toBe('exploited, listed by CIRCL');
+  });
 });
 
 describe('cleanText and escapeHtml', () => {

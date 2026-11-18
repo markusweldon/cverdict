@@ -34,7 +34,7 @@ pipeline/
     config.ts              URLs, timeouts, window size, budgets
     util/                  http.ts (fetch w/ timeout+retry+cache), git.ts (clone, ls-tree, cat-file --batch),
                            csv.ts (RFC 4180), text.ts (sanitise/truncate), dates.ts, log.ts, zip.ts (bounded ZIP64)
-    sources/               cvelist.ts  kev.ts  epss.ts  metasploit.ts  nuclei.ts  exploitdb.ts  poc.ts  osv.ts
+    sources/               cvelist.ts  kev.ts  catalogs.ts  epss.ts  metasploit.ts  nuclei.ts  exploitdb.ts  poc.ts  osv.ts
     normalize.ts           CVE v5 JSON → NormalizedCve (internal type)
     score.ts               NormalizedCve + Enrichment → { score, tier, reasons, unknowns }
     batches.ts  stats.ts  changes.ts  woke.ts  receipts.ts  packages.ts  backtest.ts  state.ts  rows.ts  types.ts
@@ -97,6 +97,9 @@ npm run pipeline -- [--out site/public/data] [--previous <dir with previous v1/ 
 |---|---|---|---|---|
 | `cvelist` | `git clone --depth 1 --no-checkout --single-branch https://github.com/CVEProject/cvelistV5.git` into `<cache>/git/cvelistV5` (if it exists: `git fetch --depth 1 origin main` and use `FETCH_HEAD`) | none (fatal) | `git ls-tree -r -z <rev> cves/` → paths matching `cves/YYYY/NNxxx/CVE-*.json`; stream blobs with **one** `git cat-file --batch` process (write `<sha>\n`, read `<sha> blob <size>\n<bytes>\n`) | ≥ 300k records |
 | `kev` | `https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json` | `https://raw.githubusercontent.com/cisagov/kev-data/main/known_exploited_vulnerabilities.json`, then cache | JSON | ≥ 1,000 entries; never < 98% of cached count |
+| `eu-kev` | `https://euvdservices.enisa.europa.eu/api/kev/dump` (ENISA EUVD, consolidated CISA + EU KEV, updated daily 07:00 UTC; fetched at most every 6h, cache reused if younger) | cache | JSON array of `cveId, euvdId, dateAdded, sources[]`; rows whose `sources` include `eukev_kev`. `dateAdded` is the earliest across both catalogs, so it dates the EU listing only for an EU-only row or when it is before the CVE's CISA `dateAdded`; otherwise the listing is undated | ≥ 1,000 rows, ≥ 40 EU KEV entries |
+| `circl-kev` | `https://vulnerability.circl.lu/api/kev/?vulnerability_lookup_origin=1a89b78e-f703-45f3-bb86-59eb712668bd&per_page=1000` (CIRCL's own catalog, CC0-1.0; at most every 12h, cache reused if younger) | cache | GCVE BCP-07 `{metadata, data[]}`: entries of that `origin_uuid` with a CVE `vulnId`, `status.exploited: true` and `status_reason` `confirmed` or `suspected`; listing date `timestamps.asserted_at` only. A page with fewer entries than `metadata.count` is rejected | ≥ 15 CVE entries |
+| `siberkapan` | the same endpoint with `vulnerability_lookup_origin=fc16d4f5-594d-5807-9bf1-71af4407c589` (SiberKapan honeypot catalog, CC-BY-4.0; at most every 12h) | cache | as `circl-kev`; `first_seen_at` is kept for display only | ≥ 5 CVE entries |
 | `epss` | `https://epss.empiricalsecurity.com/epss_scores-current.csv.gz` | `https://raw.githubusercontent.com/empiricalsec/epss_scores/main/<YYYY>/epss_scores-<YYYY-MM-DD>.csv.gz` for today, then yesterday, then cache | gunzip; first line `#model_version:v2026.06.15,score_date:2026-10-26T12:03:00Z`; then `cve,epss,percentile` | ≥ 200k rows |
 | `metasploit` | `https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json` | cache | object of modules; `references[]` entries like `CVE-2024-1234`; keep `name, fullname, rank, type, path` | ≥ 3,000 modules |
 | `nuclei` | `https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/cves.json` | cache | **NDJSON**; `ID`, `Info.Severity`, `file_path` | ≥ 2,000 lines |
@@ -160,7 +163,9 @@ From `containers.cna` and `containers.adp[]` (ADP with `providerMetadata.shortNa
 
 ```
 age        = days since datePublished
-E chips    = kev.listed | ssvc.active | vendor.exploited (v4 E:A) | vendor.itw  (any → exploited)
+E chips    = kev.listed | eukev.listed (ENISA EU KEV) | circl.listed (CIRCL, confirmed) | ssvc.active
+             | vendor.exploited (v4 E:A) | vendor.itw  (any → exploited); catalog listings dated after now are ignored
+INFO       = … | circl.suspected (CIRCL, suspected) | honeypot.siberkapan (SiberKapan attempts), 0 points
 X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24
                      (v3 E:F/E:H), x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10, epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)

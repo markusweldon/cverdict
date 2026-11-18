@@ -152,12 +152,34 @@ export interface MetasploitData {
   firstModified: Map<string, string>;
 }
 
+/** The catalogs besides CISA KEV whose listings are chips (sources/catalogs.ts). */
+export type CatalogId = 'eu-kev' | 'circl-kev' | 'siberkapan';
+
+/** One CVE's listing in one of those catalogs. */
+export interface CatalogListing {
+  catalog: CatalogId;
+  /**
+   * The day the catalog added the CVE (YYYY-MM-DD), when the catalog dates it in a way that can be
+   * trusted: EU KEV's own date, BCP-07 `asserted_at`. Null otherwise; then the backtest counts the
+   * listing only with undated evidence.
+   */
+  added: string | null;
+  /** BCP-07 status: `confirmed` or `suspected` (EU KEV entries are confirmed). */
+  status: 'confirmed' | 'suspected';
+  /** Link to the entry. */
+  url: string;
+  /** Earliest exploitation activity the catalog reports (BCP-07 `first_seen_at`, YYYY-MM-DD), for display only. */
+  seen?: string | null;
+}
+
 export interface ExploitIndex {
   metasploit: Map<string, ExploitEvidence['metasploit']>;
   nuclei: Map<string, ExploitEvidence['nuclei']>;
   /** When each CVE's first Nuclei template landed on main (only dated CVEs; may be absent). */
   nucleiAdded?: Map<string, NucleiAdded>;
   exploitdb: Map<string, ExploitEvidence['exploitdb']>;
+  /** Listings in the catalogs besides CISA KEV (only ingested ids; may be absent). */
+  catalogs?: Map<string, CatalogListing[]>;
   /** Repos per CVE id (only for ids we ingested). */
   poc: Map<string, PocRepo[]>;
 }

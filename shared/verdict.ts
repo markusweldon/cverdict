@@ -109,6 +109,8 @@ export function verdict(d: CveDetail, tier: Tier, knob: number, refYear: number)
       return { head, reason: due ? `exploited, KEV due ${due}` : 'exploited, listed in CISA KEV' };
     }
     if (d.reasons.some((r) => r.id === 'kev.listed')) return { head, reason: 'exploited, listed in CISA KEV' };
+    if (d.reasons.some((r) => r.id === 'eukev.listed')) return { head, reason: 'exploited, listed in ENISA EU KEV' };
+    if (d.reasons.some((r) => r.id === 'circl.listed')) return { head, reason: 'exploited, listed by CIRCL' };
     if (d.ssvc?.exploitation === 'active') return { head, reason: 'CISA SSVC says exploitation is active' };
     return { head, reason: 'the vendor reports exploitation' };
   }

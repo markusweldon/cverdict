@@ -4,6 +4,7 @@
  * restricted to those records, and a SourceStatus per source.
  */
 import { SANITY, type SanityLimits } from './config';
+import { euKevListings, loadCirclKev, loadEuKev, loadSiberKapan, mergeCatalogs } from './sources/catalogs';
 import { cvelistStatuses, openCvelist, scanCvelist, type CvelistRepo, type CvelistScan } from './sources/cvelist';
 import { loadEpss, loadEpssOn } from './sources/epss';
 import { loadExploitDb } from './sources/exploitdb';
@@ -57,6 +58,10 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   // When each CVE's first template landed (git history); only the backtest and the chip date need it.
   const nucleiDatesP = loadNucleiDates({ cacheDir: ctx.cacheDir, offline: ctx.offline, log, limits, repoDir: opts.nucleiDir, signal });
   const exploitDbP = loadExploitDb(http, limits, signal);
+  // Known-exploited catalogs besides CISA KEV (E and INFO chips); small, cached for hours.
+  const euKevP = loadEuKev(http, limits, signal);
+  const circlKevP = loadCirclKev(http, limits, signal);
+  const siberKapanP = loadSiberKapan(http, limits, signal);
   const pocP = openPoc(ctx, opts.pocDir, limits, signal);
   // OSV.dev advisories for packages.json; its own 5-minute budget, and never scored.
   const osvP = loadOsv({ http, cacheDir: ctx.cacheDir, offline: ctx.offline, log, limits, osvDir: opts.osvDir, signal });
@@ -103,7 +108,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   // Backtest refresh only: EPSS of the days before recent KEV listings, downloaded while the CVE List streams.
   const plan = opts.backtest;
   const epssAsOfP = plan ? kevP.then((kev) => loadEpssAsOf(http, kev.data, ctx.now, plan, limits, log, signal)) : Promise.resolve(null);
-  const pending = [kevP, epssP, metasploitP, nucleiP, nucleiDatesP, exploitDbP, pocP, pocReadP, epssPastP, wakeP, epssAsOfP, osvP];
+  const pending = [kevP, epssP, metasploitP, nucleiP, nucleiDatesP, exploitDbP, euKevP, circlKevP, siberKapanP, pocP, pocReadP, epssPastP, wakeP, epssAsOfP, osvP];
 
   let repo: CvelistRepo;
   let scan: CvelistScan;
@@ -128,13 +133,16 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   }
 
   const ids = new Set(scan.cves.map((c) => c.id));
-  const [kev, epss, metasploit, nuclei, nucleiDates, exploitDb, pocRead, wake, epssAsOf, osv] = await Promise.all([
+  const [kev, epss, metasploit, nuclei, nucleiDates, exploitDb, euKev, circlKev, siberKapan, pocRead, wake, epssAsOf, osv] = await Promise.all([
     kevP,
     epssP,
     metasploitP,
     nucleiP,
     nucleiDatesP,
     exploitDbP,
+    euKevP,
+    circlKevP,
+    siberKapanP,
     pocReadP,
     wakeP,
     epssAsOfP,
@@ -151,16 +159,18 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
     nuclei: restrict(nuclei.data, ids),
     nucleiAdded: restrict(nucleiDates.dates, ids),
     exploitdb: restrict(exploitDb.data?.byCve ?? null, ids),
+    // EU KEV dates are checked against the CISA catalog (sources/catalogs.ts).
+    catalogs: mergeCatalogs(ids, euKev.data ? euKevListings(euKev.data, kev.data) : null, circlKev.data, siberKapan.data),
     poc: restrict(pocRead.repos, ids),
   };
   const kevCatalog: KevCatalog = kev.data ?? { version: null, dateReleased: null, entries: new Map() };
-  const sources = [...cvelistStatuses(repo, scan), kev.status, epss.status, metasploit.status, nucleiStatus(nuclei.status, nucleiDates), exploitDb.status, pocRead.status, osv.status];
+  const sources = [...cvelistStatuses(repo, scan), kev.status, epss.status, metasploit.status, nucleiStatus(nuclei.status, nucleiDates), exploitDb.status, euKev.status, circlKev.status, siberKapan.status, pocRead.status, osv.status];
 
   const kevInWindow = scan.cves.filter((c) => c.inWindow && (kevCatalog.entries.has(c.id) || c.adpKev)).length;
   log.info(
     `ingest: ${scan.cves.length.toLocaleString('en-US')} records (${scan.windowPublished.toLocaleString('en-US')} in window, ` +
       `${kevInWindow} of them KEV) · EPSS ${epssTable.scores.size} · Metasploit ${exploits.metasploit.size} · ` +
-      `Nuclei ${exploits.nuclei.size} · Exploit-DB ${exploits.exploitdb.size} · PoC ${exploits.poc.size} · ${since(started)}`,
+      `Nuclei ${exploits.nuclei.size} · Exploit-DB ${exploits.exploitdb.size} · PoC ${exploits.poc.size} · other KEV catalogs ${exploits.catalogs?.size ?? 0} · ${since(started)}`,
   );
   for (const s of sources) {
     if (!s.ok || s.stale) log.warn(`ingest: source ${s.id} ${s.ok ? 'stale' : 'unavailable'}${s.error ? `: ${s.error}` : ''}`);

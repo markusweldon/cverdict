@@ -68,6 +68,39 @@ CC BY-NC 4.0 and its software files under an MIT (SEI)-style license, © Carnegi
 University. CERT Coordination Center® is registered in the U.S. Patent and Trademark Office by
 Carnegie Mellon University.
 
+## ENISA EU Known Exploited Vulnerabilities (EU KEV)
+
+- **Source:** the consolidated KEV dump of the [European Vulnerability Database](https://euvd.enisa.europa.eu/)
+  (`https://euvdservices.enisa.europa.eu/api/kev/dump`). Only its EU KEV rows are used; the CISA
+  rows come from CISA directly.
+- **We use and republish:** for each EU KEV entry, its CVE ID, a link to the EUVD record and, where
+  the dump gives it, the day it was listed, as the `eukev.listed` reason chip ("Listed in ENISA EU
+  KEV"). Nothing else from the entry is copied.
+- **Terms:** ENISA's [legal notice](https://www.enisa.europa.eu/about-enisa/legal-notice/legal-notice):
+  "Reproduction of ENISA material published on this website is authorized, provided the source is
+  acknowledged, unless it is stated otherwise." The source is named on every chip and on the Method
+  page. ENISA does not endorse CVErdict.
+
+## CIRCL known exploited catalog
+
+- **Source:** the catalog of [CIRCL](https://www.circl.lu/) (Computer Incident Response Center
+  Luxembourg) in [Vulnerability-Lookup](https://vulnerability.circl.lu/known-exploited-vulnerabilities-catalog/?catalog_uuid=1a89b78e-f703-45f3-bb86-59eb712668bd),
+  read through its public API (GCVE BCP-07 entries).
+- **We use and republish:** CVE IDs, the status (confirmed or suspected), the listing date and a link
+  to the Vulnerability-Lookup page, as the `circl.listed` and `circl.suspected` reason chips.
+- **License:** [CC0 1.0](https://spdx.org/licenses/CC0-1.0.html), as the catalog states. The chip still
+  says "Listed by CIRCL (CC0)". Vulnerability-Lookup itself is AGPL-3.0 software; no code of it is used.
+
+## SiberKapan honeypot catalog
+
+- **Source:** the [SiberKapan](https://siberkapan.org/kev-catalog) catalog of exploitation attempts
+  seen by honeypot and web server sensors in Turkey, read through CIRCL Vulnerability-Lookup.
+- **We use and republish:** CVE IDs, the status, the day the first attempt was seen and a link, as
+  the information-only `honeypot.siberkapan` chip (0 points).
+- **License:** [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), as the catalog states.
+  Attribution: "SiberKapan honeypots (CC BY 4.0)" on the chip, and SiberKapan on the Method page.
+  Changes: only the fields above are kept.
+
 ## EPSS (FIRST)
 
 - **Source:** daily EPSS scores from [epss.empiricalsecurity.com](https://epss.empiricalsecurity.com/)

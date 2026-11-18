@@ -9,6 +9,7 @@ import {
   dateAgo,
   daysAgo,
   edb,
+  listing,
   makeCve,
   makeKev,
   makeKevCatalog,
@@ -150,6 +151,67 @@ describe('E family (confirmed exploitation)', () => {
     expect(capped.score).toBe(100);
     expect(pointsOf(capped, 'kev.ransomware')).toBe(0);
     expect(byId(score(makeCve(), { kev: [makeKev(ID)] }), 'kev.ransomware')).toBeUndefined();
+  });
+});
+
+describe('other known-exploited catalogs', () => {
+  it('eukev.listed: an EU KEV listing alone puts the CVE in Exploited, attributed and dated', () => {
+    const s = score(makeCve(), { catalogs: { [ID]: [listing('eu-kev', '2026-10-20', { url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-1' })] } });
+    const eu = byId(s, 'eukev.listed')!;
+    expect(eu).toMatchObject({ label: 'Listed in ENISA EU KEV · added Oct 20', family: 'E', source: 'eu-kev', at: '2026-10-20', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-1' });
+    expect(s.exploited).toBe(true);
+    expect(s.tier).toBe('exploited');
+    expect(s.score).toBe(EXPLOITED_FLOOR);
+    expect(eu.points).toBe(EXPLOITED_FLOOR - s.raw);
+    expect(total(s)).toBe(s.score);
+    expect(s.kev).toBeNull();
+    expect(s.timeline.map((t) => t.event)).toContain('Added to ENISA EU KEV');
+  });
+
+  it('an undated EU KEV listing still counts, without a date in the label', () => {
+    const s = score(makeCve(), { catalogs: { [ID]: [listing('eu-kev', null)] } });
+    expect(byId(s, 'eukev.listed')).toMatchObject({ label: 'Listed in ENISA EU KEV' });
+    expect(byId(s, 'eukev.listed')!.at).toBeUndefined();
+    expect(s.tier).toBe('exploited');
+  });
+
+  it('with CISA KEV too, KEV carries the bonus and the EU chip is shown with 0', () => {
+    const s = score(makeCve(), { kev: [makeKev(ID)], catalogs: { [ID]: [listing('eu-kev', '2026-10-20')] } });
+    expect(ids(s).slice(0, 2)).toEqual(['kev.listed', 'eukev.listed']);
+    expect(pointsOf(s, 'eukev.listed')).toBe(0);
+    expect(total(s)).toBe(s.score);
+  });
+
+  it('circl.listed: a confirmed CIRCL listing is exploitation; a suspected one is information only', () => {
+    const confirmed = score(makeCve(), { catalogs: { [ID]: [listing('circl-kev', '2026-10-10')] } });
+    expect(byId(confirmed, 'circl.listed')).toMatchObject({ label: 'Listed by CIRCL (CC0) as exploited · added Oct 10', family: 'E', source: 'circl-kev' });
+    expect(confirmed.tier).toBe('exploited');
+    const suspected = score(makeCve(), { catalogs: { [ID]: [listing('circl-kev', '2026-06-25', { status: 'suspected' })] } });
+    expect(byId(suspected, 'circl.listed')).toBeUndefined();
+    expect(byId(suspected, 'circl.suspected')).toMatchObject({ label: 'CIRCL (CC0): exploitation suspected · Jun 25', family: 'INFO', points: 0 });
+    expect(suspected.tier).toBe(score(makeCve()).tier);
+    expect(suspected.score).toBe(score(makeCve()).score);
+  });
+
+  it('honeypot.siberkapan: attempts seen are information only, dated by the first one seen', () => {
+    const plain = score(makeCve());
+    const s = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', null, { seen: '2026-08-09' })] } });
+    expect(byId(s, 'honeypot.siberkapan')).toMatchObject({ label: 'SiberKapan honeypots (CC BY 4.0): attempts seen since Aug 9', points: 0, at: '2026-08-09', source: 'siberkapan' });
+    expect([s.score, s.tier, s.exploited]).toEqual([plain.score, plain.tier, false]);
+    const weak = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', null, { seen: null, status: 'suspected' })] } });
+    expect(byId(weak, 'honeypot.siberkapan')!.label).toBe('SiberKapan honeypots (CC BY 4.0): attempts seen, suspected');
+  });
+
+  it('ignores a listing dated after now (a frozen --now), and keeps an undated one', () => {
+    const s = score(makeCve(), { catalogs: { [ID]: [listing('eu-kev', '2026-10-27'), listing('circl-kev', '2026-10-26')] } });
+    expect(byId(s, 'eukev.listed')).toBeUndefined();
+    expect(byId(s, 'circl.listed')).toBeDefined();
+  });
+
+  it('a catalog that could not be loaded is unknown evidence, never absence', () => {
+    const s = score(makeCve(), { down: ['eu-kev'] });
+    expect(s.unknowns.join(' ')).toMatch(/eu-kev could not be loaded this run/);
+    expect(s.tier).toBe(score(makeCve()).tier);
   });
 });
 
