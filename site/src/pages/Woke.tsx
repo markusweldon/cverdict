@@ -164,9 +164,9 @@ export default function Woke() {
             ))
           )}
           <p class="fineprint">
-            A CVE counts when it was added to KEV, when its EPSS score rose threefold to 10% or more, or when its first public exploit evidence of any kind appeared, after it was already 30
+            A CVE counts when it was added to KEV, when ENISA EU KEV or CIRCL first listed it as exploited, when its EPSS score rose threefold to 10% or more, or when its first public exploit evidence of any kind appeared, after it was already 30
             days old. Exploit evidence is an Exploit-DB entry, a Metasploit module, a Nuclei template, or a PoC repo on GitHub that is at least 3 days old or has 2 stars (we do not check the
-            code). CVEs that were in KEV before the last {woke.data.days} days, or while they were still under 30 days old, are left out: they never fell asleep. The row age is the time since publication.
+            code). CVEs that were in KEV (or listed as exploited by EU KEV or CIRCL) before the last {woke.data.days} days, or while they were still under 30 days old, are left out: they never fell asleep. The row age is the time since publication.
           </p>
         </>
       )}

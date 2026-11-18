@@ -12,6 +12,9 @@
  *
  * Signals, each "first of its kind" for the CVE so a busy old CVE does not wake up every week:
  *   kev        CISA KEV dateAdded in the period (dated).
+ *   catalog    the CVE's first exploited listing in ENISA EU KEV or the CIRCL catalog (the E chips:
+ *              never SiberKapan, CIRCL suspected or attempts-only) is dated in the period. Undated
+ *              listings never count; a catalog that could not be loaded is reported as skipped.
  *   exploitdb  the CVE's first Exploit-DB entry was added in the period (date_added, dated).
  *   poc        the CVE's first vetted PoC repo was created in the period (created_at, dated;
  *              same vetting rule as scoring).
@@ -29,13 +32,14 @@
  *
  * Exploit artifacts (exploitdb, poc, metasploit, nuclei) only wake a CVE that had no public
  * exploit evidence of any kind before the period: no earlier Exploit-DB entry, PoC repo or KEV
- * listing, no Metasploit module with an earlier mod_time (unless that module is the CVE's first
+ * listing (CISA KEV, EU KEV or CIRCL), no Metasploit module with an earlier mod_time (unless that module is the CVE's first
  * and was first seen in the period: modules can land weeks after their last commit), and no
  * Metasploit module or Nuclei template the tracking knew without first seeing it in the period
  * (one in a baseline has no date, so it counts as older). A first PoC repo for a CVE with a
- * Metasploit module from 2015 is not news. KEV listings and EPSS jumps always count.
+ * Metasploit module from 2015 is not news. KEV and catalog listings and EPSS jumps always count.
  *
  * A CVE that was already in CISA KEV before the period never "wakes up": it was awake already.
+ * The same holds for a dated exploited listing in EU KEV or CIRCL before the period.
  * Evidence only counts when it arrived after the CVE had left the window (published more than
  * the window's length earlier), so nothing joins the feed merely by ageing out of the window.
  * Evidence from while it was still in the window counts as older evidence: a KEV listing then
@@ -54,7 +58,8 @@ import {
 import { toRow } from './rows';
 import { epssUrl, formatPercent, isVettedPoc, kevSearchUrl, pocIndexUrl } from './score';
 import type { StateSection } from './state';
-import type { EpssTable, ExploitDbData, ExploitIndex, KevCatalog, PocRepo, ScoredCve } from './types';
+import { firstExploitedListing } from './sources/catalogs';
+import type { CatalogListing, EpssTable, ExploitDbData, ExploitIndex, KevCatalog, PocRepo, ScoredCve } from './types';
 import { addDays, DAY_MS, normalizeIso, normalizeYmd, ymd } from './util/dates';
 import { asNumber, asObject, asString } from './util/json';
 import { normalizeCveId } from './util/text';
@@ -184,6 +189,11 @@ export interface WakeInput {
   /** The EPSS scores WAKE_DAYS before `epss.scoreDate`, or null with the reason. */
   epssPast: EpssTable | null;
   epssPastError: string | null;
+  /**
+   * The exploited-tier catalogs (EU KEV dated against CISA KEV, CIRCL); a null catalog could not be
+   * loaded this run. Omitted (tests only): the catalog kind is not checked.
+   */
+  catalogs?: Record<ExploitedCatalogId, ReadonlyMap<string, CatalogListing> | null>;
   /** The previous run's woke state (null: none, or not usable). */
   previous: WokeState | null;
   /** When the previous state was written. */
@@ -215,6 +225,28 @@ const signal = (kind: WakeKind, at: string, label: string, source: SourceId, url
   url,
 });
 
+export type ExploitedCatalogId = 'eu-kev' | 'circl-kev';
+const CATALOG_NAMES: Record<ExploitedCatalogId, string> = { 'eu-kev': 'ENISA EU KEV', 'circl-kev': 'the CIRCL catalog' };
+const catalogLabel = (l: CatalogListing) => (l.catalog === 'eu-kev' ? 'listed in ENISA EU KEV' : 'listed by CIRCL as exploited');
+
+/** Each CVE's earliest dated exploited listing across the catalogs that could be loaded. */
+export function firstCatalogListings(catalogs: WakeInput['catalogs'], asOf?: string): Map<string, CatalogListing & { added: string }> {
+  const lists = new Map<string, CatalogListing[]>();
+  for (const catalog of Object.values(catalogs ?? {})) {
+    for (const [id, l] of catalog ?? []) {
+      const list = lists.get(id);
+      if (list) list.push(l);
+      else lists.set(id, [l]);
+    }
+  }
+  const out = new Map<string, CatalogListing & { added: string }>();
+  for (const [id, list] of lists) {
+    const first = firstExploitedListing(list, asOf);
+    if (first) out.set(id, first);
+  }
+  return out;
+}
+
 /** Phase 1: every wake signal from the full source indexes, plus the next state. Pure. */
 export function detectWakes(input: WakeInput): WakeDetection {
   const { now } = input;
@@ -238,6 +270,20 @@ export function detectWakes(input: WakeInput): WakeDetection {
       if (inPeriodDay(k.dateAdded)) add(signals, k.cveID, signal('kev', k.dateAdded, 'added to CISA KEV', 'kev', kevSearchUrl(k.cveID)));
     }
   } else unavailable('kev', 'The CISA KEV catalog');
+
+  // EU KEV and CIRCL: the CVE's first dated exploited listing is in the period. When one catalog
+  // is down, the other still counts (its listing may then not be the CVE's first in both).
+  const firstListed = firstCatalogListings(input.catalogs, today);
+  if (input.catalogs) {
+    const down = (Object.keys(CATALOG_NAMES) as ExploitedCatalogId[]).filter((c) => !input.catalogs![c]);
+    if (down.length) {
+      const what = down.map((c) => CATALOG_NAMES[c]).join(' and ');
+      unavailable('catalog', what[0].toUpperCase() + what.slice(1));
+    }
+    if (down.length < 2) {
+      for (const [id, l] of firstListed) if (inPeriodDay(l.added)) add(signals, id, signal('catalog', l.added, catalogLabel(l), l.catalog, l.url));
+    }
+  }
 
   // Exploit-DB: the CVE's first entry was added within the period.
   if (input.exploitdb) {
@@ -365,6 +411,8 @@ export function detectWakes(input: WakeInput): WakeDetection {
     if (input.poc?.get(id)?.some((r) => !r.fork && Date.parse(r.created) < sinceMs)) return true;
     const k = input.kev?.entries.get(id);
     if (k && k.dateAdded < sinceDay) return true;
+    const listed = firstListed.get(id);
+    if (listed && listed.added < sinceDay) return true;
     // Known to the tracking and not first seen in the period: first seen before it, or in a
     // baseline (when tracking started or restarted). A baseline artifact has no date and may be
     // years old, so it counts as older evidence; a template from 2018 must not let a new PoC
@@ -412,14 +460,21 @@ export interface WokeOutput {
 
 /**
  * Phase 2: keep scored candidates published before `windowStart`, set their `woke` field
- * (mutates the ScoredCve, so call before building details) and build woke.json.
+ * (mutates the ScoredCve, so call before building details) and build woke.json. `catalogs` holds
+ * the ingested CVEs' listings in the other catalogs (ExploitIndex.catalogs).
  */
-export function buildWoke(scored: readonly ScoredCve[], wake: WakeDetection, now: Date, windowStart: Date): WokeOutput {
+export function buildWoke(
+  scored: readonly ScoredCve[],
+  wake: WakeDetection,
+  now: Date,
+  windowStart: Date,
+  catalogs?: ReadonlyMap<string, CatalogListing[]>,
+): WokeOutput {
   const sinceDay = ymd(new Date(now.getTime() - WAKE_DAYS * DAY_MS));
   const items: (WokeItem & { s: ScoredCve })[] = [];
   const counts = Object.fromEntries(WAKE_KINDS.map((k) => [k, 0])) as Record<WakeKind, number>;
   const windowMs = now.getTime() - windowStart.getTime();
-  for (const s of scored) {
+  scan: for (const s of scored) {
     const published = Date.parse(s.cve.published);
     if (s.cve.inWindow || published >= windowStart.getTime()) continue;
     // Only evidence that arrived once the CVE was already older than the window: a CVE that got a
@@ -430,10 +485,11 @@ export function buildWoke(scored: readonly ScoredCve[], wake: WakeDetection, now
     const leftAt = published + windowMs;
     const leftWindow = ymd(new Date(leftAt));
     const late = (x: WakeSignal) => (DATE_ONLY.test(x.at) ? x.at >= leftWindow : Date.parse(x.at) >= leftAt);
-    // Already in KEV before the period, or while it was still in the window: it was awake
-    // already, newer evidence is not news.
-    const listed = normalizeYmd(s.kev?.date_added ?? s.cve.adpKev?.dateAdded);
-    if (listed && (listed < sinceDay || listed < leftWindow)) continue;
+    // Already in KEV (or listed as exploited by EU KEV or CIRCL) before the period, or while it
+    // was still in the window: it was awake already, newer evidence is not news.
+    const kevListed = normalizeYmd(s.kev?.date_added ?? s.cve.adpKev?.dateAdded);
+    const catalogListed = firstExploitedListing(catalogs?.get(s.cve.id), ymd(now))?.added ?? null;
+    for (const listed of [kevListed, catalogListed]) if (listed && (listed < sinceDay || listed < leftWindow)) continue scan;
     // An exploit artifact from while it was still in the window is older evidence (detectWakes
     // only sees evidence from before the period): no later artifact is its first.
     const all = wake.signals.get(s.cve.id) ?? [];

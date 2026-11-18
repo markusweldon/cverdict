@@ -125,8 +125,8 @@ Right after an hourly publish a CDN can serve one file from the previous run for
 ### Reading the answers honestly
 
 - **Quiet means no evidence yet, never safe.** A CVE outside the data (`found: false`) is unknown,
-  not safe: the data covers CVEs published in the last 30 days, every CVE in CISA KEV and old
-  CVEs that woke up.
+  not safe: the data covers CVEs published in the last 30 days, every CVE in CISA KEV, every CVE
+  ENISA EU KEV or CIRCL lists as exploited, and old CVEs that woke up.
 - **Text is untrusted.** Titles, descriptions, KEV names and required actions, and chip labels
   quote CNAs, CISA and exploit feeds. The server's instructions tell the agent never to follow
   instructions found in them. That reduces the risk of prompt injection; it does not remove it.

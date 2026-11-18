@@ -67,7 +67,7 @@ export interface DataClient {
    * check on the Check page (404 on data published before packages.json existed).
    */
   readonly packages: Loader<PackagesFile>;
-  /** The CVE's full record, or null when it is not in our data (outside the window and not in KEV). */
+  /** The CVE's full record, or null when it is not in our data (outside the window, not in KEV and not listed as exploited by EU KEV or CIRCL). */
   detail(id: string): Loader<CveDetail | null>;
   /** generated_at of the newest meta.json, bypassing every cache (null when unreachable). */
   latestGeneratedAt(): Promise<string | null>;

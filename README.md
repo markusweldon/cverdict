@@ -54,7 +54,7 @@ The needles are still there. CVErdict shows you the few that matter today, and e
 
 ## What it does
 
-Every CVE published in the last 30 days, every CVE in KEV and every older CVE that woke up in the
+Every CVE published in the last 30 days, every CVE in KEV (CISA's, or listed as exploited by ENISA EU KEV or CIRCL) and every older CVE that woke up in the
 last 30 days gets a score from 0 to 100 and a tier:
 
 | Tier | What it means | What puts a CVE here |

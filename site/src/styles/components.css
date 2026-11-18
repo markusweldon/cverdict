@@ -2242,7 +2242,8 @@ a.wake__label:hover {
   color: var(--text);
 }
 
-.wake--kev .wake__at {
+.wake--kev .wake__at,
+.wake--catalog .wake__at {
   color: var(--ink-exploited);
 }
 

@@ -339,7 +339,7 @@ describe('woke Atom feed with hostile text', () => {
       published_before: daysAgo(30),
       tracking: { metasploit: null, nuclei: null, epss: null },
       skipped: [],
-      counts: { kev: 1, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 0, epss: 0 },
+      counts: { kev: 1, catalog: 0, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 0, epss: 0 },
       items: [
         {
           id: 'CVE-2019-0001',
@@ -530,7 +530,7 @@ describe('woke Atom feed selection', () => {
     published_before: daysAgo(30),
     tracking: { metasploit: null, nuclei: null, epss: null },
     skipped: [],
-    counts: { kev: 0, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 0, epss: 0 },
+    counts: { kev: 0, catalog: 0, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 0, epss: 0 },
     items,
   });
 
@@ -538,17 +538,24 @@ describe('woke Atom feed selection', () => {
     // 120 newer PoC-only wakes rated Likely next push nothing important out.
     const pocs = Array.from({ length: 120 }, (_, i) => item(`CVE-2019-${10000 + i}`, ['poc'], 'likely', 1));
     const quiet = [item('CVE-2018-0001', ['poc'], 'quiet', 1), item('CVE-2018-0002', ['poc'], 'watch', 1)];
-    const older = [item('CVE-2015-0001', ['kev'], 'exploited', 20), item('CVE-2015-0002', ['exploitdb'], 'watch', 25), item('CVE-2015-0003', ['metasploit'], 'quiet', 26)];
+    const older = [
+      item('CVE-2015-0001', ['kev'], 'exploited', 20),
+      item('CVE-2015-0002', ['exploitdb'], 'watch', 25),
+      item('CVE-2015-0003', ['metasploit'], 'quiet', 26),
+      item('CVE-2015-0004', ['catalog'], 'exploited', 27),
+    ];
     const items = wokeFeedItems(file([...quiet, ...pocs, ...older]));
     expect(items).toHaveLength(100);
     const ids = items.map((i) => i.id);
     expect(ids).toContain('CVE-2015-0001');
     expect(ids).toContain('CVE-2015-0002');
+    // An EU KEV or CIRCL listing is a priority wake like a CISA one.
+    expect(ids).toContain('CVE-2015-0004');
     expect(ids).not.toContain('CVE-2018-0001');
     expect(ids).not.toContain('CVE-2018-0002');
-    expect(ids).not.toContain('CVE-2015-0003'); // not a priority kind, and older than 98 PoC wakes
+    expect(ids).not.toContain('CVE-2015-0003'); // not a priority kind, and older than 97 PoC wakes
     // Still newest first.
-    expect(ids.slice(-2)).toEqual(['CVE-2015-0001', 'CVE-2015-0002']);
-    expect(wokeFeedItems(file([...older, ...quiet])).map((i) => i.id)).toEqual(['CVE-2015-0001', 'CVE-2015-0002', 'CVE-2015-0003']);
+    expect(ids.slice(-3)).toEqual(['CVE-2015-0001', 'CVE-2015-0002', 'CVE-2015-0004']);
+    expect(wokeFeedItems(file([...older, ...quiet])).map((i) => i.id)).toEqual(['CVE-2015-0001', 'CVE-2015-0002', 'CVE-2015-0003', 'CVE-2015-0004']);
   });
 });

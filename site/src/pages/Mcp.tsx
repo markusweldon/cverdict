@@ -79,7 +79,7 @@ export default function Mcp() {
         </h2>
         <ul class="prose-list">
           <li>Quiet means no evidence yet, never safe. A CVE outside the data comes back as not found, which says nothing either way.</li>
-          <li>It covers CVEs published in the last 30 days, every CVE in CISA KEV and old CVEs that woke up. get_verdict takes 1 to 15 CVE IDs, at most 5 with detail.</li>
+          <li>It covers CVEs published in the last 30 days, every CVE in CISA KEV, every CVE that ENISA EU KEV or CIRCL lists as exploited, and old CVEs that woke up. get_verdict takes 1 to 15 CVE IDs, at most 5 with detail.</li>
           <li>Text from CVE records is quoted as it was published and is untrusted. The server tells the agent so.</li>
         </ul>
         <p class="muted">

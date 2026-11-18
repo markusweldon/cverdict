@@ -22,19 +22,19 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/meta.json` | `Meta` | Run metadata, headline counts with definitions, source health | ~2 KB |
 | `v1/signal.json` | `RowTable` | Window CVEs with score ≥ 35, plus every exploited or weaponized one; score desc, then newest | ~55 KB |
 | `v1/index.json` | `RowTable` | Every CVE published in the window; newest first | ~720 KB |
-| `v1/cve/<xx>.json` | `CveShard` | Full detail for window CVEs, every KEV CVE and every CVE in `woke.json`; 256 shards | ~25–50 KB each |
+| `v1/cve/<xx>.json` | `CveShard` | Full detail for window CVEs, every KEV CVE, every CVE that ENISA EU KEV or CIRCL lists as exploited (the `eukev.listed` and `circl.listed` chips) and every CVE in `woke.json`; 256 shards | ~25–50 KB each |
 | `v1/batches.json` | `BatchesFile` | Batches (patch days and bulk releases) in the window; newest first | ~30 KB |
 | `v1/kev.json` | `KevFile` | KEV entries added in the last 30 days or due from 14 days ago on; newest first | ~4 KB |
 | `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
-| `v1/packages.json` | `PackagesFile` | Package versions affected by the CVEs that have a detail shard (window, KEV, woke up), from OSV.dev advisories, with each CVE's row | ~120 KB |
+| `v1/packages.json` | `PackagesFile` | Package versions affected by the CVEs that have a detail shard (window, KEV, EU KEV or CIRCL exploited, woke up), from OSV.dev advisories, with each CVE's row | ~120 KB |
 | `v1/state.json` | — | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
 | `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
-| `feeds/woke.xml` | Atom | Up to 100 CVEs from `woke.json`: every KEV and Exploit-DB wake first, PoC-only wakes only when Likely next or Exploited | ~10 KB |
+| `feeds/woke.xml` | Atom | Up to 100 CVEs from `woke.json`: every KEV, catalog and Exploit-DB wake first, PoC-only wakes only when Likely next or Exploited | ~10 KB |
 
 The **window** is the 30 days before `meta.generated_at` (`meta.window`). Sizes are from the
 2026-10-26 run (15,790 window CVEs); `index.json` grows with CVE volume, about 47 bytes gzip per
@@ -152,7 +152,11 @@ python3 -c 'import sys,functools as f;print("%02x"%(f.reduce(lambda h,c:((h^ord(
 ```
 
 Every shard file exists, even an empty one, so a lookup never 404s on a valid shard. A CVE that is
-not in the window, not in KEV and not in `woke.json` is not in any shard. The file is
+not in the window, not in KEV, not listed as exploited by ENISA EU KEV or CIRCL and not in
+`woke.json` is not in any shard. An old CVE that only EU KEV or CIRCL list (not CISA KEV) has
+`kev: null`: there is no CISA due date, so it is not on the KEV Clock, in `kev.json`, `kev.xml` or
+`kev-due.ics`. SiberKapan, CIRCL *suspected* and CIRCL attempts-only listings are information only
+and never put a CVE in the data. The file is
 `{ schema_version, generated_at, items: { "<CVE ID>": CveDetail } }`.
 
 `CveDetail`:
@@ -235,7 +239,9 @@ description, required_action`, plus `in_window` (the CVE was published in the wi
 `{ schema_version, generated_at, items: Change[] }`: escalations in the last 7 days, newest first,
 at most 500. An item is recorded when a CVE's tier rose, or a new exploitation or exploit chip
 appeared, between two hourly runs: `{ id, at, from, to, added }`. `from` is `null` for a CVE seen for
-the first time; `added` lists the chip ids that appeared.
+the first time; `added` lists the chip ids that appeared. CVEs outside the window are compared too
+when CISA added them to KEV in the last 7 days, or, for those not in CISA KEV, when EU KEV or CIRCL
+first listed them as exploited in the last 7 days (an arrival, `from: null`, reported once).
 
 ## `woke.json`
 
@@ -257,6 +263,7 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
 | `kind` | Fires when | `at` |
 |---|---|---|
 | `kev` | The CVE was added to CISA KEV | KEV `dateAdded` (YYYY-MM-DD) |
+| `catalog` | ENISA EU KEV or the CIRCL catalog first listed the CVE as exploited (the `eukev.listed` and `circl.listed` chips; never SiberKapan, CIRCL *suspected* or attempts-only). `source` is `eu-kev` or `circl-kev`. Undated listings never count; when one catalog cannot be loaded the other still counts and `skipped` names the missing one | the listing date (YYYY-MM-DD): EU KEV's own date, CIRCL's `asserted_at` |
 | `exploitdb` | The CVE's first Exploit-DB entry was added | Exploit-DB `date_added` (YYYY-MM-DD) |
 | `poc` | The CVE's first PoC repo on GitHub that is at least 3 days old or has 2 stars appeared (the rule of the `x.poc` chip; the code is not checked) | the repo's `created_at` |
 | `metasploit` | The CVE's first Metasploit module appeared | first seen: the run that first saw it |
@@ -275,22 +282,23 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
   cached copy loaded): what appeared meanwhile cannot be dated. A stale copy never dates anything
   and puts the kind in `skipped`.
 - The exploit kinds (`exploitdb`, `poc`, `metasploit`, `nuclei`) only wake a CVE that had no
-  public exploit evidence before the period: no earlier Exploit-DB entry, PoC repo or KEV listing,
+  public exploit evidence before the period: no earlier Exploit-DB entry, PoC repo, KEV listing or
+  exploited EU KEV or CIRCL listing,
   no Metasploit module with an earlier `mod_time`, and no Metasploit module or Nuclei template that
   the tracking knew without first seeing it in the period. A module or template that was already
   there when tracking started or restarted has no date, so it counts as older evidence. An old
   `mod_time` does not count when that module is the CVE's first and was first seen in the period:
   a module can land in Metasploit weeks after its last commit. A first PoC repo for a CVE with a
-  Metasploit module from 2015 is not a wake. `kev` and `epss` signals always count.
+  Metasploit module from 2015 is not a wake. `kev`, `catalog` and `epss` signals always count.
 - The EPSS check needs the EPSS file from 30 days before the current score date. When it cannot be
   loaded, or the two files come from different EPSS models (a new model moves many scores at once),
   the check is skipped and `skipped` says so. After a pause of more than 48 hours, jump tracking
   restarts from a baseline, so jumps from the pause are not all dated on the day it resumes.
 - Evidence only counts when it arrived after the CVE was already older than the window, so a CVE
   does not join the list by ageing out of the window. Signals with a time (`poc`, first-seen
-  kinds) are compared to the minute; date-only ones (`kev`, `exploitdb`, `epss`) by UTC day. A CVE
-  that was in KEV before the period, or while it was still in the window, is left out: it never
-  fell asleep. After an exploit artifact from while it was still in the window, no later artifact
+  kinds) are compared to the minute; date-only ones (`kev`, `catalog`, `exploitdb`, `epss`) by UTC day. A CVE
+  that was in CISA KEV, or listed as exploited by EU KEV or CIRCL, before the period, or while it
+  was still in the window, is left out: it never fell asleep. After an exploit artifact from while it was still in the window, no later artifact
   counts as its first.
 - `label` is our own plain text, written to read after "Woke up Oct 30:" (e.g. `added to CISA KEV`).
   `url` links the evidence where a stable link exists (KEV catalog search, Exploit-DB entry,
@@ -423,8 +431,8 @@ curl -s $BASE/receipts.json | jq -r '.backtest.items[] | select(.strict.cverdict
 ## `packages.json`
 
 Which package versions the CVEs in the data are known to affect, for checking an SBOM or a
-lockfile. It covers the CVEs that have a detail shard (the window, every KEV CVE and every CVE in
-`woke.json`) and eight ecosystems: npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist and NuGet.
+lockfile. It covers the CVEs that have a detail shard (the window, every KEV CVE, every CVE EU KEV
+or CIRCL lists as exploited and every CVE in `woke.json`) and eight ecosystems: npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist and NuGet.
 The data comes from [OSV.dev](https://osv.dev) (GitHub Advisory Database, PyPI Advisory Database,
 Go Vulnerability Database, RustSec, Drupal security advisories); only advisory IDs, package names
 and version ranges are kept. The site's Check Deps page matches a file against it in the browser.

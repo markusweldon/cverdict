@@ -36,7 +36,7 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
   [
     'Old CVEs drop out',
     <>
-      We score CVEs published in the last 30 days and every CVE in CISA KEV. An older CVE comes back only when it gains new exploitation evidence, and then it shows on <a href={href('woke')}>Woke Up</a>. Any other
+      We score CVEs published in the last 30 days, every CVE in CISA KEV and every CVE that ENISA EU KEV or CIRCL lists as exploited. An older CVE comes back only when it gains new exploitation evidence, and then it shows on <a href={href('woke')}>Woke Up</a>. Any other
       old CVE is not in this data.
     </>,
   ],

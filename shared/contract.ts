@@ -354,14 +354,15 @@ export interface ChangesFile {
 }
 
 /** Kind of new exploitation evidence that "woke up" an old CVE (see WokeFile). */
-export type WakeKind = 'kev' | 'exploitdb' | 'metasploit' | 'nuclei' | 'poc' | 'epss';
-export const WAKE_KINDS: readonly WakeKind[] = ['kev', 'exploitdb', 'metasploit', 'nuclei', 'poc', 'epss'];
+export type WakeKind = 'kev' | 'catalog' | 'exploitdb' | 'metasploit' | 'nuclei' | 'poc' | 'epss';
+/** `catalog`: a first exploited listing in ENISA EU KEV or the CIRCL catalog (the eukev/circl E chips). */
+export const WAKE_KINDS: readonly WakeKind[] = ['kev', 'catalog', 'exploitdb', 'metasploit', 'nuclei', 'poc', 'epss'];
 
 /** One piece of new evidence for an old CVE. */
 export interface WakeSignal {
   kind: WakeKind;
   /**
-   * When the evidence appeared. YYYY-MM-DD for KEV dateAdded, Exploit-DB date_added and the EPSS
+   * When the evidence appeared. YYYY-MM-DD for KEV dateAdded, a catalog's listing date, Exploit-DB date_added and the EPSS
    * score date; ISO 8601 date-time for a PoC repo's created_at and for first-seen times.
    */
   at: string;

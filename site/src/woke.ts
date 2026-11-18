@@ -5,6 +5,7 @@ import { DAY_MS, fmtDate, toMs } from './format';
 /** Short names for filter buttons and counts. */
 export const WAKE_KIND_LABEL: Readonly<Record<WakeKind, string>> = {
   kev: 'CISA KEV',
+  catalog: 'EU KEV or CIRCL',
   exploitdb: 'Exploit-DB',
   metasploit: 'Metasploit',
   nuclei: 'Nuclei',

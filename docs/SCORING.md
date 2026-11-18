@@ -230,12 +230,16 @@ before the KEV listing.
 2026-11-13T20:00Z`, catalogs as of Nov 18; listings dated later are ignored):
 
 - In the 30-day window (16,910 CVEs) one CVE gains a chip, CVE-2026-110936 (`eukev.listed`,
-  already in CISA KEV), and no CVE changes tier or score. Every EU-only and CIRCL-only CVE was
-  published before the window and is not in CISA KEV, so it is not in the data at all (see the
-  blind spots). Over all 18,862 CVEs with a detail record (window, KEV, woke up): `eukev.listed` 66,
+  already in CISA KEV), and no CVE changes tier or score. Over the 18,862 CVEs that had a detail
+  record before old catalog-only CVEs were kept (window, KEV, woke up): `eukev.listed` 66,
   `circl.listed` 20, `honeypot.siberkapan` 13, `circl.attempts` 3 (CVE-2014-8361, CVE-2021-35394,
   CVE-2023-28771), `circl.suspected` 2, all on CVEs CISA KEV also lists,
   so no tier changes.
+- Old CVEs that only EU KEV or CIRCL list as exploited are now kept like CISA KEV's (see
+  [Catalog-only CVEs outside the window](#catalog-only-cves-outside-the-window)): on the same
+  inputs, 19 more CVEs get a detail record (16 EU KEV, 3 CIRCL), all Exploited, none in CISA KEV.
+  Two of them woke up in the period (CVE-2015-0279, EU KEV Oct 25; CVE-2026-6692, CIRCL Nov 10).
+  No other CVE changes score or tier.
 - In the backtest, EU KEV listed 8 of the 130 recent KEV additions before CISA did, which CVErdict
   had missed: strict 48 → 56 of 130 (36.9% → 43.1%), with undated evidence 94 → 96 (EU entries
   the dump dates on the CISA day count in neither). Old CVEs are
@@ -494,6 +498,50 @@ listing (CISA often dates its listing update that way), and a CNA record changed
 loses its CVSS too. CVSS 7 or more catches more of these CVEs before KEV, at twenty times the alert volume.
 The forward log is the measurement that settles it.
 
+## Catalog-only CVEs outside the window
+
+Resolved blind spot: a CVE listed only in ENISA EU KEV or CIRCL's catalog (not in CISA KEV) used to
+be scored only while it was in the 30-day window or woke up, so an older one never showed. The
+pipeline now keeps every CVE with an exploited listing in those catalogs whatever its age, the same
+way it keeps every CISA KEV CVE: it gets a CVE page in the Exploited tier, and a first listing
+dated in the last 30 days, after the CVE left the window, is a Woke Up signal (`catalog`) and a "what changed" arrival
+when it is under 7 days old. Only the listings that set Exploited count: every EU KEV listing, and a
+CIRCL entry that is *confirmed* with evidence beyond attempts. SiberKapan, CIRCL *suspected* and
+CIRCL attempts-only listings stay information only and never pull a CVE in. These CVEs have no CISA
+due date, so they are not on the KEV Clock, in `kev.json`, `feeds/kev.xml` or `feeds/kev-due.ics`.
+A dated exploited listing before the period also counts as older evidence for Woke Up, like an
+earlier CISA KEV listing: such a CVE was awake already.
+
+Measured on the frozen inputs of Nov 13, 2026 (offline, `--now 2026-11-13T20:00Z`, catalogs as of
+Nov 18 without listings dated later): 19 CVEs are added, 18,862 → 18,881 detail records (16 by EU
+KEV, 3 by CIRCL). The 19 shards that gain one grow by 0.4 to 1.2 KB gzip each (largest shard
+unchanged at 54 KB of 80 KB), `woke.json` +0.3 KB (23 of 64 KB), `packages.json` +0.7 KB (118 of 256
+KB, 5 more CVEs), `feeds/woke.xml` +0.3 KB; the file count is unchanged at 271 of 300. Run time is
+unchanged within run-to-run noise (four runs each, 37.6 to 43.7 s before and 36.6 to 43.6 s after,
+as the pipeline reports it); the extra work is one set union and 19 more records to normalise.
+
+| CVE | Catalog | Listed | Vendor / product | Published |
+|---|---|---|---|---|
+| CVE-2011-4085 | EU KEV | 2025-07-14 | Red Hat JBoss Enterprise Application Platform | 2012-11-23 |
+| CVE-2015-0279 | EU KEV | 2026-10-25 (woke up) | Red Hat JBoss RichFaces | 2015-03-26 |
+| CVE-2015-7501 | EU KEV | 2025-07-14 | Red Hat JBoss (Apache Commons Collections) | 2017-11-09 |
+| CVE-2025-25231 | EU KEV | 2025-09-09 | Omnissa Workspace ONE UEM | 2025-08-11 |
+| CVE-2025-59719 | EU KEV | 2026-01-27 | Fortinet FortiWeb | 2025-12-09 |
+| CVE-2026-39813 | CIRCL | 2026-06-22 | Fortinet FortiSandbox | 2026-04-14 |
+| CVE-2026-40477 | EU KEV | 2026-10-10 | Thymeleaf | 2026-04-17 |
+| CVE-2026-40478 | EU KEV | 2026-10-10 | Thymeleaf | 2026-04-17 |
+| CVE-2026-41679 | EU KEV | 2026-08-17 | Paperclip (paperclipai) | 2026-04-23 |
+| CVE-2026-6692 | CIRCL | 2026-11-10 (woke up) | Slider Revolution (WordPress) | 2026-05-07 |
+| CVE-2026-41901 | EU KEV | 2026-10-10 | Thymeleaf | 2026-05-12 |
+| CVE-2026-49049 | EU KEV | 2026-07-10 | JoomShaper Helix3 (Joomla) | 2026-06-29 |
+| CVE-2026-19478 | CIRCL | 2026-08-21 | GitLab | 2026-08-17 |
+| CVE-2026-74232 | EU KEV | 2026-08-27 | Zbtlink routers (MQWrt) | 2026-08-27 |
+| CVE-2026-74233 | EU KEV | 2026-08-27 | Zbtlink routers (MQWrt) | 2026-08-27 |
+| CVE-2026-58400 | EU KEV | 2026-09-02 | GeoNetwork | 2026-09-03 |
+| CVE-2026-63219 | EU KEV | 2026-09-02 | GeoNetwork | 2026-09-03 |
+| CVE-2026-67276 | EU KEV | 2026-09-05 | MikroTik RouterOS | 2026-09-05 |
+| CVE-2026-85103 | EU KEV | 2026-09-25 | Check Point Quantum Security Gateway | 2026-09-09 |
+
 ## Known blind spots
 
 - **Vendor zero-days without artifacts.** Targeted exploitation of edge devices and enterprise
@@ -511,9 +559,6 @@ The forward log is the measurement that settles it.
   products inconsistently, so a prior can be missed (no bonus) or matched too broadly: the
   whole-word prefix fallback reads "Progress Planner" as Progress and "Linux Mint" as Linux, and an
   umbrella vendor's KEV history covers all of its products.
-- **Catalog-only CVEs outside the window.** A CVE listed only in ENISA EU KEV or CIRCL's catalog
-  (not in CISA KEV) is scored when it is in the 30-day window or woke up, but an older one is not
-  pulled into the data the way a CISA KEV listing is.
 - **Text heuristics are English.** The "in the wild" pattern and the noise patterns read the English
   description only.
 

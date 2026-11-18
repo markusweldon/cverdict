@@ -195,3 +195,39 @@ export function mergeCatalogs(ids: ReadonlySet<string>, ...catalogs: (ReadonlyMa
   }
   return out;
 }
+
+// ── Exploited listings (the E chips) ───────────────────────────────────────────────────────
+
+/**
+ * True when a listing sets the Exploited tier (an E chip, score.ts): every EU KEV listing, and a
+ * CIRCL entry that is confirmed with evidence beyond attempts. SiberKapan, CIRCL suspected and
+ * CIRCL attempts-only listings are information only and never count. With `asOf` (YYYY-MM-DD, a
+ * frozen --now), a listing dated after that day does not exist yet, as in scoring.
+ */
+export function isExploitedListing(l: CatalogListing, asOf?: string): boolean {
+  if (asOf !== undefined && l.added !== null && l.added > asOf) return false;
+  return l.catalog === 'eu-kev' || (l.catalog === 'circl-kev' && l.status === 'confirmed' && !l.attemptsOnly);
+}
+
+/**
+ * The CVE IDs that an exploited listing (isExploitedListing) puts in the data whatever their age,
+ * like the CISA KEV catalog's. Null catalogs (unavailable this run) add nothing.
+ */
+export function exploitedCatalogIds(catalogs: readonly (ReadonlyMap<string, CatalogListing> | null)[], asOf?: string): Set<string> {
+  const out = new Set<string>();
+  for (const catalog of catalogs) {
+    if (!catalog) continue;
+    for (const [id, listing] of catalog) if (isExploitedListing(listing, asOf)) out.add(id);
+  }
+  return out;
+}
+
+/** The earliest dated exploited listing among `listings` (none after `asOf`), or null when none is dated. */
+export function firstExploitedListing(listings: readonly CatalogListing[] | undefined, asOf?: string): (CatalogListing & { added: string }) | null {
+  let first: (CatalogListing & { added: string }) | null = null;
+  for (const l of listings ?? []) {
+    if (!isExploitedListing(l, asOf) || l.added === null) continue;
+    if (!first || l.added < first.added) first = l as CatalogListing & { added: string };
+  }
+  return first;
+}

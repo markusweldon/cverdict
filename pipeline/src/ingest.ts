@@ -1,10 +1,10 @@
 /**
  * Ingest stage: fetch every source (primary → fallback → cache, SPEC §2), stream the whole CVE
- * List once, and return normalised window ∪ KEV records with History counters, enrichment data
+ * List once, and return normalised window ∪ KEV ∪ exploited-catalog ∪ woke records with History counters, enrichment data
  * restricted to those records, and a SourceStatus per source.
  */
 import { SANITY, type SanityLimits } from './config';
-import { euKevListings, loadCirclKev, loadEuKev, loadSiberKapan, mergeCatalogs } from './sources/catalogs';
+import { euKevListings, exploitedCatalogIds, loadCirclKev, loadEuKev, loadSiberKapan, mergeCatalogs } from './sources/catalogs';
 import { cvelistStatuses, openCvelist, scanCvelist, type CvelistRepo, type CvelistScan } from './sources/cvelist';
 import { loadEpss, loadEpssOn } from './sources/epss';
 import { loadExploitDb } from './sources/exploitdb';
@@ -18,6 +18,7 @@ import { loadEpssAsOf, type BacktestInputs } from './backtest';
 import { EMPTY_STATE, readSection } from './state';
 import type { EpssTable, ExploitIndex, IngestOptions, IngestResult, KevCatalog, RunContext } from './types';
 import { HttpClient } from './util/http';
+import { ymd } from './util/dates';
 import { since } from './util/log';
 import { detectWakes, epssPastDates, failedWakeDetection, WOKE_SECTION, type WakeDetection } from './woke';
 
@@ -62,6 +63,13 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   const euKevP = loadEuKev(http, limits, signal);
   const circlKevP = loadCirclKev(http, limits, signal);
   const siberKapanP = loadSiberKapan(http, limits, signal);
+  // The listings of the catalogs that set the Exploited tier (EU KEV dated against CISA KEV, and
+  // CIRCL). Their CVEs are kept whatever their age, like CISA KEV's, and their dated listings are
+  // wake signals. SiberKapan is information only: its CVEs are never kept for it.
+  const exploitedCatalogsP = Promise.all([euKevP, circlKevP, kevP]).then(([eu, circl, kev]) => ({
+    'eu-kev': eu.data ? euKevListings(eu.data, kev.data) : null,
+    'circl-kev': circl.data,
+  }));
   const pocP = openPoc(ctx, opts.pocDir, limits, signal);
   // OSV.dev advisories for packages.json; its own 5-minute budget, and never scored.
   const osvP = loadOsv({ http, cacheDir: ctx.cacheDir, offline: ctx.offline, log, limits, osvDir: opts.osvDir, signal });
@@ -75,8 +83,8 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   // old CVEs that woke up are recognised in the pass (or looked up by path right after it).
   const previousState = opts.previousState ?? EMPTY_STATE;
   const previousWoke = readSection(previousState, WOKE_SECTION, log);
-  const wakeP: Promise<WakeDetection> = Promise.all([kevP, exploitDbP, metasploitP, nucleiP, pocReadP, epssP, epssPastP]).then(
-    ([kev, exploitDb, metasploit, nuclei, pocRead, epss, epssPast]) => {
+  const wakeP: Promise<WakeDetection> = Promise.all([kevP, exploitDbP, metasploitP, nucleiP, pocReadP, epssP, epssPastP, exploitedCatalogsP]).then(
+    ([kev, exploitDb, metasploit, nuclei, pocRead, epss, epssPast, catalogs]) => {
       const t0 = performance.now();
       const wake = detectWakes({
         now: ctx.now,
@@ -91,6 +99,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
         epss: epss.data,
         epssPast: epssPast.data,
         epssPastError: epssPast.error,
+        catalogs,
         previous: previousWoke,
         previousAt: previousState.generatedAt,
       });
@@ -119,7 +128,11 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
       windowStart: ctx.windowStart,
       now: ctx.now,
       kevIds: kevP.then((kev) => new Set(kev.data?.entries.keys())),
-      extraIds: wakeP.then((w) => new Set(w.signals.keys())),
+      // Old CVEs that woke up, and those listed as exploited by EU KEV or CIRCL (not SiberKapan,
+      // not CIRCL suspected or attempts-only).
+      extraIds: Promise.all([wakeP, exploitedCatalogsP]).then(
+        ([w, c]) => new Set([...w.signals.keys(), ...exploitedCatalogIds([c['eu-kev'], c['circl-kev']], ymd(ctx.now))]),
+      ),
       keepFrom: plan?.volumeFrom,
       minRecords: limits.cvelistRecords,
       log,
@@ -133,7 +146,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
   }
 
   const ids = new Set(scan.cves.map((c) => c.id));
-  const [kev, epss, metasploit, nuclei, nucleiDates, exploitDb, euKev, circlKev, siberKapan, pocRead, wake, epssAsOf, osv] = await Promise.all([
+  const [kev, epss, metasploit, nuclei, nucleiDates, exploitDb, euKev, circlKev, siberKapan, pocRead, wake, epssAsOf, osv, exploitedCatalogs] = await Promise.all([
     kevP,
     epssP,
     metasploitP,
@@ -147,6 +160,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
     wakeP,
     epssAsOfP,
     osvP,
+    exploitedCatalogsP,
   ]);
 
   const epssTable: EpssTable = {
@@ -160,7 +174,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
     nucleiAdded: restrict(nucleiDates.dates, ids),
     exploitdb: restrict(exploitDb.data?.byCve ?? null, ids),
     // EU KEV dates are checked against the CISA catalog (sources/catalogs.ts).
-    catalogs: mergeCatalogs(ids, euKev.data ? euKevListings(euKev.data, kev.data) : null, circlKev.data, siberKapan.data),
+    catalogs: mergeCatalogs(ids, exploitedCatalogs['eu-kev'], exploitedCatalogs['circl-kev'], siberKapan.data),
     poc: restrict(pocRead.repos, ids),
   };
   const kevCatalog: KevCatalog = kev.data ?? { version: null, dateReleased: null, entries: new Map() };

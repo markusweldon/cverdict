@@ -227,6 +227,56 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(b.history).toEqual(a.history);
   });
 
+  it('keeps old CVEs that only EU KEV or CIRCL list as exploited, never for SiberKapan, suspected or attempts-only listings', async () => {
+    const routes = upstream();
+    const eu = JSON.parse(fixtureFile('euvd-kev-sample.json').toString());
+    // EU KEV only, listed in the wake period: CVE-2015-1000000 (published 2016).
+    eu.push({ ...eu[2], cveId: 'CVE-2015-1000000', euvdId: 'EUVD-2016-0001', sources: ['eukev_kev'], dateAdded: '2026-10-10' });
+    const circl = JSON.parse(fixtureFile('circl-kev-sample.json').toString());
+    const entry = (vulnId: string, reason: string, asserted: string, evidence: unknown[]) => ({
+      ...circl.data[0],
+      uuid: `u-${vulnId}-${reason}`,
+      vulnerability: { vulnId, altId: [] },
+      status: { exploited: true, status_reason: reason },
+      timestamps: { asserted_at: asserted, first_seen_at: null },
+      evidence,
+    });
+    circl.data.push(
+      // Confirmed with evidence of success, listed months ago: kept, no wake signal.
+      entry('CVE-2026-45776', 'confirmed', '2026-03-01T00:00:00Z', [{ signal: 'successful_exploitation' }]),
+      // Confirmed but only attempts, or only suspected: information only, not kept.
+      entry('CVE-2026-100174', 'confirmed', '2026-10-20T00:00:00Z', [{ signal: 'in_the_wild_attempts' }]),
+      entry('CVE-2026-100174', 'suspected', '2026-10-21T00:00:00Z', []),
+    );
+    circl.metadata.count = circl.data.length;
+    const siber = JSON.parse(fixtureFile('siberkapan-sample.json').toString());
+    // SiberKapan is information only: its listing keeps nothing.
+    siber.data.push({ ...siber.data[0], uuid: 'u-siber', vulnerability: { vulnId: 'CVE-2026-100174', altId: [] } });
+    siber.metadata.count = siber.data.length;
+    const ok = (body: unknown) => () => new Response(JSON.stringify(body), { status: 200 });
+    routes[EU_KEV.urls[0]] = ok(eu);
+    routes[CIRCL_KEV.urls[0]] = ok(circl);
+    routes[SIBERKAPAN.urls[0]] = ok(siber);
+    const { ctx, http } = setup({ routes });
+    const result = await ingestWith(ctx, { cvelistDir: cvelistRepo().clone, pocDir: path.join(tempDir(), 'missing'), nucleiDir: nucleiRepo().clone }, { http, limits: LIMITS });
+
+    const outside = result.cves.filter((c) => !c.inWindow).map((c) => c.id).sort();
+    expect(outside).toEqual(['CVE-2015-1000000', 'CVE-2026-0257', 'CVE-2026-37106', 'CVE-2026-45776', 'CVE-2026-48172', 'CVE-2026-58644']);
+    expect(result.cves.some((c) => c.id === 'CVE-2026-100174')).toBe(false);
+    // Neither is in CISA KEV: there is no due date to show.
+    expect(result.kev.entries.has('CVE-2015-1000000')).toBe(false);
+    expect(result.kev.entries.has('CVE-2026-45776')).toBe(false);
+    expect(result.exploits.catalogs?.get('CVE-2015-1000000')).toEqual([
+      { catalog: 'eu-kev', added: '2026-10-10', status: 'confirmed', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2016-0001' },
+    ]);
+    // A dated listing in the period is a wake signal; the March CIRCL listing is not.
+    expect(result.wake.signals.get('CVE-2015-1000000')).toEqual([
+      { kind: 'catalog', at: '2026-10-10', first_seen: false, label: 'listed in ENISA EU KEV', source: 'eu-kev', url: 'https://euvd.enisa.europa.eu/vulnerability/EUVD-2016-0001' },
+    ]);
+    expect(result.wake.signals.has('CVE-2026-45776')).toBe(false);
+    expect(result.wake.signals.has('CVE-2026-100174')).toBe(false);
+  });
+
   it('runs offline from the cache written by a previous run, marking HTTP sources stale', async () => {
     const cvelist = cvelistRepo();
     const poc = pocRepo();

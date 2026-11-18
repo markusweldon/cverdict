@@ -270,7 +270,7 @@ export interface LogUpdate {
 }
 
 /**
- * Record this run. `scored` is every record this run scored and emits (window ∪ KEV ∪ woke): only
+ * Record this run. `scored` is every record this run scored and emits (window ∪ KEV ∪ exploited-catalog ∪ woke): only
  * window records are watched, the rest can only bring a KEV listing. Pure; `previous` is not mutated.
  */
 export function updateLog(previous: ReceiptsLog | null, scored: readonly ScoredCve[], kev: KevCatalog, now: Date): LogUpdate {

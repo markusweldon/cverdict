@@ -30,7 +30,7 @@ pipeline/
   src/
     cli.ts                 entry: parses flags, runs the pipeline, prints a summary
     run.ts                 orchestration (fetch → stream CVE list → enrich → score → emit → validate)
-    ingest.ts              fetch every source, stream the CVE list once, normalise window ∪ KEV ∪ woke records
+    ingest.ts              fetch every source, stream the CVE list once, normalise window ∪ KEV ∪ exploited-catalog ∪ woke records
     config.ts              URLs, timeouts, window size, budgets
     util/                  http.ts (fetch w/ timeout+retry+cache), git.ts (clone, ls-tree, cat-file --batch),
                            csv.ts (RFC 4180), text.ts (sanitise/truncate), dates.ts, log.ts, zip.ts (bounded ZIP64)
@@ -115,7 +115,12 @@ check passes. Honour `--offline`. The CA bundle is picked up from `NODE_EXTRA_CA
 Ingestion of CVE List: one streaming pass over all records (~415k, ~4.5 GB of JSON). For each record:
 - update history counters (by `cveMetadata.datePublished` month for PUBLISHED; `dateReserved` month for the
   reserved view; REJECTED counted by datePublished month when present, else dateUpdated); AI-credit month counter.
-- keep the record (normalised) if PUBLISHED and `datePublished` ∈ window, **or** the ID is in KEV.
+- keep the record (normalised) if PUBLISHED and `datePublished` ∈ window, **or** the ID is in CISA KEV, **or**
+  ENISA EU KEV or the CIRCL catalog list it as exploited (`isExploitedListing` in `sources/catalogs.ts`: every EU KEV
+  listing, CIRCL *confirmed* with evidence beyond attempts; never SiberKapan, CIRCL *suspected* or attempts-only;
+  with a frozen `--now`, not a listing dated after it), **or** it has a wake signal. IDs the pass could not
+  recognise in time are looked up by path after it. These CVEs get a detail shard; those not in CISA KEV have no due
+  date, so they stay off the KEV Clock, `kev.json` and its feeds.
 Memory: never hold raw JSON for more than the current record. Expect ~60–120 s.
 
 ### Normalisation (`NormalizedCve`, internal)
@@ -205,7 +210,8 @@ included, unknown-polarity chips excluded) for filtering.
   then today so far (published, passed = exploited+likely at default knob, exploited); `hourly` waterfall buckets across the window
   (`counts[h] = [exploited, likely, watch, quiet]`); `cnas` top 25 in window; `ai_credits` top 20 strings.
 - **Changes:** compare with `<previous>/v1/index.json` (if present): an item when the tier rose, or a new E/X chip
-  appeared. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500.
+  appeared. Rows outside the window join when CISA added them to KEV in the last 7 days (new if absent from the
+  previous `kev.json`), or, when not in CISA KEV, when EU KEV or CIRCL first listed them as exploited in the last 7 days. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500.
 
 ### Emit (all JSON minified, UTF-8; `schema_version`, `generated_at` on every file)
 
@@ -213,7 +219,7 @@ included, unknown-polarity chips excluded) for filtering.
 v1/meta.json        Meta (incl. sources[])
 v1/signal.json      RowTable: score ≥ SIGNAL_MIN_SCORE or exploited/weaponized, window only, sorted score desc then pub desc
 v1/index.json       RowTable: every published CVE in the window, sorted pub desc
-v1/cve/<xx>.json    CveShard for window CVEs ∪ KEV CVEs ∪ woke.json CVEs (256 shards via shardOf)
+v1/cve/<xx>.json    CveShard for window CVEs ∪ KEV CVEs ∪ EU KEV/CIRCL exploited CVEs ∪ woke.json CVEs (256 shards via shardOf)
 v1/batches.json     BatchesFile (newest first)
 v1/kev.json         KevFile
 v1/stats.json       StatsFile
@@ -225,7 +231,7 @@ v1/state.json       internal carry-forward state, read back through --previous (
 feeds/signal.xml    Atom: newest 100 exploited+likely CVEs (title "CVE-… · <vendor> <product> · <tier>", summary = top chips)
 feeds/kev.xml       Atom: KEV additions, last 30 days
 feeds/kev-due.ics   iCalendar: one all-day VEVENT per KEV due date in [today-7d, +60d] (UID stable per CVE)
-feeds/woke.xml      Atom: up to 100 woke-up CVEs (KEV and Exploit-DB wakes first, PoC-only wakes only when Likely next or Exploited), one entry per CVE
+feeds/woke.xml      Atom: up to 100 woke-up CVEs (KEV, catalog and Exploit-DB wakes first, PoC-only wakes only when Likely next or Exploited), one entry per CVE
 ```
 
 Budgets (gzip, checked by `validate.ts`; warn at 80%, fail at 150%): meta ≤ 8 KB, signal ≤ 120 KB, index ≤ 1 MB,

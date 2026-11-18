@@ -145,7 +145,7 @@ const woke: WokeFile = {
   published_before: new Date(Date.parse(GEN) - 30 * DAY).toISOString(),
   tracking: { metasploit: '2026-10-01T00:00:00.000Z', nuclei: null, epss: '2026-10-01T00:00:00.000Z' },
   skipped: [{ kind: 'nuclei', reason: 'not tracked yet' }],
-  counts: { kev: 1, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 2, epss: 0 },
+  counts: { kev: 1, catalog: 0, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 2, epss: 0 },
   items: [
     { id: 'CVE-2021-44228', at: day(-2), signals: [{ kind: 'kev', at: day(-2), first_seen: false, label: 'added to CISA KEV', source: 'kev', url: null }], row: row(CVE.old) },
     // 5 days 23 hours before GEN: inside the default 7-day period.

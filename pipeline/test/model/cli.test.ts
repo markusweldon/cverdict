@@ -104,7 +104,7 @@ describe('formatSummary', () => {
         },
         sources,
       },
-      woke: { days: 30, items: [{}, {}], counts: { kev: 2, exploitdb: 0, metasploit: 1, nuclei: 0, poc: 0, epss: 0 }, skipped: [{ kind: 'epss', reason: 'x' }] },
+      woke: { days: 30, items: [{}, {}], counts: { kev: 2, catalog: 0, exploitdb: 0, metasploit: 1, nuclei: 0, poc: 0, epss: 0 }, skipped: [{ kind: 'epss', reason: 'x' }] },
       receipts: {
         forward: { since: '2026-10-01T00:17:00.000Z', runs: 600, listed: 12, eligible: 5, methods: [{ method: 'cverdict', before: 3 }] },
         backtest: { computed_at: '2026-10-25T00:17:00.000Z', sets: [{ key: 'recent', n: 80, strict: [{ method: 'cverdict', before: 40 }] }] },
@@ -126,7 +126,7 @@ describe('formatSummary', () => {
   it('prints counts by tier, the pass rate and the top ids', () => {
     const text = formatSummary(makeSummary([{ id: 'epss', ok: true, stale: true, records: 300000, error: 'HTTP 403' }]));
     expect(text).toContain('Published in window: 16,000');
-    expect(text).toContain('Woke up (old CVEs, new evidence in 30 days): 2 · kev 2, exploitdb 0, metasploit 1, nuclei 0, poc 0, epss 0 · skipped: epss');
+    expect(text).toContain('Woke up (old CVEs, new evidence in 30 days): 2 · kev 2, catalog 0, exploitdb 0, metasploit 1, nuclei 0, poc 0, epss 0 · skipped: epss');
     expect(text).toContain('Receipts: log since 2026-10-01T00:17:00.000Z (600 runs) · 5 of 12 KEV additions counted, CVErdict first on 3 · backtest 2026-10-25: CVErdict 40 of 80 (strict)');
     expect(text).toMatch(/exploited\s+20\s+0\.1%/);
     expect(text).toContain('Pass rate (exploited + likely): 2.0%, 1 in 50');

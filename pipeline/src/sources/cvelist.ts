@@ -104,7 +104,10 @@ export interface ScanOptions {
    * KEV records it could not recognise in time are looked up by path after the tree listing.
    */
   kevIds: Promise<ReadonlySet<string>>;
-  /** More IDs to keep outside the window (old CVEs that woke up); recognised the same way as KEV IDs. */
+  /**
+   * More IDs to keep outside the window (old CVEs that woke up, and those EU KEV or CIRCL list as
+   * exploited); recognised the same way as KEV IDs.
+   */
   extraIds?: Promise<ReadonlySet<string>>;
   /** Also keep every record published from this instant (the backtest's alert volume), outside the window. */
   keepFrom?: Date;
@@ -133,7 +136,7 @@ const bump = (counter: Map<string, number>, key: string) => counter.set(key, (co
 
 /**
  * Stream every record once: update History counters for all of them and normalise the ones we
- * keep (window ∪ KEV). Throws when fewer than `minRecords` records could be read.
+ * keep (window ∪ KEV ∪ extra IDs). Throws when fewer than `minRecords` records could be read.
  */
 export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise<CvelistScan> {
   const { windowStart, now, log } = opts;

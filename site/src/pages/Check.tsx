@@ -214,13 +214,13 @@ function Coverage({ index, state, days }: { index: PackagesFile | undefined; sta
       </h2>
       {index ? (
         <p>
-          The index covers <strong>{fmtInt(index.cves.rows.length)}</strong> CVEs that name a package in {ECOSYSTEM_LIST}: CVEs published {window}, CVEs in CISA KEV, and older CVEs that woke up. It was built{' '}
+          The index covers <strong>{fmtInt(index.cves.rows.length)}</strong> CVEs that name a package in {ECOSYSTEM_LIST}: CVEs published {window}, CVEs in CISA KEV, CVEs that EU KEV or CIRCL list as exploited, and older CVEs that woke up. It was built{' '}
           {fmtDateTime(index.generated_at)}
           {index.distinct ? ` from ${fmtInt(index.distinct.advisories)} advisories that name a CVE, ${fmtInt(index.distinct.matched)} of which name a tracked CVE` : ''}.
         </p>
       ) : (
         <p>
-          The index covers the CVEs that name a package in {ECOSYSTEM_LIST}: CVEs published {window}, CVEs in CISA KEV, and older CVEs that woke up.{' '}
+          The index covers the CVEs that name a package in {ECOSYSTEM_LIST}: CVEs published {window}, CVEs in CISA KEV, CVEs that EU KEV or CIRCL list as exploited, and older CVEs that woke up.{' '}
           {state === 'loading' ? 'Loading its numbers.' : state === 'error' ? 'The index could not be loaded, so its numbers are not shown.' : 'Its numbers show once the index has loaded, when you start a check.'}
         </p>
       )}

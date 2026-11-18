@@ -212,8 +212,8 @@ export function kevFeed(kev: readonly KevEntry[], opts: FeedOptions): string {
 }
 
 type WokeItem = WokeFile['items'][number];
-/** CISA listings and Exploit-DB entries always make the feed, and come first when it is full. */
-const isPriorityWake = (it: WokeItem) => it.signals.some((s) => s.kind === 'kev' || s.kind === 'exploitdb');
+/** KEV and catalog listings and Exploit-DB entries always make the feed, and come first when it is full. */
+const isPriorityWake = (it: WokeItem) => it.signals.some((s) => s.kind === 'kev' || s.kind === 'catalog' || s.kind === 'exploitdb');
 /**
  * A wake that only comes from a PoC repo (unverified code, mostly unstarred) is in the feed only
  * when CVErdict rates the CVE Likely next or Exploited: otherwise it is noise for a subscriber.
@@ -224,8 +224,8 @@ export function inWokeFeed(it: WokeItem): boolean {
 }
 
 /**
- * Up to 100 old CVEs that woke up, newest wake first (from woke.json): every KEV and Exploit-DB
- * wake first, then the newest of the rest. PoC-only wakes need Likely next or Exploited.
+ * Up to 100 old CVEs that woke up, newest wake first (from woke.json): every KEV, catalog and
+ * Exploit-DB wake first, then the newest of the rest. PoC-only wakes need Likely next or Exploited.
  */
 export function wokeFeedItems(woke: WokeFile): WokeItem[] {
   const shown = woke.items.filter(inWokeFeed);

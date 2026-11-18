@@ -281,7 +281,7 @@ describe('buildWoke', () => {
     ];
     const out = buildWoke(scored, wake, NOW, new Date(NOW.getTime() - 30 * 86_400_000));
     expect(out.file.items.map((i) => i.id)).toEqual(['CVE-2019-0001', 'CVE-2019-0002']);
-    expect(out.file.counts).toEqual({ kev: 1, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 1, epss: 0 });
+    expect(out.file.counts).toEqual({ kev: 1, catalog: 0, exploitdb: 0, metasploit: 0, nuclei: 0, poc: 1, epss: 0 });
     expect(out.file.items[0].row).toMatchObject({ id: 'CVE-2019-0001', tier: 'exploited', k: 1 });
     expect(out.file.items[0].at).toBe(dateAgo(2));
     expect(scored[0].woke).toEqual({ at: dateAgo(2), signals: out.file.items[0].signals });

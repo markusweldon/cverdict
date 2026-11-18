@@ -90,7 +90,7 @@ export interface NormalizedCve {
   cnaUpdated: string | null;
   /** providerMetadata.dateUpdated of the CISA-ADP container, if there is one. */
   adpUpdated: string | null;
-  /** datePublished >= windowStart. (KEV CVEs outside the window are also ingested, with inWindow=false.) */
+  /** datePublished >= windowStart. (KEV CVEs, CVEs EU KEV or CIRCL list as exploited, and woke-up candidates outside the window are also ingested, with inWindow=false.) */
   inWindow: boolean;
 }
 

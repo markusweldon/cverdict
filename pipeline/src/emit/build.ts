@@ -31,7 +31,8 @@ import { buildKevPrior, scoreCve } from '../score';
 import { encodeLog, forwardReceipts, RECEIPTS_SECTION, updateLog } from '../receipts';
 import { serializeState, EMPTY_STATE, readSection, STATE_PATH, type LoadedState, type SectionWrite } from '../state';
 import { buildStats } from '../stats';
-import type { Enrichment, IngestResult, ScoredCve } from '../types';
+import { firstExploitedListing, isExploitedListing } from '../sources/catalogs';
+import type { CatalogListing, Enrichment, IngestResult, ScoredCve } from '../types';
 import { DAY_MS, monthKey, ymd } from '../util/dates';
 import { buildWoke, WOKE_SECTION } from '../woke';
 import { kevFeed, signalFeed, wokeFeed } from './atom';
@@ -57,6 +58,17 @@ export const INFO_ONLY_SOURCES: ReadonlySet<SourceId> = new Set<SourceId>(['sibe
 export function unavailableSources(sources: readonly SourceStatus[]): Map<SourceId, string> {
   return new Map(sources.filter((s) => !s.ok && !NON_SCORING_SOURCES.has(s.id) && !INFO_ONLY_SOURCES.has(s.id)).map((s) => [s.id, s.name]));
 }
+/**
+ * CVE IDs with an exploited listing (an E chip) in EU KEV or CIRCL. They are kept whatever their
+ * age, like CISA KEV's, so each has a CVE page; they have no CISA due date.
+ */
+export function exploitedElsewhere(catalogs: ReadonlyMap<string, CatalogListing[]> | undefined, now: Date): Set<string> {
+  const out = new Set<string>();
+  const day = ymd(now);
+  for (const [id, list] of catalogs ?? []) if (list.some((l) => isExploitedListing(l, day))) out.add(id);
+  return out;
+}
+
 const byNewest = (a: ScoredCve, b: ScoredCve) => b.cve.published.localeCompare(a.cve.published) || a.cve.id.localeCompare(b.cve.id);
 const inSignal = (s: ScoredCve) => s.score >= SIGNAL_MIN_SCORE || s.exploited || s.weaponized;
 
@@ -190,10 +202,13 @@ export function buildOutput({
   const enr: Enrichment = { kev: ing.kev, epss: ing.epss, exploits: ing.exploits, prior: buildKevPrior(ing.kev), unavailable };
   // A frozen --now may predate records in the clone: those do not exist yet from our point of view.
   const all = ing.cves.filter((c) => Date.parse(c.published) <= now.getTime()).map((c) => scoreCve(c, enr, { now, knob }));
-  const woke = buildWoke(all, ing.wake, now, windowStart);
+  const woke = buildWoke(all, ing.wake, now, windowStart, ing.exploits.catalogs);
   // Wake candidates that did not qualify (published in the window, or kept for nothing else) are
-  // dropped here, so the shards hold window ∪ KEV ∪ woke records.
-  const scored = all.filter((s) => s.cve.inWindow || s.cve.adpKev !== null || ing.kev.entries.has(s.cve.id) || woke.ids.has(s.cve.id));
+  // dropped here, so the shards hold window ∪ KEV ∪ exploited-catalog ∪ woke records.
+  const listedElsewhere = exploitedElsewhere(ing.exploits.catalogs, now);
+  const scored = all.filter(
+    (s) => s.cve.inWindow || s.cve.adpKev !== null || ing.kev.entries.has(s.cve.id) || listedElsewhere.has(s.cve.id) || woke.ids.has(s.cve.id),
+  );
   const window = scored.filter((s) => s.cve.inWindow);
   const batches = assignBatches(scored);
 
@@ -205,10 +220,19 @@ export function buildOutput({
   const kev = buildKevFile(ing.kev, byId, now);
   const meta = buildMeta({ ingest: ing, window, batches, now, windowStart, windowDays, knob });
   const stats = buildStats({ history: ing.history, kev: ing.kev, window, windowStart, now });
-  const recentKevElsewhere = scored
-    .filter((s) => !s.cve.inWindow && s.kev && s.kev.date_added >= daysAgo(now, CHANGES_RETENTION_DAYS))
+  const recentDay = daysAgo(now, CHANGES_RETENTION_DAYS);
+  const recentKevElsewhere = scored.filter((s) => !s.cve.inWindow && s.kev && s.kev.date_added >= recentDay).map(toRow);
+  // Outside the window and not in CISA KEV, first listed as exploited by EU KEV or CIRCL lately.
+  // No previous file lists them, so their listing date tells a new arrival.
+  const recentCatalogElsewhere = scored
+    .filter((s) => !s.cve.inWindow && !s.kev && !s.cve.adpKev && (firstExploitedListing(ing.exploits.catalogs?.get(s.cve.id), ymd(now))?.added ?? '') >= recentDay)
     .map(toRow);
-  const changes = buildChanges([...indexRows, ...recentKevElsewhere], previous, now);
+  const changes = buildChanges(
+    [...indexRows, ...recentKevElsewhere, ...recentCatalogElsewhere],
+    previous,
+    now,
+    new Set(recentCatalogElsewhere.map((r) => r.id)),
+  );
 
   const files = serializeData({
     meta,

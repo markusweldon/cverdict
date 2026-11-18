@@ -26,6 +26,7 @@ import {
   chip,
 } from '../../shared/model';
 import { NUCLEI } from './config';
+import { isExploitedListing } from './sources/catalogs';
 import type { NucleiAdded } from './sources/nuclei-history';
 import type { CatalogListing, Enrichment, KevCatalog, KevPrior, KevPriorEntry, KevRaw, NormalizedCve, PocRepo, ScoredCve } from './types';
 import { DAY_MS, addDays, daysBetween, parseIsoDate, ymd } from './util/dates';
@@ -447,7 +448,7 @@ function exploitationCandidates(f: Facts): Reason[] {
     out.push(reason('eukev.listed', `Listed in ENISA EU KEV${eu.added ? ` · added ${dayLabel(eu.added, now)}` : ''}`, { url: eu.url, at: eu.added ?? undefined }));
   }
   // Only a confirmed entry backed by more than attempts (BCP-07: attempts do not imply success).
-  const circl = f.catalogs.find((l) => l.catalog === 'circl-kev' && l.status === 'confirmed' && !l.attemptsOnly);
+  const circl = f.catalogs.find((l) => l.catalog === 'circl-kev' && isExploitedListing(l));
   if (circl) {
     out.push(reason('circl.listed', `Listed by CIRCL (CC0) as exploited${circl.added ? ` · added ${dayLabel(circl.added, now)}` : ''}`, { url: circl.url, at: circl.added ?? undefined }));
   }

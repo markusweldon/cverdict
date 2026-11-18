@@ -4,7 +4,8 @@
  * An item is recorded when a CVE's tier rose, or a new E (exploitation) or X (exploit) chip
  * appeared. Rows missing from the previous index count as new arrivals only when they reach
  * exploited/likely and are genuinely new: published after the previous index's oldest row, or
- * (outside the window) KEV-listed but absent from the previous kev.json.
+ * (outside the window) KEV-listed but absent from the previous kev.json, or first listed as exploited
+ * by EU KEV or CIRCL within CHANGES_RETENTION_DAYS (the caller passes those as `freshElsewhere`).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -88,10 +89,13 @@ function diff(prev: Row | undefined, cur: Row, at: string): Change | null {
 
 /**
  * @param current rows to compare: the window index plus KEV-listed rows outside the window
- *   that were added to KEV within the last CHANGES_RETENTION_DAYS.
+ *   that were added to KEV within the last CHANGES_RETENTION_DAYS, and rows outside the window
+ *   that only EU KEV or CIRCL list, first listed as exploited within those days.
  * @param previousRoot previous output root (v1/index.json, v1/kev.json, v1/changes.json), if any.
+ * @param freshElsewhere ids of those catalog-only rows: no previous file lists them, so a recent
+ *   listing date is what makes them new. A row already reported stays one item (merged below).
  */
-export function buildChanges(current: Row[], previousRoot: string | null, now: Date): ChangesFile {
+export function buildChanges(current: Row[], previousRoot: string | null, now: Date, freshElsewhere: ReadonlySet<string> = new Set()): ChangesFile {
   const at = now.toISOString();
   const prevRows = previousRoot ? previousRows(previousRoot) : null;
   const merged = new Map<string, Change>();
@@ -102,8 +106,8 @@ export function buildChanges(current: Row[], previousRoot: string | null, now: D
     const prevKev = previousKevIds(previousRoot);
     let oldestPrev = Infinity;
     for (const r of prevRows.values()) oldestPrev = Math.min(oldestPrev, Date.parse(r.pub));
-    /** A row the previous index could not contain: new only if it is a fresh KEV listing. */
-    const knownBefore = (r: Row) => Date.parse(r.pub) <= oldestPrev && !(r.k && prevKev && !prevKev.has(r.id));
+    /** A row the previous index could not contain: new only if it is a fresh KEV or catalog listing. */
+    const knownBefore = (r: Row) => Date.parse(r.pub) <= oldestPrev && !(r.k && prevKev && !prevKev.has(r.id)) && !freshElsewhere.has(r.id);
 
     for (const cur of current) {
       const prev = prevRows.get(cur.id);
