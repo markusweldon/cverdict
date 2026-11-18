@@ -12,7 +12,7 @@ import { fmtDate, fmtDateTime, fmtInt, plural } from '../format';
 import { useData, useKnobUrl, useListController, useNow, useTitle } from '../hooks';
 import { cveHref, navigate, setQuery, useLocation } from '../router';
 import { knob, useStore } from '../state';
-import { byKind, byWeek, isWakeKind, listing, mostUrgent, trackingNote, WAKE_KIND_LABEL } from '../woke';
+import { byKind, byWeek, isWakeKind, listing, mostUrgent, trackingNote, WAKE_KIND_LABEL, wakeCount } from '../woke';
 
 function Notes({ woke }: { woke: WokeFile }) {
   const t = trackingNote(woke.tracking);
@@ -122,11 +122,14 @@ export default function Woke() {
               <button type="button" class="seg__btn" aria-pressed={kind === null ? 'true' : 'false'} onClick={() => setQuery({ kind: null })}>
                 All <span class="seg__count">{fmtInt(woke.data.items.length)}</span>
               </button>
-              {WAKE_KINDS.map((k) => (
-                <button key={k} type="button" class="seg__btn" aria-pressed={kind === k ? 'true' : 'false'} disabled={woke.data.counts[k] === 0 && kind !== k} onClick={() => setQuery({ kind: kind === k ? null : k })}>
-                  {WAKE_KIND_LABEL[k]} <span class="seg__count">{fmtInt(woke.data.counts[k])}</span>
-                </button>
-              ))}
+              {WAKE_KINDS.map((k) => {
+                const n = wakeCount(woke.data.counts, k);
+                return (
+                  <button key={k} type="button" class="seg__btn" aria-pressed={kind === k ? 'true' : 'false'} disabled={n === 0 && kind !== k} onClick={() => setQuery({ kind: kind === k ? null : k })}>
+                    {WAKE_KIND_LABEL[k]} <span class="seg__count">{fmtInt(n)}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
           <Notes woke={woke.data} />

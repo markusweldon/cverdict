@@ -27,6 +27,15 @@ export function isWakeKind(v: string | null): v is WakeKind {
   return v !== null && (WAKE_KINDS as readonly string[]).includes(v);
 }
 
+/**
+ * The count for one filter button. A woke.json written before a kind existed (the site deployed
+ * ahead of the next data publish, or a rolled-back data branch) has no entry for it: that is zero.
+ */
+export function wakeCount(counts: Partial<Record<WakeKind, number>>, kind: WakeKind): number {
+  const n = counts[kind];
+  return typeof n === 'number' && Number.isFinite(n) ? n : 0;
+}
+
 /** Items with a signal of `kind` (all items when null). */
 export function byKind(items: readonly WokeItem[], kind: WakeKind | null): WokeItem[] {
   return kind ? items.filter((i) => i.signals.some((s) => s.kind === kind)) : [...items];

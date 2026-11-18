@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Row, WakeSignal, WokeItem } from '../../shared/contract';
-import { byKind, byWeek, firstSeenTip, isWakeKind, listing, mostUrgent, trackingNote, wakeSentence, weekOf, wokeWithin } from './woke';
+import { byKind, byWeek, firstSeenTip, isWakeKind, listing, mostUrgent, trackingNote, wakeCount, wakeSentence, weekOf, wokeWithin } from './woke';
 
 const row = (id: string, o: Partial<Row> = {}): Row => ({
   id, pub: '2021-03-01T00:00:00Z', cna: 'acme', v: 'Acme', p: 'Widget', t: 't', s: 40, tier: 'watch',
@@ -14,6 +14,13 @@ const b = item('CVE-2021-0002', [sig('metasploit', '2026-11-02T10:00:00Z', 'firs
 const c = item('CVE-2021-0003', [sig('poc', '2026-10-06T00:00:00Z', 'first PoC repo on GitHub (unverified)')]);
 
 describe('woke helpers', () => {
+  it('reads a missing count as zero (woke.json written before the catalog kind existed)', () => {
+    const old = { kev: 2, exploitdb: 1, metasploit: 0, nuclei: 0, poc: 3, epss: 0 } as Partial<Record<WakeSignal['kind'], number>>;
+    expect(wakeCount(old, 'catalog')).toBe(0);
+    expect(wakeCount(old, 'kev')).toBe(2);
+    expect(wakeCount({ ...old, catalog: 4 }, 'catalog')).toBe(4);
+  });
+
   it('writes the CVE page sentence', () => {
     expect(wakeSentence(a, 2026)).toBe('Woke up Oct 12: first PoC repo on GitHub (unverified). Oct 30: added to CISA KEV.');
     expect(wakeSentence(b, 2026)).toBe('Woke up Nov 2: first Metasploit module.');

@@ -36,7 +36,8 @@
  * and was first seen in the period: modules can land weeks after their last commit), and no
  * Metasploit module or Nuclei template the tracking knew without first seeing it in the period
  * (one in a baseline has no date, so it counts as older). A first PoC repo for a CVE with a
- * Metasploit module from 2015 is not news. KEV and catalog listings and EPSS jumps always count.
+ * Metasploit module from 2015 is not news. KEV and catalog listings and EPSS jumps always count,
+ * unless the CVE was already listed as exploited (CISA KEV, EU KEV or CIRCL) before the period.
  *
  * A CVE that was already in CISA KEV before the period never "wakes up": it was awake already.
  * The same holds for a dated exploited listing in EU KEV or CIRCL before the period.
