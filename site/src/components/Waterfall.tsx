@@ -14,7 +14,7 @@ import { binDay, binRange, binsOf, dayStart, dayTotal, hoursPerBin, placeLabels,
 import type { HourCounts } from '../filters';
 import { fmtDate, fmtInt, HOUR_MS, DAY_MS, plural } from '../format';
 import { prefersReducedMotion } from '../hooks';
-import { mixColor, parseColor, PULSE_FRAME_MS, PULSE_GLOW, PULSE_GLOW_ALPHA, pulseLevel, pulseRegions, type Rect, type Rgb, type Tick } from '../pulse';
+import { haloSpots, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulseRegions, type Rect, type Rgb, type Rgba, type Spot, type Tick } from '../pulse';
 import { navigate } from '../router';
 import { theme, useStore } from '../state';
 import { TIER_META } from '../tiers';
@@ -68,6 +68,7 @@ function readColors(el: Element) {
     label: v('--muted'),
     cross: v('--faint-ui'),
     pulse: v('--wf-pulse'),
+    halo: v('--wf-pulse-halo'),
     mono: v('--font-mono') || 'monospace',
   };
 }
@@ -79,15 +80,19 @@ interface Frame {
   dpr: number;
   ticks: Tick[];
   regions: Rect[];
+  spots: Spot[];
   barW: number;
   from: Rgb;
   to: Rgb;
+  /** Halo colour and its opacity at the peak. */
+  halo: Rgba;
   cross: { x: number; y: number; h: number; color: string } | null;
 }
 
 /**
  * Repaint only the regions around the exploited ticks: the cached static pixels first, then (above
- * the trough) the ticks again in a brighter red with a soft glow, then the crosshair if any.
+ * the trough) a soft halo slid in behind everything already drawn, so no neighbouring tick changes
+ * colour, then the exploited ticks again in the peak red, then the crosshair if any.
  * Level 0 leaves exactly the static chart.
  */
 function paintPulse(cv: HTMLCanvasElement, f: Frame, level: number) {
@@ -110,12 +115,21 @@ function paintPulse(cv: HTMLCanvasElement, f: Frame, level: number) {
   for (const r of f.regions) ctx.rect(r.x, r.y, r.w, r.h);
   ctx.clip();
   if (level > 0) {
-    const c = mixColor(f.from, f.to, level);
-    ctx.fillStyle = c;
-    ctx.shadowColor = `rgb(${f.to[0]} ${f.to[1]} ${f.to[2]} / ${(PULSE_GLOW_ALPHA * level).toFixed(3)})`;
-    ctx.shadowBlur = PULSE_GLOW;
+    const [r, g, b, a] = f.halo;
+    const rgba = (k: number) => `rgba(${r}, ${g}, ${b}, ${(a * level * k).toFixed(3)})`;
+    // Behind the existing pixels: the halo only shows through where the chart is empty or faint.
+    ctx.globalCompositeOperation = 'destination-over';
+    for (const s of f.spots) {
+      const grad = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r);
+      grad.addColorStop(0, rgba(1));
+      grad.addColorStop(0.4, rgba(0.6));
+      grad.addColorStop(1, rgba(0));
+      ctx.fillStyle = grad;
+      ctx.fillRect(s.cx - s.r, s.cy - s.r, s.r * 2, s.r * 2);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = mixColor(f.from, f.to, level);
     for (const t of f.ticks) ctx.fillRect(t.x, t.y, f.barW, SEG);
-    ctx.shadowBlur = 0;
   }
   if (f.cross) {
     ctx.fillStyle = f.cross.color;
@@ -303,13 +317,14 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     const hot = lit.filter((t) => t.tier === 'exploited');
     const from = parseColor(col.exploited);
     const to = parseColor(col.pulse);
-    if (progress >= 1 && hot.length > 0 && from && to) {
+    const halo = parseRgba(col.halo);
+    if (progress >= 1 && hot.length > 0 && from && to && halo) {
       const prev = frame.current?.cache;
       const cache = prev ?? document.createElement('canvas');
       cache.width = cv.width;
       cache.height = cv.height;
       cache.getContext('2d')?.drawImage(cv, 0, 0);
-      frame.current = { cache, dpr, ticks: hot, regions: pulseRegions(hot, barW, SEG, width, height, dpr), barW, from, to, cross };
+      frame.current = { cache, dpr, ticks: hot, regions: pulseRegions(hot, barW, SEG, width, height, dpr), spots: haloSpots(hot, barW, SEG), barW, from, to, halo, cross };
     } else frame.current = null;
 
     if (cross) {

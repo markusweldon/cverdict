@@ -1,19 +1,19 @@
 /**
- * The exploited-tick pulse on the signal waterfall: the red ticks slowly brighten toward a hotter
- * red and back, all in phase, like one calm heartbeat. Pure helpers live here so they can be tested
- * without a canvas; Waterfall.tsx owns the timer and the drawing.
+ * The exploited-tick pulse on the signal waterfall: a soft red halo slowly swells behind each
+ * exploited column and fades again, while the ticks themselves shift toward a stronger red, all in
+ * phase, like one calm breath. The ticks are only about 2x2 px, so the halo carries the visible
+ * change. Pure helpers live here so they can be tested without a canvas; Waterfall.tsx owns the
+ * timer and the drawing.
  */
 
 /** One full breath (trough to peak and back), in ms. */
 export const PULSE_PERIOD_MS = 2800;
 /** Time between pulse frames: about 20 fps, which is plenty for a change this slow. */
 export const PULSE_FRAME_MS = 50;
-/** Glow radius at the peak, in CSS px. The static chart already has a 7px glow under it. */
-export const PULSE_GLOW = 9;
-/** Glow opacity at the peak. */
-export const PULSE_GLOW_ALPHA = 0.55;
-/** Room kept around each tick for its glow, so a repaint never cuts a glow off mid-fade. */
-export const PULSE_PAD = PULSE_GLOW + 4;
+/** Halo radius around a column's exploited ticks, in CSS px (so about 20px across for one tick). */
+export const HALO_R = 9;
+/** Room kept around each column for its halo, so a repaint never cuts a halo off mid-fade. */
+export const PULSE_PAD = HALO_R + 2;
 
 /**
  * Pulse level for a time since the pulse started: 0 at the trough (the static colour), 1 at the
@@ -31,13 +31,30 @@ export type Rgb = readonly [number, number, number];
 
 /** Parse #rgb, #rrggbb or rgb()/rgba() (as a canvas normalises colours) into 0-255 channels. */
 export function parseColor(c: string): Rgb | null {
+  const v = parseRgba(c);
+  return v ? [v[0], v[1], v[2]] : null;
+}
+
+export type Rgba = readonly [number, number, number, number];
+
+/** Like parseColor, but keeps the alpha (0..1; 1 when the colour has none). */
+export function parseRgba(c: string): Rgba | null {
   const s = c.trim();
   let m = /^#([0-9a-f]{3})$/i.exec(s);
-  if (m) return [0, 1, 2].map((i) => parseInt(m![1][i] + m![1][i], 16)) as unknown as Rgb;
+  if (m) {
+    const h = m[1];
+    return [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16), 1];
+  }
   m = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(s);
-  if (m) return [0, 2, 4].map((i) => parseInt(m![1].slice(i, i + 2), 16)) as unknown as Rgb;
-  m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(s);
-  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (m) {
+    const h = m[1];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16), m[2] ? parseInt(m[2], 16) / 255 : 1];
+  }
+  m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:\s*[,/]\s*([\d.]+)(%?))?/i.exec(s);
+  if (m) {
+    const a = m[4] === undefined ? 1 : Number(m[4]) / (m[5] ? 100 : 1);
+    return [Number(m[1]), Number(m[2]), Number(m[3]), Math.min(1, Math.max(0, a))];
+  }
   return null;
 }
 
@@ -53,6 +70,30 @@ export interface Tick {
   y: number;
 }
 
+export interface Spot {
+  cx: number;
+  cy: number;
+  r: number;
+}
+
+/**
+ * One halo per column: centred on the column's stack of exploited ticks and reaching `radius`
+ * past its ends, so a taller stack gets a taller halo. Sorted left to right. CSS px.
+ */
+export function haloSpots(ticks: readonly Tick[], barW: number, segH: number, radius = HALO_R): Spot[] {
+  const cols = new Map<number, { top: number; bottom: number }>();
+  for (const t of ticks) {
+    const c = cols.get(t.x);
+    if (c) {
+      c.top = Math.min(c.top, t.y);
+      c.bottom = Math.max(c.bottom, t.y + segH);
+    } else cols.set(t.x, { top: t.y, bottom: t.y + segH });
+  }
+  return [...cols.entries()]
+    .map(([x, c]) => ({ cx: x + barW / 2, cy: (c.top + c.bottom) / 2, r: radius + (c.bottom - c.top) / 2 }))
+    .sort((a, b) => a.cx - b.cx);
+}
+
 export interface Rect {
   x: number;
   y: number;
@@ -62,7 +103,7 @@ export interface Rect {
 
 /**
  * The rects to repaint for a set of exploited ticks: one per column (a column's exploited ticks
- * are stacked together at its top), padded for the glow, snapped outward to whole device pixels
+ * are stacked together at its top), padded for the halo, snapped outward to whole device pixels
  * and clamped to the canvas. All values are in CSS px.
  */
 export function pulseRegions(ticks: readonly Tick[], barW: number, segH: number, width: number, height: number, dpr = 1, pad = PULSE_PAD): Rect[] {

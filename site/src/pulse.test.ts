@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mixColor, parseColor, PULSE_PAD, PULSE_PERIOD_MS, pulseLevel, pulseRegions } from './pulse';
+import { HALO_R, haloSpots, mixColor, parseColor, parseRgba, PULSE_PAD, PULSE_PERIOD_MS, pulseLevel, pulseRegions } from './pulse';
 
 describe('pulseLevel', () => {
   it('is 0 at the trough, so a paused chart is the static one', () => {
@@ -50,11 +50,49 @@ describe('colours', () => {
     expect(parseColor('oklch(0.6 0.2 30)')).toBeNull();
   });
 
+  it('keeps the alpha for the halo token', () => {
+    expect(parseRgba('rgb(255 77 79 / 0.6)')).toEqual([255, 77, 79, 0.6]);
+    expect(parseRgba('rgba(217, 45, 32, 0.42)')).toEqual([217, 45, 32, 0.42]);
+    expect(parseRgba('rgb(1 2 3 / 50%)')).toEqual([1, 2, 3, 0.5]);
+    expect(parseRgba('#ff4d4f')).toEqual([255, 77, 79, 1]);
+    expect(parseRgba('#ff000080')?.[3]).toBeCloseTo(128 / 255, 9);
+    expect(parseRgba('rgb(1 2 3 / 3)')?.[3]).toBe(1);
+    expect(parseRgba('nope')).toBeNull();
+  });
+
   it('mixes from the static colour at 0 to the peak colour at 1', () => {
     expect(mixColor([255, 77, 79], [255, 160, 146], 0)).toBe('rgb(255, 77, 79)');
     expect(mixColor([255, 77, 79], [255, 160, 146], 1)).toBe('rgb(255, 160, 146)');
     expect(mixColor([0, 0, 0], [200, 100, 50], 0.5)).toBe('rgb(100, 50, 25)');
     expect(mixColor([0, 0, 0], [200, 100, 50], 2)).toBe('rgb(200, 100, 50)');
+  });
+});
+
+describe('haloSpots', () => {
+  it('centres one halo per column on its exploited stack', () => {
+    const spots = haloSpots(
+      [
+        { x: 40, y: 50 },
+        { x: 40, y: 44 },
+        { x: 10, y: 100 },
+      ],
+      3,
+      2,
+    );
+    expect(spots).toEqual([
+      { cx: 11.5, cy: 101, r: HALO_R + 1 },
+      { cx: 41.5, cy: 48, r: HALO_R + 4 },
+    ]);
+  });
+
+  it('covers far more than the tick itself, and fits inside the repaint pad', () => {
+    const [s] = haloSpots([{ x: 0, y: 0 }], 2, 2);
+    expect(2 * s.r).toBeGreaterThanOrEqual(16);
+    expect(PULSE_PAD).toBeGreaterThanOrEqual(HALO_R);
+  });
+
+  it('is empty without exploited ticks', () => {
+    expect(haloSpots([], 3, 2)).toEqual([]);
   });
 });
 
