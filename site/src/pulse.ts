@@ -156,8 +156,11 @@ export function freshSegs(segs: number, exploited: number, fresh: number): numbe
   return Math.max(1, Math.min(segs - 1, Math.round((segs * fresh) / exploited)));
 }
 
-/** The legend entry for newly exploited CVEs, e.g. "New in 72h: 3"; null (no entry) when none qualify. */
-export function newLegend(fresh: readonly number[]): string | null {
-  const n = fresh.reduce((a, b) => a + b, 0);
-  return n > 0 ? `New in 72h: ${fmtInt(n)}` : null;
+/**
+ * The legend entry for newly exploited CVEs, e.g. "New in 72h: 3". It is always shown, 0 included,
+ * so the legend keeps its size when the data arrives; null `fresh` (still loading) reads "…".
+ */
+export function newLegend(fresh: readonly number[] | null): string {
+  if (!fresh) return 'New in 72h: …';
+  return `New in 72h: ${fmtInt(fresh.reduce((a, b) => a + b, 0))}`;
 }

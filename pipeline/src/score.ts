@@ -58,6 +58,8 @@ const KERNEL_CNA = 'linux';
  * flat cnaExploitMaturity list is unambiguous.
  */
 const VENDOR_EXPLOITED = ['A'];
+/** True when the CNA's own record says the CVE is exploited (v4 E:A, or an in-the-wild flag). */
+export const vendorSaysExploited = (cve: NormalizedCve): boolean => cve.vendorInTheWild || cve.cnaExploitMaturity.some((e) => VENDOR_EXPLOITED.includes(e));
 const VENDOR_FUNCTIONAL = ['F', 'H'];
 const VENDOR_POC = 'P';
 /** Sources the X family reads; if one is unavailable, "no exploit" cannot be concluded. */

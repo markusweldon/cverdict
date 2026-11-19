@@ -410,7 +410,8 @@ export default function Today() {
   const hourly = useMemo(() => (stats.status === 'ready' && rows.length > 0 ? hourlyAt(stats.data.hourly, rows, level, complete) : []), [stats, rows, level, complete]);
   const fresh = useMemo(() => (stats.status === 'ready' ? newExploitedAt(stats.data.hourly, hourly) : []), [stats, hourly]);
   const freshTotal = fresh.reduce((a, n) => a + n, 0);
-  const freshLegend = hourly.length > 0 ? newLegend(fresh) : null;
+  // Always in the legend (0 included), so its size does not change when the data arrives.
+  const freshLegend = newLegend(hourly.length > 0 ? fresh : null);
   const annotations = useMemo(() => (stats.status === 'ready' && batches.status === 'ready' ? annotationsFor(batches.data.batches, stats.data.hourly) : []), [stats, batches]);
   const batchMembers = useMemo(() => groupByBatch(rows), [rows]);
 
@@ -483,8 +484,8 @@ export default function Today() {
                     <span class={`wf__key wf__key--${t}`} />
                     {TIER_META[t].label}
                   </li>
-                  {t === 'exploited' && freshLegend && (
-                    <li class="legend__item legend__item--new">
+                  {t === 'exploited' && stats.status !== 'error' && (
+                    <li class={`legend__item legend__item--new${freshTotal > 0 ? '' : ' is-none'}`}>
                       <span class="wf__key wf__key--new" />
                       {freshLegend}
                     </li>

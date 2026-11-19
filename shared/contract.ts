@@ -330,9 +330,9 @@ export interface StatsFile {
   daily: { date: string; published: number; passed: number; exploited: number }[];
   /**
    * Hour buckets across the window for the waterfall: counts[h] = [exploited, likely, watch, quiet] for hour h after `start`.
-   * `new_exploited` lists [h, n] for the hours (by publication) holding n Exploited CVEs first listed as exploited (CISA KEV,
-   * ENISA EU KEV or CIRCL) in the NEW_EXPLOITED_HOURS before `generated_at`, oldest hour first, only hours with n > 0. Older
-   * files leave it out: read that as none.
+   * `new_exploited` lists [h, n] for the hours (by publication) holding n Exploited CVEs whose first exploited signal (a
+   * CISA KEV, ENISA EU KEV or CIRCL listing, SSVC active, or the CNA's flag) is in the NEW_EXPLOITED_HOURS before
+   * `generated_at`, oldest hour first, only hours with n > 0. Older files leave it out: read that as none.
    */
   hourly: { start: string; hours: number; counts: [number, number, number, number][]; new_exploited?: [hour: number, count: number][] };
   /** Top CNAs in the window. */
@@ -712,7 +712,7 @@ export const KNOB_MIN = 30;
 export const KNOB_MAX = 80;
 /** signal.json contains every row with score >= this, plus all exploited/weaponized rows. */
 export const SIGNAL_MIN_SCORE = 35;
-/** How far back from generated_at a first exploited listing counts as new (stats.json hourly.new_exploited). */
+/** How far back from generated_at a first exploited signal counts as new (stats.json hourly.new_exploited). */
 export const NEW_EXPLOITED_HOURS = 72;
 
 export function rowFromColumns(cols: readonly string[], values: unknown[]): Row {

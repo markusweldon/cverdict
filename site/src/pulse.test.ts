@@ -181,10 +181,11 @@ describe('only newly exploited ticks pulse', () => {
 });
 
 describe('newLegend', () => {
-  it('names the count, and is hidden at zero', () => {
+  it('names the count, 0 included, and a placeholder while loading', () => {
     expect(newLegend([0, 2, 0, 1])).toBe('New in 72h: 3');
-    expect(newLegend([0, 0])).toBeNull();
-    expect(newLegend([])).toBeNull();
+    expect(newLegend([0, 0])).toBe('New in 72h: 0');
+    expect(newLegend([])).toBe('New in 72h: 0');
+    expect(newLegend(null)).toBe('New in 72h: …');
     expect(newLegend([1200])).toBe('New in 72h: 1,200');
   });
 });

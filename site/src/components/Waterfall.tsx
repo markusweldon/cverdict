@@ -51,7 +51,7 @@ interface Props {
 }
 
 /** Tooltip and screen reader label for the newly exploited count of a column. */
-export const NEW_LABEL = 'Exploited in the last 72h';
+export const NEW_LABEL = 'Newly exploited in 72h';
 
 const PITCH = 3;
 const SEG = 2;

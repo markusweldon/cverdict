@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION } from '../../../shared/contract';
 import { buildStats, dayRange, isNewlyExploited, monthRange } from '../../src/stats';
 import type { History } from '../../src/types';
-import { NOW, daysAgo, listing, makeCve, makeKev, makeKevCatalog, msf, score } from '../fixtures/model/builders';
+import { NOW, daysAgo, listing, makeCve, makeKev, makeKevCatalog, msf, score, ssvc } from '../fixtures/model/builders';
 import type { CatalogListing } from '../../src/types';
 
 const DAY_MS = 86_400_000;
@@ -128,13 +128,35 @@ describe('newly exploited (hourly.new_exploited)', () => {
   it('EU KEV and confirmed CIRCL listings count; CIRCL suspected or attempts-only and SiberKapan do not', () => {
     expect(isNewlyExploited(listed(listing('eu-kev', '2026-10-25')), [listing('eu-kev', '2026-10-25')], NOW)).toBe(true);
     expect(isNewlyExploited(listed(listing('circl-kev', '2026-10-25')), [listing('circl-kev', '2026-10-25')], NOW)).toBe(true);
-    // Exploited through the vendor, so the tier is set; the catalog entries alone would not set it.
-    const itw = score(cve({ vendorInTheWild: true }));
+    // Exploited through the vendor two days ago, so new; an older entry that does not set the tier does not block it.
+    const itw = score(cve({ published: '2026-10-24T10:00:00Z', vendorInTheWild: true }));
     expect(itw.tier).toBe('exploited');
-    expect(isNewlyExploited(itw, undefined, NOW)).toBe(false);
-    for (const l of [listing('circl-kev', '2026-10-25', { status: 'suspected' }), listing('circl-kev', '2026-10-25', { attemptsOnly: true }), listing('siberkapan', '2026-10-25')]) {
-      expect(isNewlyExploited(itw, [l], NOW)).toBe(false);
+    expect(isNewlyExploited(itw, undefined, NOW)).toBe(true);
+    for (const l of [listing('circl-kev', '2026-10-01', { status: 'suspected' }), listing('circl-kev', '2026-10-01', { attemptsOnly: true }), listing('siberkapan', '2026-10-01')]) {
+      expect(isNewlyExploited(itw, [l], NOW)).toBe(true);
     }
+  });
+
+  it('SSVC exploitation active counts from its timestamp, and an earlier one blocks a new KEV listing', () => {
+    const active = (at: string | null) => score(cve({ ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: at } }));
+    expect(active('2026-10-25T08:00:00Z').tier).toBe('exploited');
+    expect(isNewlyExploited(active('2026-10-25T08:00:00Z'), undefined, NOW)).toBe(true);
+    expect(isNewlyExploited(active('2026-10-23T19:00:00Z'), undefined, NOW)).toBe(false);
+    // Undated, it could be older.
+    expect(isNewlyExploited(active(null), undefined, NOW)).toBe(false);
+    // Shown as Exploited through SSVC since Oct 20: a KEV listing on Oct 25 is not new exploitation.
+    const both = score(cve({ ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: '2026-10-20T12:00:00Z' } }), { kev: [makeKev(ID, { dateAdded: '2026-10-25' })] });
+    expect(isNewlyExploited(both, undefined, NOW)).toBe(false);
+    // An SSVC timestamp after the frozen now does not exist yet.
+    expect(isNewlyExploited(active('2026-10-27T00:00:00Z'), undefined, NOW)).toBe(false);
+  });
+
+  it('a CNA exploited flag counts from publication', () => {
+    expect(isNewlyExploited(score(cve({ published: '2026-10-25T00:00:00Z', cnaExploitMaturity: ['A'] })), undefined, NOW)).toBe(true);
+    expect(isNewlyExploited(score(cve({ cnaExploitMaturity: ['A'] })), undefined, NOW)).toBe(false);
+    // Flagged at publication on Oct 20, then listed by KEV on Oct 25: Exploited since Oct 20.
+    const flagged = score(cve({ vendorInTheWild: true }), { kev: [makeKev(ID, { dateAdded: '2026-10-25' })] });
+    expect(isNewlyExploited(flagged, undefined, NOW)).toBe(false);
   });
 
   it('takes the first exploited listing: an old one rules out a new one', () => {

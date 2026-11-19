@@ -995,7 +995,7 @@ a.chip:hover {
   background: var(--wf-watch);
 }
 
-/* Exploited in the last 72h: breathes like the chart's new ticks (same period), still when motion
+/* Newly exploited in 72h: breathes like the chart's new ticks (same period), still when motion
    is off. Only the opacity of an overlay animates, so the compositor does the work. */
 .wf__key--new {
   position: relative;
@@ -1018,6 +1018,16 @@ a.chip:hover {
   50% {
     opacity: 1;
   }
+}
+
+/* None new (or still loading): a dim, still swatch. */
+.legend__item--new.is-none .wf__key--new {
+  opacity: 0.4;
+  box-shadow: none;
+}
+
+.legend__item--new.is-none .wf__key--new::after {
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

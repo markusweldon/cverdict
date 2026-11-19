@@ -2,7 +2,7 @@
  * Aggregates for the surge page and the signal waterfall (StatsFile).
  */
 import { NEW_EXPLOITED_HOURS, SCHEMA_VERSION, TIERS, type StatsFile, type Tier } from '../../shared/contract';
-import { utcDay } from './score';
+import { utcDay, vendorSaysExploited } from './score';
 import { isExploitedListing } from './sources/catalogs';
 import type { CatalogListing, History, KevCatalog, ScoredCve } from './types';
 import { DAY_MS, monthKey, normalizeYmd, ymd } from './util/dates';
@@ -82,32 +82,42 @@ function daily(window: ScoredCve[], windowStart: Date, now: Date): StatsFile['da
 }
 
 /**
- * True when an Exploited CVE got its first exploited listing (CISA KEV, ENISA EU KEV, or a CIRCL
- * entry that sets the tier) within NEW_EXPLOITED_HOURS of `now`. Listings carry a day only, so a
- * day counts from its start (00:00 UTC): it qualifies when that start is at or after now - 72h and
- * the day is not after today. That never calls a listing new when it may be older than 72 hours.
- * A listing whose day is unknown (and not bounded by another listing) could be older, so it rules
- * the CVE out. Other E chips (SSVC, vendor flags) are not listings and neither count nor block.
+ * True when an Exploited CVE got its first exploited signal within NEW_EXPLOITED_HOURS of `now`.
+ * The signals are the ones that set the tier: a CISA KEV, ENISA EU KEV or CIRCL listing, CISA SSVC
+ * "exploitation active", and the CNA's own exploited flag. The first one decides, so a CVE already
+ * Exploited through SSVC does not turn new when KEV lists it later.
+ * - Listings carry a day only, so a day counts from its start (00:00 UTC). That never calls a
+ *   listing new when it may be older than 72 hours.
+ * - SSVC counts from its timestamp; the CNA flag from the CVE's publication, the earliest it can be.
+ * - A signal with no date could be older, so it rules the CVE out (an EU KEV row known not to
+ *   predate the CISA day is bounded by that day instead).
+ * - Signals dated after `now` do not exist yet. The boundary (now - 72h) is inclusive.
  */
 export function isNewlyExploited(s: ScoredCve, listings: readonly CatalogListing[] | undefined, now: Date): boolean {
   if (s.tier !== 'exploited') return false;
   const today = ymd(now);
-  const days: string[] = [];
+  const times: number[] = [];
+  const day = (d: string) => Date.parse(`${d}T00:00:00Z`);
   if (s.kev || s.cve.adpKev) {
     const kevDay = normalizeYmd(s.kev?.date_added ?? s.cve.adpKev?.dateAdded);
     if (!kevDay) return false;
-    days.push(kevDay);
+    times.push(day(kevDay));
   }
   for (const l of listings ?? []) {
     if (!isExploitedListing(l, today)) continue;
-    if (l.added) days.push(l.added);
+    if (l.added) times.push(day(l.added));
     // Undated but known not to predate another listing (EU KEV after the CISA day): that listing decides.
     else if (!l.notBefore) return false;
   }
-  const past = days.filter((d) => d <= today);
+  if (s.cve.ssvc?.exploitation === 'active') {
+    const at = s.cve.ssvc.timestamp ? Date.parse(s.cve.ssvc.timestamp) : NaN;
+    if (Number.isNaN(at)) return false;
+    times.push(at);
+  }
+  if (vendorSaysExploited(s.cve)) times.push(Date.parse(s.cve.published));
+  const past = times.filter((t) => !Number.isNaN(t) && t <= now.getTime());
   if (past.length === 0) return false;
-  const first = past.reduce((a, b) => (b < a ? b : a));
-  return Date.parse(`${first}T00:00:00Z`) >= now.getTime() - NEW_EXPLOITED_HOURS * HOUR_MS;
+  return Math.min(...past) >= now.getTime() - NEW_EXPLOITED_HOURS * HOUR_MS;
 }
 
 function hourly(window: ScoredCve[], windowStart: Date, now: Date, catalogs?: StatsInput['catalogs']): StatsFile['hourly'] {
