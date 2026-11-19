@@ -24,6 +24,8 @@
   --wf-quiet: #2f343b;
   --wf-watch: #6b5f3a;
   --wf-hover: rgb(255 255 255 / 0.045);
+  /* Peak of the exploited-tick pulse: a hotter, lighter red the ticks breathe toward. */
+  --wf-pulse: #ffa092;
   --knob-hi: #2b3038;
   --knob-lo: #111317;
   --glass: rgb(10 11 13 / 0.78);
@@ -87,6 +89,7 @@
   --wf-quiet: #d5d8dd;
   --wf-watch: #e3cf94;
   --wf-hover: rgb(0 0 0 / 0.04);
+  --wf-pulse: #ff6a42;
   --knob-hi: #ffffff;
   --knob-lo: #e9e9e5;
   --glass: rgb(250 250 249 / 0.82);
@@ -121,6 +124,7 @@
     --wf-quiet: #d5d8dd;
     --wf-watch: #e3cf94;
     --wf-hover: rgb(0 0 0 / 0.04);
+    --wf-pulse: #ff6a42;
     --knob-hi: #ffffff;
     --knob-lo: #e9e9e5;
     --glass: rgb(250 250 249 / 0.82);

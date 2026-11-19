@@ -14,6 +14,7 @@ import { binDay, binRange, binsOf, dayStart, dayTotal, hoursPerBin, placeLabels,
 import type { HourCounts } from '../filters';
 import { fmtDate, fmtInt, HOUR_MS, DAY_MS, plural } from '../format';
 import { prefersReducedMotion } from '../hooks';
+import { mixColor, parseColor, PULSE_FRAME_MS, PULSE_GLOW, PULSE_GLOW_ALPHA, pulseLevel, pulseRegions, type Rect, type Rgb, type Tick } from '../pulse';
 import { navigate } from '../router';
 import { theme, useStore } from '../state';
 import { TIER_META } from '../tiers';
@@ -66,9 +67,64 @@ function readColors(el: Element) {
     axis: v('--border'),
     label: v('--muted'),
     cross: v('--faint-ui'),
+    pulse: v('--wf-pulse'),
     mono: v('--font-mono') || 'monospace',
   };
 }
+
+/** What the pulse needs from the last static draw: a copy of it and where the exploited ticks are. */
+interface Frame {
+  /** The finished static chart minus the hover crosshair, in device pixels. */
+  cache: HTMLCanvasElement;
+  dpr: number;
+  ticks: Tick[];
+  regions: Rect[];
+  barW: number;
+  from: Rgb;
+  to: Rgb;
+  cross: { x: number; y: number; h: number; color: string } | null;
+}
+
+/**
+ * Repaint only the regions around the exploited ticks: the cached static pixels first, then (above
+ * the trough) the ticks again in a brighter red with a soft glow, then the crosshair if any.
+ * Level 0 leaves exactly the static chart.
+ */
+function paintPulse(cv: HTMLCanvasElement, f: Frame, level: number) {
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  const d = f.dpr;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.shadowBlur = 0;
+  for (const r of f.regions) {
+    const x = Math.round(r.x * d);
+    const y = Math.round(r.y * d);
+    const w = Math.round(r.w * d);
+    const h = Math.round(r.h * d);
+    ctx.clearRect(x, y, w, h);
+    ctx.drawImage(f.cache, x, y, w, h, x, y, w, h);
+  }
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  ctx.beginPath();
+  for (const r of f.regions) ctx.rect(r.x, r.y, r.w, r.h);
+  ctx.clip();
+  if (level > 0) {
+    const c = mixColor(f.from, f.to, level);
+    ctx.fillStyle = c;
+    ctx.shadowColor = `rgb(${f.to[0]} ${f.to[1]} ${f.to[2]} / ${(PULSE_GLOW_ALPHA * level).toFixed(3)})`;
+    ctx.shadowBlur = PULSE_GLOW;
+    for (const t of f.ticks) ctx.fillRect(t.x, t.y, f.barW, SEG);
+    ctx.shadowBlur = 0;
+  }
+  if (f.cross) {
+    ctx.fillStyle = f.cross.color;
+    ctx.fillRect(f.cross.x, f.cross.y, 1, f.cross.h);
+  }
+  ctx.restore();
+}
+
+const deviceRatio = () => Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
 
 interface Placed {
   a: Annotation;
@@ -88,6 +144,26 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
   const [progress, setProgress] = useState(() => (prefersReducedMotion() ? 1 : 0));
   const mode = useStore(theme);
   const interactive = dayHref !== undefined;
+  const [dpr, setDpr] = useState(deviceRatio);
+  const frame = useRef<Frame | null>(null);
+  /** Set by the pulse effect: re-checks whether to run and repaints the current level. */
+  const pulseSync = useRef<(() => void) | null>(null);
+
+  // A zoom or a move to another screen changes the pixel ratio without resizing the chart.
+  useEffect(() => {
+    let mq: MediaQueryList | null = null;
+    const watch = () => {
+      mq?.removeEventListener('change', onChange);
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+      mq.addEventListener('change', onChange);
+    };
+    const onChange = () => {
+      setDpr(deviceRatio());
+      watch();
+    };
+    watch();
+    return () => mq?.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     const el = wrap.current!;
@@ -142,7 +218,6 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
   useEffect(() => {
     const cv = canvas.current;
     if (!cv || width === 0) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(width * dpr);
     cv.height = Math.round(height * dpr);
     const ctx = cv.getContext('2d');
@@ -223,11 +298,78 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     }
     ctx.shadowBlur = 0;
 
-    if (active !== null && bins[active]) {
-      ctx.fillStyle = col.cross;
-      ctx.fillRect(Math.round(active * colW + barW / 2), TOP - 2, 1, plotH + 2);
+    const cross = active !== null && bins[active] ? { x: Math.round(active * colW + barW / 2), y: TOP - 2, h: plotH + 2, color: col.cross } : null;
+    // Once the grow entrance is done, keep a copy of the finished chart for the pulse to restore from.
+    const hot = lit.filter((t) => t.tier === 'exploited');
+    const from = parseColor(col.exploited);
+    const to = parseColor(col.pulse);
+    if (progress >= 1 && hot.length > 0 && from && to) {
+      const prev = frame.current?.cache;
+      const cache = prev ?? document.createElement('canvas');
+      cache.width = cv.width;
+      cache.height = cv.height;
+      cache.getContext('2d')?.drawImage(cv, 0, 0);
+      frame.current = { cache, dpr, ticks: hot, regions: pulseRegions(hot, barW, SEG, width, height, dpr), barW, from, to, cross };
+    } else frame.current = null;
+
+    if (cross) {
+      ctx.fillStyle = cross.color;
+      ctx.fillRect(cross.x, cross.y, 1, cross.h);
     }
-  }, [bins, width, height, active, progress, mode, counts.length, start]);
+    pulseSync.current?.();
+  }, [bins, width, height, active, progress, mode, counts.length, start, dpr]);
+
+  // Exploited ticks breathe: slowly, all together, only while the chart is on screen in a visible
+  // tab and motion is welcome. A timer paints about 20 frames a second into small regions only.
+  const grown = progress >= 1;
+  useEffect(() => {
+    const cv = canvas.current;
+    const el = wrap.current;
+    if (!grown || !cv || !el) return;
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let onScreen = false;
+    let timer = 0;
+    let t0 = 0;
+    let running = false;
+    const stop = () => {
+      if (!running) return;
+      running = false;
+      clearTimeout(timer);
+      if (frame.current) paintPulse(cv, frame.current, 0);
+    };
+    const step = () => {
+      const f = frame.current;
+      if (!running || !f) return;
+      paintPulse(cv, f, pulseLevel(performance.now() - t0));
+      timer = window.setTimeout(step, PULSE_FRAME_MS);
+    };
+    const sync = () => {
+      const go = onScreen && document.visibilityState === 'visible' && !motion.matches && frame.current !== null;
+      if (go && !running) {
+        running = true;
+        // Every start begins at the trough, which is what the paused chart already shows.
+        t0 = performance.now();
+        timer = window.setTimeout(step, PULSE_FRAME_MS);
+      } else if (!go) stop();
+      // A static redraw while running shows the trough: put the current level straight back.
+      else if (frame.current) paintPulse(cv, frame.current, pulseLevel(performance.now() - t0));
+    };
+    const io = new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting;
+      sync();
+    });
+    io.observe(el);
+    document.addEventListener('visibilitychange', sync);
+    motion.addEventListener('change', sync);
+    pulseSync.current = sync;
+    return () => {
+      pulseSync.current = null;
+      io.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+      motion.removeEventListener('change', sync);
+      stop();
+    };
+  }, [grown]);
 
   // A tapped column stays selected until the next tap elsewhere on the page.
   useEffect(() => {
