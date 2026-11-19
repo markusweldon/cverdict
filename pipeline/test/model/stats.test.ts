@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION } from '../../../shared/contract';
-import { buildStats, dayRange, monthRange } from '../../src/stats';
+import { buildStats, dayRange, isNewlyExploited, monthRange } from '../../src/stats';
 import type { History } from '../../src/types';
-import { NOW, daysAgo, makeCve, makeKev, makeKevCatalog, msf, score } from '../fixtures/model/builders';
+import { NOW, daysAgo, listing, makeCve, makeKev, makeKevCatalog, msf, score } from '../fixtures/model/builders';
+import type { CatalogListing } from '../../src/types';
 
 const DAY_MS = 86_400_000;
 
@@ -94,5 +95,84 @@ describe('buildStats', () => {
       { text: 'Claude', count: 2 },
       { text: 'Big Sleep', count: 1 },
     ]);
+  });
+});
+
+describe('newly exploited (hourly.new_exploited)', () => {
+  const ID = 'CVE-2026-500';
+  const cve = (o = {}) => makeCve({ id: ID, published: '2026-10-20T10:20:00Z', ...o });
+  const kevOn = (dateAdded: string) => score(cve(), { kev: [makeKev(ID, { dateAdded })] });
+  const listed = (...ls: CatalogListing[]) => score(cve(), { catalogs: { [ID]: ls } });
+  // NOW is 2026-10-26T19:30Z, so the cutoff is 2026-10-23T19:30Z.
+
+  it('counts a listing day from its 00:00 UTC start: inside 72h when that start is at or after now - 72h', () => {
+    expect(isNewlyExploited(kevOn('2026-10-24'), undefined, NOW)).toBe(true);
+    expect(isNewlyExploited(kevOn('2026-10-26'), undefined, NOW)).toBe(true);
+    // Oct 23 00:00 is 91.5 hours before NOW: it may be older than 72h, so it is not new.
+    expect(isNewlyExploited(kevOn('2026-10-23'), undefined, NOW)).toBe(false);
+  });
+
+  it('the 72h boundary is inclusive', () => {
+    const midnight = new Date('2026-10-26T00:00:00Z');
+    expect(isNewlyExploited(kevOn('2026-10-23'), undefined, midnight)).toBe(true);
+    expect(isNewlyExploited(kevOn('2026-10-22'), undefined, midnight)).toBe(false);
+    expect(isNewlyExploited(kevOn('2026-10-23'), undefined, new Date(midnight.getTime() + 1))).toBe(false);
+  });
+
+  it('uses the frozen now, not the clock: a listing after now does not exist yet', () => {
+    const frozen = new Date('2026-10-25T12:00:00Z');
+    expect(isNewlyExploited(kevOn('2026-10-26'), undefined, frozen)).toBe(false);
+    expect(isNewlyExploited(kevOn('2026-10-25'), undefined, frozen)).toBe(true);
+  });
+
+  it('EU KEV and confirmed CIRCL listings count; CIRCL suspected or attempts-only and SiberKapan do not', () => {
+    expect(isNewlyExploited(listed(listing('eu-kev', '2026-10-25')), [listing('eu-kev', '2026-10-25')], NOW)).toBe(true);
+    expect(isNewlyExploited(listed(listing('circl-kev', '2026-10-25')), [listing('circl-kev', '2026-10-25')], NOW)).toBe(true);
+    // Exploited through the vendor, so the tier is set; the catalog entries alone would not set it.
+    const itw = score(cve({ vendorInTheWild: true }));
+    expect(itw.tier).toBe('exploited');
+    expect(isNewlyExploited(itw, undefined, NOW)).toBe(false);
+    for (const l of [listing('circl-kev', '2026-10-25', { status: 'suspected' }), listing('circl-kev', '2026-10-25', { attemptsOnly: true }), listing('siberkapan', '2026-10-25')]) {
+      expect(isNewlyExploited(itw, [l], NOW)).toBe(false);
+    }
+  });
+
+  it('takes the first exploited listing: an old one rules out a new one', () => {
+    const s = kevOn('2026-10-01');
+    expect(isNewlyExploited(s, [listing('eu-kev', '2026-10-25')], NOW)).toBe(false);
+    expect(isNewlyExploited(kevOn('2026-10-25'), [listing('eu-kev', '2026-10-02')], NOW)).toBe(false);
+  });
+
+  it('an undated listing could be older and rules the CVE out, unless it is bounded by another listing', () => {
+    const s = kevOn('2026-10-25');
+    expect(isNewlyExploited(s, [listing('circl-kev', null)], NOW)).toBe(false);
+    expect(isNewlyExploited(s, [listing('eu-kev', null, { notBefore: '2026-10-25' })], NOW)).toBe(true);
+    const adpOnly = score(cve({ adpKev: { dateAdded: null, reference: null } }));
+    expect(isNewlyExploited(adpOnly, undefined, NOW)).toBe(false);
+    const adpDated = score(cve({ adpKev: { dateAdded: '2026-10-25', reference: null } }));
+    expect(isNewlyExploited(adpDated, undefined, NOW)).toBe(true);
+  });
+
+  it('only Exploited CVEs qualify', () => {
+    expect(isNewlyExploited(score(cve()), [listing('siberkapan', '2026-10-25')], NOW)).toBe(false);
+  });
+
+  it('buildStats lists [hour, count] for hours by publication, oldest first, and [] when none', () => {
+    const windowStart = new Date(NOW.getTime() - 30 * DAY_MS);
+    const kev = makeKevCatalog();
+    const a = score(makeCve({ id: 'CVE-2026-501', published: '2026-10-20T10:20:00Z' }), { kev: [makeKev('CVE-2026-501', { dateAdded: '2026-10-25' })] });
+    const b = score(makeCve({ id: 'CVE-2026-502', published: '2026-10-20T10:50:00Z' }), { kev: [makeKev('CVE-2026-502', { dateAdded: '2026-10-26' })] });
+    const c = score(makeCve({ id: 'CVE-2026-503', published: '2026-10-02T03:00:00Z' }), { catalogs: { 'CVE-2026-503': [listing('eu-kev', '2026-10-24')] } });
+    const old = score(makeCve({ id: 'CVE-2026-504', published: '2026-10-02T03:00:00Z' }), { kev: [makeKev('CVE-2026-504', { dateAdded: '2026-10-03' })] });
+    const catalogs = new Map([['CVE-2026-503', [listing('eu-kev', '2026-10-24')]]]);
+    const s = buildStats({ history: history(), kev, window: [a, b, c, old], windowStart, now: NOW, catalogs });
+    const start = Date.parse(s.hourly.start);
+    const hourOf = (iso: string) => Math.floor((Date.parse(iso) - start) / 3_600_000);
+    expect(s.hourly.new_exploited).toEqual([
+      [hourOf('2026-10-02T03:00:00Z'), 1],
+      [hourOf('2026-10-20T10:20:00Z'), 2],
+    ]);
+    for (const [h, n] of s.hourly.new_exploited!) expect(n).toBeLessThanOrEqual(s.hourly.counts[h][0]);
+    expect(buildStats({ history: history(), kev, window: [old], windowStart, now: NOW }).hourly.new_exploited).toEqual([]);
   });
 });

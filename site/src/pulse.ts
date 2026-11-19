@@ -1,10 +1,12 @@
 /**
- * The exploited-tick pulse on the signal waterfall: a soft red halo slowly swells behind each
- * exploited column and fades again, while the ticks themselves shift toward a stronger red, all in
+ * The exploited-tick pulse on the signal waterfall. Only CVEs that became Exploited in the last
+ * 72 hours (stats.json hourly.new_exploited) pulse: a soft red halo slowly swells behind their
+ * ticks and fades again, while the ticks themselves shift toward a stronger red, all in
  * phase, like one calm breath. The ticks are only about 2x2 px, so the halo carries the visible
  * change. Pure helpers live here so they can be tested without a canvas; Waterfall.tsx owns the
  * timer and the drawing.
  */
+import { fmtInt } from './format';
 
 /** One full breath (trough to peak and back), in ms. */
 export const PULSE_PERIOD_MS = 2800;
@@ -126,4 +128,36 @@ export function pulseRegions(ticks: readonly Tick[], barW: number, segH: number,
     if (x1 > x0 && y1 > y0) out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
   }
   return out.sort((a, b) => a.x - b.x);
+}
+
+/**
+ * Newly exploited CVEs per column: the per-hour counts summed over each column's hours (columns
+ * are consecutive, `hours` long, from hour 0), capped at the column's exploited count `c[0]`.
+ * Empty when `fresh` is empty, so nothing pulses.
+ */
+export function freshPerBin(fresh: readonly number[], bins: readonly { hours: number; c: readonly number[] }[]): number[] {
+  if (fresh.length === 0) return [];
+  let h = 0;
+  return bins.map((b) => {
+    let n = 0;
+    for (const end = h + b.hours; h < end; h++) n += fresh[h] ?? 0;
+    return Math.min(n, b.c[0]);
+  });
+}
+
+/**
+ * How many of a column's `segs` exploited ticks stand for its `fresh` newly exploited CVEs out of
+ * `exploited`: in proportion, at least one when any is new, and all of them only when all are new.
+ * A single exploited tick pulses when any of its CVEs is new.
+ */
+export function freshSegs(segs: number, exploited: number, fresh: number): number {
+  if (segs <= 0 || exploited <= 0 || fresh <= 0) return 0;
+  if (fresh >= exploited) return segs;
+  return Math.max(1, Math.min(segs - 1, Math.round((segs * fresh) / exploited)));
+}
+
+/** The legend entry for newly exploited CVEs, e.g. "New in 72h: 3"; null (no entry) when none qualify. */
+export function newLegend(fresh: readonly number[]): string | null {
+  const n = fresh.reduce((a, b) => a + b, 0);
+  return n > 0 ? `New in 72h: ${fmtInt(n)}` : null;
 }

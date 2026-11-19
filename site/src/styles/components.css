@@ -995,6 +995,37 @@ a.chip:hover {
   background: var(--wf-watch);
 }
 
+/* Exploited in the last 72h: breathes like the chart's new ticks (same period), still when motion
+   is off. Only the opacity of an overlay animates, so the compositor does the work. */
+.wf__key--new {
+  position: relative;
+  background: var(--exploited);
+  box-shadow: 0 0 6px var(--exploited);
+}
+
+.wf__key--new::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--wf-pulse);
+  box-shadow: 0 0 2px 3px var(--wf-pulse-halo);
+  opacity: 0;
+  animation: wf-new 2.8s ease-in-out infinite;
+}
+
+@keyframes wf-new {
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf__key--new::after {
+    animation: none;
+  }
+}
+
 /* ── Tooltip, toasts, dialogs ── */
 
 .tooltip {

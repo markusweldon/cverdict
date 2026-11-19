@@ -12,6 +12,7 @@ import {
   hourlyAt,
   isWordpress,
   matches,
+  newExploitedAt,
   pubMs,
   readFeedFilter,
   retier,
@@ -188,5 +189,30 @@ describe('feedRows', () => {
   it('sorts by tier, then score, then newest', () => {
     const sorted = feedRows(rows, { ...base, tiers: new Set(TIERS) }, KNOB_DEFAULT, []).sort(byScore).map((r) => r.row.id.slice(-2));
     expect(sorted).toEqual(['01', '05', '02', '04', '03', '06']);
+  });
+});
+
+describe('newExploitedAt', () => {
+  const counts = [
+    [2, 0, 0, 0],
+    [0, 1, 0, 3],
+    [1, 0, 0, 0],
+  ] as [number, number, number, number][];
+  const hourly = (extra: object = {}) => ({ start: '2026-09-26T19:00:00.000Z', hours: 3, counts, ...extra });
+
+  it('reads older data without the field as none', () => {
+    expect(newExploitedAt(hourly(), counts)).toEqual([]);
+    expect(newExploitedAt(hourly({ new_exploited: [] }), counts)).toEqual([]);
+  });
+
+  it('spreads [hour, count] pairs over the hours, capped at the hour exploited count', () => {
+    expect(newExploitedAt(hourly({ new_exploited: [[0, 1], [2, 4]] }), counts)).toEqual([1, 0, 1]);
+  });
+
+  it('skips pairs it cannot use, and is empty when none is left', () => {
+    const bad = [[1, 2], [-1, 1], [3, 1], ['0', 1], [0, 0], [0.5, 1], null, 'x'];
+    expect(newExploitedAt(hourly({ new_exploited: bad }), counts)).toEqual([]);
+    expect(newExploitedAt(hourly({ new_exploited: 'x' }), counts)).toEqual([]);
+    expect(newExploitedAt(hourly({ new_exploited: [...bad, [2, 1]] }), counts)).toEqual([0, 0, 1]);
   });
 });

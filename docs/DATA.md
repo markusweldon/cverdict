@@ -230,7 +230,7 @@ description, required_action`, plus `in_window` (the CVE was published in the wi
 |---|---|
 | `monthly[]` | Every month since 1999: `{ month, published, reserved, rejected, ai, kev_added }`. `published` counts records in PUBLISHED state by `datePublished`, and `reserved` buckets the same records by their reservation month. `rejected` counts REJECTED records by `datePublished`, else by rejection date (most were never published). `ai` counts published records that credit an AI system or lab |
 | `daily[]` | Each full UTC day of the window, then today so far, oldest first: `{ date, published, passed, exploited }`. The partial day the window starts in is left out |
-| `hourly` | `{ start, hours, counts }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start` |
+| `hourly` | `{ start, hours, counts, new_exploited }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start`. `new_exploited` is `[h, n]` pairs, oldest hour first, for the hours holding `n` Exploited CVEs (by publication) whose first exploited listing (CISA KEV, ENISA EU KEV, or a CIRCL entry that sets the Exploited tier) is within 72 hours of `generated_at`. Listings are dated by day, so a day counts from 00:00 UTC and qualifies when that is at or after `generated_at` minus 72 hours (inclusive). A listing with no date rules the CVE out, unless it is an EU KEV row known to come after the CISA KEV date. Hours with none are left out, and `[]` means none. Older files have no `new_exploited`: read that as none. The waterfall pulses only these ticks |
 | `cnas[]` | Top 25 CNAs in the window: `{ cna, count, passed, no_cvss, ssvc_missing }` |
 | `ai_credits[]` | Top 20 AI credit excerpts (≤ 80 characters, as in `ai_credit`): `{ text, count }` |
 

@@ -208,7 +208,9 @@ included, unknown-polarity chips excluded) for filtering.
   and `Row.b`.
 - **Stats:** `monthly` from the streaming pass + KEV `dateAdded` months; `daily` for the window's full UTC days,
   then today so far (published, passed = exploited+likely at default knob, exploited); `hourly` waterfall buckets across the window
-  (`counts[h] = [exploited, likely, watch, quiet]`); `cnas` top 25 in window; `ai_credits` top 20 strings.
+  (`counts[h] = [exploited, likely, watch, quiet]`, plus `new_exploited` `[h, n]` pairs for Exploited CVEs first listed as
+  exploited by CISA KEV, EU KEV or CIRCL within 72 hours of `now`, a listing day counted from 00:00 UTC; only those ticks
+  pulse on the chart); `cnas` top 25 in window; `ai_credits` top 20 strings.
 - **Changes:** compare with `<previous>/v1/index.json` (if present): an item when the tier rose, or a new E/X chip
   appeared. Rows outside the window join when CISA added them to KEV in the last 7 days (new if absent from the
   previous `kev.json`), or, when not in CISA KEV, when EU KEV or CIRCL first listed them as exploited in the last 7 days. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500.

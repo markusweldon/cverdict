@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION, rowsFromTable, type CveShard, type Meta, type PackagesFile, type ReceiptsFile, type RowTable, type WokeFile, type WokeItem } from '../../../shared/contract';
+import { SCHEMA_VERSION, rowsFromTable, type CveShard, type Meta, type PackagesFile, type ReceiptsFile, type RowTable, type StatsFile, type WokeFile, type WokeItem } from '../../../shared/contract';
 import { BUDGETS } from '../../src/config';
 import { shardOf } from '../../../shared/shard';
 import { buildOutput } from '../../src/emit/build';
@@ -132,6 +132,23 @@ describe('validateOutput', () => {
     const { errors } = validateOutput(dir);
     expect(errors.some((e) => e.startsWith(`${PATHS.batches}: invalid JSON`))).toBe(true);
     expect(errors).toContain(`${PATHS.changes}: schema_version is ${SCHEMA_VERSION + 1}, expected ${SCHEMA_VERSION}`);
+  });
+
+  it('checks stats.json hourly.new_exploited, and accepts files without it', () => {
+    const stats = read<StatsFile>(PATHS.stats);
+    // The KEV listing of CVE-2026-100001 is 5 days old: nothing is new.
+    expect(stats.hourly.new_exploited).toEqual([]);
+    const h = stats.hourly.counts.findIndex((c) => c[0] > 0);
+    expect(h).toBeGreaterThanOrEqual(0);
+    write(PATHS.stats, { ...stats, hourly: { ...stats.hourly, new_exploited: [[h, 1]] } });
+    expect(validateOutput(dir).errors.filter((e) => e.includes('new_exploited'))).toEqual([]);
+    const { new_exploited: _gone, ...old } = stats.hourly;
+    write(PATHS.stats, { ...stats, hourly: old });
+    expect(validateOutput(dir).errors.filter((e) => e.includes('new_exploited'))).toEqual([]);
+    for (const bad of [[[h, stats.hourly.counts[h][0] + 1]], [[h, 0]], [[-1, 1]], [[h, 1], [h, 1]], 'x']) {
+      write(PATHS.stats, { ...stats, hourly: { ...stats.hourly, new_exploited: bad } });
+      expect(validateOutput(dir).errors.some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited`))).toBe(true);
+    }
   });
 
   it('catches meta counts that disagree with the index', () => {

@@ -219,7 +219,7 @@ export function buildOutput({
   const byId = new Map(scored.map((s) => [s.cve.id, s]));
   const kev = buildKevFile(ing.kev, byId, now);
   const meta = buildMeta({ ingest: ing, window, batches, now, windowStart, windowDays, knob });
-  const stats = buildStats({ history: ing.history, kev: ing.kev, window, windowStart, now });
+  const stats = buildStats({ history: ing.history, kev: ing.kev, window, windowStart, now, catalogs: ing.exploits.catalogs });
   const recentDay = daysAgo(now, CHANGES_RETENTION_DAYS);
   const recentKevElsewhere = scored.filter((s) => !s.cve.inWindow && s.kev && s.kev.date_added >= recentDay).map(toRow);
   // Outside the window and not in CISA KEV, first listed as exploited by EU KEV or CIRCL lately.

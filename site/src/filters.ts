@@ -105,6 +105,26 @@ export function hourlyAt(hourly: StatsFile['hourly'], rows: readonly Row[], knob
   });
 }
 
+/**
+ * Newly exploited CVEs per hour (hourly.new_exploited, counted against the data's generated_at),
+ * as a dense array beside the hourly counts, each capped at that hour's exploited count. Empty when
+ * none qualify, the field is missing (older data) or it cannot be read.
+ */
+export function newExploitedAt(hourly: StatsFile['hourly'], counts: readonly HourCounts[]): number[] {
+  const pairs: unknown = hourly.new_exploited;
+  if (!Array.isArray(pairs) || pairs.length === 0) return [];
+  const out = new Array<number>(counts.length).fill(0);
+  let any = false;
+  for (const p of pairs) {
+    if (!Array.isArray(p)) continue;
+    const [h, n] = p as unknown[];
+    if (typeof h !== 'number' || typeof n !== 'number' || !Number.isInteger(h) || h < 0 || h >= counts.length || !(n > 0)) continue;
+    out[h] = Math.min(counts[h][0], out[h] + Math.floor(n));
+    if (out[h] > 0) any = true;
+  }
+  return any ? out : [];
+}
+
 /** Lower-cased search terms; every term must match. */
 export const terms = (q: string): string[] => q.toLowerCase().split(/\s+/).filter(Boolean);
 

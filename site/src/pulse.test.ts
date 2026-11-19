@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HALO_R, haloSpots, mixColor, parseColor, parseRgba, PULSE_PAD, PULSE_PERIOD_MS, pulseLevel, pulseRegions } from './pulse';
+import { freshPerBin, freshSegs, HALO_R, haloSpots, mixColor, newLegend, parseColor, parseRgba, PULSE_PAD, PULSE_PERIOD_MS, pulseLevel, pulseRegions } from './pulse';
 
 describe('pulseLevel', () => {
   it('is 0 at the trough, so a paused chart is the static one', () => {
@@ -133,5 +133,58 @@ describe('pulseRegions', () => {
 
   it('is empty without exploited ticks', () => {
     expect(pulseRegions([], 3, 2, 400, 176)).toEqual([]);
+  });
+});
+
+describe('only newly exploited ticks pulse', () => {
+  const bin = (hours: number, exploited: number) => ({ hours, c: [exploited, 0, 0, 0] });
+
+  it('sums the per-hour counts over each column and caps them at its exploited count', () => {
+    const fresh = [0, 1, 0, 0, 2, 0, 0, 5];
+    expect(freshPerBin(fresh, [bin(3, 4), bin(3, 1), bin(2, 9)])).toEqual([1, 1, 5]);
+    // A short last column, and hours past the end of `fresh`, add nothing.
+    expect(freshPerBin([0, 0, 1], [bin(2, 1), bin(2, 1)])).toEqual([0, 1]);
+  });
+
+  it('is empty without newly exploited CVEs, so nothing pulses', () => {
+    expect(freshPerBin([], [bin(3, 4)])).toEqual([]);
+  });
+
+  it('marks the top ticks of the exploited stack in proportion, at least one, all only when all are new', () => {
+    expect(freshSegs(4, 8, 0)).toBe(0);
+    expect(freshSegs(4, 8, 2)).toBe(1);
+    expect(freshSegs(4, 8, 1)).toBe(1);
+    expect(freshSegs(4, 8, 6)).toBe(3);
+    expect(freshSegs(4, 8, 7)).toBe(3);
+    expect(freshSegs(4, 8, 8)).toBe(4);
+    expect(freshSegs(1, 3, 1)).toBe(1);
+    expect(freshSegs(0, 3, 1)).toBe(0);
+    expect(freshSegs(3, 0, 1)).toBe(0);
+  });
+
+  it('repaints regions only around columns with new ticks', () => {
+    // Two exploited columns, one with a new CVE: as Waterfall.tsx picks them, the top tick of column 1 only.
+    const cols = [
+      { x: 30, exploited: 2, segs: 2 },
+      { x: 90, exploited: 3, segs: 3 },
+    ];
+    const perCol = freshPerBin([0, 0, 0, 1], [bin(2, 2), bin(2, 3)]);
+    const ticks = cols.flatMap((c, i) => {
+      const f = freshSegs(c.segs, c.exploited, perCol[i]);
+      return Array.from({ length: c.segs }, (_, s) => ({ x: c.x, y: 100 - s * 3, fresh: s >= c.segs - f })).filter((t) => t.fresh);
+    });
+    expect(ticks).toEqual([{ x: 90, y: 94, fresh: true }]);
+    const regions = pulseRegions(ticks, 2, 2, 400, 176);
+    expect(regions).toHaveLength(1);
+    expect(regions[0].x).toBe(90 - PULSE_PAD);
+  });
+});
+
+describe('newLegend', () => {
+  it('names the count, and is hidden at zero', () => {
+    expect(newLegend([0, 2, 0, 1])).toBe('New in 72h: 3');
+    expect(newLegend([0, 0])).toBeNull();
+    expect(newLegend([])).toBeNull();
+    expect(newLegend([1200])).toBe('New in 72h: 1,200');
   });
 });

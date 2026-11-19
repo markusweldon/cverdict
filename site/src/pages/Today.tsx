@@ -29,6 +29,7 @@ import {
   groupByBatch,
   hasChip,
   hourlyAt,
+  newExploitedAt,
   isPassed,
   pubMs,
   readFeedFilter,
@@ -39,6 +40,7 @@ import {
 } from '../filters';
 import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, fmtSlot, HOUR_MS, oneIn, plural } from '../format';
 import { prefersReducedMotion, useCountUp, useData, useDebounced, useKnobUrl, useListController, useMediaQuery, useNow, useTitle } from '../hooks';
+import { newLegend } from '../pulse';
 import { cveHref, historyValue, href, navigate, setHistoryValue, setQuery, useLocation } from '../router';
 import { backtestAt } from '../receipts';
 import { KNOB_PRESETS, knob, previousVisit, SITE_KNOB_MAX, SITE_KNOB_MIN, useStore, watchlist } from '../state';
@@ -406,6 +408,9 @@ export default function Today() {
   }, [filterKey, level]);
 
   const hourly = useMemo(() => (stats.status === 'ready' && rows.length > 0 ? hourlyAt(stats.data.hourly, rows, level, complete) : []), [stats, rows, level, complete]);
+  const fresh = useMemo(() => (stats.status === 'ready' ? newExploitedAt(stats.data.hourly, hourly) : []), [stats, hourly]);
+  const freshTotal = fresh.reduce((a, n) => a + n, 0);
+  const freshLegend = hourly.length > 0 ? newLegend(fresh) : null;
   const annotations = useMemo(() => (stats.status === 'ready' && batches.status === 'ready' ? annotationsFor(batches.data.batches, stats.data.hourly) : []), [stats, batches]);
   const batchMembers = useMemo(() => groupByBatch(rows), [rows]);
 
@@ -473,10 +478,18 @@ export default function Today() {
             </div>
             <ul class="legend legend--inline" aria-hidden="true">
               {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
-                <li key={t} class={`legend__item legend__item--${t}`}>
-                  <span class={`wf__key wf__key--${t}`} />
-                  {TIER_META[t].label}
-                </li>
+                <Fragment key={t}>
+                  <li class={`legend__item legend__item--${t}`}>
+                    <span class={`wf__key wf__key--${t}`} />
+                    {TIER_META[t].label}
+                  </li>
+                  {t === 'exploited' && freshLegend && (
+                    <li class="legend__item legend__item--new">
+                      <span class="wf__key wf__key--new" />
+                      {freshLegend}
+                    </li>
+                  )}
+                </Fragment>
               ))}
             </ul>
           </header>
@@ -489,7 +502,8 @@ export default function Today() {
               annotations={annotations}
               onBinHours={setBinHours}
               dayHref={(day) => exploreDayHref(day, level)}
-              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely with the evidence bar at ${level}.`}
+              fresh={fresh}
+              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely with the evidence bar at ${level}.${freshTotal > 0 ? ` ${fmtInt(freshTotal)} became exploited in the last 72 hours.` : ''}`}
             />
           ) : (
             <Loading label="Drawing the waterfall" lines={1} height="176px" />

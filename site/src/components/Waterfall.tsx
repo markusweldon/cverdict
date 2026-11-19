@@ -14,7 +14,7 @@ import { binDay, binRange, binsOf, dayStart, dayTotal, hoursPerBin, placeLabels,
 import type { HourCounts } from '../filters';
 import { fmtDate, fmtInt, HOUR_MS, DAY_MS, plural } from '../format';
 import { prefersReducedMotion } from '../hooks';
-import { haloSpots, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulseRegions, type Rect, type Rgb, type Rgba, type Spot, type Tick } from '../pulse';
+import { freshPerBin, freshSegs, haloSpots, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulseRegions, type Rect, type Rgb, type Rgba, type Spot, type Tick } from '../pulse';
 import { navigate } from '../router';
 import { theme, useStore } from '../state';
 import { TIER_META } from '../tiers';
@@ -43,7 +43,15 @@ interface Props {
   onBinHours?: (hours: number) => void;
   /** Where a column's day opens (YYYY-MM-DD → in-app href). Without it the chart is read-only. */
   dayHref?: (day: string) => string;
+  /**
+   * Newly exploited CVEs per hour, beside `counts` (see newExploitedAt). Only these ticks breathe;
+   * every other exploited tick stays still. Empty or missing: nothing moves.
+   */
+  fresh?: readonly number[];
 }
+
+/** Tooltip and screen reader label for the newly exploited count of a column. */
+export const NEW_LABEL = 'Exploited in the last 72h';
 
 const PITCH = 3;
 const SEG = 2;
@@ -73,7 +81,7 @@ function readColors(el: Element) {
   };
 }
 
-/** What the pulse needs from the last static draw: a copy of it and where the exploited ticks are. */
+/** What the pulse needs from the last static draw: a copy of it and where the newly exploited ticks are. */
 interface Frame {
   /** The finished static chart minus the hover crosshair, in device pixels. */
   cache: HTMLCanvasElement;
@@ -90,9 +98,9 @@ interface Frame {
 }
 
 /**
- * Repaint only the regions around the exploited ticks: the cached static pixels first, then (above
+ * Repaint only the regions around the newly exploited ticks: the cached static pixels first, then (above
  * the trough) a soft halo slid in behind everything already drawn, so no neighbouring tick changes
- * colour, then the exploited ticks again in the peak red, then the crosshair if any.
+ * colour, then those ticks again in the peak red, then the crosshair if any.
  * Level 0 leaves exactly the static chart.
  */
 function paintPulse(cv: HTMLCanvasElement, f: Frame, level: number) {
@@ -147,7 +155,9 @@ interface Placed {
   right: boolean;
 }
 
-export function Waterfall({ counts, start, annotations = [], height = 176, summary, onBinHours, dayHref }: Props) {
+const NO_FRESH: readonly number[] = [];
+
+export function Waterfall({ counts, start, annotations = [], height = 176, summary, onBinHours, dayHref, fresh = NO_FRESH }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const tip = useRef<HTMLDivElement>(null);
@@ -203,6 +213,8 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
 
   const bins = useMemo<Bin<number[]>[]>(() => (width === 0 || counts.length === 0 ? [] : binsOf(counts, start, hoursPerBin(counts.length, width, PITCH))), [counts, start, width]);
   const per = bins[0]?.hours ?? 1;
+  // Newly exploited CVEs per column, never more than its exploited count.
+  const freshBins = useMemo(() => freshPerBin(fresh, bins), [bins, fresh]);
 
   useEffect(() => {
     if (bins.length > 0) onBinHours?.(bins[0].hours);
@@ -272,7 +284,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     }
 
     // columns
-    const lit: { x: number; y: number; tier: Tier }[] = [];
+    const lit: { x: number; y: number; tier: Tier; fresh: boolean }[] = [];
     bins.forEach((b, i) => {
       const total = b.c[0] + b.c[1] + b.c[2] + b.c[3];
       if (total === 0) return;
@@ -283,6 +295,8 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       }
       const segs = Math.max(1, Math.round((plotH * Math.sqrt(total / max)) / PITCH));
       const e = b.c[0] > 0 ? Math.max(1, Math.round((segs * b.c[0]) / total)) : 0;
+      // The newly exploited ticks are the top of the exploited stack.
+      const ef = freshSegs(e, b.c[0], freshBins[i] ?? 0);
       const l = b.c[1] > 0 ? Math.max(1, Math.round((segs * b.c[1]) / total)) : 0;
       const rest = Math.max(0, segs - e - l);
       const noise = b.c[2] + b.c[3];
@@ -294,7 +308,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       for (const [tier, count] of stack) {
         for (let s = 0; s < count && n < visible; s++, n++) {
           const y = base - (n + 1) * PITCH + (PITCH - SEG);
-          if (tier === 'exploited' || tier === 'likely') lit.push({ x, y, tier });
+          if (tier === 'exploited' || tier === 'likely') lit.push({ x, y, tier, fresh: tier === 'exploited' && s >= count - ef });
           else {
             ctx.fillStyle = tier === 'watch' ? col.watch : col.quiet;
             ctx.fillRect(x, y, barW, SEG);
@@ -314,7 +328,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
 
     const cross = active !== null && bins[active] ? { x: Math.round(active * colW + barW / 2), y: TOP - 2, h: plotH + 2, color: col.cross } : null;
     // Once the grow entrance is done, keep a copy of the finished chart for the pulse to restore from.
-    const hot = lit.filter((t) => t.tier === 'exploited');
+    const hot = lit.filter((t) => t.fresh).map(({ x, y }) => ({ x, y }));
     const from = parseColor(col.exploited);
     const to = parseColor(col.pulse);
     const halo = parseRgba(col.halo);
@@ -332,9 +346,9 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       ctx.fillRect(cross.x, cross.y, 1, cross.h);
     }
     pulseSync.current?.();
-  }, [bins, width, height, active, progress, mode, counts.length, start, dpr]);
+  }, [bins, freshBins, width, height, active, progress, mode, counts.length, start, dpr]);
 
-  // Exploited ticks breathe: slowly, all together, only while the chart is on screen in a visible
+  // Newly exploited ticks breathe: slowly, all together, only while the chart is on screen in a visible
   // tab and motion is welcome. A timer paints about 20 frames a second into small regions only.
   const grown = progress >= 1;
   useEffect(() => {
@@ -443,9 +457,11 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
   };
 
   const hb = active !== null ? bins[active] : undefined;
-  const describe = (b: Bin<number[]>) => {
+  const hf = active !== null ? (freshBins[active] ?? 0) : 0;
+  const describe = (b: Bin<number[]>, nf = 0) => {
     const range = binRange(b.from, b.hours);
-    return { range, text: `${range}: ${ORDER.map((t, k) => `${fmtInt(b.c[k])} ${TIER_META[t].label.toLowerCase()}`).join(', ')}` };
+    const recent = nf > 0 ? `, ${fmtInt(nf)} ${NEW_LABEL.toLowerCase()}` : '';
+    return { range, text: `${range}: ${ORDER.map((t, k) => `${fmtInt(b.c[k])} ${TIER_META[t].label.toLowerCase()}`).join(', ')}${recent}` };
   };
   const info = hb && interactive ? dayInfo(hb) : null;
   const tipX = active !== null && bins.length > 0 ? ((active + 0.5) / bins.length) * width : 0;
@@ -475,7 +491,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
         'aria-valuemin': 1,
         'aria-valuemax': Math.max(1, bins.length),
         'aria-valuenow': (active ?? Math.max(0, bins.length - 1)) + 1,
-        'aria-valuetext': hb ? `${describe(hb).text}.${info && info.total > 0 ? ` Press Enter to see the ${plural(info.total, 'CVE')} from ${info.label}.` : ''}` : 'No time slot picked. Use the arrow keys to pick one.',
+        'aria-valuetext': hb ? `${describe(hb, hf).text}.${info && info.total > 0 ? ` Press Enter to see the ${plural(info.total, 'CVE')} from ${info.label}.` : ''}` : 'No time slot picked. Use the arrow keys to pick one.',
       }
     : { role: 'img' as const, 'aria-label': `${summary} Use the left and right arrow keys to read individual time bins.` };
 
@@ -542,11 +558,20 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
                 .join(' – ')}
             </div>
             {ORDER.map((t, k) => (
-              <div key={t} class="wf__tip-row">
-                <span class={`wf__key wf__key--${t}`} />
-                <span class="wf__tip-val">{fmtInt(hb.c[k])}</span>
-                <span class="wf__tip-label">{TIER_META[t].label}</span>
-              </div>
+              <Fragment key={t}>
+                <div class="wf__tip-row">
+                  <span class={`wf__key wf__key--${t}`} />
+                  <span class="wf__tip-val">{fmtInt(hb.c[k])}</span>
+                  <span class="wf__tip-label">{TIER_META[t].label}</span>
+                </div>
+                {t === 'exploited' && hf > 0 && (
+                  <div class="wf__tip-row">
+                    <span class="wf__key wf__key--new" />
+                    <span class="wf__tip-val">{fmtInt(hf)}</span>
+                    <span class="wf__tip-label">{NEW_LABEL}</span>
+                  </div>
+                )}
+              </Fragment>
             ))}
             {info && info.total > 0 && via !== 'touch' && (
               <p class="wf__tip-hint">
@@ -568,7 +593,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       )}
       {/* Keyboard moves are announced by the slider's aria-valuetext; this reads out pointer hover and taps. */}
       <div class="sr-only" aria-live="polite">
-        {hb && (!interactive || via !== 'key') ? describe(hb).text : ''}
+        {hb && (!interactive || via !== 'key') ? describe(hb, hf).text : ''}
       </div>
     </div>
   );

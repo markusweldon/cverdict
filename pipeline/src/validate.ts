@@ -170,6 +170,28 @@ export function validateOutput(root: string, log?: Logger): ValidationResult {
   return result;
 }
 
+/** stats.json hourly.new_exploited (optional): [hour, count] pairs in range, ascending, never more than the hour's exploited count. */
+function checkNewExploited(json: Map<string, JsonObject>, errors: string[]): void {
+  const hourly = asObject(json.get(PATHS.stats)?.hourly);
+  if (!hourly || hourly.new_exploited === undefined) return;
+  const pairs = hourly.new_exploited;
+  const counts = Array.isArray(hourly.counts) ? hourly.counts : [];
+  if (!Array.isArray(pairs)) {
+    errors.push(`${PATHS.stats}: hourly.new_exploited is not an array`);
+    return;
+  }
+  let prev = -1;
+  for (const p of pairs) {
+    const [h, n] = Array.isArray(p) ? p : [];
+    const exploited = Array.isArray(counts[h as number]) ? Number((counts[h as number] as unknown[])[0]) : -1;
+    if (!Number.isInteger(h) || !Number.isInteger(n) || (n as number) < 1 || (h as number) <= prev || (n as number) > exploited) {
+      errors.push(`${PATHS.stats}: hourly.new_exploited has a bad entry ${JSON.stringify(p)}`);
+      return;
+    }
+    prev = h as number;
+  }
+}
+
 /** Parse a RowTable, reporting structural problems; returns null when unusable. */
 function readRows(file: string, doc: JsonObject | undefined, errors: string[]): Row[] | null {
   if (!doc) return null;
@@ -248,6 +270,7 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
   }
 
   checkWoke(json, details, index ? new Set(index.map((r) => r.id)) : null, errors);
+  checkNewExploited(json, errors);
   checkReceipts(json, errors);
   checkPackages(json, details, index, errors, warnings);
 
