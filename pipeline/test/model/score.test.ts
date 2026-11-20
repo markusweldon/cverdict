@@ -211,6 +211,17 @@ describe('other known-exploited catalogs', () => {
     expect(byId(weak, 'honeypot.siberkapan')!.label).toBe('SiberKapan honeypots (CC-BY-4.0): attempts seen, suspected');
   });
 
+  it('honeypot.siberkapan: the timeline uses the same day as the chip (first seen, else the listing day)', () => {
+    const event = 'First exploitation attempt seen by SiberKapan honeypots';
+    const seen = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', '2026-09-01', { seen: '2026-08-09' })] } });
+    expect(seen.timeline).toContainEqual({ at: '2026-08-09', event, source: 'siberkapan' });
+    const listedOnly = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', '2026-09-01', { seen: null })] } });
+    expect(byId(listedOnly, 'honeypot.siberkapan')!.at).toBe('2026-09-01');
+    expect(listedOnly.timeline).toContainEqual({ at: '2026-09-01', event, source: 'siberkapan' });
+    const undated = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', null, { seen: null })] } });
+    expect(undated.timeline.some((e) => e.source === 'siberkapan')).toBe(false);
+  });
+
   it('ignores a listing dated after now (a frozen --now), and keeps an undated one', () => {
     const s = score(makeCve(), { catalogs: { [ID]: [listing('eu-kev', '2026-10-27'), listing('circl-kev', '2026-10-26')] } });
     expect(byId(s, 'eukev.listed')).toBeUndefined();
