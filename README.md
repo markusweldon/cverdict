@@ -101,7 +101,7 @@ On the site:
   "Copy as ticket". A CVE link shared in Slack, X, LinkedIn, Mastodon, Discord or a messenger
   shows its verdict and score in the preview, with an image for its tier.
 - **Woke Up**: CVEs published more than 30 days ago that gained exploitation evidence in the last
-  30 days: a CISA KEV listing, an EPSS jump, or their first public exploit of any kind (an
+  30 days: a CISA KEV listing, an exploited listing in ENISA EU KEV or the CIRCL catalog, an EPSS jump, or their first public exploit of any kind (an
   Exploit-DB entry, Metasploit module, Nuclei template, or a PoC repo on GitHub that is at least
   3 days old or has 2 stars; the code is not checked). The 30-day views cannot see them, yet many
   KEV additions are years old. Each one shows the dated evidence and a link to check it.

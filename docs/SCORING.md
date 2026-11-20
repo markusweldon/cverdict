@@ -504,7 +504,7 @@ Resolved blind spot: a CVE listed only in ENISA EU KEV or CIRCL's catalog (not i
 be scored only while it was in the 30-day window or woke up, so an older one never showed. The
 pipeline now keeps every CVE with an exploited listing in those catalogs whatever its age, the same
 way it keeps every CISA KEV CVE: it gets a CVE page in the Exploited tier, and a first listing
-dated in the last 30 days, after the CVE left the window, is a Woke Up signal (`catalog`) and a "what changed" arrival
+dated in the last 30 days is a Woke Up signal (`catalog`) once the CVE has left the window, and a "what changed" arrival
 when it is under 7 days old. Only the listings that set Exploited count: every EU KEV listing, and a
 CIRCL entry that is *confirmed* with evidence beyond attempts. SiberKapan, CIRCL *suspected* and
 CIRCL attempts-only listings stay information only and never pull a CVE in. These CVEs have no CISA

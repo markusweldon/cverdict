@@ -195,7 +195,8 @@ confirmed entry whose evidence is more than attempts) and the information-only `
 is attempts, such as sinkhole hits) and `honeypot.siberkapan` ("SiberKapan honeypots (CC-BY-4.0):
 attempts seen", 0 points). Their `at` is the day the catalog added the CVE when it gives one it can
 vouch for; an EU KEV listing that the EUVD dump dates only by its CISA KEV date has no `at`. For
-`honeypot.siberkapan`, `at` is the first attempt the sensors saw.
+`honeypot.siberkapan`, `at` is the first attempt the sensors saw, else the listing day; its
+timeline entry uses the same day.
 Chips that lost to a stronger one in their family are included with `points: 0`, so
 `15 + Σ points` equals `score.raw` for a CVE that is not exploited (`score.value` is that clamped to
 0–100, so the two differ only when `raw` is negative), and equals `score.value` for an exploited
@@ -230,14 +231,14 @@ description, required_action`, plus `in_window` (the CVE was published in the wi
 |---|---|
 | `monthly[]` | Every month since 1999: `{ month, published, reserved, rejected, ai, kev_added }`. `published` counts records in PUBLISHED state by `datePublished`, and `reserved` buckets the same records by their reservation month. `rejected` counts REJECTED records by `datePublished`, else by rejection date (most were never published). `ai` counts published records that credit an AI system or lab |
 | `daily[]` | Each full UTC day of the window, then today so far, oldest first: `{ date, published, passed, exploited }`. The partial day the window starts in is left out |
-| `hourly` | `{ start, hours, counts, new_exploited, new_exploited_cves }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start`. `new_exploited` is `[h, n]` pairs, oldest hour first, for the hours holding `n` Exploited CVEs (by publication) whose first exploited signal is within 72 hours of `generated_at`. The signals are the ones that set the Exploited tier: a CISA KEV, ENISA EU KEV or CIRCL listing, CISA SSVC "exploitation active", and the CNA's own exploited flag. The first one decides, so a CVE already Exploited through SSVC is not new when KEV lists it later. Listings are dated by day, so a day counts from 00:00 UTC; SSVC counts from its timestamp and the CNA flag from publication. A signal qualifies when it is at or after `generated_at` minus 72 hours (inclusive). A signal with no date rules the CVE out, unless it is an EU KEV row known to come after the CISA KEV date. Hours with none are left out, and `[]` means none. Older files have no `new_exploited`: read that as none. The waterfall pulses only these ticks. `new_exploited_cves` names those CVEs, newest first signal first, at most 50 (`NEW_EXPLOITED_LIST_MAX`): `{ id, title, via, at, hour }`. `title` is the short name the site shows ("Vendor · Product", else the CNA's name, at most 80 characters). `via` is the first signal: `CISA KEV`, `EU KEV`, `CIRCL`, `CISA SSVC` or `Vendor` (the CNA's own flag). `at` is when it came: `YYYY-MM-DD` for a catalog listing, an ISO 8601 UTC time for SSVC and the CNA flag. `hour` is the CVE's column in `counts`. Both fields come from one list, so below the cap its hours tally to `new_exploited` exactly; at the cap the older ones are left out of the list but still counted. Older files have no `new_exploited_cves`: the legend then stays a plain label. |
+| `hourly` | `{ start, hours, counts, new_exploited, new_exploited_cves, new_exploited_total }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start`. **Newly exploited** means an Exploited CVE whose first exploited signal is within 72 hours of `generated_at`, or that a CISA KEV, ENISA EU KEV or confirmed CIRCL listing dated within those 72 hours names. The first-signal rule uses the signals that set the Exploited tier: a CISA KEV, EU KEV or CIRCL listing, CISA SSVC "exploitation active", and the CNA's own exploited flag. A signal with no date rules that path out, unless it is an EU KEV row known to come after the CISA KEV date. The listing rule makes a new catalog listing news even when the CVE was Exploited before (through SSVC, the CNA flag or another catalog), and whatever the CVE's age. Listings are dated by day, so a day counts from 00:00 UTC; SSVC counts from its timestamp and the CNA flag from publication. A signal qualifies when it is at or after `generated_at` minus 72 hours (inclusive). `new_exploited` is `[h, n]` pairs, oldest hour first, for the hours holding `n` newly exploited CVEs of the window (by publication). Hours with none are left out, and `[]` means none. Older files have no `new_exploited`: read that as none. The waterfall pulses only these ticks. `new_exploited_cves` names the newly exploited CVEs, newest signal first, at most 50 (`NEW_EXPLOITED_LIST_MAX`): `{ id, title, via, at, hour }` for a CVE in the window, `{ id, title, via, at, published }` for one published before it. `title` is the short name the site shows ("Vendor · Product", else the CNA's name, else the CVE ID, at most 80 characters). `via` is the newest signal that makes it new: `CISA KEV`, `EU KEV`, `CIRCL`, `CISA SSVC` or `Vendor` (the CNA's own flag); for a CVE before the window it is always a listing. `at` is when it came: `YYYY-MM-DD` for a catalog listing, an ISO 8601 UTC time for SSVC and the CNA flag. `hour` is the CVE's column in `counts`; a CVE published before the window has no `hour` (it is not on the chart) and has `published` (`YYYY-MM-DD`) instead. `new_exploited_total` is how many there are before the cap, both kinds; the site's legend shows it. All three come from one list, so below the cap the list's hours tally to `new_exploited` exactly and the total is the list's length; at the cap the older ones are left out of the list but still counted. Older files have no `new_exploited_cves` or `new_exploited_total`: the legend then counts the chart and stays a plain label. |
 | `cnas[]` | Top 25 CNAs in the window: `{ cna, count, passed, no_cvss, ssvc_missing }` |
 | `ai_credits[]` | Top 20 AI credit excerpts (≤ 80 characters, as in `ai_credit`): `{ text, count }` |
 
 ## `changes.json`
 
 `{ schema_version, generated_at, items: Change[] }`: escalations in the last 7 days, newest first,
-at most 500. An item is recorded when a CVE's tier rose, or a new exploitation or exploit chip
+at most 500. Over the cap, moves into Exploited or Likely next are kept first. An item is recorded when a CVE's tier rose, or a new exploitation or exploit chip
 appeared, between two hourly runs: `{ id, at, from, to, added }`. `from` is `null` for a CVE seen for
 the first time; `added` lists the chip ids that appeared. CVEs outside the window are compared too
 when CISA added them to KEV in the last 7 days, or, for those not in CISA KEV, when EU KEV or CIRCL
@@ -294,12 +295,15 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
   loaded, or the two files come from different EPSS models (a new model moves many scores at once),
   the check is skipped and `skipped` says so. After a pause of more than 48 hours, jump tracking
   restarts from a baseline, so jumps from the pause are not all dated on the day it resumes.
-- Evidence only counts when it arrived after the CVE was already older than the window, so a CVE
-  does not join the list by ageing out of the window. Signals with a time (`poc`, first-seen
-  kinds) are compared to the minute; date-only ones (`kev`, `catalog`, `exploitdb`, `epss`) by UTC day. A CVE
-  that was in CISA KEV, or listed as exploited by EU KEV or CIRCL, before the period, or while it
-  was still in the window, is left out: it never fell asleep. After an exploit artifact from while it was still in the window, no later artifact
-  counts as its first.
+- A `kev` or `catalog` listing in the period always counts once the CVE is older than the window,
+  even when the listing came while it was still in the window: a CVE listed at 25 days old leaves
+  every 30-day view a few days later, and the listing is still news.
+- Other evidence only counts when it arrived after the CVE was already older than the window, so a
+  CVE does not join the list by ageing out of the window. Signals with a time (`poc`, first-seen
+  kinds) are compared to the minute; date-only ones (`exploitdb`, `epss`) by UTC day. A CVE that
+  was in CISA KEV, or listed as exploited by EU KEV or CIRCL, before the period is left out: it
+  never fell asleep. After an exploit artifact from while it was still in the window, no later
+  artifact counts as its first.
 - `label` is our own plain text, written to read after "Woke up Oct 30:" (e.g. `added to CISA KEV`).
   `url` links the evidence where a stable link exists (KEV catalog search, Exploit-DB entry,
   Metasploit module, Nuclei template, the PoC-in-GitHub index file, the FIRST EPSS time series).

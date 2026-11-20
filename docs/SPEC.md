@@ -208,15 +208,18 @@ included, unknown-polarity chips excluded) for filtering.
   and `Row.b`.
 - **Stats:** `monthly` from the streaming pass + KEV `dateAdded` months; `daily` for the window's full UTC days,
   then today so far (published, passed = exploited+likely at default knob, exploited); `hourly` waterfall buckets across the window
-  (`counts[h] = [exploited, likely, watch, quiet]`, plus `new_exploited` `[h, n]` pairs for Exploited CVEs whose first exploited
-  signal (CISA KEV, EU KEV or CIRCL listing, SSVC active, CNA flag) is within 72 hours of `now`, a listing day counted
-  from 00:00 UTC; only those ticks pulse on the chart. `new_exploited_cves` names them, newest first signal first, capped
-  at 50: `{ id, title, via, at, hour }`. The pairs are tallied from that same list before the cap, so the count, the
-  ticks and the names cannot disagree. The legend's "New in 72h: N" opens this list); `cnas` top 25 in window;
+  (`counts[h] = [exploited, likely, watch, quiet]`, plus `new_exploited` `[h, n]` pairs for the newly exploited CVEs of
+  the window: Exploited, and either the first exploited signal (CISA KEV, EU KEV or CIRCL listing, SSVC active, CNA
+  flag) or a CISA KEV, EU KEV or confirmed CIRCL listing is within 72 hours of `now`, a listing day counted from
+  00:00 UTC; only those ticks pulse on the chart. `new_exploited_cves` names them, newest signal first, capped at 50:
+  `{ id, title, via, at, hour }`, and also CVEs published before the window that a catalog listed in those 72 hours,
+  as `{ id, title, via, at, published }` with no `hour`. `new_exploited_total` counts the whole list before the cap.
+  The pairs and the total come from that same list, so the count, the ticks and the names cannot disagree. The
+  legend's "N newly exploited" shows the total and opens this list); `cnas` top 25 in window;
   `ai_credits` top 20 strings.
 - **Changes:** compare with `<previous>/v1/index.json` (if present): an item when the tier rose, or a new E/X chip
   appeared. Rows outside the window join when CISA added them to KEV in the last 7 days (new if absent from the
-  previous `kev.json`), or, when not in CISA KEV, when EU KEV or CIRCL first listed them as exploited in the last 7 days. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500.
+  previous `kev.json`), or, when not in CISA KEV, when EU KEV or CIRCL first listed them as exploited in the last 7 days. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500 (over the cap, moves into Exploited or Likely next are kept first).
 
 ### Emit (all JSON minified, UTF-8; `schema_version`, `generated_at` on every file)
 
