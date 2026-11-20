@@ -1,7 +1,8 @@
 /**
  * Aggregates for the surge page and the signal waterfall (StatsFile).
  */
-import { NEW_EXPLOITED_HOURS, SCHEMA_VERSION, TIERS, type StatsFile, type Tier } from '../../shared/contract';
+import { cnaName, vendorProduct } from '../../shared/cna';
+import { NEW_EXPLOITED_HOURS, NEW_EXPLOITED_LIST_MAX, SCHEMA_VERSION, TIERS, type NewExploitedCve, type NewExploitedVia, type StatsFile, type Tier } from '../../shared/contract';
 import { utcDay, vendorSaysExploited } from './score';
 import { isExploitedListing } from './sources/catalogs';
 import type { CatalogListing, History, KevCatalog, ScoredCve } from './types';
@@ -81,58 +82,90 @@ function daily(window: ScoredCve[], windowStart: Date, now: Date): StatsFile['da
   return [...days.values()];
 }
 
+/** The first exploited signal of a newly exploited CVE: when (as written in stats.json, and in ms) and which one. */
+export interface FirstSignal {
+  at: string;
+  ms: number;
+  via: NewExploitedVia;
+}
+
+const LISTING_VIA: Partial<Record<CatalogListing['catalog'], NewExploitedVia>> = { 'eu-kev': 'EU KEV', 'circl-kev': 'CIRCL' };
+
 /**
- * True when an Exploited CVE got its first exploited signal within NEW_EXPLOITED_HOURS of `now`.
- * The signals are the ones that set the tier: a CISA KEV, ENISA EU KEV or CIRCL listing, CISA SSVC
- * "exploitation active", and the CNA's own exploited flag. The first one decides, so a CVE already
- * Exploited through SSVC does not turn new when KEV lists it later.
+ * The first exploited signal of an Exploited CVE, when that signal is within NEW_EXPLOITED_HOURS of
+ * `now`; null otherwise. The signals are the ones that set the tier: a CISA KEV, ENISA EU KEV or
+ * CIRCL listing, CISA SSVC "exploitation active", and the CNA's own exploited flag. The first one
+ * decides, so a CVE already Exploited through SSVC does not turn new when KEV lists it later.
  * - Listings carry a day only, so a day counts from its start (00:00 UTC). That never calls a
  *   listing new when it may be older than 72 hours.
  * - SSVC counts from its timestamp; the CNA flag from the CVE's publication, the earliest it can be.
  * - A signal with no date could be older, so it rules the CVE out (an EU KEV row known not to
  *   predate the CISA day is bounded by that day instead).
  * - Signals dated after `now` do not exist yet. The boundary (now - 72h) is inclusive.
+ * - Two signals at the same time: the one listed first above is named.
  */
-export function isNewlyExploited(s: ScoredCve, listings: readonly CatalogListing[] | undefined, now: Date): boolean {
-  if (s.tier !== 'exploited') return false;
+export function firstExploitedSignal(s: ScoredCve, listings: readonly CatalogListing[] | undefined, now: Date): FirstSignal | null {
+  if (s.tier !== 'exploited') return null;
   const today = ymd(now);
-  const times: number[] = [];
-  const day = (d: string) => Date.parse(`${d}T00:00:00Z`);
+  const signals: FirstSignal[] = [];
+  const onDay = (d: string, via: NewExploitedVia) => signals.push({ at: d, ms: Date.parse(`${d}T00:00:00Z`), via });
   if (s.kev || s.cve.adpKev) {
     const kevDay = normalizeYmd(s.kev?.date_added ?? s.cve.adpKev?.dateAdded);
-    if (!kevDay) return false;
-    times.push(day(kevDay));
+    if (!kevDay) return null;
+    onDay(kevDay, 'CISA KEV');
   }
   for (const l of listings ?? []) {
-    if (!isExploitedListing(l, today)) continue;
-    if (l.added) times.push(day(l.added));
+    const via = LISTING_VIA[l.catalog];
+    if (!via || !isExploitedListing(l, today)) continue;
+    if (l.added) onDay(l.added, via);
     // Undated but known not to predate another listing (EU KEV after the CISA day): that listing decides.
-    else if (!l.notBefore) return false;
+    else if (!l.notBefore) return null;
   }
   if (s.cve.ssvc?.exploitation === 'active') {
-    const at = s.cve.ssvc.timestamp ? Date.parse(s.cve.ssvc.timestamp) : NaN;
-    if (Number.isNaN(at)) return false;
-    times.push(at);
+    const ms = s.cve.ssvc.timestamp ? Date.parse(s.cve.ssvc.timestamp) : NaN;
+    if (Number.isNaN(ms)) return null;
+    signals.push({ at: new Date(ms).toISOString(), ms, via: 'CISA SSVC' });
   }
-  if (vendorSaysExploited(s.cve)) times.push(Date.parse(s.cve.published));
-  const past = times.filter((t) => !Number.isNaN(t) && t <= now.getTime());
-  if (past.length === 0) return false;
-  return Math.min(...past) >= now.getTime() - NEW_EXPLOITED_HOURS * HOUR_MS;
+  if (vendorSaysExploited(s.cve)) {
+    const ms = Date.parse(s.cve.published);
+    if (!Number.isNaN(ms)) signals.push({ at: new Date(ms).toISOString(), ms, via: 'Vendor' });
+  }
+  let first: FirstSignal | null = null;
+  for (const sig of signals) if (!Number.isNaN(sig.ms) && sig.ms <= now.getTime() && (!first || sig.ms < first.ms)) first = sig;
+  return first && first.ms >= now.getTime() - NEW_EXPLOITED_HOURS * HOUR_MS ? first : null;
+}
+
+/** True when an Exploited CVE got its first exploited signal within NEW_EXPLOITED_HOURS of `now` (see firstExploitedSignal). */
+export const isNewlyExploited = (s: ScoredCve, listings: readonly CatalogListing[] | undefined, now: Date): boolean => firstExploitedSignal(s, listings, now) !== null;
+
+const TITLE_MAX = 80;
+
+/** The short name the site shows for a CVE: "Vendor · Product", else the CNA's display name. */
+function shortTitle(s: ScoredCve): string {
+  const first = s.cve.affected[0];
+  const text = ((first ? vendorProduct(first.vendor, first.product) : '') || cnaName(s.cve.cna)).replace(/\s+/g, ' ').trim();
+  return text.length > TITLE_MAX ? `${text.slice(0, TITLE_MAX - 1).trimEnd()}…` : text;
 }
 
 function hourly(window: ScoredCve[], windowStart: Date, now: Date, catalogs?: StatsInput['catalogs']): StatsFile['hourly'] {
   const start = Math.floor(windowStart.getTime() / HOUR_MS) * HOUR_MS;
   const hours = Math.max(1, Math.ceil((now.getTime() - start) / HOUR_MS));
   const counts = Array.from({ length: hours }, () => [0, 0, 0, 0] as [number, number, number, number]);
-  const fresh = new Map<number, number>();
+  const fresh: (NewExploitedCve & { ms: number })[] = [];
   for (const s of window) {
     const h = Math.floor((Date.parse(s.cve.published) - start) / HOUR_MS);
     if (h < 0 || h >= hours) continue;
     counts[h][TIERS.indexOf(s.tier)]++;
-    if (isNewlyExploited(s, catalogs?.get(s.cve.id), now)) fresh.set(h, (fresh.get(h) ?? 0) + 1);
+    const first = firstExploitedSignal(s, catalogs?.get(s.cve.id), now);
+    if (first) fresh.push({ id: s.cve.id, title: shortTitle(s), via: first.via, at: first.at, hour: h, ms: first.ms });
   }
-  const newExploited = [...fresh.entries()].sort((a, b) => a[0] - b[0]);
-  return { start: new Date(start).toISOString(), hours, counts, new_exploited: newExploited };
+  // One list for both fields, so the counts, the pulsing ticks and the names never disagree.
+  fresh.sort((a, b) => b.ms - a.ms || a.id.localeCompare(b.id));
+  const perHour = new Map<number, number>();
+  for (const f of fresh) perHour.set(f.hour, (perHour.get(f.hour) ?? 0) + 1);
+  const newExploited = [...perHour.entries()].sort((a, b) => a[0] - b[0]);
+  const cves = fresh.slice(0, NEW_EXPLOITED_LIST_MAX).map(({ ms: _ms, ...c }) => c);
+  return { start: new Date(start).toISOString(), hours, counts, new_exploited: newExploited, new_exploited_cves: cves };
 }
 
 function cnas(window: ScoredCve[]): StatsFile['cnas'] {

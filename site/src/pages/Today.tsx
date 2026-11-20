@@ -10,6 +10,7 @@ import { FilterBar } from '../components/FilterBar';
 import { IconArrowRight, IconLayers } from '../components/icons';
 import { kevUrgency, KevStrip } from '../components/Kev';
 import { Knob } from '../components/Knob';
+import { NewExploitedLegend } from '../components/NewExploited';
 import { CveRow } from '../components/Row';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 import { TierBar, TierIcon } from '../components/Tier';
@@ -30,6 +31,7 @@ import {
   hasChip,
   hourlyAt,
   newExploitedAt,
+  newExploitedList,
   isPassed,
   pubMs,
   readFeedFilter,
@@ -412,6 +414,10 @@ export default function Today() {
   const freshTotal = fresh.reduce((a, n) => a + n, 0);
   // Always in the legend (0 included), so its size does not change when the data arrives.
   const freshLegend = newLegend(hourly.length > 0 ? fresh : null);
+  // Older data has no names: the legend item then stays a plain label.
+  const freshList = useMemo(() => (stats.status === 'ready' && hourly.length > 0 ? newExploitedList(stats.data.hourly) : null), [stats, hourly.length > 0]);
+  // The hour of the row hovered in that list, marked on the chart.
+  const [freshMark, setFreshMark] = useState<number | null>(null);
   const annotations = useMemo(() => (stats.status === 'ready' && batches.status === 'ready' ? annotationsFor(batches.data.batches, stats.data.hourly) : []), [stats, batches]);
   const batchMembers = useMemo(() => groupByBatch(rows), [rows]);
 
@@ -477,19 +483,15 @@ export default function Today() {
               <h2 id="wf-h" class="panel__title">Signal waterfall</h2>
               <p class="panel__sub">Every CVE in the window, {slot}. Grey is noise; lit ticks cleared the bar. Pick a column to see that day’s CVEs in Explore.</p>
             </div>
-            <ul class="legend legend--inline" aria-hidden="true">
+            {/* The chart's summary reads the key out; only the button for the newly exploited list is exposed. */}
+            <ul class="legend legend--inline" role="none">
               {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
                 <Fragment key={t}>
-                  <li class={`legend__item legend__item--${t}`}>
+                  <li class={`legend__item legend__item--${t}`} role="none" aria-hidden="true">
                     <span class={`wf__key wf__key--${t}`} />
                     {TIER_META[t].label}
                   </li>
-                  {t === 'exploited' && stats.status !== 'error' && (
-                    <li class={`legend__item legend__item--new${freshTotal > 0 ? '' : ' is-none'}`}>
-                      <span class="wf__key wf__key--new" />
-                      {freshLegend}
-                    </li>
-                  )}
+                  {t === 'exploited' && stats.status !== 'error' && <NewExploitedLegend label={freshLegend} count={freshTotal} list={freshList} onMark={setFreshMark} />}
                 </Fragment>
               ))}
             </ul>
@@ -504,6 +506,7 @@ export default function Today() {
               onBinHours={setBinHours}
               dayHref={(day) => exploreDayHref(day, level)}
               fresh={fresh}
+              mark={freshMark}
               summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely with the evidence bar at ${level}.${freshTotal > 0 ? ` ${fmtInt(freshTotal)} became exploited in the last 72 hours.` : ''}`}
             />
           ) : (

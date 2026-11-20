@@ -140,3 +140,13 @@ export function cnaName(cna: string): string {
 export function isBulkCna(cna: string): boolean {
   return BULK_CNAS.has(cna.toLowerCase());
 }
+
+/** "Fortinet · FortiSandbox"; collapses "Microsoft · Microsoft Exchange" and "Linux · Linux". */
+export function vendorProduct(v: string, p: string): string {
+  const vendor = v.trim();
+  const product = p.trim();
+  if (!vendor || /^(unknown|n\/a)$/i.test(vendor)) return product;
+  if (!product || vendor.toLowerCase() === product.toLowerCase()) return vendor;
+  if (product.toLowerCase().startsWith(vendor.toLowerCase())) return product;
+  return `${vendor} · ${product}`;
+}

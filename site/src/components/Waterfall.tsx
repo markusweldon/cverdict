@@ -48,6 +48,8 @@ interface Props {
    * every other exploited tick stays still. Empty or missing: nothing moves.
    */
   fresh?: readonly number[];
+  /** An hour to mark like a hovered column (from the newly exploited list), while no column is picked. */
+  mark?: number | null;
 }
 
 /** Tooltip and screen reader label for the newly exploited count of a column. */
@@ -157,7 +159,7 @@ interface Placed {
 
 const NO_FRESH: readonly number[] = [];
 
-export function Waterfall({ counts, start, annotations = [], height = 176, summary, onBinHours, dayHref, fresh = NO_FRESH }: Props) {
+export function Waterfall({ counts, start, annotations = [], height = 176, summary, onBinHours, dayHref, fresh = NO_FRESH, mark = null }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const tip = useRef<HTMLDivElement>(null);
@@ -241,6 +243,8 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     return placeLabels(labels, width).map(({ item, left, right }) => ({ a: item, left, right }));
   }, [annotations, bins.length, per, width, start, mode]);
 
+  // A picked column wins over a marked hour.
+  const marked = active ?? (mark !== null && mark >= 0 && mark < counts.length ? Math.floor(mark / per) : null);
   useEffect(() => {
     const cv = canvas.current;
     if (!cv || width === 0) return;
@@ -289,7 +293,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       const total = b.c[0] + b.c[1] + b.c[2] + b.c[3];
       if (total === 0) return;
       const x = i * colW;
-      if (active === i) {
+      if (marked === i) {
         ctx.fillStyle = col.hover;
         ctx.fillRect(x - 1, TOP - 4, barW + 2, plotH + 4);
       }
@@ -326,7 +330,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     }
     ctx.shadowBlur = 0;
 
-    const cross = active !== null && bins[active] ? { x: Math.round(active * colW + barW / 2), y: TOP - 2, h: plotH + 2, color: col.cross } : null;
+    const cross = marked !== null && bins[marked] ? { x: Math.round(marked * colW + barW / 2), y: TOP - 2, h: plotH + 2, color: col.cross } : null;
     // Once the grow entrance is done, keep a copy of the finished chart for the pulse to restore from.
     const hot = lit.filter((t) => t.fresh).map(({ x, y }) => ({ x, y }));
     const from = parseColor(col.exploited);
@@ -346,7 +350,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       ctx.fillRect(cross.x, cross.y, 1, cross.h);
     }
     pulseSync.current?.();
-  }, [bins, freshBins, width, height, active, progress, mode, counts.length, start, dpr]);
+  }, [bins, freshBins, width, height, marked, progress, mode, counts.length, start, dpr]);
 
   // Newly exploited ticks breathe: slowly, all together, only while the chart is on screen in a visible
   // tab and motion is welcome. A timer paints about 20 frames a second into small regions only.

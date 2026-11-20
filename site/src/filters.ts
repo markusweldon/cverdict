@@ -2,7 +2,8 @@
  * Pure list logic shared by the feed, Explore, batches and the waterfall: tiers at the live knob,
  * search, and re-tiering of default-knob aggregates.
  */
-import { SIGNAL_MIN_SCORE, TIERS, tierFor, type Row, type StatsFile, type Tier } from '../../shared/contract';
+import { SIGNAL_MIN_SCORE, TIERS, tierFor, type NewExploitedCve, type Row, type StatsFile, type Tier } from '../../shared/contract';
+import { CVE_ID_RE } from '../../shared/shard';
 import { HOUR_MS } from './format';
 import { isWatched } from './state';
 
@@ -123,6 +124,35 @@ export function newExploitedAt(hourly: StatsFile['hourly'], counts: readonly Hou
     if (out[h] > 0) any = true;
   }
   return any ? out : [];
+}
+
+/**
+ * The newly exploited CVEs by name (hourly.new_exploited_cves), newest first. Null when the field is
+ * missing or unreadable (older data): the legend then stays a plain label. Malformed entries are
+ * dropped, as are ones outside the chart's hours.
+ */
+export function newExploitedList(hourly: StatsFile['hourly']): NewExploitedCve[] | null {
+  const list: unknown = hourly.new_exploited_cves;
+  if (!Array.isArray(list)) return null;
+  const seen = new Set<string>();
+  const out: NewExploitedCve[] = [];
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue;
+    const { id, title, via, at, hour } = item as Record<string, unknown>;
+    if (typeof id !== 'string' || !CVE_ID_RE.test(id) || seen.has(id)) continue;
+    if (typeof at !== 'string' || Number.isNaN(Date.parse(at))) continue;
+    if (typeof hour !== 'number' || !Number.isInteger(hour) || hour < 0 || hour >= hourly.counts.length) continue;
+    seen.add(id);
+    out.push({
+      id,
+      title: typeof title === 'string' ? title : '',
+      // A signal this build does not know yet is shown as written.
+      via: (typeof via === 'string' ? via : '') as NewExploitedCve['via'],
+      at,
+      hour,
+    });
+  }
+  return out;
 }
 
 /** Lower-cased search terms; every term must match. */

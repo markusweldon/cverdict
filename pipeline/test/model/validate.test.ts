@@ -138,17 +138,59 @@ describe('validateOutput', () => {
     const stats = read<StatsFile>(PATHS.stats);
     // The KEV listing of CVE-2026-100001 is 5 days old: nothing is new.
     expect(stats.hourly.new_exploited).toEqual([]);
+    expect(stats.hourly.new_exploited_cves).toEqual([]);
     const h = stats.hourly.counts.findIndex((c) => c[0] > 0);
     expect(h).toBeGreaterThanOrEqual(0);
-    write(PATHS.stats, { ...stats, hourly: { ...stats.hourly, new_exploited: [[h, 1]] } });
+    const { new_exploited: _gone, new_exploited_cves: _list, ...old } = stats.hourly;
+    write(PATHS.stats, { ...stats, hourly: { ...old, new_exploited: [[h, 1]] } });
     expect(validateOutput(dir).errors.filter((e) => e.includes('new_exploited'))).toEqual([]);
-    const { new_exploited: _gone, ...old } = stats.hourly;
     write(PATHS.stats, { ...stats, hourly: old });
     expect(validateOutput(dir).errors.filter((e) => e.includes('new_exploited'))).toEqual([]);
     for (const bad of [[[h, stats.hourly.counts[h][0] + 1]], [[h, 0]], [[-1, 1]], [[h, 1], [h, 1]], 'x']) {
-      write(PATHS.stats, { ...stats, hourly: { ...stats.hourly, new_exploited: bad } });
+      write(PATHS.stats, { ...stats, hourly: { ...old, new_exploited: bad } });
       expect(validateOutput(dir).errors.some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited`))).toBe(true);
     }
+  });
+
+  it('checks stats.json hourly.new_exploited_cves against the counts and the index', () => {
+    const stats = read<StatsFile>(PATHS.stats);
+    const start = Date.parse(stats.hourly.start);
+    const hourOf = (iso: string) => Math.floor((Date.parse(iso) - start) / 3_600_000);
+    const ID = 'CVE-2026-100001';
+    const h = hourOf('2026-10-25T08:00:00.000Z');
+    const item = { id: ID, title: 'Acme · Widget', via: 'CISA KEV', at: '2026-10-25', hour: h };
+    // Hour h - 1 gets an Exploited CVE too, so a list entry can point at it.
+    const counts = stats.hourly.counts.map((c, i) => (i === h - 1 ? ([1, c[1], c[2], c[3]] as typeof c) : c));
+    const errorsWith = (pairs: unknown, list: unknown) => {
+      write(PATHS.stats, { ...stats, hourly: { ...stats.hourly, counts, new_exploited: pairs, new_exploited_cves: list } });
+      return validateOutput(dir).errors.filter((e) => e.includes('new_exploited'));
+    };
+    expect(errorsWith([[h, 1]], [item])).toEqual([]);
+    expect(errorsWith([[h, 1]], [{ ...item, via: 'Vendor', at: '2026-10-25T08:00:00.000Z' }])).toEqual([]);
+    const bad: [unknown, unknown][] = [
+      // Counts and list disagree, either way.
+      [[[h, 1]], []],
+      [[], [item]],
+      // The same CVE twice.
+      [[[h, 1]], [item, item]],
+      // Not the CVE's publication hour.
+      [[[h - 1, 1]], [{ ...item, hour: h - 1 }]],
+      // Not an Exploited CVE in the index.
+      [[[h, 1]], [{ ...item, id: 'CVE-2026-999999' }]],
+      // Older than 72 hours, after generated_at, or not a date.
+      [[[h, 1]], [{ ...item, at: '2026-10-23' }]],
+      [[[h, 1]], [{ ...item, at: '2026-10-27' }]],
+      [[[h, 1]], [{ ...item, at: 'soon' }]],
+      // Unknown signal, empty title, not an array.
+      [[[h, 1]], [{ ...item, via: 'Twitter' }]],
+      [[[h, 1]], [{ ...item, title: '' }]],
+      [[[h, 1]], 'x'],
+    ];
+    for (const [pairs, list] of bad) expect(errorsWith(pairs, list).some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited_cves`))).toBe(true);
+    // A list without the counts it names.
+    const { new_exploited: _gone, ...noPairs } = stats.hourly;
+    write(PATHS.stats, { ...stats, hourly: { ...noPairs, new_exploited_cves: [item] } });
+    expect(validateOutput(dir).errors.some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited_cves is present without`))).toBe(true);
   });
 
   it('catches meta counts that disagree with the index', () => {

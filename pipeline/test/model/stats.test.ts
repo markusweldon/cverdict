@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION } from '../../../shared/contract';
-import { buildStats, dayRange, isNewlyExploited, monthRange } from '../../src/stats';
+import { NEW_EXPLOITED_LIST_MAX, SCHEMA_VERSION } from '../../../shared/contract';
+import { buildStats, dayRange, firstExploitedSignal, isNewlyExploited, monthRange } from '../../src/stats';
 import type { History } from '../../src/types';
 import { NOW, daysAgo, listing, makeCve, makeKev, makeKevCatalog, msf, score, ssvc } from '../fixtures/model/builders';
 import type { CatalogListing } from '../../src/types';
@@ -196,5 +196,64 @@ describe('newly exploited (hourly.new_exploited)', () => {
     ]);
     for (const [h, n] of s.hourly.new_exploited!) expect(n).toBeLessThanOrEqual(s.hourly.counts[h][0]);
     expect(buildStats({ history: history(), kev, window: [old], windowStart, now: NOW }).hourly.new_exploited).toEqual([]);
+  });
+
+  it('names the first signal and when it came: a day for listings, a time for SSVC and the CNA flag', () => {
+    const pick = (s: ReturnType<typeof score>, ls?: CatalogListing[]) => {
+      const f = firstExploitedSignal(s, ls, NOW);
+      return f && { at: f.at, via: f.via };
+    };
+    expect(pick(kevOn('2026-10-25'))).toEqual({ at: '2026-10-25', via: 'CISA KEV' });
+    expect(pick(listed(listing('eu-kev', '2026-10-24')), [listing('eu-kev', '2026-10-24')])).toEqual({ at: '2026-10-24', via: 'EU KEV' });
+    expect(pick(listed(listing('circl-kev', '2026-10-25')), [listing('circl-kev', '2026-10-25')])).toEqual({ at: '2026-10-25', via: 'CIRCL' });
+    const active = score(cve({ ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: '2026-10-25T08:00:00Z' } }));
+    expect(pick(active)).toEqual({ at: '2026-10-25T08:00:00.000Z', via: 'CISA SSVC' });
+    expect(pick(score(cve({ published: '2026-10-25T09:15:00Z', vendorInTheWild: true })))).toEqual({ at: '2026-10-25T09:15:00.000Z', via: 'Vendor' });
+    // EU KEV on Oct 24, CISA KEV on Oct 25: EU KEV came first.
+    expect(pick(kevOn('2026-10-25'), [listing('eu-kev', '2026-10-24')])).toEqual({ at: '2026-10-24', via: 'EU KEV' });
+    // The same day in both: CISA KEV is named.
+    expect(pick(kevOn('2026-10-25'), [listing('eu-kev', '2026-10-25')])).toEqual({ at: '2026-10-25', via: 'CISA KEV' });
+    expect(pick(kevOn('2026-10-01'))).toBeNull();
+  });
+
+  it('buildStats names the CVEs newest first, with short titles, and counts them from the same list', () => {
+    const windowStart = new Date(NOW.getTime() - 30 * DAY_MS);
+    const kev = makeKevCatalog();
+    const a = score(makeCve({ id: 'CVE-2026-601', published: '2026-10-20T10:20:00Z', affected: [{ vendor: 'Fortinet', product: 'FortiOS', purl: null }] }), {
+      kev: [makeKev('CVE-2026-601', { dateAdded: '2026-10-24' })],
+    });
+    const b = score(makeCve({ id: 'CVE-2026-602', published: '2026-10-26T09:00:00Z', vendorInTheWild: true, affected: [{ vendor: 'Microsoft', product: 'Microsoft Exchange', purl: null }] }));
+    const c = score(makeCve({ id: 'CVE-2026-603', published: '2026-10-20T10:40:00Z', cna: 'GitHub_M', affected: [] }), { kev: [makeKev('CVE-2026-603', { dateAdded: '2026-10-25' })] });
+    const s = buildStats({ history: history(), kev, window: [a, b, c], windowStart, now: NOW });
+    const start = Date.parse(s.hourly.start);
+    const hourOf = (iso: string) => Math.floor((Date.parse(iso) - start) / 3_600_000);
+    expect(s.hourly.new_exploited_cves).toEqual([
+      { id: 'CVE-2026-602', title: 'Microsoft Exchange', via: 'Vendor', at: '2026-10-26T09:00:00.000Z', hour: hourOf('2026-10-26T09:00:00Z') },
+      { id: 'CVE-2026-603', title: 'GitHub', via: 'CISA KEV', at: '2026-10-25', hour: hourOf('2026-10-20T10:40:00Z') },
+      { id: 'CVE-2026-601', title: 'Fortinet · FortiOS', via: 'CISA KEV', at: '2026-10-24', hour: hourOf('2026-10-20T10:20:00Z') },
+    ]);
+    expect(s.hourly.new_exploited).toEqual([
+      [hourOf('2026-10-20T10:20:00Z'), 2],
+      [hourOf('2026-10-26T09:00:00Z'), 1],
+    ]);
+  });
+
+  it('keeps the newest NEW_EXPLOITED_LIST_MAX in the list and still counts every one', () => {
+    const windowStart = new Date(NOW.getTime() - 30 * DAY_MS);
+    const n = NEW_EXPLOITED_LIST_MAX + 7;
+    const window = Array.from({ length: n }, (_, i) => {
+      const id = `CVE-2026-${7000 + i}`;
+      // One a minute back from NOW, each flagged by its CNA at publication.
+      return score(makeCve({ id, published: new Date(NOW.getTime() - (i + 1) * 60_000).toISOString(), vendorInTheWild: true, affected: [{ vendor: 'Acme', product: 'x'.repeat(120), purl: null }] }));
+    });
+    const s = buildStats({ history: history(), kev: makeKevCatalog(), window, windowStart, now: NOW });
+    const list = s.hourly.new_exploited_cves!;
+    expect(list).toHaveLength(NEW_EXPLOITED_LIST_MAX);
+    expect(list[0].id).toBe('CVE-2026-7000');
+    expect(list.at(-1)!.id).toBe(`CVE-2026-${7000 + NEW_EXPLOITED_LIST_MAX - 1}`);
+    expect(s.hourly.new_exploited!.reduce((t, [, k]) => t + k, 0)).toBe(n);
+    // Long names are cut to 80 characters.
+    expect(list[0].title).toHaveLength(80);
+    expect(list[0].title.endsWith('…')).toBe(true);
   });
 });

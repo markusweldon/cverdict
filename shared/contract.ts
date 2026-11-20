@@ -333,12 +333,36 @@ export interface StatsFile {
    * `new_exploited` lists [h, n] for the hours (by publication) holding n Exploited CVEs whose first exploited signal (a
    * CISA KEV, ENISA EU KEV or CIRCL listing, SSVC active, or the CNA's flag) is in the NEW_EXPLOITED_HOURS before
    * `generated_at`, oldest hour first, only hours with n > 0. Older files leave it out: read that as none.
+   * `new_exploited_cves` names those CVEs, newest first signal first, at most NEW_EXPLOITED_LIST_MAX. Both come
+   * from one list, so below the cap its hours tally to `new_exploited` exactly. Older files leave it out.
    */
-  hourly: { start: string; hours: number; counts: [number, number, number, number][]; new_exploited?: [hour: number, count: number][] };
+  hourly: {
+    start: string;
+    hours: number;
+    counts: [number, number, number, number][];
+    new_exploited?: [hour: number, count: number][];
+    new_exploited_cves?: NewExploitedCve[];
+  };
   /** Top CNAs in the window. */
   cnas: { cna: string; count: number; passed: number; no_cvss: number; ssvc_missing: number }[];
   /** Most common AI credit strings in the window. */
   ai_credits: { text: string; count: number }[];
+}
+
+/** The signal that first made a CVE Exploited (stats.json hourly.new_exploited_cves). "Vendor" is the CNA's own flag. */
+export const NEW_EXPLOITED_VIA = ['CISA KEV', 'EU KEV', 'CIRCL', 'CISA SSVC', 'Vendor'] as const;
+export type NewExploitedVia = (typeof NEW_EXPLOITED_VIA)[number];
+
+/** One CVE whose first exploited signal is in the NEW_EXPLOITED_HOURS before generated_at. */
+export interface NewExploitedCve {
+  id: string;
+  /** Short name: "Vendor · Product" as the site shows it, else the CNA's display name. Plain text, at most 80 chars. */
+  title: string;
+  via: NewExploitedVia;
+  /** When that signal came: "YYYY-MM-DD" for a catalog listing (dated by day), else an ISO 8601 UTC time. */
+  at: string;
+  /** Its column in `hourly.counts` (by publication). */
+  hour: number;
 }
 
 export interface Change {
@@ -714,6 +738,8 @@ export const KNOB_MAX = 80;
 export const SIGNAL_MIN_SCORE = 35;
 /** How far back from generated_at a first exploited signal counts as new (stats.json hourly.new_exploited). */
 export const NEW_EXPLOITED_HOURS = 72;
+/** stats.json hourly.new_exploited_cves keeps the newest this many; hourly.new_exploited still counts them all. */
+export const NEW_EXPLOITED_LIST_MAX = 50;
 
 export function rowFromColumns(cols: readonly string[], values: unknown[]): Row {
   const out: Record<string, unknown> = {};

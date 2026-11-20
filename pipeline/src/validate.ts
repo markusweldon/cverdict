@@ -6,6 +6,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import {
+  NEW_EXPLOITED_HOURS,
+  NEW_EXPLOITED_LIST_MAX,
+  NEW_EXPLOITED_VIA,
   PACKAGE_ECOSYSTEMS,
   ROW_COLS,
   SCHEMA_VERSION,
@@ -170,25 +173,81 @@ export function validateOutput(root: string, log?: Logger): ValidationResult {
   return result;
 }
 
-/** stats.json hourly.new_exploited (optional): [hour, count] pairs in range, ascending, never more than the hour's exploited count. */
-function checkNewExploited(json: Map<string, JsonObject>, errors: string[]): void {
-  const hourly = asObject(json.get(PATHS.stats)?.hourly);
-  if (!hourly || hourly.new_exploited === undefined) return;
-  const pairs = hourly.new_exploited;
+/**
+ * stats.json hourly.new_exploited (optional): [hour, count] pairs in range, ascending, never more than the hour's
+ * exploited count. hourly.new_exploited_cves (optional): unique Exploited CVEs from the index, each in the column
+ * of its publication hour, first signal inside the 72 hours before generated_at, newest first, at most the cap,
+ * and tallying per hour to the pairs (exactly, below the cap).
+ */
+function checkNewExploited(json: Map<string, JsonObject>, index: readonly Row[] | null, errors: string[]): void {
+  const stats = json.get(PATHS.stats);
+  const hourly = asObject(stats?.hourly);
+  if (!hourly) return;
   const counts = Array.isArray(hourly.counts) ? hourly.counts : [];
-  if (!Array.isArray(pairs)) {
-    errors.push(`${PATHS.stats}: hourly.new_exploited is not an array`);
-    return;
-  }
-  let prev = -1;
-  for (const p of pairs) {
-    const [h, n] = Array.isArray(p) ? p : [];
-    const exploited = Array.isArray(counts[h as number]) ? Number((counts[h as number] as unknown[])[0]) : -1;
-    if (!Number.isInteger(h) || !Number.isInteger(n) || (n as number) < 1 || (h as number) <= prev || (n as number) > exploited) {
-      errors.push(`${PATHS.stats}: hourly.new_exploited has a bad entry ${JSON.stringify(p)}`);
+  const pairs = new Map<number, number>();
+  if (hourly.new_exploited !== undefined) {
+    if (!Array.isArray(hourly.new_exploited)) {
+      errors.push(`${PATHS.stats}: hourly.new_exploited is not an array`);
       return;
     }
-    prev = h as number;
+    let prev = -1;
+    for (const p of hourly.new_exploited) {
+      const [h, n] = Array.isArray(p) ? p : [];
+      const exploited = Array.isArray(counts[h as number]) ? Number((counts[h as number] as unknown[])[0]) : -1;
+      if (!Number.isInteger(h) || !Number.isInteger(n) || (n as number) < 1 || (h as number) <= prev || (n as number) > exploited) {
+        errors.push(`${PATHS.stats}: hourly.new_exploited has a bad entry ${JSON.stringify(p)}`);
+        return;
+      }
+      prev = h as number;
+      pairs.set(h as number, n as number);
+    }
+  }
+
+  const list = hourly.new_exploited_cves;
+  if (list === undefined) return;
+  const bad = (why: string) => errors.push(`${PATHS.stats}: hourly.new_exploited_cves ${why}`);
+  if (!Array.isArray(list)) return void bad('is not an array');
+  if (hourly.new_exploited === undefined) return void bad('is present without hourly.new_exploited');
+  if (list.length > NEW_EXPLOITED_LIST_MAX) return void bad(`has ${list.length} entries, the cap is ${NEW_EXPLOITED_LIST_MAX}`);
+  const generated = typeof stats?.generated_at === 'string' ? Date.parse(stats.generated_at) : NaN;
+  const start = typeof hourly.start === 'string' ? Date.parse(hourly.start) : NaN;
+  const rows = index ? new Map(index.map((r) => [r.id, r])) : null;
+  const seen = new Set<string>();
+  const tally = new Map<number, number>();
+  let prevMs = Infinity;
+  for (const item of list) {
+    const c = asObject(item);
+    const id = c?.id;
+    const h = c?.hour as number;
+    const ms = typeof c?.at === 'string' ? Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(c.at) ? `${c.at}T00:00:00Z` : c.at) : NaN;
+    const exploited = Array.isArray(counts[h]) ? Number((counts[h] as unknown[])[0]) : 0;
+    const shape =
+      typeof id === 'string' &&
+      CVE_ID_RE.test(id) &&
+      typeof c?.title === 'string' &&
+      c.title.length > 0 &&
+      c.title.length <= 80 &&
+      (NEW_EXPLOITED_VIA as readonly unknown[]).includes(c.via) &&
+      Number.isInteger(h) &&
+      exploited > 0 &&
+      ms <= generated &&
+      ms >= generated - NEW_EXPLOITED_HOURS * 3_600_000;
+    if (!shape) return void bad(`has a bad entry ${JSON.stringify(item)}`);
+    if (seen.has(id)) return void bad(`lists ${id} twice`);
+    if (ms > prevMs) return void bad(`is not newest first at ${id}`);
+    const row = rows?.get(id);
+    if (rows && (!row || row.tier !== 'exploited')) return void bad(`lists ${id}, which is not an Exploited CVE in the index`);
+    if (row && Math.floor((Date.parse(row.pub) - start) / 3_600_000) !== h) return void bad(`puts ${id} in hour ${h}, not its publication hour`);
+    seen.add(id);
+    prevMs = ms;
+    tally.set(h, (tally.get(h) ?? 0) + 1);
+  }
+  // At the cap, older ones are left out of the list but still counted.
+  const full = list.length === NEW_EXPLOITED_LIST_MAX;
+  for (const h of new Set([...pairs.keys(), ...tally.keys()])) {
+    const t = tally.get(h) ?? 0;
+    const p = pairs.get(h) ?? 0;
+    if (full ? t > p : t !== p) return void bad(`has ${t} in hour ${h}, hourly.new_exploited has ${p}`);
   }
 }
 
@@ -270,7 +329,7 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
   }
 
   checkWoke(json, details, index ? new Set(index.map((r) => r.id)) : null, errors);
-  checkNewExploited(json, errors);
+  checkNewExploited(json, index, errors);
   checkReceipts(json, errors);
   checkPackages(json, details, index, errors, warnings);
 
