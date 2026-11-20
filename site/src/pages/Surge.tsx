@@ -1,11 +1,14 @@
 /** The Surge: CVE volume since 1999, the window day by day, and who publishes it. */
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { StatsFile } from '../../../shared/contract';
+import { DailyChart } from '../components/DailyChart';
 import { ErrorState, Loading } from '../components/States';
 import { data } from '../data';
-import { cnaName, fmtCompact, fmtDate, fmtInt, fmtMonth, fmtPct } from '../format';
+import { dailyAt, dailyTakeaway, fmtChange, kevByDay, lastDayPartial, yearChange, type DayRow } from '../daily';
+import { cnaName, fmtCompact, fmtInt, fmtMonth, fmtPct } from '../format';
 import { useData, useTitle, useWidth } from '../hooks';
 import { href } from '../router';
+import { knob, useStore } from '../state';
 import { LEDE_FALLBACK, PACE_AXIS_HEADROOM, busiestComplete, growth, ledeText, monthProgress, onPace } from '../surge';
 
 type Month = StatsFile['monthly'][number];
@@ -48,6 +51,9 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
   const [log, setLog] = useState(false);
   const [volume, setVolume] = useState<'published' | 'reserved'>('published');
   const [hover, setHover] = useState<number | null>(null);
+  const [via, setVia] = useState<'mouse' | 'touch' | 'key'>('mouse');
+  const wrap = useRef<HTMLElement>(null);
+  const down = useRef<{ x: number; y: number; type: string } | null>(null);
   const series: SeriesKey[] = [volume, 'kev_added', 'ai'];
   const H = 300;
   const M = { l: 48, r: 14, t: 14, b: 26 };
@@ -80,19 +86,57 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
   const h = hover !== null ? monthly[hover] : null;
   const hPartial = hover !== null && cut < n && hover === n - 1;
 
-  const onMove = (e: PointerEvent) => {
-    const r = (e.currentTarget as SVGElement).getBoundingClientRect();
-    setHover(Math.min(n - 1, Math.max(0, Math.round(((e.clientX - r.left - M.l) / Math.max(1, w)) * (n - 1)))));
+  const values = useMemo(() => monthly.map((m) => m[volume]), [monthly, volume]);
+  // Reserved counts for recent months keep growing for weeks, so the partial month is only compared for Published.
+  const yoy = hover !== null && !(hPartial && volume !== 'published') ? yearChange(monthly, values, hover, prog) : null;
+
+  // A tapped month stays picked until the next tap elsewhere on the page.
+  useEffect(() => {
+    if (via !== 'touch' || hover === null) return;
+    const away = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setHover(null);
+    };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [via, hover]);
+
+  const monthAt = (clientX: number, el: Element) => {
+    const r = el.getBoundingClientRect();
+    return Math.min(n - 1, Math.max(0, Math.round(((clientX - r.left - M.l) / Math.max(1, w)) * (n - 1))));
   };
   const onKey = (e: KeyboardEvent) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault();
-    const step = e.shiftKey ? 12 : 1;
-    setHover((cur) => Math.min(n - 1, Math.max(0, (cur ?? n - 1) + (e.key === 'ArrowRight' ? step : -step))));
+    const last = n - 1;
+    const moves: Record<string, (h: number | null) => number> = {
+      ArrowRight: (h) => (h === null ? last : h + (e.shiftKey ? 12 : 1)),
+      ArrowUp: (h) => (h === null ? last : h + 1),
+      ArrowLeft: (h) => (h === null ? last : h - (e.shiftKey ? 12 : 1)),
+      ArrowDown: (h) => (h === null ? last : h - 1),
+      PageUp: (h) => (h ?? last) + 12,
+      PageDown: (h) => (h ?? last) - 12,
+      Home: () => 0,
+      End: () => last,
+    };
+    const move = moves[e.key];
+    if (move) {
+      e.preventDefault();
+      e.stopPropagation();
+      setVia('key');
+      setHover((h) => Math.min(last, Math.max(0, move(h))));
+    } else if (e.key === 'Escape' && hover !== null) {
+      e.stopPropagation();
+      setHover(null);
+    }
+  };
+  const describe = (i: number) => {
+    const m = monthly[i];
+    const p = cut < n && i === n - 1;
+    const head = p ? `${partialLabel}, ${prog.daysElapsed} of ${prog.daysInMonth} days` : fmtMonth(m.month);
+    const c = i === hover && yoy ? `, ${fmtChange(yoy.change)} vs ${yoy.partial ? 'the same days of ' : ''}${fmtMonth(yoy.ref)}` : '';
+    return `${head}: ${fmtInt(m[volume])} ${volume}${c}, ${fmtInt(m.kev_added)} added to CISA KEV, ${fmtInt(m.ai)} AI-credited.`;
   };
 
   return (
-    <figure class="chart">
+    <figure class="chart" ref={wrap}>
       <div class="chart__bar">
         <ul class="legend legend--inline">
           {series.map((k) => (
@@ -119,9 +163,46 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
           </div>
         </div>
       </div>
-      <div class="chart__plot" ref={ref}>
+      <div class="chart__plot" ref={ref} style={{ height: `${H}px` }}>
         {width > 0 && (
-          <svg width={width} height={H} role="img" aria-label={`CVEs ${volume} per month since 1999, with CISA KEV additions and AI-credited CVEs. Peak: ${fmtInt(max)}.${cut < n ? ` The last month, ${partialLabel}, is partial: ${prog.daysElapsed} of ${prog.daysInMonth} days, drawn dashed.${pace !== null ? ` On pace for about ${fmtInt(pace)} (estimate).` : ''}` : ''} Use arrow keys to read months.`} tabIndex={0} onKeyDown={onKey} onBlur={() => setHover(null)} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+          <svg
+            width={width}
+            height={H}
+            class="chart__svg"
+            tabIndex={0}
+            role="slider"
+            aria-label="CVEs per month since 1999"
+            aria-describedby="monthly-desc"
+            aria-valuemin={1}
+            aria-valuemax={n}
+            aria-valuenow={(hover ?? n - 1) + 1}
+            aria-valuetext={hover !== null ? describe(hover) : 'No month picked. Use the arrow keys to pick one.'}
+            onKeyDown={onKey}
+            onBlur={() => {
+              if (via !== 'touch') setHover(null);
+            }}
+            onPointerDown={(e) => {
+              down.current = { x: e.clientX, y: e.clientY, type: e.pointerType };
+              // A tap picks without focusing, so no keyboard focus ring shows; the tap away clears it.
+              if (e.pointerType === 'touch') e.preventDefault();
+            }}
+            onPointerMove={(e) => {
+              // Touch has no hover: a finger moving over the chart is scrolling the page.
+              if (e.pointerType === 'touch') return;
+              setVia('mouse');
+              setHover(monthAt(e.clientX, e.currentTarget));
+            }}
+            onPointerLeave={(e) => {
+              if (e.pointerType !== 'touch' && via === 'mouse') setHover(null);
+            }}
+            onClick={(e) => {
+              const d = down.current;
+              down.current = null;
+              if (!d || d.type !== 'touch' || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 8) return;
+              setVia('touch');
+              setHover(monthAt(e.clientX, e.currentTarget));
+            }}
+          >
             {s.ticks.map((t) => (
               <g key={t} class="chart__grid">
                 <line x1={M.l} x2={width - M.r} y1={s.y(t)} y2={s.y(t)} />
@@ -168,7 +249,7 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
           </svg>
         )}
         {h && hover !== null && (
-          <div class={`chart__tip${x(hover) > width - 220 ? ' is-left' : ''}`} style={{ left: `${x(hover)}px` }} aria-live="polite">
+          <div class={`chart__tip${x(hover) > width - 220 ? ' is-left' : ''}`} style={{ left: `${x(hover)}px` }} aria-hidden="true">
             <div class="chart__tip-head">{hPartial ? partialLabel : fmtMonth(h.month)}</div>
             {hPartial && (
               <div class="chart__tip-row chart__tip-row--muted">
@@ -189,6 +270,12 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
               <strong>{fmtInt(h.rejected)}</strong>
               <span>Rejected</span>
             </div>
+            {yoy && (
+              <div class="chart__tip-yoy">
+                <strong>{fmtChange(yoy.change)}</strong> vs {yoy.partial ? 'the same days of ' : ''}
+                {fmtMonth(yoy.ref).replace(' ', '\u00a0')}
+              </div>
+            )}
             {hPartial && pace !== null && (
               <div class="chart__tip-pace">
                 On pace for about {fmtInt(pace)} (estimate){paceOff ? ', above the top of the chart' : ''}
@@ -196,6 +283,13 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
             )}
           </div>
         )}
+      </div>
+      <p class="sr-only" id="monthly-desc">
+        {`CVEs ${volume} per month since 1999, with CISA KEV additions and AI-credited CVEs. Peak: ${fmtInt(max)}.${cut < n ? ` The last month, ${partialLabel}, is partial: ${prog.daysElapsed} of ${prog.daysInMonth} days, drawn dashed.${pace !== null ? ` On pace for about ${fmtInt(pace)} (estimate).` : ''}` : ''} Use the arrow keys to move between months, Shift with an arrow to move a year, and Escape to clear.`}
+      </p>
+      {/* Keyboard moves are announced by aria-valuetext; this reads out pointer hover and taps. */}
+      <div class="sr-only" aria-live="polite">
+        {hover !== null && via !== 'key' ? describe(hover) : ''}
       </div>
       <details class="chart__table">
         <summary>View as table</summary>
@@ -238,66 +332,48 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
   );
 }
 
-function Columns({ days, k, cls, label, height }: { days: StatsFile['daily']; k: 'published' | 'passed'; cls: string; label: string; height: number }) {
-  const [ref, width] = useWidth<HTMLDivElement>();
-  const [hover, setHover] = useState<number | null>(null);
-  const M = { l: 48, r: 14, t: 10, b: 22 };
-  const n = days.length;
-  const slot = Math.max(1, (width - M.l - M.r) / Math.max(1, n));
-  const bar = Math.max(2, Math.min(24, slot - 2));
-  const max = Math.max(1, ...days.map((d) => d[k]));
-  const s = scale(max, M.t, height - M.b, false);
-  const h = hover !== null ? days[hover] : null;
+function DailyTable({ days, kev, kevReady, partialLast }: { days: readonly DayRow[]; kev: ReadonlyMap<string, number>; kevReady: boolean; partialLast: boolean }) {
   return (
-    <div class="chart__plot" ref={ref}>
-      {width > 0 && (
-        <svg width={width} height={height} role="img" aria-label={`${label} per day in the window. Maximum ${fmtInt(max)}.`} onPointerLeave={() => setHover(null)}>
-          {s.ticks.map((t) => (
-            <g key={t} class="chart__grid">
-              <line x1={M.l} x2={width - M.r} y1={s.y(t)} y2={s.y(t)} />
-              <text x={M.l - 8} y={s.y(t)} text-anchor="end" dominant-baseline="middle">
-                {fmtCompact(t)}
-              </text>
-            </g>
-          ))}
-          {days.map((d, i) => {
-            const cx = M.l + i * slot + slot / 2;
-            const y = s.y(d[k]);
-            const y0 = s.y(0);
-            const r = Math.min(4, bar / 2, Math.max(0, y0 - y));
-            const monday = new Date(`${d.date}T00:00:00Z`).getUTCDay() === 1;
-            return (
-              <g key={d.date} class={`chart__col${hover === i ? ' is-hover' : ''}`} onPointerEnter={() => setHover(i)}>
-                <rect class="chart__hit" x={cx - slot / 2} y={M.t} width={slot} height={height - M.t - M.b} />
-                {d[k] > 0 && <path class={`chart__bar ${cls}${k === 'passed' && d.exploited ? ' has-exploited' : ''}`} d={`M${cx - bar / 2} ${y0}V${y + r}Q${cx - bar / 2} ${y} ${cx - bar / 2 + r} ${y}H${cx + bar / 2 - r}Q${cx + bar / 2} ${y} ${cx + bar / 2} ${y + r}V${y0}Z`} />}
-                {monday && (
-                  <text class="chart__xlabel" x={cx} y={height - 6} text-anchor="middle">
-                    {fmtDate(d.date)}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </svg>
-      )}
-      {h && hover !== null && (
-        <div class={`chart__tip${hover > n * 0.7 ? ' is-left' : ''}`} style={{ left: `${M.l + hover * slot + slot / 2}px` }}>
-          <div class="chart__tip-head">{fmtDate(h.date)}</div>
-          <div class="chart__tip-row">
-            <strong>{fmtInt(h.published)}</strong>
-            <span>published</span>
-          </div>
-          <div class="chart__tip-row">
-            <strong>{fmtInt(h.passed)}</strong>
-            <span>passed</span>
-          </div>
-          <div class="chart__tip-row">
-            <strong>{fmtInt(h.exploited)}</strong>
-            <span>exploited</span>
-          </div>
-        </div>
-      )}
-    </div>
+    <details class="chart__table">
+      <summary>View as table</summary>
+      <div class="tablewrap">
+        <table class="table table--compact">
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              <th scope="col" class="num">
+                All CVEs
+              </th>
+              <th scope="col" class="num">
+                Cleared the bar
+              </th>
+              <th scope="col" class="num">
+                Exploited
+              </th>
+              {kevReady && (
+                <th scope="col" class="num">
+                  Added to KEV
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {[...days].reverse().map((d, i) => (
+              <tr key={d.date}>
+                <th scope="row" class="chart__month">
+                  {d.date}
+                  {i === 0 && partialLast && <span class="muted"> so far</span>}
+                </th>
+                <td class="num">{fmtInt(d.published)}</td>
+                <td class="num">{fmtInt(d.passed)}</td>
+                <td class="num">{fmtInt(d.exploited)}</td>
+                {kevReady && <td class="num">{fmtInt(kev.get(d.date) ?? 0)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 
@@ -338,6 +414,18 @@ export default function Surge() {
   const cnas = useMemo(() => (stats.status === 'ready' ? stats.data.cnas : []), [stats]);
   const maxCna = Math.max(1, ...cnas.map((c) => c.count));
   const lede = useMemo(() => (stats.status === 'ready' ? ledeText(growth(stats.data.monthly, stats.data.generated_at)) : LEDE_FALLBACK), [stats]);
+  const k = useStore(knob);
+  // The day counts in stats.json are at the default bar; the signal rows re-tier them at the viewer's.
+  // Both files are already cached when the visitor came from Today; kev.json is about 35 KB.
+  const signal = useData(stats.status === 'ready' ? data.signal : null);
+  const kev = useData(stats.status === 'ready' ? data.kev : null);
+  const daily = useMemo<readonly DayRow[]>(() => {
+    if (stats.status !== 'ready') return [];
+    return signal.status === 'ready' ? dailyAt(stats.data.daily, signal.data, k) : stats.data.daily;
+  }, [stats, signal, k]);
+  const kevDays = useMemo(() => (kev.status === 'ready' ? kevByDay(kev.data.entries) : new Map<string, number>()), [kev]);
+  const partialDay = stats.status === 'ready' && lastDayPartial(stats.data.daily, stats.data.generated_at);
+  const takeaway = useMemo(() => dailyTakeaway(daily, partialDay), [daily, partialDay]);
   return (
     <div class="page page--surge">
       <header class="page__head">
@@ -371,14 +459,13 @@ export default function Surge() {
                 <h2 id="daily-h" class="panel__title">
                   The last 30 days
                 </h2>
-                <p class="panel__sub">Published per day, and the few that passed at the default evidence bar. Same days, separate scales.</p>
+                <p class="panel__sub">Grey is every CVE published that day; lit is what cleared your evidence bar ({k}). Square-root scale, so the few stay visible.</p>
               </div>
             </header>
             <figure class="chart">
-              <figcaption class="chart__cap">Published</figcaption>
-              <Columns days={stats.data.daily} k="published" cls="s-volume" label="CVEs published" height={170} />
-              <figcaption class="chart__cap">Passed (exploited or likely)</figcaption>
-              <Columns days={stats.data.daily} k="passed" cls="s-passed" label="CVEs passed" height={120} />
+              <DailyChart days={daily} kev={kevDays} kevReady={kev.status === 'ready'} partialLast={partialDay} knob={k} />
+              {takeaway && <figcaption class="chart__take">{takeaway}</figcaption>}
+              <DailyTable days={daily} kev={kevDays} kevReady={kev.status === 'ready'} partialLast={partialDay} />
             </figure>
           </section>
           <div class="surge__grid">

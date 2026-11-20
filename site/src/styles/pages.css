@@ -1257,37 +1257,6 @@
   font-size: 12px;
 }
 
-.chart__bar.s-volume {
-  fill: color-mix(in srgb, var(--text) 30%, transparent);
-  stroke: none;
-}
-
-.chart__bar.s-passed {
-  fill: var(--likely);
-}
-
-.chart__bar.s-passed.has-exploited {
-  fill: var(--exploited);
-}
-
-.chart__hit {
-  fill: transparent;
-}
-
-.chart__col.is-hover .chart__bar.s-volume {
-  fill: color-mix(in srgb, var(--text) 55%, transparent);
-}
-
-.chart__col.is-hover .chart__hit {
-  fill: var(--wf-hover);
-}
-
-.chart__cap {
-  margin: 4px 0 6px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .chart__tip {
   position: absolute;
   top: 0;
@@ -1329,11 +1298,141 @@
 
 .chart__tip-row span:last-child {
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .chart__tip-row--muted strong {
   color: var(--muted);
   font-weight: 500;
+}
+
+/* Year on year line in the monthly tooltip. */
+.chart__tip-yoy {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chart__tip-yoy strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.chart__svg,
+.dc__svg {
+  cursor: crosshair;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── The last 30 days: one chart, noise in grey, signal lit inside it ── */
+
+.dc__svg {
+  cursor: pointer;
+}
+
+.dc__vol {
+  fill: var(--wf-quiet);
+  transition: fill 120ms ease;
+}
+
+.dc__vol.is-partial {
+  fill: none;
+  stroke: var(--faint-ui);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+/* A hairline in the panel colour on each lit level, so Exploited reads apart from Likely in both themes. */
+.dc__pass,
+.dc__exp {
+  stroke: var(--surface);
+  stroke-width: 1;
+  paint-order: stroke;
+}
+
+.dc__pass {
+  fill: var(--likely);
+}
+
+.dc__exp {
+  fill: var(--exploited);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--exploited) 70%, transparent));
+}
+
+.dc__day {
+  transition: opacity 120ms ease;
+}
+
+.dc__day.is-off {
+  opacity: 0.78;
+}
+
+.dc__day.is-on .dc__vol:not(.is-partial) {
+  fill: color-mix(in srgb, var(--text) 34%, var(--wf-quiet));
+}
+
+.dc__band {
+  fill: var(--wf-hover);
+}
+
+.dc__base {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.dc__lane {
+  fill: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+}
+
+.dc__kev rect,
+circle.dc__kev {
+  fill: var(--t-exploited);
+  stroke: var(--b-exploited);
+  stroke-width: 1;
+}
+
+.dc__kev text {
+  fill: var(--ink-exploited);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.dc__key-kev {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--b-exploited);
+  border-radius: 50%;
+  background: var(--t-exploited);
+}
+
+.dc__pct {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.chart__take {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dc__vol,
+  .dc__day {
+    transition: none;
+  }
 }
 
 .chart__table {
