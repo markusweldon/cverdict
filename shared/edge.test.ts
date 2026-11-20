@@ -36,6 +36,7 @@ const EDGE: readonly [string, string, string][] = [
   ['checkpoint', 'Quantum Security Gateway', 'Check Point Security Gateway'],
   ['Check Point Software Technologies Ltd.', 'Check Point Quantum Gateway, Spark Gateway and CloudGuard Network', 'Check Point Security Gateway'],
   ['Juniper Networks', 'Junos OS', 'Juniper Junos OS'],
+  ['Juniper Networks', 'Junos OS Evolved', 'Juniper Junos OS'],
   ['Zyxel', 'USG FLEX 100(W) firmware', 'Zyxel firewalls'],
   ['Zyxel', 'ATP series firmware', 'Zyxel firewalls'],
   ['Zyxel', 'USG20(W)-VPN firmware', 'Zyxel firewalls'],
@@ -43,6 +44,8 @@ const EDGE: readonly [string, string, string][] = [
   ['Zyxel', 'VPN series firmware', 'Zyxel firewalls'],
   ['Sophos', 'Sophos Firewall', 'Sophos Firewall'],
   ['Sophos', 'SG UTM', 'Sophos Firewall'],
+  ['Sophos', 'SFOS', 'Sophos Firewall'],
+  ['Sophos', 'Sophos Firewall OS (SFOS)', 'Sophos Firewall'],
   ['WatchGuard', 'Fireware OS', 'WatchGuard Firebox'],
   // Load balancers and ADCs
   ['Citrix', 'NetScaler ADC', 'Citrix NetScaler ADC and Gateway'],
@@ -84,6 +87,7 @@ const EDGE: readonly [string, string, string][] = [
   ['SimpleHelp', 'SimpleHelp', 'SimpleHelp'],
   // SD-WAN
   ['Cisco', 'Cisco Catalyst SD-WAN Manager', 'Cisco Catalyst SD-WAN'],
+  ['Cisco', 'Cisco SD-WAN vEdge Cloud', 'Cisco Catalyst SD-WAN'],
   ['Arista Networks', 'VeloCloud Orchestrator', 'Arista VeloCloud'],
   ['VMware', 'NSX SD-WAN by VeloCloud', 'Arista VeloCloud'],
   ['Versa', 'Director', 'Versa Director and Concerto'],
@@ -99,6 +103,8 @@ const EDGE: readonly [string, string, string][] = [
   ['Cisco', 'IOS, XR, and XE Software', 'Cisco IOS XE and IOS XR'],
   ['Cisco', 'VPN Routers', 'Cisco RV series routers'],
   ['DrayTek', 'Vigor2960', 'DrayTek Vigor'],
+  ['DrayTek', 'Vigor 3910', 'DrayTek Vigor'],
+  ['DrayTek', 'Vigor Routers', 'DrayTek Vigor'],
 ];
 
 // Same vendor or a similar name, but endpoint software, management consoles or something else.
@@ -154,6 +160,14 @@ const NOT_EDGE: readonly [string, string][] = [
   ['SonicWall', 'Email Security'],
   ['D-Link', 'DIR-859'],
   ['TP-Link', 'Archer AX21'],
+  ['DrayTek', 'VigorConnect'],
+  ['DrayTek', 'VigorACS'],
+  ['', 'Draytek VigorConnect'],
+  ['Fortinet', 'FortiManager Cloud'],
+  ['Fortinet', 'FortiGate Cloud'],
+  ['Fortinet', 'FortiMail Cloud'],
+  ['Synacor', 'Zimbra Desktop'],
+  ['Microsoft', 'Exchange Server Management Tools'],
   ['Acme', 'Widget'],
 ];
 
@@ -201,6 +215,28 @@ describe('edgeDevice', () => {
     expect(edgeDevice({ affected: mixed, attackVector: 'N' })?.name).toBe('Fortinet FortiProxy');
     expect(edgeDevice({ affected: [], cpes: ['cpe:2.3:a:f5:big-ip_access_policy_manager:17.1.0:*:*:*:*:*:*:*'], attackVector: 'N' })?.name).toBe('F5 BIG-IP');
     expect(edgeDevice({ affected: [], cpes: ['cpe:2.3:a:fortinet:forticlient:7.0:*:*:*:*:*:*:*'], attackVector: 'N' })).toBeNull();
+  });
+
+  it.each([
+    ['cpe:2.3:o:fortinet:fortios:7.4.1:*:*:*:*:*:*:*', 'Fortinet FortiOS'],
+    ['cpe:2.3:o:juniper:junos:22.2:*:*:*:*:*:*:*', 'Juniper Junos OS'],
+    ['cpe:2.3:o:sophos:sfos:19.5:*:*:*:*:*:*:*', 'Sophos Firewall'],
+    ['cpe:2.3:o:zyxel:atp100_firmware:5.36:*:*:*:*:*:*:*', 'Zyxel firewalls'],
+    ['cpe:2.3:a:kemptechnologies:loadmaster:7.2:*:*:*:*:*:*:*', 'Progress Kemp LoadMaster'],
+    ['cpe:2.3:a:simple-help:simplehelp:5.5:*:*:*:*:*:*:*', 'SimpleHelp'],
+    ['cpe:2.3:a:citrix:sharefile_storagezones_controller:5.11:*:*:*:*:*:*:*', 'Citrix ShareFile Storage Zones Controller'],
+    ['cpe:2.3:a:microsoft:exchange_server:2019:cumulative_update_14:*:*:*:*:*:*', 'Microsoft Exchange Server'],
+    ['cpe:2.3:o:draytek:vigor2960_firmware:1.5:*:*:*:*:*:*:*', 'DrayTek Vigor'],
+  ])('matches the NVD CPE name %s', (cpe, name) => {
+    expect(edgeDevice({ affected: [], cpes: [cpe], attackVector: 'N' })?.name).toBe(name);
+  });
+
+  it.each([
+    'cpe:2.3:a:draytek:vigorconnect:1.6.0:*:*:*:*:*:*:*',
+    'cpe:2.3:a:fortinet:fortimanager_cloud:7.4:*:*:*:*:*:*:*',
+    'cpe:2.3:a:juniper:junos_space:22.1:*:*:*:*:*:*:*',
+  ])('does not match the NVD CPE name %s', (cpe) => {
+    expect(edgeDevice({ affected: [], cpes: [cpe], attackVector: 'N' })).toBeNull();
   });
 });
 

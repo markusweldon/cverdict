@@ -201,7 +201,7 @@ Only applied when there is no exploitation and the X family is ≤ 0, and not wh
 | `circl.suspected` | CIRCL: suspected | 0 | `circl-kev` | CIRCL lists exploitation as suspected, not confirmed (CC0-1.0). Information only. |
 | `circl.attempts` | CIRCL: attempts | 0 | `circl-kev` | CIRCL lists it as confirmed in its known-exploited catalog (CC0-1.0), but the only evidence is exploitation attempts, such as hits on a sinkhole. Attempts are not proof that an attack worked: information only. |
 | `honeypot.siberkapan` | Honeypot attempts | 0 | `siberkapan` | SiberKapan’s honeypot and web sensors in Turkey saw exploitation attempts (CC-BY-4.0). Attempts are not proof that an attack worked, and one sensor network gives too little data to set points: information only. |
-| `edge.device` | Edge device | 0 | `computed` | An internet-facing edge device: VPN, firewall, load balancer, email gateway, file transfer, webmail or edge router (curated list in docs/SCORING.md). These are often attacked before any exploit is public, so the early no-exploit penalty does not apply. |
+| `edge.device` | Edge device | 0 | `computed` | An internet-facing edge device: VPN, firewall, load balancer, email gateway, file transfer, webmail, remote support, SD-WAN or edge router (curated list in shared/edge.ts, explained in docs/SCORING.md). These are often attacked before any exploit is public, so the early no-exploit penalty does not apply. |
 | `tag.eol` | Unsupported product | 0 | `cvelist` | The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate. |
 
 ## Other known-exploited catalogs
@@ -288,8 +288,9 @@ weights in [`shared/model.ts`](../shared/model.ts):
 - **From 50 up (the default), every CVE listed has some exploit sign.** Without one (a PoC, Exploit-DB, EPSS, CISA or the vendor saying an
   exploit exists, exploitation, Metasploit or Nuclei), the most a CVE can score is 49: 52 from the
   profile, − 3 for no exploit signal yet in its first two weeks. The exception is a CVE whose
-  question is still open (a PoC repo too new to vet, or an exploit source down this run): it can
-  reach 52. From 53 up there is no exception.
+  question is still open (a PoC repo too new to vet, or an exploit source down this run) or that
+  is on an [internet-facing edge device](#internet-facing-edge-devices) in its first 14 days: it
+  can reach 52. From 53 up there is no exception.
 - **80 is the most a CVE can score without being exploited or having a Metasploit module or Nuclei
   template:** 15 + 28 Exploit-DB + 13 + 14 + 10. At 80 nothing passes on score; only the CVEs that
   always pass are left.
@@ -347,8 +348,9 @@ info chip (0 points), so the CVE page says why. After day 14 nothing differs: no
 is lower-cased and reduced to plain words ("PAN-OS" → "pan os"). The vendor must be the entry's
 vendor; a product name alone never matches, so "Acme Connect Secure" is not Ivanti. A combined
 product ("FortiOS, FortiProxy", "IOS and IOS XE") is split and each part is checked. A part that
-names a client, app or agent is endpoint software and never matches ("BIG-IP Edge Client",
-"GlobalProtect App", "FortiClient"). With a CVSS score, the attack vector must be Network.
+names a client, app, agent, desktop app or management tools is endpoint software and never matches
+("BIG-IP Edge Client", "GlobalProtect App", "FortiClient", "Zimbra Desktop"). Fortinet's hosted
+services ("FortiManager Cloud", "FortiGate Cloud") never match: Fortinet patches them, not you. With a CVSS score, the attack vector must be Network.
 
 **Why this list.** Each product faces the internet by design and has at least one CISA KEV entry
 from 2021-11-20 to 2026-11-20, or shares its code with one that does (Policy Secure and ZTA
@@ -395,7 +397,8 @@ Choices worth stating:
 devices. Of the 171 Likely CVEs that had no exploit sign, 19 stay Likely because of the exemption
 (Citrix NetScaler 8, F5 BIG-IP 6, Fortinet 4: FortiOS, FortiMail twice and FortiManager, and
 SmarterMail 1). In the 180-day backtest, CVE-2026-85102 (Check Point Quantum Security Gateway, 13
-days old when CISA listed it) stays caught on its profile alone.
+days old when CISA listed it) stays caught on its profile alone. These counts match on affected vendor and
+product. Adding the CNA's CPE names, read from the raw CVE List records, changes none of them.
 
 **Proposing an addition.** Open an issue or pull request that changes `EDGE_ENTRIES` in
 [`shared/edge.ts`](../shared/edge.ts) and adds the product's real CNA spellings to

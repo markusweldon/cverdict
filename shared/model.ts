@@ -112,7 +112,7 @@ export const CHIPS: readonly ChipDef[] = [
   c('circl.suspected', 'INFO', 'info', 0, 'circl-kev', 'CIRCL: suspected', 'CIRCL lists exploitation as suspected, not confirmed (CC0-1.0). Information only.'),
   c('circl.attempts', 'INFO', 'info', 0, 'circl-kev', 'CIRCL: attempts', 'CIRCL lists it as confirmed in its known-exploited catalog (CC0-1.0), but the only evidence is exploitation attempts, such as hits on a sinkhole. Attempts are not proof that an attack worked: information only.'),
   c('honeypot.siberkapan', 'INFO', 'info', 0, 'siberkapan', 'Honeypot attempts', 'SiberKapan’s honeypot and web sensors in Turkey saw exploitation attempts (CC-BY-4.0). Attempts are not proof that an attack worked, and one sensor network gives too little data to set points: information only.'),
-  c('edge.device', 'INFO', 'info', 0, 'computed', 'Edge device', 'An internet-facing edge device: VPN, firewall, load balancer, email gateway, file transfer, webmail or edge router (curated list in docs/SCORING.md). These are often attacked before any exploit is public, so the early no-exploit penalty does not apply.'),
+  c('edge.device', 'INFO', 'info', 0, 'computed', 'Edge device', 'An internet-facing edge device: VPN, firewall, load balancer, email gateway, file transfer, webmail, remote support, SD-WAN or edge router (curated list in shared/edge.ts, explained in docs/SCORING.md). These are often attacked before any exploit is public, so the early no-exploit penalty does not apply.'),
   c('tag.eol', 'INFO', 'info', 0, 'cvelist', 'Unsupported product', 'The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate.'),
 ];
 

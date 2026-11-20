@@ -13,7 +13,8 @@
  *
  * Matching is on the CVE record's affected vendor and product (and CPE names when present),
  * case-insensitive on normalized words. A CVSS vector that is not attack vector Network rules it
- * out. Endpoint software (clients, apps, agents) never matches.
+ * out. Endpoint software (clients, apps, agents, desktop apps) and Fortinet's vendor-hosted "... Cloud"
+ * services never match.
  */
 
 export interface EdgeEntry {
@@ -66,16 +67,16 @@ export const EDGE_ENTRIES: readonly EdgeEntry[] = [
   { name: 'Cisco ASA and FTD', kind: FW_VPN, vendors: ['cisco'], products: ['adaptive security appliance', 'firepower threat defense', 'secure firewall threat defense', 'secure firewall asa', 'ftd software'] },
   { name: 'SonicWall SonicOS', kind: FW_VPN, vendors: ['sonicwall'], products: ['sonicos'] },
   { name: 'Check Point Security Gateway', kind: FW_VPN, vendors: ['check point', 'checkpoint'], products: ['security gateway', 'quantum gateway', 'spark gateway', 'spark firewall', 'cloudguard network', 'scalable platforms'] },
-  { name: 'Juniper Junos OS', kind: FW, vendors: ['juniper'], products: ['junos os', 'j web', 'screenos', 'srx'] },
-  { name: 'Zyxel firewalls', kind: FW_VPN, vendors: ['zyxel'], products: [/\busg/, 'zywall', 'atp', 'vpn series', 'firewall'] },
-  { name: 'Sophos Firewall', kind: FW, vendors: ['sophos'], products: ['firewall', 'xg', 'sg utm', 'utm', 'cyberoamos', 'cyberoam'] },
+  { name: 'Juniper Junos OS', kind: FW, vendors: ['juniper'], products: ['junos os', /\bjunos$/, 'j web', 'screenos', 'srx'] },
+  { name: 'Zyxel firewalls', kind: FW_VPN, vendors: ['zyxel'], products: [/\busg/, 'zywall', 'atp', /\batp ?\d/, 'vpn series', 'firewall'] },
+  { name: 'Sophos Firewall', kind: FW, vendors: ['sophos'], products: ['firewall', 'sfos', 'xg', 'sg utm', 'utm', 'cyberoamos', 'cyberoam'] },
   { name: 'WatchGuard Firebox', kind: FW_VPN, vendors: ['watchguard'], products: ['fireware', 'firebox', 'xtm'] },
 
   // Load balancers and application delivery controllers
   { name: 'Citrix NetScaler ADC and Gateway', kind: ADC, vendors: ['citrix', 'netscaler', 'cloud software group'], products: ['netscaler adc', 'netscaler gateway', 'citrix adc', 'citrix gateway', 'application delivery controller', /^(citrix )?netscaler$/] },
   { name: 'F5 BIG-IP', kind: ADC, vendors: ['f5'], products: ['big ip'] },
   { name: 'Fortinet FortiADC', kind: ADC, vendors: ['fortinet'], products: ['fortiadc'] },
-  { name: 'Progress Kemp LoadMaster', kind: ADC, vendors: ['progress', 'kemp'], products: ['loadmaster'] },
+  { name: 'Progress Kemp LoadMaster', kind: ADC, vendors: ['progress', 'kemp', 'kemptechnologies'], products: ['loadmaster'] },
   { name: 'Ivanti Virtual Traffic Manager', kind: ADC, vendors: ['ivanti'], products: ['virtual traffic manager', 'vtm'] },
 
   // Email and secure web gateways
@@ -94,7 +95,7 @@ export const EDGE_ENTRIES: readonly EdgeEntry[] = [
   { name: 'SolarWinds Serv-U', kind: MFT, vendors: ['solarwinds'], products: ['serv u'] },
   { name: 'IBM Aspera Faspex', kind: MFT, vendors: ['ibm'], products: ['aspera faspex'] },
   { name: 'Gladinet CentreStack and Triofox', kind: MFT, vendors: ['gladinet'], products: ['centrestack', 'triofox'] },
-  { name: 'Citrix ShareFile Storage Zones Controller', kind: MFT, vendors: ['citrix'], products: ['sharefile storage zones'] },
+  { name: 'Citrix ShareFile Storage Zones Controller', kind: MFT, vendors: ['citrix'], products: ['sharefile storage zones', 'sharefile storagezones'] },
 
   // Webmail: the mail server's web interface faces the internet by design
   { name: 'Zimbra Collaboration', kind: WEBMAIL, vendors: ['zimbra', 'synacor'], products: ['zimbra', 'collaboration'] },
@@ -105,7 +106,7 @@ export const EDGE_ENTRIES: readonly EdgeEntry[] = [
   // Remote support servers
   { name: 'BeyondTrust Remote Support and PRA', kind: REMOTE, vendors: ['beyondtrust', 'bomgar'], products: ['remote support', 'privileged remote access'] },
   { name: 'ConnectWise ScreenConnect', kind: REMOTE, vendors: ['connectwise'], products: ['screenconnect'] },
-  { name: 'SimpleHelp', kind: REMOTE, vendors: ['simplehelp'], products: ['simplehelp'] },
+  { name: 'SimpleHelp', kind: REMOTE, vendors: ['simplehelp', 'simple help'], products: ['simplehelp'] },
 
   // SD-WAN controllers and edges
   { name: 'Cisco Catalyst SD-WAN', kind: SDWAN, vendors: ['cisco'], products: ['sd wan', 'vmanage', 'vedge', 'vsmart'] },
@@ -116,11 +117,20 @@ export const EDGE_ENTRIES: readonly EdgeEntry[] = [
   { name: 'Cisco IOS XE and IOS XR', kind: ROUTER, vendors: ['cisco'], products: ['ios xe', 'ios xr', /^cisco (xe|xr)\b/] },
   { name: 'Cisco RV series routers', kind: ROUTER, vendors: ['cisco'], products: [/\brv ?\d{3}/, 'rv series', 'vpn router'] },
   { name: 'MikroTik RouterOS', kind: ROUTER, vendors: ['mikrotik'], products: ['routeros'] },
-  { name: 'DrayTek Vigor', kind: ROUTER, vendors: ['draytek'], products: [/\bvigor/] },
+  { name: 'DrayTek Vigor', kind: ROUTER, vendors: ['draytek'], products: [/\bvigor ?(\d|router)/] },
 ];
 
-/** Endpoint software that shares a name with an edge product ("BIG-IP Edge Client", "GlobalProtect App"). */
-const ENDPOINT_RE = /\b(client|clients|app|apps|agent|agents)\b/;
+/**
+ * Endpoint software that shares a name with an edge product ("BIG-IP Edge Client", "GlobalProtect App",
+ * "Zimbra Desktop", "Exchange Server Management Tools").
+ */
+const ENDPOINT_RE = /\b(client|clients|app|apps|agent|agents|desktop|management tools)\b/;
+
+/**
+ * Fortinet's vendor-hosted services ("FortiManager Cloud", "FortiGate Cloud"): Fortinet patches them,
+ * not you. Not every "Cloud" is hosted: "SD-WAN vEdge Cloud" is a router you run yourself.
+ */
+const HOSTED_RE = /\bforti\w+ cloud$/;
 
 /** Lower-case, accent-free words joined by single spaces: "PAN-OS®" → "pan os". */
 export function normName(s: string): string {
@@ -153,7 +163,7 @@ export function edgeEntryFor(vendor: string, product: string): EdgeEntry | null 
     if (!vendorIs(gate, e.vendors)) continue;
     for (const part of parts) {
       const hay = v ? `${v} ${part}` : part;
-      if (ENDPOINT_RE.test(part)) continue;
+      if (ENDPOINT_RE.test(part) || HOSTED_RE.test(part)) continue;
       if (e.products.some((p) => phraseIn(hay, p))) return e;
     }
   }
