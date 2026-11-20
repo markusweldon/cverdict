@@ -20,6 +20,7 @@ import {
   type Row,
   type RowTable,
   type StatsFile,
+  type SurgeFile,
   type WokeFile,
 } from '../../shared/contract';
 import { CVE_ID_RE, shardOf } from '../../shared/shard';
@@ -55,6 +56,8 @@ export interface DataClient {
   /** Every CVE in the window (~700 KB gzip): loaded lazily. */
   readonly index: Loader<Row[]>;
   readonly stats: Loader<StatsFile>;
+  /** Monthly breakdowns for The Surge's filters. Older data has none (a 404). */
+  readonly surge: Loader<SurgeFile>;
   readonly batches: Loader<BatchesFile>;
   readonly kev: Loader<KevFile>;
   readonly changes: Loader<ChangesFile>;
@@ -171,6 +174,7 @@ export function createDataClient(
     signal: resource('signal.json', table),
     index: resource('index.json', table),
     stats: resource<StatsFile>('stats.json', json),
+    surge: resource<SurgeFile>('surge.json', json),
     batches: resource<BatchesFile>('batches.json', json),
     kev: resource<KevFile>('kev.json', json),
     changes: resource<ChangesFile>('changes.json', json),

@@ -203,6 +203,10 @@ export interface History {
   reserved: Map<string, number>;
   rejected: Map<string, number>;
   ai: Map<string, number>;
+  /** Published records per month by CVSS band (SEVERITY_BANDS order). Absent in older fixtures. */
+  bands?: Map<string, number[]>;
+  /** The same per CNA (assignerShortName), for surge.json cnas. */
+  cnaBands?: Map<string, Map<string, number[]>>;
   totalRecords: number;
 }
 

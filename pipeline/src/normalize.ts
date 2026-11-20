@@ -213,6 +213,12 @@ function pickCvss(cnaMetrics: readonly unknown[], adpMetrics: readonly unknown[]
   return cvssOf(cnaMetrics, CVSS_V2.key, CVSS_V2.version, 'cna');
 }
 
+/** Base score of the CVSS that normalizeCve would pick, without normalising the record (the streaming pass). */
+export function recordCvssScore(record: unknown): number | null {
+  const { cna, cisaAdp } = containersOf(record);
+  return pickCvss(asArray(cna?.metrics), cisaAdp.flatMap((adp) => asArray(adp.metrics)))?.score ?? null;
+}
+
 /** Distinct `E` values from every CNA v3/v4 vector, in first-seen order. */
 function exploitMaturity(cnaMetrics: readonly unknown[]): string[] {
   const values = new Set<string>();
