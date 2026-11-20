@@ -59,6 +59,13 @@ describe.each(Object.keys(MODES) as Mode[])('SDK client, %s negotiation', (mode)
     expect(JSON.stringify(tools).length).toBeLessThan(8 * 1024);
   });
 
+  it('states the woke_up listing rule as it runs: a listing at any age in the window counts', async () => {
+    const client = await connect(mode);
+    const woke = (await client.listTools()).tools.find((t) => t.name === 'woke_up')!;
+    expect(woke.description).toContain('A kev or catalog listing in the period counts even when it came while the CVE was still in the window.');
+    expect(woke.description).not.toContain('last days');
+  });
+
   it('answers every tool with structuredContent and the same JSON as text', async () => {
     const client = await connect(mode);
     const calls: [string, Record<string, unknown>][] = [

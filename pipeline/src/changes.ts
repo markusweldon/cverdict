@@ -16,7 +16,7 @@ import { asObject } from './util/json';
 
 /** Items older than this are dropped. Callers use it to pick recent KEV additions outside the window. */
 export const CHANGES_RETENTION_DAYS = 7;
-const MAX_ITEMS = 500;
+export const CHANGES_MAX_ITEMS = 500;
 
 const rank = (t: Tier) => TIERS.indexOf(t);
 const isTier = (t: unknown): t is Tier => typeof t === 'string' && (TIERS as readonly string[]).includes(t);
@@ -126,9 +126,11 @@ export function buildChanges(current: Row[], previousRoot: string | null, now: D
   }
 
   const cutoff = now.getTime() - CHANGES_RETENTION_DAYS * DAY_MS;
-  const items = [...merged.values()]
-    .filter((i) => Date.parse(i.at) >= cutoff && Date.parse(i.at) <= now.getTime())
-    .sort((a, b) => b.at.localeCompare(a.at) || rank(a.to) - rank(b.to) || a.id.localeCompare(b.id))
-    .slice(0, MAX_ITEMS);
+  const newestFirst = (a: Change, b: Change) => b.at.localeCompare(a.at) || rank(a.to) - rank(b.to) || a.id.localeCompare(b.id);
+  const recent = [...merged.values()].filter((i) => Date.parse(i.at) >= cutoff && Date.parse(i.at) <= now.getTime()).sort(newestFirst);
+  // Over the cap, moves into Exploited or Likely next are kept first (newest first among them), so
+  // a busy week of chip changes never pushes out a CVE that cleared the bar. The file stays newest first.
+  const kept = new Set([...recent].sort((a, b) => Number(passed(b.to)) - Number(passed(a.to)) || newestFirst(a, b)).slice(0, CHANGES_MAX_ITEMS));
+  const items = recent.filter((i) => kept.has(i));
   return { schema_version: SCHEMA_VERSION, generated_at: at, items };
 }

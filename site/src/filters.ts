@@ -4,7 +4,7 @@
  */
 import { SIGNAL_MIN_SCORE, TIERS, tierFor, type NewExploitedCve, type Row, type StatsFile, type Tier } from '../../shared/contract';
 import { CVE_ID_RE } from '../../shared/shard';
-import { HOUR_MS } from './format';
+import { HOUR_MS, toMs } from './format';
 import { isWatched } from './state';
 
 export type TierCounts = Record<Tier, number>;
@@ -127,9 +127,20 @@ export function newExploitedAt(hourly: StatsFile['hourly'], counts: readonly Hou
 }
 
 /**
+ * How many CVEs are newly exploited: hourly.new_exploited_total (window and older CVEs, before the
+ * list's cap) when the data has it, else the chart's own count (older data counted the window only).
+ */
+export function newExploitedCount(hourly: StatsFile['hourly'], fresh: readonly number[]): number {
+  const charted = fresh.reduce((a, n) => a + n, 0);
+  const total: unknown = hourly.new_exploited_total;
+  return typeof total === 'number' && Number.isInteger(total) && total >= charted ? total : charted;
+}
+
+/**
  * The newly exploited CVEs by name (hourly.new_exploited_cves), newest first. Null when the field is
  * missing or unreadable (older data): the legend then stays a plain label. Malformed entries are
- * dropped, as are ones outside the chart's hours.
+ * dropped, as are ones outside the chart's hours. An entry without an hour is a CVE published
+ * before the window: it is kept when it says when (`published`), and marks no column.
  */
 export function newExploitedList(hourly: StatsFile['hourly']): NewExploitedCve[] | null {
   const list: unknown = hourly.new_exploited_cves;
@@ -138,19 +149,20 @@ export function newExploitedList(hourly: StatsFile['hourly']): NewExploitedCve[]
   const out: NewExploitedCve[] = [];
   for (const item of list) {
     if (!item || typeof item !== 'object') continue;
-    const { id, title, via, at, hour } = item as Record<string, unknown>;
+    const { id, title, via, at, hour, published } = item as Record<string, unknown>;
     if (typeof id !== 'string' || !CVE_ID_RE.test(id) || seen.has(id)) continue;
     if (typeof at !== 'string' || Number.isNaN(Date.parse(at))) continue;
-    if (typeof hour !== 'number' || !Number.isInteger(hour) || hour < 0 || hour >= hourly.counts.length) continue;
+    const older = hour === undefined || hour === null;
+    if (older ? typeof published !== 'string' || Number.isNaN(toMs(published)) : typeof hour !== 'number' || !Number.isInteger(hour) || hour < 0 || hour >= hourly.counts.length) continue;
     seen.add(id);
-    out.push({
+    const base = {
       id,
       title: typeof title === 'string' ? title : '',
       // A signal this build does not know yet is shown as written.
       via: (typeof via === 'string' ? via : '') as NewExploitedCve['via'],
       at,
-      hour,
-    });
+    };
+    out.push(older ? { ...base, published: published as string } : { ...base, hour: hour as number });
   }
   return out;
 }

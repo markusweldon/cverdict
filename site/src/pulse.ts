@@ -271,10 +271,10 @@ export function freshSegs(segs: number, exploited: number, fresh: number): numbe
 }
 
 /**
- * The legend entry for newly exploited CVEs, e.g. "New in 72h: 3". It is always shown, 0 included,
- * so the legend keeps its size when the data arrives; null `fresh` (still loading) reads "…".
+ * The legend entry for newly exploited CVEs, number first: "3 newly exploited". It is always
+ * shown, 0 included, so the legend keeps its size when the data arrives; null (still loading)
+ * reads "… newly exploited".
  */
-export function newLegend(fresh: readonly number[] | null): string {
-  if (!fresh) return 'New in 72h: …';
-  return `New in 72h: ${fmtInt(fresh.reduce((a, b) => a + b, 0))}`;
+export function newLegend(count: number | null): string {
+  return `${count === null ? '…' : fmtInt(count)} newly exploited`;
 }

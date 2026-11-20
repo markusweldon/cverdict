@@ -330,11 +330,15 @@ export interface StatsFile {
   daily: { date: string; published: number; passed: number; exploited: number }[];
   /**
    * Hour buckets across the window for the waterfall: counts[h] = [exploited, likely, watch, quiet] for hour h after `start`.
-   * `new_exploited` lists [h, n] for the hours (by publication) holding n Exploited CVEs whose first exploited signal (a
-   * CISA KEV, ENISA EU KEV or CIRCL listing, SSVC active, or the CNA's flag) is in the NEW_EXPLOITED_HOURS before
-   * `generated_at`, oldest hour first, only hours with n > 0. Older files leave it out: read that as none.
-   * `new_exploited_cves` names those CVEs, newest first signal first, at most NEW_EXPLOITED_LIST_MAX. Both come
-   * from one list, so below the cap its hours tally to `new_exploited` exactly. Older files leave it out.
+   * Newly exploited: an Exploited CVE whose first exploited signal (a CISA KEV, ENISA EU KEV or CIRCL listing, SSVC
+   * active, or the CNA's flag) is in the NEW_EXPLOITED_HOURS before `generated_at`, or that a CISA KEV, EU KEV or
+   * confirmed CIRCL listing dated in those hours names (a new listing is news, whatever came before it).
+   * `new_exploited` lists [h, n] for the hours (by publication) holding n newly exploited CVEs of the window, oldest
+   * hour first, only hours with n > 0. Older files leave it out: read that as none.
+   * `new_exploited_cves` names them, newest signal first, at most NEW_EXPLOITED_LIST_MAX. It also holds CVEs
+   * published before the window that a catalog listed in those hours: those have no `hour` and carry `published`.
+   * `new_exploited_total` counts the whole list before the cap (window and older). All three come from one list, so
+   * below the cap the list's hours tally to `new_exploited` exactly. Older files leave the last two out.
    */
   hourly: {
     start: string;
@@ -342,6 +346,7 @@ export interface StatsFile {
     counts: [number, number, number, number][];
     new_exploited?: [hour: number, count: number][];
     new_exploited_cves?: NewExploitedCve[];
+    new_exploited_total?: number;
   };
   /** Top CNAs in the window. */
   cnas: { cna: string; count: number; passed: number; no_cvss: number; ssvc_missing: number }[];
@@ -349,20 +354,61 @@ export interface StatsFile {
   ai_credits: { text: string; count: number }[];
 }
 
-/** The signal that first made a CVE Exploited (stats.json hourly.new_exploited_cves). "Vendor" is the CNA's own flag. */
+/** CVSS severity bands, by base score: Critical 9.0+, High 7.0+, Medium 4.0+, Low 0.1+, None (0.0 or no score). */
+export const SEVERITY_BANDS = ['critical', 'high', 'medium', 'low', 'none'] as const;
+export type SeverityBand = (typeof SEVERITY_BANDS)[number];
+
+/** Index in SEVERITY_BANDS of a CVSS base score; null, out of range or 0.0 is "none". */
+export function severityBand(score: number | null | undefined): number {
+  if (typeof score !== 'number' || !(score > 0) || score > 10) return 4;
+  return score >= 9 ? 0 : score >= 7 ? 1 : score >= 4 ? 2 : 3;
+}
+
+/** Number of top CNAs surge.json breaks out per month; the rest are "Other". */
+export const SURGE_TOP_CNAS = 30;
+
+/**
+ * v1/surge.json: published CVEs per month split by CVSS band and by CNA, for The Surge's filters. Every
+ * count is by datePublished, like stats.json `monthly[].published`, and band arrays follow SEVERITY_BANDS.
+ * Row i of every series is month `start` + i. Sites without this file hide the filters that need it.
+ */
+export interface SurgeFile {
+  schema_version: number;
+  generated_at: string;
+  /** First month, YYYY-MM (1999-01). The months run to generated_at's month, like stats.json `monthly`. */
+  start: string;
+  /** severity[i] splits month i's published count by band, so it sums to it exactly. */
+  severity: number[][];
+  /**
+   * The SURGE_TOP_CNAS CNAs (assignerShortName) with the most published CVEs since 1999, most first.
+   * `from` is the month index of the CNA's first CVE and severity[j] is month from + j; months past the
+   * last row have none. "Other" is `severity` minus every CNA listed here.
+   */
+  cnas: { cna: string; from: number; severity: number[][] }[];
+  /**
+   * Published CVEs in the CISA KEV catalog by their publication month (not the month KEV added them):
+   * [month index, CNA index in `cnas` or -1 for Other, band index, count]. Sorted by month, CNA, band.
+   */
+  kev: [month: number, cna: number, band: number, count: number][];
+}
+
+/** The signal that made a CVE newly exploited (stats.json hourly.new_exploited_cves). "Vendor" is the CNA's own flag. */
 export const NEW_EXPLOITED_VIA = ['CISA KEV', 'EU KEV', 'CIRCL', 'CISA SSVC', 'Vendor'] as const;
 export type NewExploitedVia = (typeof NEW_EXPLOITED_VIA)[number];
 
-/** One CVE whose first exploited signal is in the NEW_EXPLOITED_HOURS before generated_at. */
+/** One newly exploited CVE (stats.json hourly.new_exploited_cves). */
 export interface NewExploitedCve {
   id: string;
-  /** Short name: "Vendor · Product" as the site shows it, else the CNA's display name. Plain text, at most 80 chars. */
+  /** Short name: "Vendor · Product" as the site shows it, else the CNA's display name, else the ID. Plain text, at most 80 chars. */
   title: string;
+  /** The newest signal that makes it new. */
   via: NewExploitedVia;
   /** When that signal came: "YYYY-MM-DD" for a catalog listing (dated by day), else an ISO 8601 UTC time. */
   at: string;
-  /** Its column in `hourly.counts` (by publication). */
-  hour: number;
+  /** Its column in `hourly.counts` (by publication). Absent for a CVE published before the window. */
+  hour?: number;
+  /** "YYYY-MM-DD" it was published, only for a CVE published before the window (then a catalog listing is the signal). */
+  published?: string;
 }
 
 export interface Change {

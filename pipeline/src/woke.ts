@@ -41,10 +41,12 @@
  *
  * A CVE that was already in CISA KEV before the period never "wakes up": it was awake already.
  * The same holds for a dated exploited listing in EU KEV or CIRCL before the period.
- * Evidence only counts when it arrived after the CVE had left the window (published more than
- * the window's length earlier), so nothing joins the feed merely by ageing out of the window.
- * Evidence from while it was still in the window counts as older evidence: a KEV listing then
- * keeps the CVE out, and after an exploit artifact then no later artifact is its first.
+ * Catalog listings (kev, catalog) in the period always count once the CVE has left the window,
+ * even when the listing came while it was still in it: a CVE listed at 25 days old leaves every
+ * 30-day view days later, and its listing is still news. Other evidence only counts when it
+ * arrived after the CVE had left the window (published more than the window's length earlier),
+ * so nothing joins the feed merely by ageing out of the window. An exploit artifact from while it
+ * was still in the window counts as older evidence: no later artifact is its first.
  */
 import {
   SCHEMA_VERSION,
@@ -84,6 +86,8 @@ export const WOKE_MAX_ITEMS = 500;
 export type UndatedKind = 'metasploit' | 'nuclei';
 /** Kinds that are a public exploit: they only wake a CVE that had none before (see detectWakes). */
 const ARTIFACT_KINDS: ReadonlySet<WakeKind> = new Set(['exploitdb', 'poc', 'metasploit', 'nuclei']);
+/** Kinds that are an exploited catalog listing: they count in the period even from while the CVE was in the window. */
+const LISTING_KINDS: ReadonlySet<WakeKind> = new Set(['kev', 'catalog']);
 export const UNDATED_KINDS: readonly UndatedKind[] = ['metasploit', 'nuclei'];
 
 /** EPSS jump tracking. */
@@ -478,19 +482,19 @@ export function buildWoke(
   scan: for (const s of scored) {
     const published = Date.parse(s.cve.published);
     if (s.cve.inWindow || published >= windowStart.getTime()) continue;
-    // Only evidence that arrived once the CVE was already older than the window: a CVE that got a
-    // KEV listing at 25 days old was in the normal views then, and must not "wake up" days later
-    // just because it aged out of the window.
+    // Other evidence only counts once the CVE was already older than the window: a first PoC at 25
+    // days old was in the normal views then, and must not "wake up" days later just because it
+    // aged out of the window. Catalog listings in the period always count (see the top).
     // Timed signals (PoC creation, first sightings) compare instants; date-only ones (KEV,
     // Exploit-DB, EPSS) compare the day.
     const leftAt = published + windowMs;
     const leftWindow = ymd(new Date(leftAt));
-    const late = (x: WakeSignal) => (DATE_ONLY.test(x.at) ? x.at >= leftWindow : Date.parse(x.at) >= leftAt);
-    // Already in KEV (or listed as exploited by EU KEV or CIRCL) before the period, or while it
-    // was still in the window: it was awake already, newer evidence is not news.
+    const late = (x: WakeSignal) => LISTING_KINDS.has(x.kind) || (DATE_ONLY.test(x.at) ? x.at >= leftWindow : Date.parse(x.at) >= leftAt);
+    // Already in KEV (or listed as exploited by EU KEV or CIRCL) before the period: it was awake
+    // already, newer evidence is not news.
     const kevListed = normalizeYmd(s.kev?.date_added ?? s.cve.adpKev?.dateAdded);
     const catalogListed = firstExploitedListing(catalogs?.get(s.cve.id), ymd(now))?.added ?? null;
-    for (const listed of [kevListed, catalogListed]) if (listed && (listed < sinceDay || listed < leftWindow)) continue scan;
+    for (const listed of [kevListed, catalogListed]) if (listed && listed < sinceDay) continue scan;
     // An exploit artifact from while it was still in the window is older evidence (detectWakes
     // only sees evidence from before the period): no later artifact is its first.
     const all = wake.signals.get(s.cve.id) ?? [];

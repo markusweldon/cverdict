@@ -256,11 +256,10 @@ describe('only newly exploited ticks pulse', () => {
 
 describe('newLegend', () => {
   it('names the count, 0 included, and a placeholder while loading', () => {
-    expect(newLegend([0, 2, 0, 1])).toBe('New in 72h: 3');
-    expect(newLegend([0, 0])).toBe('New in 72h: 0');
-    expect(newLegend([])).toBe('New in 72h: 0');
-    expect(newLegend(null)).toBe('New in 72h: …');
-    expect(newLegend([1200])).toBe('New in 72h: 1,200');
+    expect(newLegend(3)).toBe('3 newly exploited');
+    expect(newLegend(0)).toBe('0 newly exploited');
+    expect(newLegend(null)).toBe('… newly exploited');
+    expect(newLegend(1200)).toBe('1,200 newly exploited');
   });
 });
 

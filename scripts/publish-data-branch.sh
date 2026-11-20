@@ -135,6 +135,7 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 | \`v1/batches.json\` | Patch-day batches: 50+ CVEs from one CNA on one day |
 | \`v1/kev.json\` | Recent CISA KEV additions and upcoming due dates |
 | \`v1/stats.json\` | Monthly history since 1999, daily and hourly counts, top CNAs, AI credits |
+| \`v1/surge.json\` | Published CVEs per month by CVSS severity and top 30 CNA, and CISA KEV CVEs by publication month |
 | \`v1/changes.json\` | Escalations (tier went up, or new exploit evidence) in the last 7 days |
 | \`v1/woke.json\` | Old CVEs (published before the window) that gained exploitation evidence in the last 30 days |
 | \`v1/receipts.json\` | Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV (forward log and hindsight backtest) |

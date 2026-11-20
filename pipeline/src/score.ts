@@ -775,7 +775,8 @@ function timelineFor(f: Facts): ScoredCve['timeline'] {
       const as = l.status !== 'confirmed' ? 'as suspected' : l.attemptsOnly ? 'with exploitation attempts seen' : 'as exploited';
       add(l.added, `Listed by CIRCL ${as}`, 'circl-kev');
     }
-    else add(l.seen, 'First exploitation attempt seen by SiberKapan honeypots', 'siberkapan');
+    // Same day as the chip: first seen, else the listing day.
+    else add(l.seen ?? l.added, 'First exploitation attempt seen by SiberKapan honeypots', 'siberkapan');
   }
   if (f.kevRaw) {
     add(f.kevRaw.dateAdded, 'Added to CISA KEV', 'kev');

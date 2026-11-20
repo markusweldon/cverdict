@@ -31,6 +31,7 @@ import {
   hasChip,
   hourlyAt,
   newExploitedAt,
+  newExploitedCount,
   newExploitedList,
   isPassed,
   pubMs,
@@ -42,7 +43,6 @@ import {
 } from '../filters';
 import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, fmtSlot, HOUR_MS, oneIn, plural } from '../format';
 import { prefersReducedMotion, useCountUp, useData, useDebounced, useKnobUrl, useListController, useMediaQuery, useNow, useTitle } from '../hooks';
-import { newLegend } from '../pulse';
 import { cveHref, historyValue, href, navigate, setHistoryValue, setQuery, useLocation } from '../router';
 import { backtestAt } from '../receipts';
 import { KNOB_PRESETS, knob, previousVisit, SITE_KNOB_MAX, SITE_KNOB_MIN, useStore, watchlist } from '../state';
@@ -411,9 +411,9 @@ export default function Today() {
 
   const hourly = useMemo(() => (stats.status === 'ready' && rows.length > 0 ? hourlyAt(stats.data.hourly, rows, level, complete) : []), [stats, rows, level, complete]);
   const fresh = useMemo(() => (stats.status === 'ready' ? newExploitedAt(stats.data.hourly, hourly) : []), [stats, hourly]);
-  const freshTotal = fresh.reduce((a, n) => a + n, 0);
-  // Always in the legend (0 included), so its size does not change when the data arrives.
-  const freshLegend = newLegend(hourly.length > 0 ? fresh : null);
+  // Always in the legend (0 included), so its size does not change when the data arrives. It counts
+  // the whole list, older CVEs newly listed by a catalog too, while only the window's ticks pulse.
+  const freshTotal = stats.status === 'ready' && hourly.length > 0 ? newExploitedCount(stats.data.hourly, fresh) : null;
   // Older data has no names: the legend item then stays a plain label.
   const freshList = useMemo(() => (stats.status === 'ready' && hourly.length > 0 ? newExploitedList(stats.data.hourly) : null), [stats, hourly.length > 0]);
   // The hour of the row hovered in that list, marked on the chart.
@@ -483,7 +483,7 @@ export default function Today() {
               <h2 id="wf-h" class="panel__title">Signal waterfall</h2>
               <p class="panel__sub">Every CVE in the window, {slot}. Grey is noise; lit ticks cleared the bar. Pick a column to see that day’s CVEs in Explore.</p>
             </div>
-            {/* The chart's summary reads the key out; only the button for the newly exploited list is exposed. */}
+            {/* The chart's summary reads the tier key out, so it is hidden here; the newly exploited item is exposed and reads its own count. */}
             <ul class="legend legend--inline" role="none">
               {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
                 <Fragment key={t}>
@@ -491,7 +491,7 @@ export default function Today() {
                     <span class={`wf__key wf__key--${t}`} />
                     {TIER_META[t].label}
                   </li>
-                  {t === 'exploited' && stats.status !== 'error' && <NewExploitedLegend label={freshLegend} count={freshTotal} list={freshList} onMark={setFreshMark} />}
+                  {t === 'exploited' && stats.status !== 'error' && <NewExploitedLegend count={freshTotal} list={freshList} onMark={setFreshMark} />}
                 </Fragment>
               ))}
             </ul>
@@ -507,7 +507,7 @@ export default function Today() {
               dayHref={(day) => exploreDayHref(day, level)}
               fresh={fresh}
               mark={freshMark}
-              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely with the evidence bar at ${level}.${freshTotal > 0 ? ` ${fmtInt(freshTotal)} became exploited in the last 72 hours.` : ''}`}
+              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely with the evidence bar at ${level}.`}
             />
           ) : (
             <Loading label="Drawing the waterfall" lines={1} height="176px" />

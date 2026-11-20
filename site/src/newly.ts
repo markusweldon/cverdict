@@ -1,9 +1,9 @@
 /**
- * The list behind the waterfall legend's "New in 72h: N" (stats.json hourly.new_exploited_cves):
+ * The list behind the waterfall legend's "N newly exploited" (stats.json hourly.new_exploited_cves):
  * when it opens, what each row says, and where its popover goes.
  */
 import type { NewExploitedCve } from '../../shared/contract';
-import { fmtDate, fmtInt } from './format';
+import { fmtDate, fmtInt, fmtMonth } from './format';
 
 /** The legend item is a button only with names in the data and at least one new; otherwise it is the plain label. */
 export const listOpens = (count: number, list: readonly NewExploitedCve[] | null): list is NewExploitedCve[] => count > 0 && list !== null && list.length > 0;
@@ -13,6 +13,12 @@ const VIA_LABEL: Readonly<Record<string, string>> = { Vendor: 'Vendor flag' };
 /** "CISA KEV, Nov 18" or "Vendor flag, Nov 19". */
 export function signalLine(c: Pick<NewExploitedCve, 'via' | 'at'>, refYear?: number): string {
   return [VIA_LABEL[c.via] ?? c.via, fmtDate(c.at, refYear)].filter(Boolean).join(', ');
+}
+
+/** For a CVE published before the chart starts: "Published Mar 2024, before this chart". Null for one on the chart. */
+export function olderNote(c: Pick<NewExploitedCve, 'hour' | 'published'>): string | null {
+  if (c.hour !== undefined || !c.published || !/^\d{4}-\d{2}/.test(c.published)) return null;
+  return `Published ${fmtMonth(c.published.slice(0, 7))}, before this chart`;
 }
 
 /** Under the heading when the list is capped: "Newest 50 of 61." */

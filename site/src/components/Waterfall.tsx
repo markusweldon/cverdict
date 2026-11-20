@@ -53,7 +53,7 @@ interface Props {
 }
 
 /** Tooltip and screen reader label for the newly exploited count of a column. */
-export const NEW_LABEL = 'Newly exploited in 72h';
+export const NEW_LABEL = 'Newly exploited';
 
 const PITCH = 3;
 const SEG = 2;
@@ -512,7 +512,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
   const hf = active !== null ? (freshBins[active] ?? 0) : 0;
   const describe = (b: Bin<number[]>, nf = 0) => {
     const range = binRange(b.from, b.hours);
-    const recent = nf > 0 ? `, ${fmtInt(nf)} ${NEW_LABEL.toLowerCase()}` : '';
+    const recent = nf > 0 ? `, ${fmtInt(nf)} ${NEW_LABEL.toLowerCase()} in the last 72 hours` : '';
     return { range, text: `${range}: ${ORDER.map((t, k) => `${fmtInt(b.c[k])} ${TIER_META[t].label.toLowerCase()}`).join(', ')}${recent}` };
   };
   const info = hb && interactive ? dayInfo(hb) : null;

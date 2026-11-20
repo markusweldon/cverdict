@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NEW_EXPLOITED_LIST_MAX, SCHEMA_VERSION } from '../../../shared/contract';
-import { buildStats, dayRange, firstExploitedSignal, isNewlyExploited, monthRange } from '../../src/stats';
+import { buildStats, dayRange, firstExploitedSignal, freshListings, isNewlyExploited, monthRange, newlyExploitedSignal, shortTitle } from '../../src/stats';
 import type { History } from '../../src/types';
 import { NOW, daysAgo, listing, makeCve, makeKev, makeKevCatalog, msf, score, ssvc } from '../fixtures/model/builders';
 import type { CatalogListing } from '../../src/types';
@@ -137,16 +137,20 @@ describe('newly exploited (hourly.new_exploited)', () => {
     }
   });
 
-  it('SSVC exploitation active counts from its timestamp, and an earlier one blocks a new KEV listing', () => {
+  it('SSVC exploitation active counts from its timestamp; an earlier one does not hide a new KEV listing', () => {
     const active = (at: string | null) => score(cve({ ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: at } }));
     expect(active('2026-10-25T08:00:00Z').tier).toBe('exploited');
     expect(isNewlyExploited(active('2026-10-25T08:00:00Z'), undefined, NOW)).toBe(true);
     expect(isNewlyExploited(active('2026-10-23T19:00:00Z'), undefined, NOW)).toBe(false);
     // Undated, it could be older.
     expect(isNewlyExploited(active(null), undefined, NOW)).toBe(false);
-    // Shown as Exploited through SSVC since Oct 20: a KEV listing on Oct 25 is not new exploitation.
+    // Exploited through SSVC since Oct 20, then listed by CISA KEV on Oct 25: the new listing is news.
     const both = score(cve({ ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: '2026-10-20T12:00:00Z' } }), { kev: [makeKev(ID, { dateAdded: '2026-10-25' })] });
-    expect(isNewlyExploited(both, undefined, NOW)).toBe(false);
+    expect(newlyExploitedSignal(both, undefined, NOW)).toMatchObject({ via: 'CISA KEV', at: '2026-10-25' });
+    // Its first signal alone is old.
+    expect(firstExploitedSignal(both, undefined, NOW)).toBeNull();
+    // SSVC alone from Oct 20: not new.
+    expect(isNewlyExploited(active('2026-10-20T12:00:00Z'), undefined, NOW)).toBe(false);
     // An SSVC timestamp after the frozen now does not exist yet.
     expect(isNewlyExploited(active('2026-10-27T00:00:00Z'), undefined, NOW)).toBe(false);
   });
@@ -154,20 +158,53 @@ describe('newly exploited (hourly.new_exploited)', () => {
   it('a CNA exploited flag counts from publication', () => {
     expect(isNewlyExploited(score(cve({ published: '2026-10-25T00:00:00Z', cnaExploitMaturity: ['A'] })), undefined, NOW)).toBe(true);
     expect(isNewlyExploited(score(cve({ cnaExploitMaturity: ['A'] })), undefined, NOW)).toBe(false);
-    // Flagged at publication on Oct 20, then listed by KEV on Oct 25: Exploited since Oct 20.
+    // Flagged at publication on Oct 20, then listed by KEV on Oct 25: the KEV listing is new.
     const flagged = score(cve({ vendorInTheWild: true }), { kev: [makeKev(ID, { dateAdded: '2026-10-25' })] });
-    expect(isNewlyExploited(flagged, undefined, NOW)).toBe(false);
+    expect(newlyExploitedSignal(flagged, undefined, NOW)).toMatchObject({ via: 'CISA KEV', at: '2026-10-25' });
+    expect(isNewlyExploited(score(cve({ vendorInTheWild: true })), undefined, NOW)).toBe(false);
   });
 
-  it('takes the first exploited listing: an old one rules out a new one', () => {
-    const s = kevOn('2026-10-01');
-    expect(isNewlyExploited(s, [listing('eu-kev', '2026-10-25')], NOW)).toBe(false);
-    expect(isNewlyExploited(kevOn('2026-10-25'), [listing('eu-kev', '2026-10-02')], NOW)).toBe(false);
+  it('a new listing counts even after an older one, and the newest is named', () => {
+    // CISA KEV on Oct 1, EU KEV on Oct 25: EU KEV is news.
+    expect(newlyExploitedSignal(kevOn('2026-10-01'), [listing('eu-kev', '2026-10-25')], NOW)).toMatchObject({ via: 'EU KEV', at: '2026-10-25' });
+    // EU KEV on Oct 2, CISA KEV on Oct 25.
+    expect(newlyExploitedSignal(kevOn('2026-10-25'), [listing('eu-kev', '2026-10-02')], NOW)).toMatchObject({ via: 'CISA KEV', at: '2026-10-25' });
+    // Both new: the newer is named; the same day names CISA KEV.
+    expect(newlyExploitedSignal(kevOn('2026-10-24'), [listing('circl-kev', '2026-10-26')], NOW)).toMatchObject({ via: 'CIRCL', at: '2026-10-26' });
+    expect(newlyExploitedSignal(kevOn('2026-10-25'), [listing('eu-kev', '2026-10-25')], NOW)).toMatchObject({ via: 'CISA KEV' });
+    // Nothing in the last 72 hours.
+    expect(isNewlyExploited(kevOn('2026-10-01'), [listing('eu-kev', '2026-10-02')], NOW)).toBe(false);
   });
 
-  it('an undated listing could be older and rules the CVE out, unless it is bounded by another listing', () => {
+  it('a new signal after the first one counts when it is a catalog listing, not SSVC', () => {
+    // Vendor flag at publication (Oct 25), SSVC on Oct 26: the first signal (Vendor) is new and named, SSVC is not a listing.
+    const s = score(cve({ published: '2026-10-25T00:00:00Z', vendorInTheWild: true, ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: '2026-10-26T08:00:00Z' } }));
+    expect(newlyExploitedSignal(s, undefined, NOW)).toMatchObject({ via: 'Vendor' });
+    // Old vendor flag, new SSVC: not new.
+    const old = score(cve({ vendorInTheWild: true, ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: '2026-10-26T08:00:00Z' } }));
+    expect(isNewlyExploited(old, undefined, NOW)).toBe(false);
+  });
+
+  it('freshListings: dated CISA KEV (or its ADP copy), EU KEV and confirmed CIRCL listings in the last 72 hours', () => {
+    const vias = (s: ReturnType<typeof score>, ls?: CatalogListing[]) => freshListings(s, ls, NOW).map((x) => `${x.via} ${x.at}`);
+    expect(vias(kevOn('2026-10-25'), [listing('eu-kev', '2026-10-24'), listing('circl-kev', '2026-10-26'), listing('siberkapan', '2026-10-26')])).toEqual([
+      'CISA KEV 2026-10-25',
+      'EU KEV 2026-10-24',
+      'CIRCL 2026-10-26',
+    ]);
+    expect(vias(kevOn('2026-10-25'), [listing('circl-kev', '2026-10-26', { status: 'suspected' }), listing('circl-kev', '2026-10-26', { attemptsOnly: true }), listing('eu-kev', null)])).toEqual(['CISA KEV 2026-10-25']);
+    expect(vias(score(cve({ adpKev: { dateAdded: '2026-10-26', reference: null } })))).toEqual(['CISA KEV 2026-10-26']);
+    // Old, or after now.
+    expect(vias(kevOn('2026-10-23'), [listing('eu-kev', '2026-10-27')])).toEqual([]);
+  });
+
+  it('an undated signal rules out the first-signal path, but a dated new listing still counts', () => {
     const s = kevOn('2026-10-25');
-    expect(isNewlyExploited(s, [listing('circl-kev', null)], NOW)).toBe(false);
+    expect(firstExploitedSignal(s, [listing('circl-kev', null)], NOW)).toBeNull();
+    expect(isNewlyExploited(s, [listing('circl-kev', null)], NOW)).toBe(true);
+    // Undated SSVC and a vendor flag from Oct 20, no new listing: not new.
+    const undated = score(cve({ vendorInTheWild: true, ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: null } }));
+    expect(isNewlyExploited(undated, [listing('circl-kev', null)], NOW)).toBe(false);
     expect(isNewlyExploited(s, [listing('eu-kev', null, { notBefore: '2026-10-25' })], NOW)).toBe(true);
     const adpOnly = score(cve({ adpKev: { dateAdded: null, reference: null } }));
     expect(isNewlyExploited(adpOnly, undefined, NOW)).toBe(false);
@@ -255,5 +292,59 @@ describe('newly exploited (hourly.new_exploited)', () => {
     // Long names are cut to 80 characters.
     expect(list[0].title).toHaveLength(80);
     expect(list[0].title.endsWith('…')).toBe(true);
+  });
+});
+
+describe('newly exploited CVEs published before the window', () => {
+  const windowStart = new Date(NOW.getTime() - 30 * DAY_MS);
+  const old = (id: string, published: string, o: Parameters<typeof score>[1] = {}, c = {}) => score(makeCve({ id, published, inWindow: false, ...c }), o);
+
+  it('lists a fresh catalog listing of an older CVE without an hour, with its publication day, and counts it in the total only', () => {
+    const inWin = score(makeCve({ id: 'CVE-2026-801', published: '2026-10-20T10:20:00Z' }), { kev: [makeKev('CVE-2026-801', { dateAdded: '2026-10-24' })] });
+    // Published in March 2024, listed by CISA KEV on Oct 25 (two days ago).
+    const php = old('CVE-2024-4577', '2024-03-12T08:00:00Z', { kev: [makeKev('CVE-2024-4577', { dateAdded: '2026-10-25' })] }, { affected: [{ vendor: 'PHP Group', product: 'PHP', purl: null }] });
+    // Listed by EU KEV on Oct 26, CISA KEV years ago: the EU KEV listing is news.
+    const euNew = old('CVE-2021-44228', '2021-12-10T00:00:00Z', { kev: [makeKev('CVE-2021-44228', { dateAdded: '2021-12-10' })], catalogs: { 'CVE-2021-44228': [listing('eu-kev', '2026-10-26')] } });
+    // Listed long ago only: not new.
+    const stale = old('CVE-2023-1000', '2023-01-01T00:00:00Z', { kev: [makeKev('CVE-2023-1000', { dateAdded: '2023-02-01' })] });
+    // A fresh SSVC or vendor flag on an older CVE is not enough (only catalog listings count outside the window).
+    const ssvcOnly = old('CVE-2023-2000', '2023-01-01T00:00:00Z', {}, { ssvc: { ...ssvc('active', 'no', 'partial')!, timestamp: '2026-10-26T08:00:00Z' } });
+    const catalogs = new Map([['CVE-2021-44228', [listing('eu-kev', '2026-10-26')]]]);
+    const s = buildStats({ history: history(), kev: makeKevCatalog(), window: [inWin], windowStart, now: NOW, catalogs, outside: [php, euNew, stale, ssvcOnly] });
+    const start = Date.parse(s.hourly.start);
+    expect(s.hourly.new_exploited_cves).toEqual([
+      { id: 'CVE-2021-44228', title: expect.any(String), via: 'EU KEV', at: '2026-10-26', published: '2021-12-10' },
+      { id: 'CVE-2024-4577', title: 'PHP Group · PHP', via: 'CISA KEV', at: '2026-10-25', published: '2024-03-12' },
+      { id: 'CVE-2026-801', title: expect.any(String), via: 'CISA KEV', at: '2026-10-24', hour: Math.floor((Date.parse('2026-10-20T10:20:00Z') - start) / 3_600_000) },
+    ]);
+    // Only the window's CVE is on the chart; the total counts all three.
+    expect(s.hourly.new_exploited!.reduce((t, [, n]) => t + n, 0)).toBe(1);
+    expect(s.hourly.new_exploited_total).toBe(3);
+  });
+
+  it('the total counts every one before the cap, older CVEs included', () => {
+    const n = NEW_EXPLOITED_LIST_MAX + 3;
+    const outside = Array.from({ length: n }, (_, i) => old(`CVE-2020-${10000 + i}`, '2020-05-01T00:00:00Z', { kev: [makeKev(`CVE-2020-${10000 + i}`, { dateAdded: '2026-10-26' })] }));
+    const s = buildStats({ history: history(), kev: makeKevCatalog(), window: [], windowStart, now: NOW, outside });
+    expect(s.hourly.new_exploited_cves).toHaveLength(NEW_EXPLOITED_LIST_MAX);
+    expect(s.hourly.new_exploited_total).toBe(n);
+    expect(s.hourly.new_exploited).toEqual([]);
+  });
+
+  it('a CVE given both in the window and outside is listed once, by its window row', () => {
+    const a = score(makeCve({ id: 'CVE-2026-901', published: '2026-10-20T10:20:00Z' }), { kev: [makeKev('CVE-2026-901', { dateAdded: '2026-10-24' })] });
+    const s = buildStats({ history: history(), kev: makeKevCatalog(), window: [a], windowStart, now: NOW, outside: [a] });
+    expect(s.hourly.new_exploited_cves).toHaveLength(1);
+    expect(s.hourly.new_exploited_cves![0].hour).toBeTypeOf('number');
+    expect(s.hourly.new_exploited_total).toBe(1);
+  });
+});
+
+describe('shortTitle', () => {
+  it('uses vendor and product, else the CNA name, else the CVE ID', () => {
+    expect(shortTitle(score(makeCve({ id: 'CVE-2026-1', affected: [{ vendor: 'Fortinet', product: 'FortiOS', purl: null }] })))).toBe('Fortinet · FortiOS');
+    expect(shortTitle(score(makeCve({ id: 'CVE-2026-2', cna: 'GitHub_M', affected: [] })))).toBe('GitHub');
+    expect(shortTitle(score(makeCve({ id: 'CVE-2026-3', cna: '', affected: [] })))).toBe('CVE-2026-3');
+    expect(shortTitle(score(makeCve({ id: 'CVE-2026-4', cna: '  ', affected: [{ vendor: 'n/a', product: '', purl: null }] })))).toBe('CVE-2026-4');
   });
 });

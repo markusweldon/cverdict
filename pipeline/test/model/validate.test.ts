@@ -139,9 +139,10 @@ describe('validateOutput', () => {
     // The KEV listing of CVE-2026-100001 is 5 days old: nothing is new.
     expect(stats.hourly.new_exploited).toEqual([]);
     expect(stats.hourly.new_exploited_cves).toEqual([]);
+    expect(stats.hourly.new_exploited_total).toBe(0);
     const h = stats.hourly.counts.findIndex((c) => c[0] > 0);
     expect(h).toBeGreaterThanOrEqual(0);
-    const { new_exploited: _gone, new_exploited_cves: _list, ...old } = stats.hourly;
+    const { new_exploited: _gone, new_exploited_cves: _list, new_exploited_total: _total, ...old } = stats.hourly;
     write(PATHS.stats, { ...stats, hourly: { ...old, new_exploited: [[h, 1]] } });
     expect(validateOutput(dir).errors.filter((e) => e.includes('new_exploited'))).toEqual([]);
     write(PATHS.stats, { ...stats, hourly: old });
@@ -161,8 +162,9 @@ describe('validateOutput', () => {
     const item = { id: ID, title: 'Acme · Widget', via: 'CISA KEV', at: '2026-10-25', hour: h };
     // Hour h - 1 gets an Exploited CVE too, so a list entry can point at it.
     const counts = stats.hourly.counts.map((c, i) => (i === h - 1 ? ([1, c[1], c[2], c[3]] as typeof c) : c));
-    const errorsWith = (pairs: unknown, list: unknown) => {
-      write(PATHS.stats, { ...stats, hourly: { ...stats.hourly, counts, new_exploited: pairs, new_exploited_cves: list } });
+    const { new_exploited_total: _total, ...hourly } = stats.hourly;
+    const errorsWith = (pairs: unknown, list: unknown, total?: unknown) => {
+      write(PATHS.stats, { ...stats, hourly: { ...hourly, counts, new_exploited: pairs, new_exploited_cves: list, ...(total === undefined ? {} : { new_exploited_total: total }) } });
       return validateOutput(dir).errors.filter((e) => e.includes('new_exploited'));
     };
     expect(errorsWith([[h, 1]], [item])).toEqual([]);
@@ -187,8 +189,35 @@ describe('validateOutput', () => {
       [[[h, 1]], 'x'],
     ];
     for (const [pairs, list] of bad) expect(errorsWith(pairs, list).some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited_cves`))).toBe(true);
+    // CVEs published before the window: no hour, a publication day before the chart, a catalog listing day.
+    const older = { id: 'CVE-2024-4577', title: 'PHP Group · PHP', via: 'CISA KEV', at: '2026-10-26', published: '2024-03-12' };
+    expect(errorsWith([[h, 1]], [older, item], 2)).toEqual([]);
+    expect(errorsWith([[h, 1]], [older, item])).toEqual([]);
+    expect(errorsWith([], [older], 1)).toEqual([]);
+    expect(errorsWith([], [{ ...older, via: 'EU KEV' }, { ...older, id: 'CVE-2023-1234', via: 'CIRCL', at: '2026-10-25' }], 2)).toEqual([]);
+    const badOlder: unknown[] = [
+      // No publication day, or one inside the window.
+      { ...older, published: undefined },
+      { ...older, published: '2026-10-20' },
+      { ...older, published: 'long ago' },
+      // Not a catalog listing day.
+      { ...older, via: 'CISA SSVC', at: '2026-10-26T08:00:00.000Z' },
+      { ...older, via: 'Vendor' },
+      { ...older, at: '2026-10-26T08:00:00.000Z' },
+      // A CVE of the index must have its hour.
+      { ...older, id: ID },
+      // An hour and a publication day at once.
+      { ...item, published: '2024-03-12' },
+    ];
+    for (const b of badOlder) expect(errorsWith([[h, 1]], [b, item].sort((x, y) => (x === item ? 1 : y === item ? -1 : 0)), 2).some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited_cves`))).toBe(true);
+    // The total is the list's length below the cap, never less than the chart's count, and a count.
+    for (const t of [1, 3, -1, 1.5, 'x']) expect(errorsWith([[h, 1]], [older, item], t).some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited_total`))).toBe(true);
+    // A total without the list it counts.
+    const { new_exploited_cves: _names, ...unnamed } = hourly;
+    write(PATHS.stats, { ...stats, hourly: { ...unnamed, counts, new_exploited: [[h, 1]], new_exploited_total: 1 } });
+    expect(validateOutput(dir).errors.some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited_total is present without`))).toBe(true);
     // A list without the counts it names.
-    const { new_exploited: _gone, ...noPairs } = stats.hourly;
+    const { new_exploited: _gone, ...noPairs } = hourly;
     write(PATHS.stats, { ...stats, hourly: { ...noPairs, new_exploited_cves: [item] } });
     expect(validateOutput(dir).errors.some((e) => e.startsWith(`${PATHS.stats}: hourly.new_exploited_cves is present without`))).toBe(true);
   });

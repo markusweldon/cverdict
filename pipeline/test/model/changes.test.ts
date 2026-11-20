@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type Change, type Row } from '../../../shared/contract';
-import { buildChanges } from '../../src/changes';
+import { CHANGES_MAX_ITEMS, buildChanges } from '../../src/changes';
 import { rowTable } from '../../src/emit/json';
 
 const NOW = new Date('2026-10-26T19:30:00Z');
@@ -136,6 +136,27 @@ describe('buildChanges', () => {
     const cur = prev.map((r) => ({ ...r, tier: 'likely' as const, s: 60 }));
     const f = buildChanges(cur, dir, NOW);
     expect(f.items).toHaveLength(500);
+  });
+
+  it('over the cap keeps moves into Likely next and Exploited first, and stays newest first', () => {
+    // 520 chip-only changes from this run, plus 3 older moves into Likely or Exploited from earlier runs.
+    const prev = Array.from({ length: 520 }, (_, i) => row(`CVE-2026-${10000 + i}`, { c: ['sev.high'] }));
+    const older: Change[] = [
+      { id: 'CVE-2026-90001', at: '2026-10-25T10:00:00.000Z', from: 'watch', to: 'likely', added: [] },
+      { id: 'CVE-2026-90002', at: '2026-10-24T10:00:00.000Z', from: null, to: 'exploited', added: ['kev.listed'] },
+      { id: 'CVE-2026-90003', at: '2026-10-23T10:00:00.000Z', from: 'quiet', to: 'watch', added: ['x.poc'] },
+    ];
+    writePrevious(prev, older, []);
+    const cur = prev.map((r) => ({ ...r, c: ['sev.high', 'x.exploitdb'] }));
+    const f = buildChanges(cur, dir, NOW);
+    expect(f.items).toHaveLength(CHANGES_MAX_ITEMS);
+    const ids = f.items.map((i) => i.id);
+    expect(ids).toContain('CVE-2026-90001');
+    expect(ids).toContain('CVE-2026-90002');
+    // A watch move from earlier is the first to go.
+    expect(ids).not.toContain('CVE-2026-90003');
+    const ats = f.items.map((i) => i.at);
+    expect([...ats].sort().reverse()).toEqual(ats);
   });
 
   it('ignores malformed previous files', () => {
