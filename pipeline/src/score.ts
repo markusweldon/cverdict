@@ -25,6 +25,8 @@ import {
   RANSOMWARE_BONUS,
   chip,
 } from '../../shared/model';
+import { REPO_URL } from '../../shared/brand';
+import { edgeDevice, type EdgeMatch } from '../../shared/edge';
 import { NUCLEI } from './config';
 import { isExploitedListing } from './sources/catalogs';
 import type { NucleiAdded } from './sources/nuclei-history';
@@ -126,6 +128,8 @@ function plural(n: number, word: string): string {
   return `${formatInt(n)} ${word}${n === 1 ? '' : 's'}`;
 }
 
+/** Where the edge device list and its rules are explained. */
+export const EDGE_DOC_URL = `${REPO_URL}/blob/main/docs/SCORING.md#internet-facing-edge-devices`;
 const cveOrgUrl = (id: string) => `https://www.cve.org/CVERecord?id=${id}`;
 export const kevSearchUrl = (q: string) =>
   `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${encodeURIComponent(q)}`;
@@ -388,6 +392,8 @@ interface Facts {
   poc: PocSummary;
   /** Unavailable sources (id → name). */
   unavailable: ReadonlyMap<SourceId, string>;
+  /** The internet-facing edge device the CVE affects (shared/edge.ts), or null. */
+  edge: EdgeMatch | null;
 }
 
 function gatherFacts(cve: NormalizedCve, enr: Enrichment, now: Date): Facts {
@@ -418,6 +424,7 @@ function gatherFacts(cve: NormalizedCve, enr: Enrichment, now: Date): Facts {
     catalogs: (enr.exploits.catalogs?.get(cve.id) ?? []).filter((l) => l.added === null || l.added <= ymd(now)),
     poc,
     unavailable: enr.unavailable,
+    edge: edgeDevice({ affected: cve.affected, cpes: cve.cpes, attackVector: cve.cvss ? (cve.cvssMetrics.AV ?? null) : null }),
   };
 }
 
@@ -583,6 +590,8 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
   // A missing source or an unvetted PoC repo leaves the question open: unknown, never absent.
   if (down.length > 0) return unknown(`Exploit check incomplete: ${down.join(', ')} unavailable this run${day}`);
   if (unvetted > 0) return unknown(`Not settled: ${plural(unvetted, 'PoC repo')} too new to vet${day}`);
+  // Edge devices are often exploited before any exploit is public, so early silence says little.
+  if (f.cold && f.edge) return unknown(`Too new: edge devices are often attacked before exploits are public${day}`);
   if (f.cold) {
     // Early silence is weak evidence of absence: a small penalty, so a profile alone stays under the default bar.
     const early = reason('x.early', `No exploit signal yet: day ${f.day} of ${COLD_START_DAYS}, exploit feeds lag`);
@@ -725,6 +734,7 @@ function cveInfoChips(f: Facts): Reason[] {
   const out: Reason[] = [];
   if (cve.aiCredit) out.push(reason('ai.credit', `AI-credited: “${cve.aiCredit}”`, { url: cveOrgUrl(cve.id) }));
   if (cve.tags.includes(TAG_EOL)) out.push(reason('tag.eol', 'Unsupported when assigned: replace or mitigate', { url: cveOrgUrl(cve.id) }));
+  if (f.edge) out.push(reason('edge.device', `Internet-facing edge device: ${f.edge.name} (${f.edge.kind})`, { url: EDGE_DOC_URL }));
   return out;
 }
 

@@ -190,6 +190,22 @@ describe('normalizeCve on tolerant edge cases', () => {
     expect(cve.references[0]).toBe('https://example.com/a');
   });
 
+  it('keeps CPE 2.3 names from affected entries (for the edge device check), capped and deduplicated', () => {
+    const fortios = 'cpe:2.3:o:fortinet:fortios:7.4.1:*:*:*:*:*:*:*';
+    const cve = normalize(
+      record({
+        affected: [
+          { vendor: 'Fortinet', product: 'FortiOS', cpes: [fortios, fortios, 'cpe:/o:fortinet:fortios:7.4', 42, 'not a cpe'] },
+          { vendor: 'n/a', product: 'n/a', cpes: Array.from({ length: 20 }, (_, i) => `cpe:2.3:a:v${i}:p${i}:1.0:*:*:*:*:*:*:*`) },
+        ],
+      }),
+    );
+    expect(cve.cpes![0]).toBe(fortios);
+    expect(cve.cpes).toHaveLength(10);
+    expect(new Set(cve.cpes).size).toBe(10);
+    expect(normalize(record({})).cpes).toEqual([]);
+  });
+
   it('picks the English description (any en-* tag), else the first one', () => {
     const descriptions = [
       { lang: 'fr', value: 'Une vulnérabilité' },

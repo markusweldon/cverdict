@@ -871,7 +871,7 @@ function scoring(T: Theme, ex: CveDetail, narrow = false): string {
   const tBottom = ty + Math.ceil(rules.length / tCols) * (th + 16) - 16;
 
   const H = tBottom + 96 + (narrow ? 10 : 0);
-  const foot = narrow ? `Points from shared/model.ts (${SCORE_MODEL}). Example from the run of ${RUN}.` : `Points from shared/model.ts (${SCORE_MODEL}). EPSS and "no exploit yet" wait ${COLD_START_DAYS} days. Example from the run of ${RUN}.`;
+  const foot = narrow ? `Points from shared/model.ts (${SCORE_MODEL}). Example from the run of ${RUN}.` : `Points from shared/model.ts (${SCORE_MODEL}). EPSS waits ${COLD_START_DAYS} days. Example from the run of ${RUN}.`;
   b += footer(T, W, H, foot, undefined, M);
   return svgDoc(W, H, 'How a CVErdict score adds up', `A base of ${BASE_POINTS} plus five families of reason chips, the tiers on the 0 to 100 scale, and ${ex.id} worked through to ${total}.`, frame(T, W, H, id) + b);
 }

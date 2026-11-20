@@ -102,7 +102,7 @@ in, so a bad run publishes nothing.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
-  <img alt="CVErdict architecture by folder. At the top, .github/workflows/refresh.yml runs on cron at minute 17 every hour, or from an external timer, with four jobs: Build data, Publish, Deploy Pages (optional) and Watchdog. Three columns below. pipeline/src writes: sources/*.ts has one loader per feed (cvelist, kev, catalogs, epss, metasploit, nuclei, exploitdb, poc, osv); ingest.ts tries the primary, then the fallback, then the cache; normalize.ts turns untrusted CVE JSON 5 into plain, checked records; score.ts applies chips and points, strongest per family; woke.ts and receipts.ts track old CVEs that woke up, the forward log and the backtest; batches.ts, stats.ts and packages.ts build patch days, counts and OSV package ranges; emit/ holds json.ts, atom.ts and ics.ts; validate.ts and run.ts check every file and swap the tree in atomically. shared/ is the contract both sides import: contract.ts (every file format and tierFor), model.ts (every chip and its points, score model v0.2.0), verdict.ts (the one-line verdict), shard.ts (FNV-1a of the CVE ID picks one of 256 detail files), packages.ts and versions.ts (version ranges for eight ecosystems) and brand.ts. The readers only read: site/src (Preact and Vite), site/src/check (SBOM and lockfile parsers that run in the browser), api/share.ts (link previews for chat and social bots only), mcp/src (the npm package cverdict-mcp) and vercel.json (rewrites /data/* and /feeds/* to the data branch). At the bottom, scripts/publish-data-branch.sh writes one parentless commit per run to the data branch, which the readers fetch. scripts/backtest.ts and calibrate.ts reproduce the numbers, and ci.yml runs typecheck, tests, both builds and an MCP smoke test." src="docs/assets/architecture-light.svg" width="100%">
+  <img alt="CVErdict architecture by folder. At the top, .github/workflows/refresh.yml runs on cron at minute 17 every hour, or from an external timer, with four jobs: Build data, Publish, Deploy Pages (optional) and Watchdog. Three columns below. pipeline/src writes: sources/*.ts has one loader per feed (cvelist, kev, catalogs, epss, metasploit, nuclei, exploitdb, poc, osv); ingest.ts tries the primary, then the fallback, then the cache; normalize.ts turns untrusted CVE JSON 5 into plain, checked records; score.ts applies chips and points, strongest per family; woke.ts and receipts.ts track old CVEs that woke up, the forward log and the backtest; batches.ts, stats.ts and packages.ts build patch days, counts and OSV package ranges; emit/ holds json.ts, atom.ts and ics.ts; validate.ts and run.ts check every file and swap the tree in atomically. shared/ is the contract both sides import: contract.ts (every file format and tierFor), model.ts (every chip and its points, score model v0.3.0), verdict.ts (the one-line verdict), shard.ts (FNV-1a of the CVE ID picks one of 256 detail files), packages.ts and versions.ts (version ranges for eight ecosystems) and brand.ts. The readers only read: site/src (Preact and Vite), site/src/check (SBOM and lockfile parsers that run in the browser), api/share.ts (link previews for chat and social bots only), mcp/src (the npm package cverdict-mcp) and vercel.json (rewrites /data/* and /feeds/* to the data branch). At the bottom, scripts/publish-data-branch.sh writes one parentless commit per run to the data branch, which the readers fetch. scripts/backtest.ts and calibrate.ts reproduce the numbers, and ci.yml runs typecheck, tests, both builds and an MCP smoke test." src="docs/assets/architecture-light.svg" width="100%">
 </picture>
 
 </details>
@@ -126,8 +126,10 @@ Any confirmed exploitation adds 75 and floors the score at 90. Within a family o
 chip counts, so three PoCs and a Metasploit module are not four times the evidence. Points are
 roughly 20 · log10 of how much each signal raised the odds of a later KEV listing, shrunk for
 look-ahead bias: +20 points ≈ 10× the odds. For the first 14 days the feeds have not caught up,
-so EPSS is ignored and "no exploit yet" costs 3 points instead of 14. A feed that could not be
-loaded counts as unknown, never as "no exploit".
+so EPSS is ignored and "no exploit yet" costs 3 points instead of 14. On an internet-facing edge
+device (VPN, firewall, gateway and the like, a [curated list](docs/SCORING.md#internet-facing-edge-devices))
+it costs nothing, since those are often attacked before any exploit is public. A feed that could
+not be loaded counts as unknown, never as "no exploit".
 
 Every CVE published in the last 30 days, every CVE in KEV (CISA's, or listed as exploited by ENISA
 EU KEV or CIRCL) and every older CVE that woke up in the last 30 days gets a score from 0 to 100
@@ -166,7 +168,8 @@ Product in KEV (×5): Citrix NetScaler
 
 Other CVEs carry chips such as `Vendor CVSS: working exploit code exists (E:F)` (+24: weaponized,
 not yet exploited), context worth 0 points such as `Part of Microsoft patch day · Nov 10 (1,094)`
-or `AI-credited: “Claude Security”`, and unknowns such as `Not settled: 1 PoC repo too new to vet (day 9 of 14)`.
+or `AI-credited: “Claude Security”` or `Internet-facing edge device: F5 BIG-IP (load balancer, gateway)`, and unknowns
+such as `Not settled: 1 PoC repo too new to vet (day 9 of 14)`.
 
 Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing, CISA's
 SSVC *active* and any EPSS score from the listing day on) and re-score the 134 recent CVEs CISA

@@ -323,6 +323,21 @@ function affectedEntries(cna: JsonObject | null): NormalizedCve['affected'] {
   return out;
 }
 
+const CPE_RE = /^cpe:2\.3:[aho]:[^:\s]+:[^:\s]+/i;
+
+/** CPE 2.3 names from the affected entries; only the edge device check reads them. */
+function affectedCpes(cna: JsonObject | null): string[] {
+  const out = new Set<string>();
+  for (const entry of asArray(cna?.affected)) {
+    for (const cpe of asArray(asObject(entry)?.cpes)) {
+      const text = sanitizeLine(cpe, 256);
+      if (CPE_RE.test(text)) out.add(text);
+      if (out.size === MAX_LIST) return [...out];
+    }
+  }
+  return [...out];
+}
+
 function referenceUrls(cna: JsonObject | null): string[] {
   const urls = new Set<string>();
   for (const entry of asArray(cna?.references)) {
@@ -395,6 +410,7 @@ export function normalizeCve(record: unknown, meta: CveMeta, inWindow: boolean):
     adpKev,
     cwe: cweIds(cna),
     affected,
+    cpes: affectedCpes(cna),
     tags: cnaTags(cna),
     references,
     aiCredit: findAiCredit(cna),

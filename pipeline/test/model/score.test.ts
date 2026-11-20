@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, WATCH_FLOOR, tierFor, type Family, type Reason } from '../../../shared/contract';
 import { BASE_POINTS, CHIPS, COLD_START_DAYS, EARLY_NO_EXPLOIT, EXPLOITED_FLOOR, chip } from '../../../shared/model';
-import { buildKevPrior, kevVendorKey, orderReasons, vendorTokens } from '../../src/score';
+import { EDGE_DOC_URL, buildKevPrior, kevVendorKey, orderReasons, vendorTokens } from '../../src/score';
 import type { NormalizedCve, ScoredCve } from '../../src/types';
 import {
   NOW,
@@ -361,6 +361,71 @@ describe('X family (exploit artifacts and prediction)', () => {
     // The same profile with any exploit signal clears it.
     const poc = score(cve, { kev, poc: { [ID]: [repo(daysAgo(10))] } });
     expect(poc.tier).toBe('likely');
+  });
+
+  describe('internet-facing edge devices', () => {
+    const fortios = [{ vendor: 'Fortinet', product: 'FortiOS', purl: null }];
+    const profile = { ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') } as const;
+    const kev = [makeKev('CVE-2024-1', { vendorProject: 'Fortinet', product: 'FortiOS' })];
+
+    it('keep x.too_new (unknown, 0) instead of x.early before day 14, with the edge.device chip', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: fortios, ...profile }), { kev });
+      expect(byId(s, 'x.early')).toBeUndefined();
+      expect(byId(s, 'x.too_new')).toMatchObject({
+        points: 0,
+        polarity: 'unknown',
+        label: 'Too new: edge devices are often attacked before exploits are public (day 5 of 14)',
+      });
+      expect(byId(s, 'edge.device')).toMatchObject({
+        points: 0,
+        polarity: 'info',
+        family: 'INFO',
+        label: 'Internet-facing edge device: Fortinet FortiOS (firewall, SSL VPN)',
+        url: EDGE_DOC_URL,
+      });
+      expect(s.score).toBe(52);
+      expect(s.tier).toBe('likely');
+      expect(total(s)).toBe(s.score);
+    });
+
+    it('get x.none after day 14 like any other CVE; the chip still shows', () => {
+      const s = score(makeCve({ affected: fortios, ...profile }), { kev });
+      expect(pointsOf(s, 'x.none')).toBe(-14);
+      expect(byId(s, 'edge.device')).toBeDefined();
+      expect(s.score).toBe(38);
+    });
+
+    it('do not change a CVE with an exploit signal', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: fortios, ...profile }), { kev, poc: { [ID]: [repo(daysAgo(10))] } });
+      expect(pointsOf(s, 'x.poc')).toBe(20);
+      expect(byId(s, 'x.too_new')).toBeUndefined();
+      expect(byId(s, 'edge.device')).toBeDefined();
+    });
+
+    it('need attack vector Network when there is a CVSS score', () => {
+      const local = score(makeCve({ published: daysAgo(5), affected: fortios, ...cvss(7.8, 'L') }));
+      expect(byId(local, 'edge.device')).toBeUndefined();
+      expect(pointsOf(local, 'x.early')).toBe(EARLY_NO_EXPLOIT);
+      const noCvss = score(makeCve({ published: daysAgo(5), affected: fortios, cvss: null, cvssMetrics: {} }));
+      expect(byId(noCvss, 'edge.device')).toBeDefined();
+      expect(byId(noCvss, 'x.early')).toBeUndefined();
+    });
+
+    it('endpoint software from an edge vendor still gets x.early', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: [{ vendor: 'Fortinet', product: 'FortiClientWindows', purl: null }], ...profile }), { kev });
+      expect(byId(s, 'edge.device')).toBeUndefined();
+      expect(pointsOf(s, 'x.early')).toBe(EARLY_NO_EXPLOIT);
+    });
+
+    it('match on a CPE name when the affected entry names no product', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: [], cpes: ['cpe:2.3:o:paloaltonetworks:pan-os:11.1.0:*:*:*:*:*:*:*'], ...profile }));
+      expect(byId(s, 'edge.device')!.label).toBe('Internet-facing edge device: Palo Alto PAN-OS (firewall, SSL VPN)');
+    });
+
+    it('a missing exploit source still names the outage first', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: fortios, ...profile }), { down: ['metasploit'] });
+      expect(byId(s, 'x.too_new')!.label).toBe('Exploit check incomplete: metasploit unavailable this run (day 5 of 14)');
+    });
   });
 
   it('exploit artifacts count during the cold start', () => {

@@ -78,6 +78,8 @@ export interface NormalizedCve {
   adpKev: { dateAdded: string | null; reference: string | null } | null;
   cwe: string[];
   affected: { vendor: string; product: string; purl: string | null }[];
+  /** CPE 2.3 names from the CNA's affected entries (≤ 10), for the edge device check only. Optional in fixtures. */
+  cpes?: string[];
   tags: string[];
   references: string[];
   /** Matched AI credit text (≤ 80 chars), if any. */

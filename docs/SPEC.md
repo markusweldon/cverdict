@@ -21,7 +21,7 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 ## 1. Repository layout
 
 ```
-shared/            contract.ts  model.ts  shard.ts  brand.ts  cna.ts   (imported by both sides; no Node/DOM APIs)
+shared/            contract.ts  model.ts  edge.ts  shard.ts  brand.ts  cna.ts   (imported by both sides; no Node/DOM APIs)
                    verdict.ts  share.ts  share-images.ts        (verdict words and link-preview tags; .js imports)
                    versions.ts  packages.ts  mcp.ts             (version ranges and package keys; MCP copy)
 api/               share.ts   (Vercel Function for link-preview bots; tests in api/_test/)
@@ -138,7 +138,7 @@ From `containers.cna` and `containers.adp[]` (ADP with `providerMetadata.shortNa
 - SSVC from CISA-ADP `metrics[].other` where `type === 'ssvc'`: `content.options[]` is a list of single-key
   objects (`Exploitation`, `Automatable`, `Technical Impact`); values lower-cased. Also `content.version`, `content.timestamp`.
 - ADP KEV block: `metrics[].other.type === 'kev'` → treat as KEV-listed with `content.dateAdded` (fallback source).
-- CWE ids from `problemTypes[].descriptions[].cweId`; affected `{vendor, product, purl?}` (max 10; skip `n/a`).
+- CWE ids from `problemTypes[].descriptions[].cweId`; affected `{vendor, product, purl?}` (max 10; skip `n/a`); CPE 2.3 names from `affected[].cpes` (max 10, only for the edge device check).
 - credits text joined; tags (`cna.tags`); references (max 10 URLs, http(s) only).
 - AI credit: first credit value matching (case-insensitive)
   `\b(claude|anthropic|openai|gpt-?\d+(\.\d+)?o?|codex|aardvark|big ?sleep|gemini|xbow|zeropath|depthfirst|striga|zerotrail|mythos|glasswing|llm|large language model|agentic|ai[- ](assisted|agent|powered|driven|discovered|found|security|scanner))\b`
@@ -175,7 +175,7 @@ X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*
                      (v3 E:F/E:H), x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10, epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
              if none, with every exploit source and EPSS loaded this run and no unvetted PoC repo:
-             x.none −14 when age ≥ 14, else x.early −3 (model v0.3.0); otherwise x.too_new (unknown, 0)
+             x.none −14 when age ≥ 14, else x.early −3 (model v0.3.0; x.too_new on an edge device); otherwise x.too_new (unknown, 0)
 SEV        = sev.crit_net 13 (≥9.0 and AV:N) | sev.crit 6 (≥9.0) | sev.high 1 (7–8.9) | sev.low −13 (<7) | sev.none (unknown)
 SSVC       = (ssvc.automatable 6 | ssvc.not_automatable −2) + (ssvc.total 8 | ssvc.partial −6) | ssvc.missing (unknown)
 PRIOR      = prior.product 10 | prior.vendor 8 | prior.none −6
@@ -189,7 +189,8 @@ raw        = 15 + X + SEV + SSVC + PRIOR + NOISE
 score      = E ? min(100, max(raw + 75, 90) + (ransomware Known ? 5 : 0)) : clamp(raw, 0, 100)
 weaponized = x.metasploit or x.nuclei present
 tier       = tierFor(score, E, weaponized, knob)          (shared/contract.ts)
-INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hype, poc.unvetted, tag.eol (0 points)
+INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hype, poc.unvetted, tag.eol, edge.device (0 points)
+edge       = shared/edge.ts: affected vendor/product or CPE in the curated edge device list, AV:N when CVSS exists
 ```
 
 Chip labels are specific and dated, e.g. `CISA KEV · added Oct 21 · due Oct 24`, `Metasploit: exploit/linux/http/foo (excellent)`,

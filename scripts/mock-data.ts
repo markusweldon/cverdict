@@ -65,6 +65,7 @@ import {
 } from '../shared/model';
 import { SHARD_COUNT, fnv1a, shardOf } from '../shared/shard';
 import { BRAND, REPO_URL } from '../shared/brand';
+import { edgeDevice } from '../shared/edge';
 import { RECEIPT_DEFINITIONS } from '../pipeline/src/emit/build';
 import { BACKTEST_COMMAND, SIGNALS } from '../pipeline/src/backtest';
 import { scoreMethods } from '../pipeline/src/receipts';
@@ -1430,8 +1431,13 @@ function score(d: Draft): Scored {
   if (epssOk && d.epss!.score >= 0.01 && d.epss!.score < 0.1) x.push(reason('epss.mid', epssLabel(d.epss!), 8, { url: epssUrl, at: d.epss!.date }));
   x.sort((a, b) => b.points - a.points);
   x.forEach((r, i) => i > 0 && (r.points = 0));
+  const edge = edgeDevice({
+    affected: d.synth.vendor || d.synth.product ? [{ vendor: d.synth.vendor, product: d.synth.product }] : [],
+    attackVector: cvss ? (/AV:([NALP])/.exec(cvss.vector)?.[1] ?? null) : null,
+  });
   if (x.length === 0) {
     if (age >= COLD_START_DAYS) x.push(reason('x.none', `No public exploit after ${ageInt} days · EPSS ${d.epss ? pct(d.epss.score) : 'unscored'}`, -14));
+    else if (edge) x.push(reason('x.too_new', `Too new: edge devices are often attacked before exploits are public (day ${ageInt} of ${COLD_START_DAYS})`, 0));
     else x.push(reason('x.early', `No exploit signal yet: day ${ageInt} of ${COLD_START_DAYS}, exploit feeds lag`, EARLY_NO_EXPLOIT));
   }
   const xPoints = x[0].points;
@@ -1509,6 +1515,7 @@ function score(d: Draft): Scored {
   if (ex.poc.hype) info.push(reason('poc.hype', `${ex.poc.count} PoC repos in a week — attention, not weaponization`, 0, { url: ex.poc.top[0]?.url }));
   if (ex.poc.count > 0 && ex.poc.vetted === 0) info.push(reason('poc.unvetted', `${ex.poc.count} new unstarred PoC repo — not counted yet`, 0, { url: ex.poc.top[0]?.url }));
   if (d.synth.tags.includes('unsupported-when-assigned')) info.push(reason('tag.eol', 'Unsupported when assigned: replace or mitigate', 0, { url: cveUrl(d.id) }));
+  if (edge) info.push(reason('edge.device', `Internet-facing edge device: ${edge.name} (${edge.kind})`, 0, { url: `${REPO_URL}/blob/main/docs/SCORING.md#internet-facing-edge-devices` }));
 
   const reasons = [...e, ...x, ...sev, ...ssvc, ...prior, ...noise, ...info];
   const unknowns: string[] = [];
