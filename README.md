@@ -130,9 +130,9 @@ score = 15 + X (exploit artifacts, strongest one) + SEV (CVSS) + SSVC (CISA) + P
 Any confirmed exploitation adds 75 and floors the score at 90. Within a family only the strongest
 chip counts, so three PoCs and a Metasploit module are not four times the evidence. Points are
 roughly 20 · log10 of how much each signal raised the odds of a later KEV listing, shrunk for
-look-ahead bias: +20 points ≈ 10× the odds. EPSS and "no exploit yet" are ignored for the first
-14 days, because the feeds have not caught up, and a feed that could not be loaded counts as
-unknown, never as "no exploit".
+look-ahead bias: +20 points ≈ 10× the odds. For the first 14 days the feeds have not caught up,
+so EPSS is ignored and "no exploit yet" costs 3 points instead of 14. A feed that could not be
+loaded counts as unknown, never as "no exploit".
 
 A real example:
 
@@ -144,9 +144,9 @@ CVE-2026-105016 · Microsoft QUIC Remote Code Execution Vulnerability · day 13
    +8  CISA SSVC: total technical impact
    +6  CISA SSVC: automatable
    +8  Vendor in KEV (×390): Microsoft
-    0  Too new: day 13 of 14, exploit feeds lag
+   −3  No exploit signal yet: day 13 of 14, exploit feeds lag
   ───
-   50  Likely next at the default evidence bar
+   47  Watch at the default evidence bar (Likely next at Broad, 40)
 ```
 
 Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing,

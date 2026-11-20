@@ -328,8 +328,15 @@ describe('X family (exploit artifacts and prediction)', () => {
 
   it('x.too_new before day 14 while an unvetted PoC repo leaves it open (unknown, 0 points)', () => {
     const s = score(makeCve({ published: daysAgo(3) }), { poc: { [ID]: [repo(daysAgo(1))] } });
-    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Too new: day 3 of 14, exploit feeds lag' });
+    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Not settled: 1 PoC repo too new to vet (day 3 of 14)' });
     expect(byId(s, 'x.early')).toBeUndefined();
+  });
+
+  it('x.early still fires before day 14 when only EPSS is down (EPSS does not score yet)', () => {
+    const s = score(makeCve({ published: daysAgo(3), cna: 'Wordfence' }), { down: ['epss'] });
+    expect(byId(s, 'x.early')).toMatchObject({ points: EARLY_NO_EXPLOIT });
+    expect(byId(s, 'x.too_new')).toBeUndefined();
+    expect(pointsOf(s, 'noise.wordpress')).toBeLessThan(0);
   });
 
   it('severity, SSVC and KEV history alone stay under the default bar during the cold start', () => {
@@ -621,7 +628,8 @@ describe('unavailable sources are unknown, not absent', () => {
 
   it('cold start keeps its own label and NOISE rule when feeds are down', () => {
     const s = score(makeCve({ published: daysAgo(3), cna: 'Wordfence' }), { down: ['metasploit'] });
-    expect(byId(s, 'x.too_new')!.label).toBe('Too new: day 3 of 14, exploit feeds lag');
+    expect(byId(s, 'x.too_new')!.label).toBe('Exploit check incomplete: metasploit unavailable this run (day 3 of 14)');
+    expect(byId(s, 'x.early')).toBeUndefined();
     expect(pointsOf(s, 'noise.wordpress')).toBe(0);
   });
 });

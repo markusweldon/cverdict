@@ -71,7 +71,7 @@ export const CHIPS: readonly ChipDef[] = [
   c('vendor.poc', 'X', 'up', 10, 'cvelist', 'Vendor: PoC', 'The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored.'),
   c('epss.mid', 'X', 'up', 8, 'epss', 'EPSS 1–10%', 'EPSS between 1% and 10% (only trusted after 14 days).'),
   c('x.none', 'X', 'down', -14, 'computed', 'No exploit yet', 'Two weeks after publication there is still no public exploit and EPSS is below 1%.'),
-  c('x.early', 'X', 'down', EARLY_NO_EXPLOIT, 'computed', 'No exploit yet (early)', 'Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone no longer clear the default evidence bar.'),
+  c('x.early', 'X', 'down', EARLY_NO_EXPLOIT, 'computed', 'No exploit yet (early)', 'Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone stay under the default evidence bar.'),
   c('x.too_new', 'X', 'unknown', 0, 'computed', 'Too new', 'No exploit chip, but absence is not settled: a PoC repo is too new to vet, or an exploit source could not be loaded this run.'),
 
   // SEV — CVSS base score as published by the CNA (or CISA-ADP when the CNA gave none).

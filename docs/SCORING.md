@@ -95,7 +95,8 @@ Details that matter when you read a score:
 - **A missing source is unknown, not absent.** When a source has neither a fresh nor a cached
   copy, its silence is not evidence. Without KEV, PRIOR is `prior.unknown`. Without Metasploit,
   Nuclei, Exploit-DB, PoC-in-GitHub or EPSS, a CVE with no exploit chip gets `x.too_new` ("Exploit
-  check incomplete") instead of `x.none`, and NOISE stays off. The CVE page names the missing
+  check incomplete") instead of `x.none`, and NOISE stays off. In the first 14 days EPSS does not
+  score, so an EPSS outage alone does not stop `x.early`. The CVE page names the missing
   sources under "what we could not see".
 - **Row chips.** List views carry up to four chip ids per CVE (`Row.c`), strongest first, positive
   chips before negative ones. `Row.r` lists every chip that fired, family losers included and
@@ -135,7 +136,7 @@ Strongest one counts; the rest are shown with 0. `x.too_new` stands in for `x.no
 | `vendor.poc` | Vendor: PoC | +10 | `cvelist` | The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored. |
 | `epss.mid` | EPSS 1–10% | +8 | `epss` | EPSS between 1% and 10% (only trusted after 14 days). |
 | `x.none` | No exploit yet | −14 | `computed` | Two weeks after publication there is still no public exploit and EPSS is below 1%. |
-| `x.early` | No exploit yet (early) | −3 | `computed` | Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone no longer clear the default evidence bar. |
+| `x.early` | No exploit yet (early) | −3 | `computed` | Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone stay under the default evidence bar. |
 | `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: a PoC repo is too new to vet, or an exploit source could not be loaded this run. |
 
 ### SEV: severity

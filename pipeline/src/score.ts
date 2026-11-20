@@ -572,20 +572,22 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
     );
   }
 
-  const down = X_SOURCES.flatMap((id) => f.unavailable.get(id) ?? []);
+  // EPSS does not score during the cold start, so an EPSS outage cannot leave the question open then.
+  const down = X_SOURCES.filter((id) => !(f.cold && id === 'epss')).flatMap((id) => f.unavailable.get(id) ?? []);
   const unvetted = poc.count - poc.vetted;
   const pending = down.length > 0 || unvetted > 0;
   if (cands.length > 0) return { result: strongest(cands, 'max'), info, pending };
   const unknown = (label: string) => ({ result: { chips: [reason('x.too_new', label)], points: 0 }, info, pending });
+  // During the cold start the label also says which day it is.
+  const day = f.cold ? ` (day ${f.day} of ${COLD_START_DAYS})` : '';
+  // A missing source or an unvetted PoC repo leaves the question open: unknown, never absent.
+  if (down.length > 0) return unknown(`Exploit check incomplete: ${down.join(', ')} unavailable this run${day}`);
+  if (unvetted > 0) return unknown(`Not settled: ${plural(unvetted, 'PoC repo')} too new to vet${day}`);
   if (f.cold) {
-    // A missing source or an unvetted PoC repo leaves the question open: unknown, never absent.
-    if (pending) return unknown(`Too new: day ${f.day} of ${COLD_START_DAYS}, exploit feeds lag`);
     // Early silence is weak evidence of absence: a small penalty, so a profile alone stays under the default bar.
     const early = reason('x.early', `No exploit signal yet: day ${f.day} of ${COLD_START_DAYS}, exploit feeds lag`);
     return { result: { chips: [early], points: early.points }, info, pending };
   }
-  if (down.length > 0) return unknown(`Exploit check incomplete: ${down.join(', ')} unavailable this run`);
-  if (unvetted > 0) return unknown(`Not settled: ${plural(unvetted, 'PoC repo')} too new to vet`);
   // Nothing fired after the cold start: (weak) evidence of absence.
   const epssText = epss ? `EPSS ${formatPercent(epss.score)}` : 'no EPSS score';
   const none = reason('x.none', `No public exploit after ${f.day} days · ${epssText}`);
