@@ -76,7 +76,7 @@ export const MCP_TOOLS: readonly { name: McpToolName; title: string; description
     name: 'woke_up',
     title: 'Old CVEs that woke up',
     description:
-      'CVEs published before the 30-day window that gained exploitation evidence in the last 30 days, newest first, with the dated evidence. Kinds: kev (a CISA KEV listing), catalog (a first exploited listing in ENISA EU KEV or the CIRCL catalog), exploitdb, metasploit, nuclei and poc (a first public exploit), epss (an EPSS jump). A kev or catalog listing counts even when it came in the CVE\'s last days in the window.' + UNTRUSTED,
+      'CVEs published before the 30-day window that gained exploitation evidence in the last 30 days, newest first, with the dated evidence. Kinds: kev (a CISA KEV listing), catalog (a first exploited listing in ENISA EU KEV or the CIRCL catalog), exploitdb, metasploit, nuclei and poc (a first public exploit), epss (an EPSS jump). A kev or catalog listing in the period counts even when it came while the CVE was still in the window.' + UNTRUSTED,
   },
   {
     name: 'receipts',

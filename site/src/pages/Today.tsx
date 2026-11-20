@@ -483,7 +483,7 @@ export default function Today() {
               <h2 id="wf-h" class="panel__title">Signal waterfall</h2>
               <p class="panel__sub">Every CVE in the window, {slot}. Grey is noise; lit ticks cleared the bar. Pick a column to see that day’s CVEs in Explore.</p>
             </div>
-            {/* The chart's summary reads the key out; only the button for the newly exploited list is exposed. */}
+            {/* The chart's summary reads the tier key out, so it is hidden here; the newly exploited item is exposed and reads its own count. */}
             <ul class="legend legend--inline" role="none">
               {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
                 <Fragment key={t}>
@@ -507,7 +507,7 @@ export default function Today() {
               dayHref={(day) => exploreDayHref(day, level)}
               fresh={fresh}
               mark={freshMark}
-              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely with the evidence bar at ${level}.${freshTotal ? ` ${fmtInt(freshTotal)} newly exploited in the last 72 hours.` : ''}`}
+              summary={`Signal waterfall: ${fmtInt(meta.status === 'ready' ? meta.data.counts.window_published : 0)} CVEs over ${stats.data.hourly.hours} hours, ${slot}; ${fmtInt(counts.exploited)} exploited and ${fmtInt(counts.likely)} likely with the evidence bar at ${level}.`}
             />
           ) : (
             <Loading label="Drawing the waterfall" lines={1} height="176px" />

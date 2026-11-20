@@ -1052,12 +1052,12 @@ a.chip:hover {
   }
 }
 
-/* None new (or still loading): a dim, still swatch. */
 /* The count leads ("3 newly exploited"): same-width digits, so a new count moves nothing beside it. */
 .legend__item--new {
   font-variant-numeric: tabular-nums;
 }
 
+/* None new (or still loading): a dim, still swatch. */
 .legend__item--new.is-none .wf__key--new {
   opacity: 0.4;
   box-shadow: none;
