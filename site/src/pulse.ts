@@ -3,7 +3,8 @@
  * 72 hours (stats.json hourly.new_exploited) pulse, like a contact on a radar: each beat a thin
  * red ring leaves the ticks and fades as it widens, while a soft red halo swells behind them and
  * the ticks shift toward a stronger red, all in phase. The ticks are only about 2x2 px, so the
- * halo and the ring carry the visible change. Pure helpers live here so they can be tested without a canvas; Waterfall.tsx owns the
+ * halo and the ring carry the visible change. Both sit behind the chart, so no other tick changes
+ * colour. Pure helpers live here so they can be tested without a canvas; Waterfall.tsx owns the
  * timer and the drawing.
  */
 import { fmtInt } from './format';
@@ -22,6 +23,11 @@ export const RING_R0 = 1.5;
 export const RING_W = 1.5;
 /** Room kept around each column for its halo and ring, so a repaint never cuts either off. */
 export const PULSE_PAD = Math.ceil(Math.max(HALO_R, RING_R + RING_W / 2)) + 2;
+/**
+ * The halo and the ring fade out over this many CSS px before an edge of the canvas, so a column
+ * near the edge (the newest ones sit at the right) never shows a flat cut through either.
+ */
+export const EDGE_FADE = 10;
 
 /**
  * Pulse level for a time since the pulse started: 0 at the trough (the static colour), 1 at the
@@ -132,6 +138,30 @@ export function haloSpots(ticks: readonly Tick[], barW: number, segH: number, ra
     .sort((a, b) => a.cx - b.cx);
 }
 
+/**
+ * The rings for a set of halo spots: columns whose centres are closer than `gap` share one ring
+ * around the group, so neighbouring new columns send out a single ring instead of several that
+ * cross each other. The group's `half` reaches the far end of every stack in it. Sorted left to
+ * right; `r` is kept from the widest member.
+ */
+export function ringSpots(spots: readonly Spot[], gap = RING_R): Spot[] {
+  const sorted = [...spots].sort((a, b) => a.cx - b.cx);
+  const groups: Spot[][] = [];
+  for (const s of sorted) {
+    const g = groups[groups.length - 1];
+    const last = g?.[g.length - 1];
+    if (last && Math.hypot(s.cx - last.cx, s.cy - last.cy) < gap) g.push(s);
+    else groups.push([s]);
+  }
+  return groups.map((g) => {
+    if (g.length === 1) return g[0];
+    const cx = (Math.min(...g.map((s) => s.cx)) + Math.max(...g.map((s) => s.cx))) / 2;
+    const cy = (Math.min(...g.map((s) => s.cy - s.half)) + Math.max(...g.map((s) => s.cy + s.half))) / 2;
+    const half = Math.max(...g.map((s) => Math.hypot(s.cx - cx, s.cy - cy) + s.half));
+    return { cx, cy, half, r: Math.max(...g.map((s) => s.r)) };
+  });
+}
+
 export interface Rect {
   x: number;
   y: number;
@@ -165,6 +195,51 @@ export function pulseRegions(ticks: readonly Tick[], barW: number, segH: number,
     const x1 = Math.min(width, snapUp(c.x + barW + side));
     const y1 = Math.min(height, snapUp(c.bottom + pad));
     if (x1 > x0 && y1 > y0) out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+  }
+  return out.sort((a, b) => a.x - b.x);
+}
+
+/**
+ * The rects to repaint for a set of rings at their widest (see ringSpots), snapped outward to whole
+ * device pixels and clamped to the canvas. CSS px.
+ */
+export function ringRegions(rings: readonly Spot[], width: number, height: number, dpr = 1, reach = RING_R + RING_W / 2 + 1): Rect[] {
+  const snapDown = (v: number) => Math.floor(v * dpr) / dpr;
+  const snapUp = (v: number) => Math.ceil(v * dpr) / dpr;
+  const out: Rect[] = [];
+  for (const s of rings) {
+    const R = s.half + reach;
+    const x0 = Math.max(0, snapDown(s.cx - R));
+    const y0 = Math.max(0, snapDown(s.cy - R));
+    const x1 = Math.min(width, snapUp(s.cx + R));
+    const y1 = Math.min(height, snapUp(s.cy + R));
+    if (x1 > x0 && y1 > y0) out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+  }
+  return out.sort((a, b) => a.x - b.x);
+}
+
+/**
+ * Rects that overlap or touch are replaced by their bounding rect until none do, so each pixel is
+ * repainted once a frame. Sorted left to right.
+ */
+export function mergeRects(rects: readonly Rect[]): Rect[] {
+  let out = rects.map((r) => ({ ...r }));
+  for (let merged = true; merged; ) {
+    merged = false;
+    const next: Rect[] = [];
+    for (const r of out) {
+      const o = next.find((n) => r.x <= n.x + n.w && n.x <= r.x + r.w && r.y <= n.y + n.h && n.y <= r.y + r.h);
+      if (o) {
+        const x1 = Math.max(o.x + o.w, r.x + r.w);
+        const y1 = Math.max(o.y + o.h, r.y + r.h);
+        o.x = Math.min(o.x, r.x);
+        o.y = Math.min(o.y, r.y);
+        o.w = x1 - o.x;
+        o.h = y1 - o.y;
+        merged = true;
+      } else next.push(r);
+    }
+    out = next;
   }
   return out.sort((a, b) => a.x - b.x);
 }

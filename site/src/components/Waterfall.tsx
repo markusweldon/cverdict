@@ -14,7 +14,7 @@ import { binDay, binRange, binsOf, dayStart, dayTotal, hoursPerBin, placeLabels,
 import type { HourCounts } from '../filters';
 import { fmtDate, fmtInt, HOUR_MS, DAY_MS, plural } from '../format';
 import { prefersReducedMotion } from '../hooks';
-import { freshPerBin, freshSegs, haloSpots, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulsePhase, pulseRegions, RING_W, ringAt, type Rect, type Rgb, type Rgba, type Ring, type Spot, type Tick } from '../pulse';
+import { EDGE_FADE, freshPerBin, freshSegs, haloSpots, mergeRects, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulsePhase, pulseRegions, RING_W, ringAt, ringRegions, ringSpots, type Rect, type Rgb, type Rgba, type Ring, type Spot, type Tick } from '../pulse';
 import { navigate } from '../router';
 import { theme, useStore } from '../state';
 import { TIER_META } from '../tiers';
@@ -89,9 +89,15 @@ interface Frame {
   /** The finished static chart minus the hover crosshair, in device pixels. */
   cache: HTMLCanvasElement;
   dpr: number;
+  /** Canvas size in CSS px. */
+  width: number;
+  height: number;
   ticks: Tick[];
   regions: Rect[];
+  /** One halo per column. */
   spots: Spot[];
+  /** One ring per group of neighbouring columns. */
+  rings: Spot[];
   barW: number;
   from: Rgb;
   to: Rgb;
@@ -107,59 +113,73 @@ const beat = (ms: number): [number, Ring] => [pulseLevel(ms), ringAt(pulsePhase(
 const TROUGH: [number, Ring] = [0, ringAt(0)];
 
 /**
- * Repaint only the regions around the newly exploited ticks: the cached static pixels first, over
- * the whole region, so a ring from the last frame never leaves a trail. Then (above the trough) a
- * soft halo slid in behind everything already drawn, so no neighbouring tick changes colour, the
- * thin ring on top, those ticks again in the peak red, and the crosshair if any.
- * The trough (level 0, no ring) leaves exactly the static chart.
+ * Repaint only the regions around the newly exploited ticks. Above the trough the halo and the
+ * ring are drawn first into the cleared regions and faded out near the canvas edges, then the
+ * cached static chart goes on top, so both show only through the chart's empty or faint pixels and
+ * no neighbouring tick changes colour. Then those ticks again in the peak red, and the crosshair if
+ * any. The trough (level 0, no ring) leaves exactly the static chart.
  */
 function paintPulse(cv: HTMLCanvasElement, f: Frame, [level, ring]: [number, Ring]) {
   const ctx = cv.getContext('2d');
   if (!ctx) return;
   const d = f.dpr;
+  const px = f.regions.map((r) => [Math.round(r.x * d), Math.round(r.y * d), Math.round(r.w * d), Math.round(r.h * d)] as const);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.shadowBlur = 0;
-  for (const r of f.regions) {
-    const x = Math.round(r.x * d);
-    const y = Math.round(r.y * d);
-    const w = Math.round(r.w * d);
-    const h = Math.round(r.h * d);
-    ctx.clearRect(x, y, w, h);
-    ctx.drawImage(f.cache, x, y, w, h, x, y, w, h);
-  }
-  ctx.setTransform(d, 0, 0, d, 0, 0);
   ctx.beginPath();
-  for (const r of f.regions) ctx.rect(r.x, r.y, r.w, r.h);
+  for (const [x, y, w, h] of px) ctx.rect(x, y, w, h);
   ctx.clip();
-  if (level > 0) {
-    const [r, g, b, a] = f.halo;
-    const rgba = (k: number) => `rgba(${r}, ${g}, ${b}, ${(a * level * k).toFixed(3)})`;
-    // Behind the existing pixels: the halo only shows through where the chart is empty or faint.
-    ctx.globalCompositeOperation = 'destination-over';
-    for (const s of f.spots) {
-      const grad = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r);
-      grad.addColorStop(0, rgba(1));
-      grad.addColorStop(0.3, rgba(0.72));
-      grad.addColorStop(0.65, rgba(0.28));
-      grad.addColorStop(1, rgba(0));
+  for (const [x, y, w, h] of px) ctx.clearRect(x, y, w, h);
+  if (level > 0 || ring.a > 0) {
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    if (level > 0) {
+      const [r, g, b, a] = f.halo;
+      const rgba = (k: number) => `rgba(${r}, ${g}, ${b}, ${(a * level * k).toFixed(3)})`;
+      for (const s of f.spots) {
+        const grad = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r);
+        grad.addColorStop(0, rgba(1));
+        grad.addColorStop(0.3, rgba(0.72));
+        grad.addColorStop(0.65, rgba(0.28));
+        grad.addColorStop(1, rgba(0));
+        ctx.fillStyle = grad;
+        ctx.fillRect(s.cx - s.r, s.cy - s.r, s.r * 2, s.r * 2);
+      }
+    }
+    if (ring.a > 0) {
+      const [r, g, b, a] = f.ping;
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${(a * ring.a).toFixed(3)})`;
+      ctx.lineWidth = RING_W;
+      ctx.beginPath();
+      for (const s of f.rings) {
+        const rr = s.half + ring.r;
+        ctx.moveTo(s.cx + rr, s.cy);
+        ctx.arc(s.cx, s.cy, rr, 0, 2 * Math.PI);
+      }
+      ctx.stroke();
+    }
+    // Soften both toward the canvas edges instead of cutting them off there.
+    ctx.globalCompositeOperation = 'destination-out';
+    const W = f.width;
+    const H = f.height;
+    const E = EDGE_FADE;
+    const edge = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = grad;
-      ctx.fillRect(s.cx - s.r, s.cy - s.r, s.r * 2, s.r * 2);
-    }
+      ctx.fillRect(rx, ry, rw, rh);
+    };
+    const near = (test: (r: Rect) => boolean) => f.regions.some(test);
+    if (near((r) => r.x < E)) edge(0, 0, E, 0, 0, 0, E, H);
+    if (near((r) => r.x + r.w > W - E)) edge(W, 0, W - E, 0, W - E, 0, E, H);
+    if (near((r) => r.y < E)) edge(0, 0, 0, E, 0, 0, W, E);
+    if (near((r) => r.y + r.h > H - E)) edge(0, H, 0, H - E, 0, H - E, W, E);
     ctx.globalCompositeOperation = 'source-over';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
-  if (ring.a > 0) {
-    const [r, g, b, a] = f.ping;
-    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${(a * ring.a).toFixed(3)})`;
-    ctx.lineWidth = RING_W;
-    ctx.beginPath();
-    for (const s of f.spots) {
-      const rr = s.half + ring.r;
-      ctx.moveTo(s.cx + rr, s.cy);
-      ctx.arc(s.cx, s.cy, rr, 0, 2 * Math.PI);
-    }
-    ctx.stroke();
-  }
+  for (const [x, y, w, h] of px) ctx.drawImage(f.cache, x, y, w, h, x, y, w, h);
+  ctx.setTransform(d, 0, 0, d, 0, 0);
   if (level > 0 || ring.a > 0) {
     ctx.fillStyle = mixColor(f.from, f.to, level);
     for (const t of f.ticks) ctx.fillRect(t.x, t.y, f.barW, SEG);
@@ -366,7 +386,11 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       cache.width = cv.width;
       cache.height = cv.height;
       cache.getContext('2d')?.drawImage(cv, 0, 0);
-      frame.current = { cache, dpr, ticks: hot, regions: pulseRegions(hot, barW, SEG, width, height, dpr), spots: haloSpots(hot, barW, SEG), barW, from, to, halo, ping, cross };
+      const spots = haloSpots(hot, barW, SEG);
+      const rings = ringSpots(spots);
+      // Neighbouring regions are merged, so each pixel is repainted once a frame.
+      const regions = mergeRects([...pulseRegions(hot, barW, SEG, width, height, dpr), ...ringRegions(rings, width, height, dpr)]);
+      frame.current = { cache, dpr, width, height, ticks: hot, regions, spots, rings, barW, from, to, halo, ping, cross };
     } else frame.current = null;
 
     if (cross) {

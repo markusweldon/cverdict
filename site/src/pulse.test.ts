@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { freshPerBin, freshSegs, HALO_R, haloSpots, mixColor, newLegend, parseColor, parseRgba, PULSE_PAD, PULSE_PERIOD_MS, pulseLevel, pulsePhase, pulseRegions, RING_R, RING_R0, RING_W, ringAt } from './pulse';
+import { EDGE_FADE, mergeRects, ringRegions, ringSpots, freshPerBin, freshSegs, HALO_R, haloSpots, mixColor, newLegend, parseColor, parseRgba, PULSE_PAD, PULSE_PERIOD_MS, pulseLevel, pulsePhase, pulseRegions, RING_R, RING_R0, RING_W, ringAt } from './pulse';
 
 describe('pulseLevel', () => {
   it('is 0 at the trough, so a paused chart is the static one', () => {
@@ -261,5 +261,71 @@ describe('newLegend', () => {
     expect(newLegend([])).toBe('New in 72h: 0');
     expect(newLegend(null)).toBe('New in 72h: …');
     expect(newLegend([1200])).toBe('New in 72h: 1,200');
+  });
+});
+
+describe('rings and edges', () => {
+  it('gives neighbouring new columns one shared ring around both stacks', () => {
+    const spots = haloSpots(
+      [
+        { x: 300, y: 60 },
+        { x: 306, y: 54 },
+        { x: 306, y: 57 },
+        { x: 100, y: 80 },
+      ],
+      3,
+      2,
+    );
+    const rings = ringSpots(spots);
+    expect(rings).toHaveLength(2);
+    expect(rings[0]).toEqual(spots[0]);
+    const [, both] = rings;
+    // The shared ring clears the far end of each stack.
+    for (const s of spots.slice(1)) expect(both.half).toBeGreaterThanOrEqual(Math.hypot(s.cx - both.cx, s.cy - both.cy) + s.half - 1e-9);
+    expect(both.cx).toBeCloseTo(304.5, 9);
+    // Far apart columns keep their own rings.
+    expect(ringSpots(haloSpots([{ x: 0, y: 80 }, { x: RING_R + 1, y: 80 }], 3, 2))).toHaveLength(2);
+  });
+
+  it('repaints a shared ring whole, once per pixel', () => {
+    const ticks = [
+      { x: 300, y: 60 },
+      { x: 306, y: 60 },
+    ];
+    const rings = ringSpots(haloSpots(ticks, 3, 2));
+    const regions = mergeRects([...pulseRegions(ticks, 3, 2, 400, 176), ...ringRegions(rings, 400, 176)]);
+    expect(regions).toHaveLength(1);
+    const [r] = regions;
+    const [g] = rings;
+    const reach = g.half + RING_R + RING_W / 2;
+    expect(r.x).toBeLessThanOrEqual(g.cx - reach);
+    expect(r.x + r.w).toBeGreaterThanOrEqual(g.cx + reach);
+    expect(r.y).toBeLessThanOrEqual(g.cy - reach);
+    expect(r.y + r.h).toBeGreaterThanOrEqual(g.cy + reach);
+  });
+
+  it('merges overlapping rects and leaves separate ones alone', () => {
+    expect(
+      mergeRects([
+        { x: 50, y: 0, w: 10, h: 10 },
+        { x: 0, y: 0, w: 10, h: 10 },
+        { x: 5, y: 5, w: 10, h: 10 },
+        { x: 14, y: 14, w: 2, h: 2 },
+      ]),
+    ).toEqual([
+      { x: 0, y: 0, w: 16, h: 16 },
+      { x: 50, y: 0, w: 10, h: 10 },
+    ]);
+  });
+
+  it('clamps a tick 6 px from the right edge of a phone-width chart, which then fades instead of cutting', () => {
+    const ticks = [{ x: 320 - 6 - 3, y: 80 }];
+    const [r] = pulseRegions(ticks, 3, 2, 320, 176, 2);
+    expect(r.x + r.w).toBe(320);
+    const [ring] = ringRegions(ringSpots(haloSpots(ticks, 3, 2)), 320, 176, 2);
+    expect(ring.x + ring.w).toBe(320);
+    // The fade starts inside the ring's reach, so the ring thins out before it meets the edge.
+    expect(EDGE_FADE).toBeGreaterThanOrEqual(8);
+    expect(EDGE_FADE).toBeLessThan(RING_R);
   });
 });
