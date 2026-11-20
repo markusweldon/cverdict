@@ -6,7 +6,7 @@
 import type { KevEntry, Row, StatsFile } from '../../shared/contract';
 import { dayOf } from './drill';
 import { pubMs, tierAt } from './filters';
-import { fmtDate, fmtInt, fmtPct } from './format';
+import { fmtDate, fmtInt, fmtMonth, fmtPct, plural } from './format';
 import { shiftMonth, type MonthProgress } from './surge';
 
 export type DayRow = StatsFile['daily'][number];
@@ -113,7 +113,7 @@ export interface YearChange {
   ref: string;
   /** now / then - 1. */
   change: number;
-  /** True when the month is partial and compared with the same share of days a year earlier. */
+  /** True when the month is partial and compared with the same point (share of the month) a year earlier. */
   partial: boolean;
 }
 
@@ -131,6 +131,26 @@ export function yearChange(monthly: readonly { month: string }[], values: readon
   const then = values[j] * (partial && progress.daysInMonth > 0 ? progress.elapsed / progress.daysInMonth : 1);
   if (!(then > 0)) return null;
   return { ref, change: values[i] / then - 1, partial };
+}
+
+/**
+ * What the change is measured against: "Mar 2024", or "the same point in Nov 2025" for a partial
+ * month. The partial comparison scales by the exact share of the month elapsed, not whole days, so
+ * it does not say "the same days".
+ */
+export function yearRef(y: Pick<YearChange, 'ref' | 'partial'>): string {
+  return `${y.partial ? 'the same point in ' : ''}${fmtMonth(y.ref)}`;
+}
+
+/**
+ * The screen reader summary of the 30-day chart. It names the dates, because these are whole UTC
+ * days and so do not add up to the rolling 30-day total shown elsewhere on the site.
+ */
+export function dailySummary(days: readonly DayRow[], t: DailyTotals, refYear?: number): string {
+  if (days.length === 0) return 'No days to show.';
+  const from = fmtDate(days[0].date, refYear);
+  const to = fmtDate(days[days.length - 1].date, refYear);
+  return `${plural(t.published, 'CVE')} published from ${from} to ${to}; ${fmtInt(t.passed)} cleared the evidence bar, ${fmtInt(t.exploited)} of them exploited.`;
 }
 
 /** "+38%", "−12%" or "about the same" (within half a percent). */

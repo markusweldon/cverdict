@@ -1428,6 +1428,20 @@ circle.dc__kev {
   line-height: 1.5;
 }
 
+/* On phones the line wraps, and its length changes when signal.json arrives and re-tiers it at the
+   viewer's bar. Room for two lines (three on the narrowest) keeps what is below from moving. */
+@media (max-width: 639px) {
+  .chart__take {
+    min-height: 3em;
+  }
+}
+
+@media (max-width: 359px) {
+  .chart__take {
+    min-height: 4.5em;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dc__vol,
   .dc__day {

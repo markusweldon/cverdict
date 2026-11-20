@@ -4,7 +4,7 @@ import type { StatsFile } from '../../../shared/contract';
 import { DailyChart } from '../components/DailyChart';
 import { ErrorState, Loading } from '../components/States';
 import { data } from '../data';
-import { dailyAt, dailyTakeaway, fmtChange, kevByDay, lastDayPartial, yearChange, type DayRow } from '../daily';
+import { dailyAt, dailyTakeaway, fmtChange, kevByDay, lastDayPartial, yearChange, yearRef, type DayRow } from '../daily';
 import { cnaName, fmtCompact, fmtInt, fmtMonth, fmtPct } from '../format';
 import { useData, useTitle, useWidth } from '../hooks';
 import { href } from '../router';
@@ -131,7 +131,7 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
     const m = monthly[i];
     const p = cut < n && i === n - 1;
     const head = p ? `${partialLabel}, ${prog.daysElapsed} of ${prog.daysInMonth} days` : fmtMonth(m.month);
-    const c = i === hover && yoy ? `, ${fmtChange(yoy.change)} vs ${yoy.partial ? 'the same days of ' : ''}${fmtMonth(yoy.ref)}` : '';
+    const c = i === hover && yoy ? `, ${fmtChange(yoy.change)} vs ${yearRef(yoy)}` : '';
     return `${head}: ${fmtInt(m[volume])} ${volume}${c}, ${fmtInt(m.kev_added)} added to CISA KEV, ${fmtInt(m.ai)} AI-credited.`;
   };
 
@@ -272,8 +272,7 @@ function MonthlyChart({ monthly, generatedAt }: { monthly: readonly Month[]; gen
             </div>
             {yoy && (
               <div class="chart__tip-yoy">
-                <strong>{fmtChange(yoy.change)}</strong> vs {yoy.partial ? 'the same days of ' : ''}
-                {fmtMonth(yoy.ref).replace(' ', '\u00a0')}
+                <strong>{fmtChange(yoy.change)}</strong> vs {yearRef(yoy).replace(/ (?=\S+$)/, '\u00a0')}
               </div>
             )}
             {hPartial && pace !== null && (

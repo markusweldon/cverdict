@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KNOB_DEFAULT, tierFor, type Row } from '../../shared/contract';
-import { dailyAt, dailyTakeaway, dailyTotals, fmtChange, kevByDay, lastDayPartial, sqrtTicks, sqrtTop, yearChange, type DayRow } from './daily';
+import { dailyAt, dailySummary, dailyTakeaway, dailyTotals, fmtChange, kevByDay, lastDayPartial, sqrtTicks, sqrtTop, yearChange, yearRef, type DayRow } from './daily';
 import { monthProgress, shiftMonth } from './surge';
 
 function row(id: number, pub: string, s: number, opts: Partial<Row> = {}): Row {
@@ -123,6 +123,15 @@ describe('dailyTotals', () => {
   });
 });
 
+describe('dailySummary', () => {
+  it('names the days it covers instead of calling them the last 30 days', () => {
+    const s = dailySummary(days, dailyTotals(days, new Map()), 2026);
+    expect(s).toBe('1,728 CVEs published from Nov 18 to Nov 20; 29 cleared the evidence bar, 2 of them exploited.');
+    expect(s).not.toContain('last');
+    expect(dailySummary([], { published: 0, passed: 0, exploited: 0, kev: 0 })).toBe('No days to show.');
+  });
+});
+
 describe('dailyTakeaway', () => {
   it('names the busiest full day and the window share', () => {
     expect(dailyTakeaway(days, true, 2026)).toBe('Busiest day: Nov 19, with 1,021 CVEs, and 9 cleared the bar. Over all 3 days, 1.7% did.');
@@ -180,6 +189,29 @@ describe('yearChange', () => {
         monthProgress(z, '2026-05-01T00:00:00Z'),
       ),
     ).toBeNull();
+  });
+});
+
+describe('yearRef', () => {
+  it('says "the same point in" for a partial month, which is scaled by the exact share elapsed', () => {
+    expect(yearRef({ ref: '2024-03', partial: false })).toBe('Mar 2024');
+    expect(yearRef({ ref: '2025-11', partial: true })).toBe('the same point in Nov 2025');
+    expect(yearRef({ ref: '2025-11', partial: true })).not.toContain('days');
+  });
+
+  it('matches the tooltip figure, which uses fractional days, not the whole-day count shown beside it', () => {
+    // 19.03 days into a 30-day month (00:47 UTC on the 20th): the header reads "20 of 30 days".
+    const m = [{ month: '2025-11', published: 3019 }, ...Array.from({ length: 11 }, (_, i) => ({ month: shiftMonth('2025-12', i), published: 1 })), { month: '2026-11', published: 11342 }];
+    const p = monthProgress(m, '2026-11-20T00:47:00Z');
+    expect(p.daysElapsed).toBe(20);
+    const r = yearChange(
+      m,
+      m.map((x) => x.published),
+      12,
+      p,
+    )!;
+    expect(fmtChange(r.change)).toBe('+492%');
+    expect(yearRef(r)).toBe('the same point in Nov 2025');
   });
 });
 

@@ -7,7 +7,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { exploreDayHref } from '../drill';
-import { dailyTotals, sqrtTicks, sqrtTop, type DayRow } from '../daily';
+import { dailySummary, dailyTotals, sqrtTicks, sqrtTop, type DayRow } from '../daily';
 import { fmtCompact, fmtDate, fmtInt, fmtPct, plural } from '../format';
 import { useWidth } from '../hooks';
 import { navigate } from '../router';
@@ -127,7 +127,7 @@ export function DailyChart({ days, kev, kevReady, partialLast, knob }: Props) {
 
   const a = active !== null ? days[active] : null;
   const aKev = a ? (kev.get(a.date) ?? 0) : 0;
-  const summary = `${plural(totals.published, 'CVE')} published in the last ${n} days; ${fmtInt(totals.passed)} cleared the evidence bar, ${fmtInt(totals.exploited)} of them exploited.`;
+  const summary = dailySummary(days, totals);
 
   return (
     <div class="dc" ref={wrap}>
@@ -245,7 +245,15 @@ export function DailyChart({ days, kev, kevReady, partialLast, knob }: Props) {
           </svg>
         )}
         {a && active !== null && (
-          <div ref={tip} class={`wf__tip dc__tip${via === 'touch' ? ' is-pinned' : ''}`}>
+          <div
+            ref={tip}
+            class={`wf__tip dc__tip${via === 'touch' ? ' is-pinned' : ''}`}
+            // Pinned below the chart, it covers the line and the table toggle under it: a tap on its
+            // body (not its link) puts it away, so what it covered is one tap away.
+            onClick={(e) => {
+              if (via === 'touch' && !(e.target as Element).closest('a')) setActive(null);
+            }}
+          >
             <div aria-hidden="true">
               <div class="wf__tip-head">{label(active)}</div>
               <div class="wf__tip-row">
