@@ -405,14 +405,31 @@ function wordmark(x: number, y: number, size: number, fill: string, ls: number):
 // ------------------------------------------------------------------------------------------------
 
 function logo(T: Theme): string {
-  const size = 96;
-  const markSize = 116;
+  // A banner card like every other README image: the site's background, dot grid and lime glow,
+  // with the mark and wordmark centred above a faint noise floor and its one signal spike.
+  const W = 1200;
+  const H = 280;
+  const size = 92;
+  const markSize = 110;
   const gap = 26;
-  const [wm, ww] = wordmark(markSize + gap, 101, size, T.text, -2);
-  const w = Math.ceil(markSize + gap + ww + 8);
-  const h = 132;
-  const body = mark(0, 6, markSize, T.accent) + wm;
-  return svgDoc(w, h, BRAND.name, `${BRAND.name} logo: a flat noise floor with one signal spike rising out of it, next to the wordmark.`, body);
+  const [, ww] = wordmark(0, 0, size, T.text, -2);
+  const total = markSize + gap + ww;
+  const x0 = Math.round((W - total) / 2);
+  const base = 150;
+  const [wm] = wordmark(x0 + markSize + gap, base, size, T.text, -2);
+  let b = frame(T, W, H, 'logo');
+  // Noise floor: quiet ticks along the bottom, one lit spike under the mark.
+  const floorY = H - 46;
+  const spikeX = x0 + markSize * (19 / 32);
+  for (let x = 40; x <= W - 40; x += 9) {
+    const n = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1;
+    const hgt = 3 + Math.round(n * 9);
+    const near = Math.abs(x - spikeX) < 5;
+    b += rect(x, floorY - (near ? 44 : hgt), 4, near ? 44 : hgt, 1, near ? T.accent : T.faint, undefined, `opacity="${near ? 0.9 : T.name === 'dark' ? 0.35 : 0.3}"`);
+  }
+  b += mark(x0, base - 96, markSize, T.accent) + wm;
+  b += text(W / 2, H - 16, BRAND.siteUrl.replace(/^https:\/\//, ''), { size: 15, font: 'mono', weight: 500, fill: T.muted, anchor: 'middle' });
+  return svgDoc(W, H, BRAND.name, `${BRAND.name} logo on a card in the site's colours: a flat noise floor with one signal spike rising out of it, next to the wordmark, above a row of quiet ticks with one lit, and the address cverdict.dev.`, b);
 }
 
 // ------------------------------------------------------------------------------------------------
