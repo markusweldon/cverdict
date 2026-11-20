@@ -185,7 +185,7 @@ describe('EPSS jumps', () => {
 describe('buildWoke boundaries', () => {
   const kevAt = (id: string, d: number) => makeKev(id, { dateAdded: dateAgo(d) });
 
-  it('needs publication strictly before the window and evidence after the CVE left it', () => {
+  it('needs publication strictly before the window; a listing in the period counts even from while it was in the window', () => {
     const start = windowStart();
     const justBefore = new Date(start.getTime() - 1).toISOString();
     const k = [kevAt('CVE-2026-0001', 0), kevAt('CVE-2026-0002', 0), kevAt('CVE-2026-0003', 1), kevAt('CVE-2026-0004', 0)];
@@ -195,12 +195,12 @@ describe('buildWoke boundaries', () => {
       score(makeCve({ id: 'CVE-2026-0001', published: start.toISOString(), inWindow: false }), { kev: k }),
       // Left the window today and was listed today.
       score(makeCve({ id: 'CVE-2026-0002', published: justBefore, inWindow: false }), { kev: k }),
-      // Listed yesterday, while it was still in the window.
+      // Listed yesterday, while it was still in the window: it has left every 30-day view since, so it counts.
       score(makeCve({ id: 'CVE-2026-0003', published: justBefore, inWindow: false }), { kev: k }),
       // Flagged as a window record: never in the woke list, whatever its date says.
       score(makeCve({ id: 'CVE-2026-0004', published: '2019-01-01T00:00:00.000Z', inWindow: true }), { kev: k }),
     ];
-    expect(buildWoke(scored, wake, NOW, start).file.items.map((i) => i.id)).toEqual(['CVE-2026-0002']);
+    expect(buildWoke(scored, wake, NOW, start).file.items.map((i) => i.id)).toEqual(['CVE-2026-0002', 'CVE-2026-0003']);
   });
 
   it('keeps a CVE listed in KEV on the first day of the period, leaves out older listings and CISA-ADP ones', () => {
@@ -216,7 +216,7 @@ describe('buildWoke boundaries', () => {
     expect(buildWoke(scored, wake, NOW, windowStart()).file.items.map((i) => i.id)).toEqual(['CVE-2019-0001']);
   });
 
-  it('counts evidence from while the CVE was still in the window as older evidence', () => {
+  it('counts an exploit artifact from while the CVE was still in the window as older evidence, but not a listing', () => {
     const ID = 'CVE-2026-0042';
     // Published 45 days ago, so it left the window 15 days ago.
     const cve = makeCve({ id: ID, published: daysAgo(45), inWindow: false });
@@ -225,8 +225,8 @@ describe('buildWoke boundaries', () => {
       const wake = detectWakes(input({ poc: new Map(Object.entries(pocs)), kev: makeKevCatalog(kev), ...o }));
       return buildWoke([score(cve, { poc: pocs, kev })], wake, NOW, windowStart()).file.items.map((i) => [i.id, i.signals.map((x) => x.kind)]);
     };
-    // Listed in KEV 20 days ago, while in the window: it was awake already, the PoC is not news.
-    expect(woke({}, [kevAt(ID, 20)])).toEqual([]);
+    // Listed in KEV 20 days ago, while in the window: the listing is in the period, so it counts.
+    expect(woke({}, [kevAt(ID, 20)])).toEqual([[ID, ['kev', 'poc']]]);
     // A first Exploit-DB entry 20 days ago: the PoC repo 5 days ago is not its first exploit.
     const edb = parseExploitDb(['id,file,description,date_published,author,type,platform,port,date_added,date_updated,verified,codes', `51000,x,"e",${dateAgo(20)},a,remote,linux,,${dateAgo(20)},${dateAgo(20)},0,${ID}`].join('\n'));
     expect(woke({ exploitdb: edb })).toEqual([]);

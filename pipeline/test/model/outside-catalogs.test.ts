@@ -136,6 +136,24 @@ describe('buildWoke: exploited listings', () => {
     expect(out.file.counts.catalog).toBe(1);
     expect(out.file.items[0].row.k).toBe(0);
   });
+
+  it('keeps an EU KEV or confirmed CIRCL listing from the last days in the window, once the CVE has left it', () => {
+    // Published 35 days ago (left the window 5 days ago), listed 8 days ago while still in it.
+    const ids = ['CVE-2026-70001', 'CVE-2026-70002', 'CVE-2026-70003'];
+    const listings: Record<string, CatalogListing> = {
+      [ids[0]]: listing('eu-kev', dateAgo(8)),
+      [ids[1]]: listing('circl-kev', dateAgo(8)),
+      [ids[2]]: listing('circl-kev', dateAgo(8), { status: 'suspected' }),
+    };
+    const wake = detectWakes(baseWake({ catalogs: { 'eu-kev': new Map([[ids[0], listings[ids[0]]]]), 'circl-kev': new Map([[ids[1], listings[ids[1]]], [ids[2], listings[ids[2]]]]) } }));
+    const scored = ids.map((id) => score(makeCve({ id, published: daysAgo(35), inWindow: false }), { catalogs: { [id]: [listings[id]] } }));
+    const out = buildWoke(scored, wake, NOW, windowStart, new Map(ids.map((id) => [id, [listings[id]]])));
+    // A suspected CIRCL entry is information only and wakes nothing.
+    expect(out.file.items.map((i) => [i.id, i.signals.map((x) => x.kind)]).sort()).toEqual([
+      [ids[0], ['catalog']],
+      [ids[1], ['catalog']],
+    ]);
+  });
 });
 
 describe('buildOutput: CVEs only EU KEV or CIRCL list', () => {
