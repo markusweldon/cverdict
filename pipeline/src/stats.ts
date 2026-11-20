@@ -2,7 +2,20 @@
  * Aggregates for the surge page and the signal waterfall (StatsFile).
  */
 import { cnaName, vendorProduct } from '../../shared/cna';
-import { NEW_EXPLOITED_HOURS, NEW_EXPLOITED_LIST_MAX, SCHEMA_VERSION, TIERS, type NewExploitedCve, type NewExploitedVia, type StatsFile, type Tier } from '../../shared/contract';
+import {
+  NEW_EXPLOITED_HOURS,
+  NEW_EXPLOITED_LIST_MAX,
+  SCHEMA_VERSION,
+  SEVERITY_BANDS,
+  SURGE_TOP_CNAS,
+  TIERS,
+  severityBand,
+  type NewExploitedCve,
+  type NewExploitedVia,
+  type StatsFile,
+  type SurgeFile,
+  type Tier,
+} from '../../shared/contract';
 import { utcDay, vendorSaysExploited } from './score';
 import { isExploitedListing } from './sources/catalogs';
 import type { CatalogListing, History, KevCatalog, ScoredCve } from './types';
@@ -63,6 +76,59 @@ function monthly(history: History, kev: KevCatalog, now: Date): StatsFile['month
     ai: history.ai.get(month) ?? 0,
     kev_added: kevAdded.get(month) ?? 0,
   }));
+}
+
+const zeroBands = (): number[] => SEVERITY_BANDS.map(() => 0);
+
+/**
+ * v1/surge.json: severity bands per month, the same per top CNA (trimmed to the months it has CVEs),
+ * and the CISA KEV records by publication month. Null when the pass did not count bands.
+ */
+export function buildSurge(history: History, kevRecords: readonly ScoredCve[], now: Date): SurgeFile | null {
+  const months = monthRange(FIRST_MONTH, monthKey(now));
+  const bands = history.bands;
+  const cnaBands = history.cnaBands;
+  if (!bands || !cnaBands) return null;
+  const index = new Map(months.map((m, i) => [m, i]));
+  const total = (byMonth: ReadonlyMap<string, number[]>) => {
+    let n = 0;
+    for (const [m, row] of byMonth) if (index.has(m)) for (const v of row) n += v;
+    return n;
+  };
+  const top = [...cnaBands.entries()]
+    .map(([cna, byMonth]) => ({ cna, byMonth, n: total(byMonth) }))
+    .filter((c) => c.n > 0)
+    .sort((a, b) => b.n - a.n || a.cna.localeCompare(b.cna))
+    .slice(0, SURGE_TOP_CNAS);
+  const cnas = top.map(({ cna, byMonth }) => {
+    const rows = months.map((m) => byMonth.get(m) ?? zeroBands());
+    const has = (r: number[]) => r.some((v) => v > 0);
+    const from = rows.findIndex(has);
+    let to = rows.length - 1;
+    while (to > from && !has(rows[to])) to--;
+    return { cna, from, severity: rows.slice(from, to + 1).map((r) => [...r]) };
+  });
+  const cnaIndex = new Map(cnas.map((c, i) => [c.cna, i]));
+  const cells = new Map<string, [number, number, number, number]>();
+  for (const s of kevRecords) {
+    const m = index.get(monthKey(new Date(s.cve.published)));
+    if (m === undefined) continue;
+    const c = cnaIndex.get(s.cve.cna) ?? -1;
+    const b = severityBand(s.cve.cvss?.score);
+    const key = `${m}|${c}|${b}`;
+    const cell = cells.get(key) ?? [m, c, b, 0];
+    cell[3]++;
+    cells.set(key, cell);
+  }
+  const kev = [...cells.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
+  return {
+    schema_version: SCHEMA_VERSION,
+    generated_at: now.toISOString(),
+    start: FIRST_MONTH,
+    severity: months.map((m) => [...(bands.get(m) ?? zeroBands())]),
+    cnas,
+    kev,
+  };
 }
 
 /**

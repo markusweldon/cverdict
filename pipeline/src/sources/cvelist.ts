@@ -4,9 +4,9 @@
  * one raw record (plus pipe buffers) in memory.
  */
 import path from 'node:path';
-import type { SourceStatus } from '../../../shared/contract';
+import { severityBand, type SourceStatus } from '../../../shared/contract';
 import { CISA_ADP, CVELIST, GIT_TIMEOUT_MS, type SanityLimits } from '../config';
-import { cisaAdpFlags, normalizeCve, readCveMeta, recordAiCredit } from '../normalize';
+import { cisaAdpFlags, normalizeCve, readCveMeta, recordAiCredit, recordCvssScore } from '../normalize';
 import type { History, Logger, NormalizedCve, RunContext } from '../types';
 import { monthKey } from '../util/dates';
 import { catFileBatch, commitDate, existingRepoHead, GitError, lsTree, syncShallowClone } from '../util/git';
@@ -134,13 +134,22 @@ export interface CvelistScan {
 
 const bump = (counter: Map<string, number>, key: string) => counter.set(key, (counter.get(key) ?? 0) + 1);
 
+/** Count one record in a month's band array. */
+export function bumpBand(counter: Map<string, number[]>, month: string, band: number): void {
+  let row = counter.get(month);
+  if (!row) counter.set(month, (row = [0, 0, 0, 0, 0]));
+  row[band]++;
+}
+
 /**
  * Stream every record once: update History counters for all of them and normalise the ones we
  * keep (window ∪ KEV ∪ extra IDs). Throws when fewer than `minRecords` records could be read.
  */
 export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise<CvelistScan> {
   const { windowStart, now, log } = opts;
-  const history: History = { published: new Map(), reserved: new Map(), rejected: new Map(), ai: new Map(), totalRecords: 0 };
+  const bands = new Map<string, number[]>();
+  const cnaBands = new Map<string, Map<string, number[]>>();
+  const history: History = { published: new Map(), reserved: new Map(), rejected: new Map(), ai: new Map(), bands, cnaBands, totalRecords: 0 };
   const scan: CvelistScan = { cves: [], history, rejectedInWindow: 0, adpRecords: 0, invalid: 0, windowPublished: 0, future: 0, lateKev: 0 };
   const inWindow = (d: Date) => d >= windowStart && d <= now;
   const kept = new Set<string>();
@@ -191,9 +200,15 @@ export async function scanCvelist(repo: CvelistRepo, opts: ScanOptions): Promise
       // Only possible with a frozen --now (or clock skew): leave it out of every count.
       scan.future++;
     } else if (meta.state === 'PUBLISHED' && meta.published) {
-      bump(history.published, monthKey(meta.published));
+      const month = monthKey(meta.published);
+      bump(history.published, month);
+      const band = severityBand(recordCvssScore(record));
+      bumpBand(bands, month, band);
+      let byCna = cnaBands.get(meta.assigner);
+      if (!byCna) cnaBands.set(meta.assigner, (byCna = new Map()));
+      bumpBand(byCna, month, band);
       if (meta.reserved) bump(history.reserved, monthKey(meta.reserved));
-      if (recordAiCredit(record)) bump(history.ai, monthKey(meta.published));
+      if (recordAiCredit(record)) bump(history.ai, month);
       const windowed = inWindow(meta.published);
       if (windowed) scan.windowPublished++;
       if (windowed || adp.kev || kev.ids?.has(meta.id) || extra.ids?.has(meta.id) || (opts.keepFrom && meta.published >= opts.keepFrom)) {

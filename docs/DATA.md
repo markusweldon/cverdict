@@ -26,6 +26,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/batches.json` | `BatchesFile` | Batches (patch days and bulk releases) in the window; newest first | ~30 KB |
 | `v1/kev.json` | `KevFile` | KEV entries added in the last 30 days or due from 14 days ago on; newest first | ~4 KB |
 | `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
+| `v1/surge.json` | `SurgeFile` | Published CVEs per month by CVSS severity band and by top CNA, and CISA KEV CVEs by publication month (The Surge's filters) | ~18 KB |
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
@@ -233,6 +234,30 @@ description, required_action`, plus `in_window` (the CVE was published in the wi
 | `hourly` | `{ start, hours, counts, new_exploited, new_exploited_cves }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start`. `new_exploited` is `[h, n]` pairs, oldest hour first, for the hours holding `n` Exploited CVEs (by publication) whose first exploited signal is within 72 hours of `generated_at`. The signals are the ones that set the Exploited tier: a CISA KEV, ENISA EU KEV or CIRCL listing, CISA SSVC "exploitation active", and the CNA's own exploited flag. The first one decides, so a CVE already Exploited through SSVC is not new when KEV lists it later. Listings are dated by day, so a day counts from 00:00 UTC; SSVC counts from its timestamp and the CNA flag from publication. A signal qualifies when it is at or after `generated_at` minus 72 hours (inclusive). A signal with no date rules the CVE out, unless it is an EU KEV row known to come after the CISA KEV date. Hours with none are left out, and `[]` means none. Older files have no `new_exploited`: read that as none. The waterfall pulses only these ticks. `new_exploited_cves` names those CVEs, newest first signal first, at most 50 (`NEW_EXPLOITED_LIST_MAX`): `{ id, title, via, at, hour }`. `title` is the short name the site shows ("Vendor · Product", else the CNA's name, at most 80 characters). `via` is the first signal: `CISA KEV`, `EU KEV`, `CIRCL`, `CISA SSVC` or `Vendor` (the CNA's own flag). `at` is when it came: `YYYY-MM-DD` for a catalog listing, an ISO 8601 UTC time for SSVC and the CNA flag. `hour` is the CVE's column in `counts`. Both fields come from one list, so below the cap its hours tally to `new_exploited` exactly; at the cap the older ones are left out of the list but still counted. Older files have no `new_exploited_cves`: the legend then stays a plain label. |
 | `cnas[]` | Top 25 CNAs in the window: `{ cna, count, passed, no_cvss, ssvc_missing }` |
 | `ai_credits[]` | Top 20 AI credit excerpts (≤ 80 characters, as in `ai_credit`): `{ text, count }` |
+
+## `surge.json`
+
+Monthly breakdowns behind the filters of The Surge's monthly chart. Counts are by `datePublished`, like
+`stats.json` `monthly[].published`, and come from the same streaming pass over the CVE List. Older data has no
+`surge.json`: the site then shows the chart without its filters. Band arrays are always
+`[critical, high, medium, low, none]` (`SEVERITY_BANDS`), by the base score of the CVSS the site shows for the record
+(CNA v4.0, v3.1, v3.0, then CISA-ADP, then CNA v2.0): Critical 9.0 and up, High 7.0, Medium 4.0, Low 0.1, None for 0.0
+or no score. Most records before about 2016 carry no CVSS in the CVE List, so they are None.
+
+| Field | Meaning |
+|---|---|
+| `start` | First month, `1999-01`. Row `i` of every series is month `start` + `i`, through the month of `generated_at` |
+| `severity[]` | One band array per month. It sums to that month's `published` in a `stats.json` from the same run |
+| `cnas[]` | The 30 CNAs (`SURGE_TOP_CNAS`, by `assignerShortName`) with the most published CVEs since 1999, most first: `{ cna, from, severity }`. `severity[j]` is month `from + j`; months before `from` or past the last row have none. "Other" is `severity` minus every listed CNA |
+| `kev[]` | CVEs in the CISA KEV catalog by the month the CVE was published (not the month KEV added it): `[month, cna, band, count]`, where `cna` is an index in `cnas` or `-1` for Other. Sorted by month, CNA and band; cells with no CVEs are left out |
+
+```sh
+# Critical and High CVEs per month this year, without the WordPress plugin CNAs
+curl -s $BASE/surge.json | jq -r '
+  (.cnas | map(select(.cna == "Wordfence" or .cna == "WPScan" or .cna == "Patchstack"))) as $wp
+  | range(.severity | length) as $i | select($i >= 324)
+  | ["\(1999 + ($i / 12 | floor))-\($i % 12 + 1)", (.severity[$i][0] + .severity[$i][1]) - ([$wp[] | .severity[$i - .from] // [0,0] | .[0] + .[1]] | add)] | @tsv'
+```
 
 ## `changes.json`
 

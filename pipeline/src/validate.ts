@@ -12,6 +12,8 @@ import {
   PACKAGE_ECOSYSTEMS,
   ROW_COLS,
   SCHEMA_VERSION,
+  SEVERITY_BANDS,
+  SURGE_TOP_CNAS,
   SIGNAL_MIN_SCORE,
   TIERS,
   rowFromColumns,
@@ -251,6 +253,72 @@ function checkNewExploited(json: Map<string, JsonObject>, index: readonly Row[] 
   }
 }
 
+/** A listed CNA's count in month index `m` and band `k`, 0 outside its rows. */
+function cnaBand(c: JsonObject | null, m: number, k: number): number {
+  const rows = c?.severity as number[][];
+  return rows[m - (c?.from as number)]?.[k] ?? 0;
+}
+
+/**
+ * surge.json (optional; older data has none): band rows of five whole counts, one per month from `start` to
+ * generated_at's month; at most SURGE_TOP_CNAS distinct CNAs whose rows fit the months and never add up to more
+ * than the month's band; KEV cells in range, sorted, unique, positive and within their month, CNA and band. From
+ * the same run as stats.json, each month's bands sum to its published count there.
+ */
+export function checkSurge(surge: JsonObject | undefined, stats: JsonObject | undefined, errors: string[]): void {
+  if (!surge) return;
+  const bad = (why: string) => errors.push(`${PATHS.surge}: ${why}`);
+  const isRow = (r: unknown): r is number[] => Array.isArray(r) && r.length === SEVERITY_BANDS.length && r.every((v) => Number.isInteger(v) && v >= 0);
+  const sev = surge.severity;
+  const generated = typeof surge.generated_at === 'string' ? surge.generated_at : '';
+  if (surge.start !== '1999-01') return void bad(`start is ${JSON.stringify(surge.start)}, expected "1999-01"`);
+  const months = Number(generated.slice(0, 4)) * 12 + Number(generated.slice(5, 7)) - (1999 * 12 + 1) + 1;
+  if (!Array.isArray(sev) || sev.length !== months) return void bad(`severity has ${Array.isArray(sev) ? sev.length : 'no'} rows, expected ${months}`);
+  const monthly = stats && stats.generated_at === surge.generated_at && Array.isArray(stats.monthly) ? stats.monthly : null;
+  for (let i = 0; i < sev.length; i++) {
+    const row = sev[i];
+    if (!isRow(row)) return void bad(`severity[${i}] is not five whole counts`);
+    const published = monthly ? asObject(monthly[i])?.published : undefined;
+    const sum = row.reduce((a, v) => a + v, 0);
+    if (monthly && sum !== published) return void bad(`severity[${i}] sums to ${sum}, stats.json monthly says ${String(published)}`);
+  }
+  const cnas = surge.cnas;
+  if (!Array.isArray(cnas) || cnas.length > SURGE_TOP_CNAS) return void bad(`cnas is not a list of at most ${SURGE_TOP_CNAS}`);
+  const names = new Set<string>();
+  const used = sev.map(() => SEVERITY_BANDS.map(() => 0));
+  for (const item of cnas) {
+    const c = asObject(item);
+    const name = c?.cna;
+    const from = c?.from;
+    const rows = c?.severity;
+    if (typeof name !== 'string' || !name || names.has(name)) return void bad(`cnas has a missing or repeated name ${JSON.stringify(name)}`);
+    names.add(name);
+    if (!Number.isInteger(from) || (from as number) < 0 || !Array.isArray(rows) || (from as number) + rows.length > sev.length) return void bad(`cnas ${name} does not fit the months`);
+    for (let j = 0; j < rows.length; j++) {
+      const r = rows[j];
+      const i = (from as number) + j;
+      if (!isRow(r)) return void bad(`cnas ${name} month ${i} is not five whole counts`);
+      for (let k = 0; k < r.length; k++) {
+        used[i][k] += r[k];
+        if (used[i][k] > (sev[i] as number[])[k]) return void bad(`cnas add up to more than month ${i} has in band ${k}`);
+      }
+    }
+  }
+  const kev = surge.kev;
+  if (!Array.isArray(kev)) return void bad('kev is not an array');
+  let prev = '';
+  for (const cell of kev) {
+    const [m, c, k, n] = Array.isArray(cell) && cell.length === 4 ? (cell as number[]) : [];
+    const shape = [m, c, k, n].every(Number.isInteger) && m >= 0 && m < sev.length && c >= -1 && c < cnas.length && k >= 0 && k < SEVERITY_BANDS.length && n > 0;
+    if (!shape) return void bad(`kev has a bad cell ${JSON.stringify(cell)}`);
+    const key = [m, c + 1, k].map((v) => String(v).padStart(6, '0')).join('|');
+    if (key <= prev) return void bad(`kev is not sorted by month, CNA and band at ${JSON.stringify(cell)}`);
+    prev = key;
+    const room = c < 0 ? (sev[m] as number[])[k] - used[m][k] : cnaBand(asObject(cnas[c]), m, k);
+    if (n > room) return void bad(`kev cell ${JSON.stringify(cell)} is more than its month, CNA and band hold`);
+  }
+}
+
 /** Parse a RowTable, reporting structural problems; returns null when unusable. */
 function readRows(file: string, doc: JsonObject | undefined, errors: string[]): Row[] | null {
   if (!doc) return null;
@@ -330,6 +398,7 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
 
   checkWoke(json, details, index ? new Set(index.map((r) => r.id)) : null, errors);
   checkNewExploited(json, index, errors);
+  checkSurge(json.get(PATHS.surge), json.get(PATHS.stats), errors);
   checkReceipts(json, errors);
   checkPackages(json, details, index, errors, warnings);
 

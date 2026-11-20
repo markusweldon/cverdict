@@ -2899,3 +2899,201 @@ circle.dc__kev {
   overflow-wrap: anywhere;
   color: var(--text);
 }
+
+/* ── CVEs per month: controls, severity stack, compare, zoom, export ── */
+
+.mc__ctrls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mc__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mc__filters {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.mc__filters:disabled {
+  opacity: 0.55;
+}
+
+.mc__filters:disabled .seg__btn,
+.mc__filters:disabled .toggle,
+.mc__filters:disabled select,
+.seg__btn:disabled,
+.toggle:disabled {
+  cursor: default;
+}
+
+.seg__btn:disabled,
+.toggle:disabled {
+  opacity: 0.55;
+}
+
+.mc__filters:disabled .seg__btn:disabled,
+.mc__filters:disabled .toggle:disabled {
+  opacity: 1;
+}
+
+.mc__months {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.mc__field {
+  height: 28px;
+  padding-right: 6px;
+}
+
+.mc__field input[type='month'] {
+  max-width: 150px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.mc__reset.is-off {
+  visibility: hidden;
+}
+
+.mc__notes {
+  min-height: 26px;
+}
+
+.mc__note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mc__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.mc__sev[aria-pressed='false'] .mc__dot {
+  opacity: 0.35;
+}
+
+/* Severity: one neutral ramp from the text colour, so it never reads as a tier or as KEV red. */
+.s-sev {
+  color: var(--sev);
+  stroke: var(--sev);
+  fill: var(--sev);
+}
+
+.s-sev--critical {
+  --sev: color-mix(in srgb, var(--text) 92%, var(--surface));
+}
+
+.s-sev--high {
+  --sev: color-mix(in srgb, var(--text) 68%, var(--surface));
+}
+
+.s-sev--medium {
+  --sev: color-mix(in srgb, var(--text) 47%, var(--surface));
+}
+
+.s-sev--low {
+  --sev: color-mix(in srgb, var(--text) 30%, var(--surface));
+}
+
+.s-sev--none {
+  --sev: color-mix(in srgb, var(--text) 16%, var(--surface));
+}
+
+.mc__band {
+  stroke: var(--surface);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.chart__line.s-sev {
+  fill: none;
+}
+
+.s-kevpub {
+  color: var(--likely);
+  stroke: var(--likely);
+  fill: var(--likely);
+}
+
+.chart__line.s-kevpub {
+  fill: none;
+}
+
+.chart__line--prev {
+  stroke-dasharray: 5 4;
+  stroke-width: 1.5;
+  stroke-linecap: butt;
+  opacity: 0.6;
+}
+
+.legend__line--dashed {
+  background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px);
+  opacity: 0.75;
+}
+
+.mc__dots circle {
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+
+.mc .chart__svg {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mc__drag {
+  fill: var(--t-accent);
+  stroke: var(--b-accent);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.mc__lines {
+  flex-wrap: wrap;
+}
+
+.mc__summary {
+  min-height: 3em;
+}
+
+.mc__export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mc__hint {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+@media (max-width: 639px) {
+  .mc__summary {
+    min-height: 4.5em;
+  }
+
+  .mc__field input[type='month'] {
+    max-width: 128px;
+  }
+}

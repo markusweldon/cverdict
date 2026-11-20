@@ -30,7 +30,7 @@ import { toDetail, toRow } from '../rows';
 import { buildKevPrior, scoreCve } from '../score';
 import { encodeLog, forwardReceipts, RECEIPTS_SECTION, updateLog } from '../receipts';
 import { serializeState, EMPTY_STATE, readSection, STATE_PATH, type LoadedState, type SectionWrite } from '../state';
-import { buildStats } from '../stats';
+import { buildStats, buildSurge } from '../stats';
 import { firstExploitedListing, isExploitedListing } from '../sources/catalogs';
 import type { CatalogListing, Enrichment, IngestResult, ScoredCve } from '../types';
 import { DAY_MS, monthKey, ymd } from '../util/dates';
@@ -220,6 +220,11 @@ export function buildOutput({
   const kev = buildKevFile(ing.kev, byId, now);
   const meta = buildMeta({ ingest: ing, window, batches, now, windowStart, windowDays, knob });
   const stats = buildStats({ history: ing.history, kev: ing.kev, window, windowStart, now, catalogs: ing.exploits.catalogs });
+  const surge = buildSurge(
+    ing.history,
+    scored.filter((s) => ing.kev.entries.has(s.cve.id)),
+    now,
+  );
   const recentDay = daysAgo(now, CHANGES_RETENTION_DAYS);
   const recentKevElsewhere = scored.filter((s) => !s.cve.inWindow && s.kev && s.kev.date_added >= recentDay).map(toRow);
   // Outside the window and not in CISA KEV, first listed as exploited by EU KEV or CIRCL lately.
@@ -271,6 +276,7 @@ export function buildOutput({
     backtest,
   };
   files.set(PATHS.receipts, JSON.stringify(receipts));
+  if (surge) files.set(PATHS.surge, JSON.stringify(surge));
   const p0 = performance.now();
   const packages = buildPackagesFile(ing.osv, rowById, generatedAt, windowDays);
   files.set(PATHS.packages, JSON.stringify(packages));

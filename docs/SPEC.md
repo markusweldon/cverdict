@@ -228,6 +228,7 @@ v1/cve/<xx>.json    CveShard for window CVEs ∪ KEV CVEs ∪ EU KEV/CIRCL explo
 v1/batches.json     BatchesFile (newest first)
 v1/kev.json         KevFile
 v1/stats.json       StatsFile
+v1/surge.json       SurgeFile: published per month by CVSS band and top 30 CNA, KEV CVEs by publication month (optional; The Surge only)
 v1/changes.json     ChangesFile
 v1/woke.json        WokeFile: CVEs published before the window with new exploitation evidence in 30 days (pipeline/src/woke.ts)
 v1/receipts.json    ReceiptsFile: forward log of KEV catches (pipeline/src/receipts.ts) + hindsight backtest (pipeline/src/backtest.ts)
@@ -298,8 +299,21 @@ Unknown → 404 view. Update `document.title` per route.
   (`--font-mono-system`) so no web font subset is fetched for it; rows do not prefetch shards; results stay in module
   memory until Clear or reload (`check/session.ts`). Caps: files 50 MB, pasted text 5 MB, lines 64 KB in line formats.
   The chunk is not warmed on other pages.
-- **The Surge (`/surge`)**: monthly published since 1999 (SVG area/line, log toggle, Published/Reserved toggle),
-  KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
+- **The Surge (`/surge`)**: monthly published since 1999 (SVG area/line), daily published vs passed for the window,
+  top CNAs table. The monthly chart's controls all live in the query string, and the default view has none:
+  `range=12m|24m|5y` or `from=YYYY-MM&to=YYYY-MM` (also set by dragging across the chart; Reset zoom goes back to
+  the preset), `group=quarter|year` (custom ranges widen to whole periods; the period holding the current month is
+  marked partial), `count=reserved`, `sev=critical,high,…` and `view=severity` (stacked bands), `cna=<name>` for one
+  CNA or `cna=-<name>,-<name>` to leave CNAs out (the Exclude WordPress and Exclude Linux kernel toggles set
+  `-wordfence,-wpscan,-patchstack` and `-linux`), `kev=1` (only CVEs in CISA KEV, by publication month),
+  `scale=log` (off while stacked), `compare=1` (dashed line for the same period a year earlier; the partial period
+  is compared at the same point), and `lines=kevpub,kevadd,ai|none` (default `kevadd,ai`). Severity, CNA and KEV
+  come from `surge.json`; without it, or for Reserved, those controls are disabled with a short note. The KEV
+  additions and AI-credited lines count every CVE, so they hide while a filter narrows the count; the in-KEV line
+  follows the filters. Download CSV and Download PNG save exactly the series on screen (Blob and a temporary
+  `<a download>`; the PNG draws the SVG through a `data:` image, as the CSP allows). The tooltip, keys, summary line
+  and View as table read the same filtered series. The lede and tiles stay fixed on every CVE; the summary line
+  under the chart follows the selection.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status
   from `meta.sources` (fresh/stale), blind spots ("Not in KEV ≠ not exploited", "exposure is yours"), attributions.
 - **Feeds & API (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`; section `#mcp` (kept

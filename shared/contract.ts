@@ -349,6 +349,44 @@ export interface StatsFile {
   ai_credits: { text: string; count: number }[];
 }
 
+/** CVSS severity bands, by base score: Critical 9.0+, High 7.0+, Medium 4.0+, Low 0.1+, None (0.0 or no score). */
+export const SEVERITY_BANDS = ['critical', 'high', 'medium', 'low', 'none'] as const;
+export type SeverityBand = (typeof SEVERITY_BANDS)[number];
+
+/** Index in SEVERITY_BANDS of a CVSS base score; null, out of range or 0.0 is "none". */
+export function severityBand(score: number | null | undefined): number {
+  if (typeof score !== 'number' || !(score > 0) || score > 10) return 4;
+  return score >= 9 ? 0 : score >= 7 ? 1 : score >= 4 ? 2 : 3;
+}
+
+/** Number of top CNAs surge.json breaks out per month; the rest are "Other". */
+export const SURGE_TOP_CNAS = 30;
+
+/**
+ * v1/surge.json: published CVEs per month split by CVSS band and by CNA, for The Surge's filters. Every
+ * count is by datePublished, like stats.json `monthly[].published`, and band arrays follow SEVERITY_BANDS.
+ * Row i of every series is month `start` + i. Sites without this file hide the filters that need it.
+ */
+export interface SurgeFile {
+  schema_version: number;
+  generated_at: string;
+  /** First month, YYYY-MM (1999-01). The months run to generated_at's month, like stats.json `monthly`. */
+  start: string;
+  /** severity[i] splits month i's published count by band, so it sums to it exactly. */
+  severity: number[][];
+  /**
+   * The SURGE_TOP_CNAS CNAs (assignerShortName) with the most published CVEs since 1999, most first.
+   * `from` is the month index of the CNA's first CVE and severity[j] is month from + j; months past the
+   * last row have none. "Other" is `severity` minus every CNA listed here.
+   */
+  cnas: { cna: string; from: number; severity: number[][] }[];
+  /**
+   * Published CVEs in the CISA KEV catalog by their publication month (not the month KEV added them):
+   * [month index, CNA index in `cnas` or -1 for Other, band index, count]. Sorted by month, CNA, band.
+   */
+  kev: [month: number, cna: number, band: number, count: number][];
+}
+
 /** The signal that first made a CVE Exploited (stats.json hourly.new_exploited_cves). "Vendor" is the CNA's own flag. */
 export const NEW_EXPLOITED_VIA = ['CISA KEV', 'EU KEV', 'CIRCL', 'CISA SSVC', 'Vendor'] as const;
 export type NewExploitedVia = (typeof NEW_EXPLOITED_VIA)[number];
