@@ -1,6 +1,6 @@
 # Scoring methodology
 
-Score model **v0.2.0** (v0.1.0 plus the ENISA EU KEV and CIRCL catalog chips; see [Other known-exploited catalogs](#other-known-exploited-catalogs)). The single source of truth is [`shared/model.ts`](../shared/model.ts)
+Score model **v0.3.0** (v0.2.0 plus `x.early`, −3 for no exploit signal in the first 14 days; see [Cold start](#cold-start). v0.2.0 added the ENISA EU KEV and CIRCL catalog chips; see [Other known-exploited catalogs](#other-known-exploited-catalogs)). The single source of truth is [`shared/model.ts`](../shared/model.ts)
 (chips and points) and [`pipeline/src/score.ts`](../pipeline/src/score.ts) (when each chip fires).
 The site's Method page renders its chip table from the same file. If this document and the code
 disagree, the code is right and this document has a bug.
@@ -36,8 +36,9 @@ E chips    = kev.listed | ssvc.active | vendor.exploited (CVSS v4 E:A) | vendor.
 X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24 (CVSS v3 E:F/E:H),
                      x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10 (E:P), epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
-             if none: x.none −14 when age ≥ 14, every exploit source and EPSS loaded, and no unvetted PoC repo;
-                      else x.too_new (unknown, 0)
+             if none, with every exploit source and EPSS loaded and no unvetted PoC repo:
+                      x.none −14 when age ≥ 14, else x.early −3
+                      otherwise x.too_new (unknown, 0)
 SEV        = sev.crit_net 13 (≥9.0 and AV:N) | sev.crit 6 (≥9.0) | sev.high 1 (7–8.9) | sev.low −13 (<7) | sev.none (unknown)
 SSVC       = (ssvc.automatable 6 | ssvc.not_automatable −2) + (ssvc.total 8 | ssvc.partial −6) | ssvc.missing (unknown)
 PRIOR      = prior.product 10 | prior.vendor 8 | prior.none −6 | prior.unknown (no vendor named, or KEV unavailable)
@@ -120,7 +121,7 @@ Any of the first six puts the CVE in **Exploited**. The first that fires, in thi
 
 ### X: exploit artifacts and prediction
 
-Strongest one counts; the rest are shown with 0. `x.too_new` also stands in for `x.none` after the cold start when a PoC repo is still too new to vet or an exploit source could not be loaded.
+Strongest one counts; the rest are shown with 0. `x.too_new` stands in for `x.none` or `x.early` when a PoC repo is still too new to vet or an exploit source could not be loaded.
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
@@ -134,7 +135,8 @@ Strongest one counts; the rest are shown with 0. `x.too_new` also stands in for 
 | `vendor.poc` | Vendor: PoC | +10 | `cvelist` | The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored. |
 | `epss.mid` | EPSS 1–10% | +8 | `epss` | EPSS between 1% and 10% (only trusted after 14 days). |
 | `x.none` | No exploit yet | −14 | `computed` | Two weeks after publication there is still no public exploit and EPSS is below 1%. |
-| `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: the CVE is less than 14 days old, a PoC repo is too new to vet, or an exploit source could not be loaded this run. |
+| `x.early` | No exploit yet (early) | −3 | `computed` | Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone no longer clear the default evidence bar. |
+| `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: a PoC repo is too new to vet, or an exploit source could not be loaded this run. |
 
 ### SEV: severity
 
@@ -280,8 +282,11 @@ weights in [`shared/model.ts`](../shared/model.ts):
 - **From 40 up, a CVE that has gone two weeks with no exploit sign can never pass.** The most such a
   CVE can score is 38: 15 base + 13 critical network bug + 14 SSVC (total, automatable) + 10 product
   in KEV − 14 for no exploit yet.
-- **From 55 up, every CVE listed has some exploit sign.** Without one (a PoC, Exploit-DB, EPSS, CISA or the vendor saying an
-  exploit exists, exploitation, Metasploit or Nuclei), the most a CVE can score is 52.
+- **From 50 up (the default), every CVE listed has some exploit sign.** Without one (a PoC, Exploit-DB, EPSS, CISA or the vendor saying an
+  exploit exists, exploitation, Metasploit or Nuclei), the most a CVE can score is 49: 52 from the
+  profile, − 3 for no exploit signal yet in its first two weeks. The exception is a CVE whose
+  question is still open (a PoC repo too new to vet, or an exploit source down this run): it can
+  reach 52. From 53 up there is no exception.
 - **80 is the most a CVE can score without being exploited or having a Metasploit module or Nuclei
   template:** 15 + 28 Exploit-DB + 13 + 14 + 10. At 80 nothing passes on score; only the CVEs that
   always pass are left.
@@ -301,13 +306,24 @@ to go on (78 of the 333 CVEs published on 2026-10-26, 23%, had an EPSS score tha
 publication (`COLD_START_DAYS`):
 
 - EPSS does not score. If a score exists it is shown as the `epss.cold` info chip.
-- Silence is not evidence: instead of `x.none` (−14) the CVE gets `x.too_new`, an unknown worth 0,
-  and the CVE page says how many days remain.
+- Silence is weak evidence: instead of `x.none` (−14) the CVE gets `x.early` (−3), and the CVE
+  page says how many days remain. While a PoC repo is too new to vet or an exploit source is down,
+  it gets `x.too_new`, an unknown worth 0, as after the cold start.
 
 Everything else, including exploitation, exploit artifacts, severity, SSVC and prior, counts from
-day 0. So a critical network bug from a vendor with KEV history can reach Likely next before any
-exploit feed has caught up, as CVE-2026-105016 does on day 13 in the
-[example below](#worked-examples).
+day 0. A critical network bug from a vendor with KEV history scores at most 49 before any exploit
+signal, just under the default bar: it is at the top of Watch, and any exploit signal (a vetted
+PoC, Exploit-DB, CISA or the vendor saying a PoC exists) lifts it to Likely next. See
+CVE-2026-105016 in the [examples below](#worked-examples).
+
+**Why −3 (v0.3.0).** Up to v0.2.0 silence in the first two weeks was worth 0, and that profile
+scored 50 or 52: Likely next on severity, SSVC and KEV history alone. In the 2026-11-20 16:47 UTC
+window that was 171 of the 401 Likely CVEs, 6 of the 6 that passed in the last 24 hours, and none
+had any exploit sign. Every one of them falls back to Watch on day 14 unless an exploit sign
+appears, because `x.none` then takes 14 points. In the 180-day backtest to 2026-11-18 the profile alone
+flagged 1 of the 134 recent KEV additions before CISA listed it (1 or 2 with undated evidence). −3 is the smallest penalty that keeps the
+strongest such profile (52) under the default bar. In that window it took Likely from 401 to 238
+(Exploited or Likely: about 14 a day to about 9); the 8 that stay have a PoC repo too new to vet.
 
 ## PoC vetting
 
@@ -373,14 +389,15 @@ would score 56, Likely next.
    +8  CISA SSVC: total technical impact
    +6  CISA SSVC: automatable
    +8  Vendor in KEV (×390): Microsoft
-    0  Too new: day 13 of 14, exploit feeds lag
+   −3  No exploit signal yet: day 13 of 14, exploit feeds lag
     0  EPSS 1.7% · 76th pct · day 13, too new to trust   (info)
   ───
-   50  Likely next at the default evidence bar
+   47  Watch at the default evidence bar (Likely next at Broad, 40)
 ```
 
-One day later the cold start ends. If EPSS is still at 1% or more, `epss.mid` (+8) lifts the score
-to 58; below 1% and with no public exploit, `x.none` (−14) drops it to 36, which is Watch.
+Up to v0.2.0, without the −3, this scored 50: Likely next on its profile alone. One day later the
+cold start ends. If EPSS is still at 1% or more, `epss.mid` (+8) lifts the score to 58; below 1%
+and with no public exploit, `x.none` (−14) drops it to 36, which is Watch.
 
 **CVE-2013-10076** · ExtUtils::Typemaps::STL::Vector (Perl) · day 16
 
@@ -454,7 +471,8 @@ more of the 288 KEV CVEs; going to 55 removes 135 CVEs but loses 41. The drop st
 the KEV CVEs that score exactly 50 or 52 are mostly vendor or product KEV history + High + SSVC
 total − not automatable + a PoC on GitHub. Much of the window at 50 is the cold start: a critical
 network bug with SSVC total and automatable from a vendor with KEV history scores 50 for its first
-two weeks, then most fall to 36 (the pattern of CVE-2026-105016 above). Because the knee is one
+two weeks under v0.2.0 (47 from v0.3.0), then most fall to 36 (the pattern of CVE-2026-105016
+above). These figures are from a v0.2.0 run; rerun `npm run calibrate` for v0.3.0. Because the knee is one
 exact sum of weights, a small weight change can move it: re-check it after any change.
 
 On the stricter backtest there is no sharp knee: recall falls steadily as the bar rises, and 50 is

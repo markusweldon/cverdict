@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, WATCH_FLOOR, tierFor, type Family, type Reason } from '../../../shared/contract';
-import { BASE_POINTS, CHIPS, COLD_START_DAYS, EXPLOITED_FLOOR, chip } from '../../../shared/model';
+import { BASE_POINTS, CHIPS, COLD_START_DAYS, EARLY_NO_EXPLOIT, EXPLOITED_FLOOR, chip } from '../../../shared/model';
 import { buildKevPrior, kevVendorKey, orderReasons, vendorTokens } from '../../src/score';
 import type { NormalizedCve, ScoredCve } from '../../src/types';
 import {
@@ -318,11 +318,31 @@ describe('X family (exploit artifacts and prediction)', () => {
     expect(byId(s, 'x.none')).toMatchObject({ points: -14, label: 'No public exploit after 20 days · EPSS 0.4%' });
   });
 
-  it('x.too_new before day 14 (unknown, 0 points)', () => {
+  it('x.early before day 14 (down, -3 points)', () => {
     const s = score(makeCve({ published: daysAgo(3) }));
-    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Too new: day 3 of 14, exploit feeds lag' });
+    expect(byId(s, 'x.early')).toMatchObject({ points: EARLY_NO_EXPLOIT, polarity: 'down', label: 'No exploit signal yet: day 3 of 14, exploit feeds lag' });
+    expect(byId(s, 'x.too_new')).toBeUndefined();
     expect(byId(s, 'x.none')).toBeUndefined();
     expect(s.unknowns).toContain('Exploit feeds have not caught up yet (day 3 of 14).');
+  });
+
+  it('x.too_new before day 14 while an unvetted PoC repo leaves it open (unknown, 0 points)', () => {
+    const s = score(makeCve({ published: daysAgo(3) }), { poc: { [ID]: [repo(daysAgo(1))] } });
+    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Too new: day 3 of 14, exploit feeds lag' });
+    expect(byId(s, 'x.early')).toBeUndefined();
+  });
+
+  it('severity, SSVC and KEV history alone stay under the default bar during the cold start', () => {
+    // The strongest profile without an exploit signal: 15 + 13 + 6 + 8 + 10 = 52, minus 3.
+    const cve = makeCve({ published: daysAgo(3), ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') });
+    const kev = [makeKev('CVE-2024-1')];
+    const s = score(cve, { kev });
+    expect(pointsOf(s, 'prior.product')).toBe(10);
+    expect(s.score).toBe(52 + EARLY_NO_EXPLOIT);
+    expect(s.tier).toBe('watch');
+    // The same profile with any exploit signal clears it.
+    const poc = score(cve, { kev, poc: { [ID]: [repo(daysAgo(10))] } });
+    expect(poc.tier).toBe('likely');
   });
 
   it('exploit artifacts count during the cold start', () => {
@@ -338,7 +358,7 @@ describe('EPSS cold start', () => {
     expect(byId(s, 'epss.high')).toBeUndefined();
     expect(byId(s, 'epss.mid')).toBeUndefined();
     expect(byId(s, 'epss.cold')).toMatchObject({ points: 0, polarity: 'info', label: 'EPSS 50.0% · 99th pct · day 5, too new to trust' });
-    expect(byId(s, 'x.too_new')).toBeDefined();
+    expect(byId(s, 'x.early')).toBeDefined();
     expect(s.epss).toMatchObject({ score: 0.5, percentile: 0.999, model: 'v2026.06.15' });
     expect(s.unknowns).toContain('EPSS is not trusted until day 14; this CVE is on day 5.');
   });

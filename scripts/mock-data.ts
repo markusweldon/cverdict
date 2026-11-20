@@ -57,6 +57,7 @@ import {
   BATCH_MIN,
   CHIP_BY_ID,
   COLD_START_DAYS,
+  EARLY_NO_EXPLOIT,
   EXPLOITED_BONUS,
   EXPLOITED_FLOOR,
   RANSOMWARE_BONUS,
@@ -1431,7 +1432,7 @@ function score(d: Draft): Scored {
   x.forEach((r, i) => i > 0 && (r.points = 0));
   if (x.length === 0) {
     if (age >= COLD_START_DAYS) x.push(reason('x.none', `No public exploit after ${ageInt} days · EPSS ${d.epss ? pct(d.epss.score) : 'unscored'}`, -14));
-    else x.push(reason('x.too_new', `Too new for exploit feeds (${ageInt === 0 ? 'today' : `${ageInt} day${ageInt === 1 ? '' : 's'} old`})`, 0));
+    else x.push(reason('x.early', `No exploit signal yet: day ${ageInt} of ${COLD_START_DAYS}, exploit feeds lag`, EARLY_NO_EXPLOIT));
   }
   const xPoints = x[0].points;
 

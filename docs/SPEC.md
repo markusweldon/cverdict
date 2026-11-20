@@ -174,8 +174,8 @@ INFO       = … | circl.suspected (CIRCL, suspected) | circl.attempts (CIRCL, c
 X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24
                      (v3 E:F/E:H), x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10, epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
-             if none: age ≥ 14, every exploit source and EPSS loaded this run and no unvetted PoC repo → x.none −14;
-             else x.too_new (unknown, 0)
+             if none, with every exploit source and EPSS loaded this run and no unvetted PoC repo:
+             x.none −14 when age ≥ 14, else x.early −3 (model v0.3.0); otherwise x.too_new (unknown, 0)
 SEV        = sev.crit_net 13 (≥9.0 and AV:N) | sev.crit 6 (≥9.0) | sev.high 1 (7–8.9) | sev.low −13 (<7) | sev.none (unknown)
 SSVC       = (ssvc.automatable 6 | ssvc.not_automatable −2) + (ssvc.total 8 | ssvc.partial −6) | ssvc.missing (unknown)
 PRIOR      = prior.product 10 | prior.vendor 8 | prior.none −6

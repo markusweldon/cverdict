@@ -87,7 +87,7 @@ Product in KEV (×5): Citrix NetScaler
 
 Other CVEs carry chips such as `Vendor CVSS: working exploit code exists (E:F)` (+24: weaponized,
 not yet exploited), context worth 0 points such as `Part of Microsoft patch day · Oct 13 (1,407)`
-or `AI-credited: “Claude Security”`, and unknowns such as `Too new: day 13 of 14, exploit feeds lag`.
+or `AI-credited: “Claude Security”`, and unknowns such as `No CISA SSVC assessment yet`.
 
 On the site:
 
