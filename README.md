@@ -2,7 +2,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-  <img alt="CVErdict" src="docs/assets/logo-light.svg" width="100%">
+  <img alt="CVErdict" src="docs/assets/logo-light.svg" width="480">
 </picture>
 
 **Every CVE gets a verdict. Every verdict comes with receipts.**
