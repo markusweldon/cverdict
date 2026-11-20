@@ -173,11 +173,17 @@ export function validateOutput(root: string, log?: Logger): ValidationResult {
   return result;
 }
 
+/** Signals that can make a CVE published before the window newly exploited: a dated catalog listing. */
+const LISTING_VIA: readonly string[] = ['CISA KEV', 'EU KEV', 'CIRCL'];
+
 /**
  * stats.json hourly.new_exploited (optional): [hour, count] pairs in range, ascending, never more than the hour's
- * exploited count. hourly.new_exploited_cves (optional): unique Exploited CVEs from the index, each in the column
- * of its publication hour, first signal inside the 72 hours before generated_at, newest first, at most the cap,
- * and tallying per hour to the pairs (exactly, below the cap).
+ * exploited count. hourly.new_exploited_cves (optional): unique CVEs, signal inside the 72 hours before
+ * generated_at, newest first, at most the cap. A row with an `hour` is an Exploited CVE of the index in the column
+ * of its publication hour, and those rows tally per hour to the pairs (exactly, below the cap). A row without one
+ * is a CVE published before the window: no `hour`, a `published` day before hourly.start, a catalog listing day as
+ * its signal, and not in the index. hourly.new_exploited_total (optional): the list's length before the cap, so
+ * equal to it below the cap, never less than it or than the pairs' sum.
  */
 function checkNewExploited(json: Map<string, JsonObject>, index: readonly Row[] | null, errors: string[]): void {
   const stats = json.get(PATHS.stats);
@@ -204,11 +210,17 @@ function checkNewExploited(json: Map<string, JsonObject>, index: readonly Row[] 
   }
 
   const list = hourly.new_exploited_cves;
+  const total = hourly.new_exploited_total;
+  const bad = (why: string) => errors.push(`${PATHS.stats}: ${why}`);
+  if (total !== undefined) {
+    if (!Number.isInteger(total) || (total as number) < 0) return void bad(`hourly.new_exploited_total is not a count: ${JSON.stringify(total)}`);
+    if (list === undefined) return void bad('hourly.new_exploited_total is present without hourly.new_exploited_cves');
+  }
   if (list === undefined) return;
-  const bad = (why: string) => errors.push(`${PATHS.stats}: hourly.new_exploited_cves ${why}`);
-  if (!Array.isArray(list)) return void bad('is not an array');
-  if (hourly.new_exploited === undefined) return void bad('is present without hourly.new_exploited');
-  if (list.length > NEW_EXPLOITED_LIST_MAX) return void bad(`has ${list.length} entries, the cap is ${NEW_EXPLOITED_LIST_MAX}`);
+  const badList = (why: string) => bad(`hourly.new_exploited_cves ${why}`);
+  if (!Array.isArray(list)) return void badList('is not an array');
+  if (hourly.new_exploited === undefined) return void badList('is present without hourly.new_exploited');
+  if (list.length > NEW_EXPLOITED_LIST_MAX) return void badList(`has ${list.length} entries, the cap is ${NEW_EXPLOITED_LIST_MAX}`);
   const generated = typeof stats?.generated_at === 'string' ? Date.parse(stats.generated_at) : NaN;
   const start = typeof hourly.start === 'string' ? Date.parse(hourly.start) : NaN;
   const rows = index ? new Map(index.map((r) => [r.id, r])) : null;
@@ -219,35 +231,47 @@ function checkNewExploited(json: Map<string, JsonObject>, index: readonly Row[] 
     const c = asObject(item);
     const id = c?.id;
     const h = c?.hour as number;
-    const ms = typeof c?.at === 'string' ? Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(c.at) ? `${c.at}T00:00:00Z` : c.at) : NaN;
-    const exploited = Array.isArray(counts[h]) ? Number((counts[h] as unknown[])[0]) : 0;
-    const shape =
+    const day = typeof c?.at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.at);
+    const ms = typeof c?.at === 'string' ? Date.parse(day ? `${c.at}T00:00:00Z` : c.at) : NaN;
+    const common =
       typeof id === 'string' &&
       CVE_ID_RE.test(id) &&
       typeof c?.title === 'string' &&
       c.title.length > 0 &&
       c.title.length <= 80 &&
       (NEW_EXPLOITED_VIA as readonly unknown[]).includes(c.via) &&
-      Number.isInteger(h) &&
-      exploited > 0 &&
       ms <= generated &&
       ms >= generated - NEW_EXPLOITED_HOURS * 3_600_000;
-    if (!shape) return void bad(`has a bad entry ${JSON.stringify(item)}`);
-    if (seen.has(id)) return void bad(`lists ${id} twice`);
-    if (ms > prevMs) return void bad(`is not newest first at ${id}`);
-    const row = rows?.get(id);
-    if (rows && (!row || row.tier !== 'exploited')) return void bad(`lists ${id}, which is not an Exploited CVE in the index`);
-    if (row && Math.floor((Date.parse(row.pub) - start) / 3_600_000) !== h) return void bad(`puts ${id} in hour ${h}, not its publication hour`);
+    if (!common) return void badList(`has a bad entry ${JSON.stringify(item)}`);
+    if (seen.has(id)) return void badList(`lists ${id} twice`);
+    if (ms > prevMs) return void badList(`is not newest first at ${id}`);
+    if (c.hour === undefined) {
+      // Published before the window: not on the chart, so no hour; a catalog listing is its signal.
+      const pub = typeof c.published === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.published) ? Date.parse(`${c.published}T00:00:00Z`) : NaN;
+      if (!(pub < start) || !day || !LISTING_VIA.includes(c.via as string)) return void badList(`has a bad entry from before the window ${JSON.stringify(item)}`);
+      if (rows?.has(id)) return void badList(`lists ${id} without an hour, but it is in the index`);
+    } else {
+      const exploited = Array.isArray(counts[h]) ? Number((counts[h] as unknown[])[0]) : 0;
+      if (!Number.isInteger(h) || exploited <= 0 || c.published !== undefined) return void badList(`has a bad entry ${JSON.stringify(item)}`);
+      const row = rows?.get(id);
+      if (rows && (!row || row.tier !== 'exploited')) return void badList(`lists ${id}, which is not an Exploited CVE in the index`);
+      if (row && Math.floor((Date.parse(row.pub) - start) / 3_600_000) !== h) return void badList(`puts ${id} in hour ${h}, not its publication hour`);
+      tally.set(h, (tally.get(h) ?? 0) + 1);
+    }
     seen.add(id);
     prevMs = ms;
-    tally.set(h, (tally.get(h) ?? 0) + 1);
   }
   // At the cap, older ones are left out of the list but still counted.
   const full = list.length === NEW_EXPLOITED_LIST_MAX;
   for (const h of new Set([...pairs.keys(), ...tally.keys()])) {
     const t = tally.get(h) ?? 0;
     const p = pairs.get(h) ?? 0;
-    if (full ? t > p : t !== p) return void bad(`has ${t} in hour ${h}, hourly.new_exploited has ${p}`);
+    if (full ? t > p : t !== p) return void badList(`has ${t} in hour ${h}, hourly.new_exploited has ${p}`);
+  }
+  if (typeof total === 'number') {
+    const charted = [...pairs.values()].reduce((a, n) => a + n, 0);
+    if (full ? total < list.length : total !== list.length) return void bad(`hourly.new_exploited_total is ${total}, the list has ${list.length}`);
+    if (total < charted) return void bad(`hourly.new_exploited_total is ${total}, less than the ${charted} in hourly.new_exploited`);
   }
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { NewExploitedCve } from '../../shared/contract';
-import { capNote, listOpens, popoverLeft, signalLine } from './newly';
+import { capNote, listOpens, olderNote, popoverLeft, signalLine } from './newly';
 
 const item = (o: Partial<NewExploitedCve> = {}): NewExploitedCve => ({ id: 'CVE-2026-1', title: 'Acme · Widget', via: 'CISA KEV', at: '2026-11-18', hour: 10, ...o });
 
@@ -48,5 +48,14 @@ describe('popoverLeft', () => {
     expect(popoverLeft({ left: 300, right: 400 }, 320, 390)).toBe(390 - 16 - 320 - 300);
     // As wide as the screen allows (max-width 100vw - 32px).
     expect(popoverLeft({ left: 50, right: 150 }, 358, 390)).toBe(16 - 50);
+  });
+});
+
+describe('olderNote', () => {
+  it('says when a CVE before the chart was published, and nothing for one on the chart', () => {
+    expect(olderNote({ published: '2024-03-12' })).toBe('Published Mar 2024, before this chart');
+    expect(olderNote({ hour: 4 })).toBeNull();
+    expect(olderNote({})).toBeNull();
+    expect(olderNote({ published: 'soon' })).toBeNull();
   });
 });

@@ -7,7 +7,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChangesFile, CveShard, KevFile, WokeFile } from '../../../shared/contract';
+import type { ChangesFile, CveShard, KevFile, StatsFile, WokeFile } from '../../../shared/contract';
 import { shardOf } from '../../../shared/shard';
 import { buildOutput, exploitedElsewhere } from '../../src/emit/build';
 import { PATHS, writeFiles } from '../../src/emit/json';
@@ -185,6 +185,18 @@ describe('buildOutput: CVEs only EU KEV or CIRCL list', () => {
     const woke = read<WokeFile>(dir, PATHS.woke);
     expect(woke.items.map((i) => i.id)).toEqual([EU]);
     expect(built.files.get(PATHS.wokeFeed)).toContain(EU);
+  });
+
+  it('names an older CVE that CISA KEV listed in the last 72 hours in stats.json, without an hour, and validates', async () => {
+    const OLD = 'CVE-2019-11510';
+    const kev = [makeKev(OLD, { dateAdded: dateAgo(1) })];
+    const built = buildOutput({ ingest: makeIngest([...cohort(3), makeCve({ id: OLD, published: '2019-04-26T00:00:00.000Z', inWindow: false })], { kev }), now: NOW, windowDays: 30, knob: 50, previous: null, siteUrl: 'https://example.test' });
+    await writeFiles(dir, built.files);
+    expect(validateOutput(dir).errors).toEqual([]);
+    const stats = read<StatsFile>(dir, PATHS.stats);
+    expect(stats.hourly.new_exploited_cves).toEqual([{ id: OLD, title: expect.any(String), via: 'CISA KEV', at: dateAgo(1), published: '2019-04-26' }]);
+    expect(stats.hourly.new_exploited).toEqual([]);
+    expect(stats.hourly.new_exploited_total).toBe(1);
   });
 
   it('reports a recent listing once in changes.json, and an old one never', async () => {

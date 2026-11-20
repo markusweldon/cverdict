@@ -995,7 +995,7 @@ a.chip:hover {
   background: var(--wf-watch);
 }
 
-/* Newly exploited in 72h: pings like the chart's new ticks (same period), still when motion
+/* Newly exploited (last 72 hours): pings like the chart's new ticks (same period), still when motion
    is off. Only opacity and transform animate, so the compositor does the work. */
 .wf__key--new {
   position: relative;
@@ -1053,6 +1053,11 @@ a.chip:hover {
 }
 
 /* None new (or still loading): a dim, still swatch. */
+/* The count leads ("3 newly exploited"): same-width digits, so a new count moves nothing beside it. */
+.legend__item--new {
+  font-variant-numeric: tabular-nums;
+}
+
 .legend__item--new.is-none .wf__key--new {
   opacity: 0.4;
   box-shadow: none;
@@ -1070,7 +1075,7 @@ a.chip:hover {
   }
 }
 
-/* With names in the data, "New in 72h: N" opens a list. The button keeps the label's exact size
+/* With names in the data, "N newly exploited" opens a list. The button keeps the label's exact size
    (no padding, border or icon of its own), so the legend does not move when it turns clickable;
    a negative margin gives it a taller hit area without moving the text. */
 .newx {
@@ -1171,9 +1176,15 @@ a.chip:hover {
   white-space: nowrap;
 }
 
-.newx__via {
+.newx__via,
+.newx__older {
   color: var(--muted);
   font-size: 12px;
+}
+
+/* Published before the chart starts, so no column to mark: said once, quieter still. */
+.newx__older {
+  font-style: italic;
 }
 
 /* ── Tooltip, toasts, dialogs ── */
