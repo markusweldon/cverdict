@@ -39,6 +39,7 @@ const clock = new Date(Date.parse(meta.generated_at) + 9 * 60e3);
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: 'dark', reducedMotion: 'no-preference' });
 const page = await ctx.newPage();
+await page.mouse.move(4, 896);
 await page.clock.install({ time: clock });
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
@@ -52,22 +53,44 @@ async function go(path, ready) {
   await page.waitForSelector(ready, { timeout: 20000 });
   await page.waitForTimeout(2600); // count-up and chart animations settle
 }
-async function still(name, clip) {
+// Every still is the same size and aspect ratio (16:9 at 2x), cropped to the content column below
+// the site header and starting at the part of the page that matters.
+const CROP = { x: 112, width: 1216, height: 684 };
+/** The page y of the first element matching `sel` (and `text`, if given), minus `off`. */
+const topOf = (sel, text, off) =>
+  page.evaluate(
+    ([sel, text, off]) => {
+      const el = [...document.querySelectorAll(sel)].find((e) => !text || e.textContent.trim().toLowerCase().startsWith(text.toLowerCase()));
+      return el ? Math.max(0, el.getBoundingClientRect().top + window.scrollY - off) : 64;
+    },
+    [sel, text, off],
+  );
+async function still(name, y) {
+  // Scrolled, not a full-page shot, so the sticky header stays at the top and out of the crop.
+  const top = Math.max(64, y);
+  const scroll = await page.evaluate((t) => {
+    window.scrollTo(0, Math.max(0, t - 64));
+    return window.scrollY;
+  }, top);
+  await page.waitForTimeout(400);
   const png = join(TMP, `${name}.png`);
-  await page.screenshot({ path: png, clip: { x: 0, y: 0, width: 1440, ...clip } });
+  await page.screenshot({ path: png, clip: { ...CROP, y: top - scroll } });
   webp(png, join(SCREENS, `${name}.webp`));
 }
 
+// CVE page: the verdict, the evidence and the score panel.
 await go(`/cve/${CVE}`, 'h1');
-await still('cve', { height: 900 });
+await still('cve', await topOf('h1', null, 52));
+// Receipts: the live record and its table.
 await go('/receipts', 'h1');
-await still('receipts', { height: 900 });
+await still('receipts', await topOf('h2', 'The live record', 28));
+// KEV Clock: the countdown card and the first due CVEs.
 await go('/kev', 'h1');
-await still('kev', { height: 760 });
+await still('kev', await topOf('*', 'Next deadline', 24));
 await go('/woke', 'h1');
-await still('woke', { height: 760 });
+await still('woke', await topOf('h1', null, 56));
 await go('/surge', 'h1');
-await still('surge', { height: 760 });
+await still('surge', await topOf('h1', null, 56));
 
 // Check Deps with a sample lockfile, read in the browser only.
 const lock = {
@@ -93,15 +116,7 @@ await page.locator('input[type=file]').first().setInputFiles(join(lockDir, 'pack
 await page.waitForSelector('.checkpk', { timeout: 20000 });
 await page.waitForTimeout(800);
 // From the results heading down: the verdict groups are the point of this page.
-const top = await page.evaluate(() => {
-  const h = [...document.querySelectorAll('h2, h3')].find((e) => e.textContent.startsWith('Results for'));
-  return h ? h.getBoundingClientRect().top + window.scrollY - 40 : 0;
-});
-{
-  const png = join(TMP, 'check.png');
-  await page.screenshot({ path: png, fullPage: true, clip: { x: 0, y: top, width: 1440, height: 820 } });
-  webp(png, join(SCREENS, 'check.webp'));
-}
+await still('check', await topOf('h2, h3', 'Results for', 28));
 
 // Demo GIF: the evidence bar on Today, Balanced, Broad, Strict and back.
 await go('/', '.today__hero');
@@ -120,6 +135,8 @@ const hold = async (frames) => {
 await hold(14);
 for (const label of ['Broad', 'Strict', 'Balanced']) {
   await page.getByRole('button', { name: new RegExp(`^${label}`) }).first().click();
+  // Off the dial again, so no hover tooltip covers the frames.
+  await page.mouse.move(4, 896);
   await hold(label === 'Balanced' ? 16 : 18);
 }
 const gif = join(ASSETS, 'demo-dark.gif');

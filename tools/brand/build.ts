@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { BRAND, RAW_DATA_URL } from '../../shared/brand';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, WATCH_FLOOR, type BatchesFile, type CveDetail, type Meta, type ReceiptsFile, type StatsFile } from '../../shared/contract';
 import { BASE_POINTS, CHIPS, COLD_START_DAYS, EXPLOITED_BONUS, EXPLOITED_FLOOR, SCORE_MODEL } from '../../shared/model';
+import { cnaName } from '../../shared/cna';
 import { shardOf } from '../../shared/shard';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -309,10 +310,11 @@ function frame(T: Theme, w: number, h: number, id: string): string {
 }
 
 /** Eyebrow, title and subtitle at the top left of a card. Returns the svg and the y below it. */
-function heading(T: Theme, x: number, y: number, eb: string, title: string, sub?: string, maxW = 900): [string, number] {
+function heading(T: Theme, x: number, y: number, eb: string, title: string, sub?: string, maxW = 900, titleSize = 32): [string, number] {
   let out = eyebrow(x, y, eb, T.faint);
-  out += text(x, y + 40, title, { size: 32, weight: 600, fill: T.text, ls: -0.4 });
-  let yy = y + 40;
+  const tl = wrap(title, maxW, titleSize, 'sans', 600);
+  out += lines(x, y + 40, tl, Math.round(titleSize * 1.25), { size: titleSize, weight: 600, fill: T.text, ls: -0.4 });
+  let yy = y + 40 + (tl.length - 1) * Math.round(titleSize * 1.25);
   if (sub) {
     const ls = wrap(sub, maxW, 18);
     out += lines(x, yy + 34, ls, 26, { size: 18, fill: T.muted });
@@ -321,12 +323,15 @@ function heading(T: Theme, x: number, y: number, eb: string, title: string, sub?
   return [out, yy];
 }
 
-function footer(T: Theme, w: number, h: number, left: string, right = BRAND.siteUrl.replace(/^https:\/\//, '')): string {
+function footer(T: Theme, w: number, h: number, left: string, right = BRAND.siteUrl.replace(/^https:\/\//, ''), m = 48): string {
+  const rw = measure(right, 14, 'mono', 500) + 26;
+  const ls = wrap(left, w - 2 * m - rw - 24, 14);
+  const y0 = ls.length > 1 ? h - 37 : h - 28;
   return (
-    `<line x1="48" y1="${h - 58}" x2="${w - 48}" y2="${h - 58}" stroke="${T.border}"/>` +
-    text(48, h - 28, left, { size: 14, fill: T.faint }) +
-    mark(w - 48 - measure(right, 14, 'mono', 500) - 26, h - 44, 18, T.accent) +
-    text(w - 48, h - 28, right, { size: 14, font: 'mono', weight: 500, fill: T.muted, anchor: 'end' })
+    `<line x1="${m}" y1="${h - 58}" x2="${w - m}" y2="${h - 58}" stroke="${T.border}"/>` +
+    lines(m, y0, ls, 18, { size: 14, fill: T.faint }) +
+    mark(w - m - rw, h - 44, 18, T.accent) +
+    text(w - m, h - 28, right, { size: 14, font: 'mono', weight: 500, fill: T.muted, anchor: 'end' })
   );
 }
 
@@ -531,7 +536,7 @@ function howItWorks(T: Theme): string {
 
   const H = oy + oh + 96;
   b += footer(T, W, H, `Record counts from the run of ${RUN}.`);
-  return svgDoc(W, H, 'How CVErdict works', '', frame(T, W, H, id) + b);
+  return svgDoc(W, H, 'How CVErdict works', 'Public sources feed an hourly GitHub Actions pipeline that ingests, scores, tiers, emits and validates, publishes to the data branch, and four readers use that branch.', frame(T, W, H, id) + b);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -657,8 +662,8 @@ function architecture(T: Theme): string {
     { s: ' runs typecheck, tests, both builds and an MCP smoke test.', o: { size: 15, fill: T.faint } },
   ]);
   const H = ky + 16 + 86;
-  b += footer(T, W, H, `Paths as of score model ${SCORE_MODEL}.`);
-  return svgDoc(W, H, 'CVErdict architecture', '', frame(T, W, H, 'arch') + b);
+  b += footer(T, W, H, `Paths as of ${day(meta.generated_at)}.`);
+  return svgDoc(W, H, 'CVErdict architecture', 'The repository by folder: pipeline/src writes, shared/ is the contract, the readers only read, and scripts/publish-data-branch.sh publishes to the data branch.', frame(T, W, H, 'arch') + b);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -683,14 +688,17 @@ async function exampleCve(): Promise<CveDetail> {
   throw new Error('no example CVE found; pass --example CVE-…');
 }
 
-function scoring(T: Theme, ex: CveDetail): string {
-  const W = 1200;
+/** The scoring card. `narrow` is the phone layout (540 wide), shown by <picture> below 600 px. */
+function scoring(T: Theme, ex: CveDetail, narrow = false): string {
+  const W = narrow ? 540 : 1200;
+  const M = narrow ? 28 : 48;
+  const id = narrow ? 'scoren' : 'score';
   let b = '';
-  const [hd, hy] = heading(T, 48, 64, 'Scoring', 'A score you can add up by hand', `Each signal is a reason chip with fixed points. Within a family only the strongest chip counts, so three PoCs and a Metasploit module are not four times the evidence.`);
+  const [hd, hy] = heading(T, M, narrow ? 56 : 64, 'Scoring', 'A score you can add up by hand', `Each signal is a reason chip with fixed points. Within a family only the strongest chip counts, so three PoCs and a Metasploit module are not four times the evidence.`, W - 2 * M, narrow ? 26 : 32);
   b += hd;
 
-  // Formula row
-  const fy = hy + 44;
+  // Formula: six boxes in a row (wide) or in two columns (narrow)
+  const fy = hy + (narrow ? 36 : 44);
   const fam: { key: string; name: string; sub: string; r: [number, number] | null; color: string }[] = [
     { key: 'BASE', name: 'Base', sub: 'every CVE', r: null, color: T.muted },
     { key: 'X', name: 'Exploits', sub: 'exploit code, templates, EPSS', r: familyRange('X'), color: T.ink.likely },
@@ -699,36 +707,53 @@ function scoring(T: Theme, ex: CveDetail): string {
     { key: 'PRIOR', name: 'KEV history', sub: 'vendor or product exploited before', r: familyRange('PRIOR'), color: T.ok },
     { key: 'NOISE', name: 'Noise', sub: 'tutorial code, disputed, WordPress', r: familyRange('NOISE'), color: T.faint },
   ];
+  const perRow = narrow ? 2 : 6;
   const plus = 26;
-  const fw = (W - 96 - 5 * plus) / 6;
-  const fh = 140;
+  const fw = (W - 2 * M - (perRow - 1) * plus) / perRow;
+  const fh = narrow ? 128 : 140;
+  const rowGap = 16;
   fam.forEach((f, i) => {
-    const x = 48 + i * (fw + plus);
-    b += rect(x, fy, fw, fh, 12, panel(T), T.border);
-    b += rect(x + 10, fy + 14, 3, fh - 28, 1.5, f.color);
-    b += text(x + 24, fy + 34, f.name, { size: 16, weight: 600, fill: T.text });
-    b += text(x + 24, fy + 70, f.r ? range(f.r) : String(BASE_POINTS), { size: f.r ? 21 : 28, font: 'mono', weight: 600, fill: f.color, ls: -0.5 });
-    b += lines(x + 24, fy + 96, wrap(f.sub, fw - 34, 13.5), 17, { size: 13.5, fill: T.muted });
-    if (i < fam.length - 1) b += text(x + fw + plus / 2, fy + fh / 2 + 8, '+', { size: 24, weight: 500, fill: T.faint, anchor: 'middle' });
+    const x = M + (i % perRow) * (fw + plus);
+    const y = fy + Math.floor(i / perRow) * (fh + rowGap);
+    b += rect(x, y, fw, fh, 12, panel(T), T.border);
+    b += rect(x + 10, y + 14, 3, fh - 28, 1.5, f.color);
+    b += text(x + 24, y + 34, f.name, { size: 16, weight: 600, fill: T.text });
+    b += text(x + 24, y + 70, f.r ? range(f.r) : String(BASE_POINTS), { size: f.r ? 21 : 28, font: 'mono', weight: 600, fill: f.color, ls: -0.5 });
+    b += lines(x + 24, y + 96, wrap(f.sub, fw - 34, 14), 18, { size: 14, fill: T.muted });
+    if (i < fam.length - 1 && (i % perRow) < perRow - 1) b += text(x + fw + plus / 2, y + fh / 2 + 8, '+', { size: 24, weight: 500, fill: T.faint, anchor: 'middle' });
   });
+  const fBottom = fy + Math.ceil(fam.length / perRow) * (fh + rowGap) - rowGap;
 
   // Exploited rule
-  const ey = fy + fh + 20;
-  b += rect(48, ey, W - 96, 58, 12, tint(T, T.exploited, T.name === 'dark' ? 0.12 : 0.08), mix(T.exploited, panel(T), 0.45));
-  b += icon('Flame', 66, ey + 19, 20, T.ink.exploited, 1.6);
-  b += runs(96, ey + 35, [
+  const ey = fBottom + 20;
+  const ruleParts = [
     { s: 'Confirmed exploitation ', o: { size: 17, weight: 600, fill: T.ink.exploited } },
     { s: `adds ${EXPLOITED_BONUS} and floors the score at ${EXPLOITED_FLOOR}. `, o: { size: 17, weight: 500, fill: T.text } },
     { s: 'CISA KEV, EU KEV, CIRCL, SSVC "active" or the vendor.', o: { size: 17, fill: T.muted } },
-  ]);
+  ];
+  let eh = 58;
+  if (narrow) {
+    const tail = wrap(`${ruleParts[1].s}${ruleParts[2].s}`, W - 2 * M - 48, 16);
+    eh = 46 + tail.length * 22;
+    b += rect(M, ey, W - 2 * M, eh, 12, tint(T, T.exploited, T.name === 'dark' ? 0.12 : 0.08), mix(T.exploited, panel(T), 0.45));
+    b += icon('Flame', M + 16, ey + 17, 20, T.ink.exploited, 1.6);
+    b += text(M + 46, ey + 33, 'Confirmed exploitation', { size: 17, weight: 600, fill: T.ink.exploited });
+    b += lines(M + 46, ey + 58, tail, 22, { size: 16, fill: T.text });
+  } else {
+    b += rect(M, ey, W - 2 * M, eh, 12, tint(T, T.exploited, T.name === 'dark' ? 0.12 : 0.08), mix(T.exploited, panel(T), 0.45));
+    b += icon('Flame', 66, ey + 19, 20, T.ink.exploited, 1.6);
+    b += runs(96, ey + 35, ruleParts);
+  }
 
   // Scale
-  const sy = ey + 58 + 74;
-  const sx0 = 64;
-  const sx1 = W - 64;
+  const sy = ey + eh + (narrow ? 104 : 74);
+  const sx0 = narrow ? M + 4 : 64;
+  const sx1 = W - (narrow ? M + 4 : 64);
   const xs = (v: number) => sx0 + ((sx1 - sx0) * v) / 100;
   const bandH = 40;
-  b += text(48, sy - 32, `0 to 100, tiers at the default evidence bar (${KNOB_DEFAULT})`, { size: 16, weight: 600, fill: T.text });
+  const scaleTitle = `0 to 100, tiers at the default evidence bar (${KNOB_DEFAULT})`;
+  if (narrow) b += lines(M, sy - 62, wrap(scaleTitle, W - 2 * M, 16, 'sans', 600), 21, { size: 16, weight: 600, fill: T.text });
+  else b += text(M, sy - 32, scaleTitle, { size: 16, weight: 600, fill: T.text });
   const bands: [number, number, Tier][] = [
     [0, WATCH_FLOOR, 'quiet'],
     [WATCH_FLOOR, KNOB_DEFAULT, 'watch'],
@@ -737,12 +762,14 @@ function scoring(T: Theme, ex: CveDetail): string {
   for (const [a, z, t] of bands) {
     const c = t === 'quiet' ? T.faintUi : T[t];
     b += rect(xs(a) + 1, sy, xs(z) - xs(a) - 2, bandH, 6, tint(T, c, T.name === 'dark' ? 0.2 : 0.16), mix(c, panel(T), 0.55));
-    b += text(xs(a) + 14, sy + 26, TIER_NAME[t], { size: 16, weight: 600, fill: t === 'quiet' ? T.muted : T.ink[t] });
+    b += text(xs(a) + (narrow ? 10 : 14), sy + 26, TIER_NAME[t], { size: narrow ? 15 : 16, weight: 600, fill: t === 'quiet' ? T.muted : T.ink[t] });
   }
   // exploited floor zone
-  b += `<defs><pattern id="hatch-${T.name}" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="8" fill="${T.exploited}" opacity="${T.name === 'dark' ? 0.5 : 0.35}"/></pattern></defs>`;
-  b += rect(xs(EXPLOITED_FLOOR), sy, xs(100) - xs(EXPLOITED_FLOOR) - 1, bandH, 6, `url(#hatch-${T.name})`, T.exploited);
-  b += text(xs(EXPLOITED_FLOOR) - 10, sy + 26, 'Exploited', { size: 16, weight: 600, fill: T.ink.exploited, anchor: 'end' });
+  b += `<defs><pattern id="${id}-hatch-${T.name}" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="8" fill="${T.exploited}" opacity="${T.name === 'dark' ? 0.5 : 0.35}"/></pattern></defs>`;
+  b += rect(xs(EXPLOITED_FLOOR), sy, xs(100) - xs(EXPLOITED_FLOOR) - 1, bandH, 6, `url(#${id}-hatch-${T.name})`, T.exploited);
+  // Wide: the label sits left of the hatch. Narrow: there is no room, so it sits above the hatch.
+  if (narrow) b += text(xs(100), sy - 10, `Exploited ${EXPLOITED_FLOOR}+`, { size: 15, weight: 600, fill: T.ink.exploited, anchor: 'end' });
+  else b += text(xs(EXPLOITED_FLOOR) - 10, sy + 26, 'Exploited', { size: 16, weight: 600, fill: T.ink.exploited, anchor: 'end' });
   // ticks
   for (const v of [0, WATCH_FLOOR, KNOB_DEFAULT, EXPLOITED_FLOOR, 100]) {
     b += `<line x1="${xs(v)}" y1="${sy + bandH + 4}" x2="${xs(v)}" y2="${sy + bandH + 10}" stroke="${T.faintUi}"/>`;
@@ -753,16 +780,26 @@ function scoring(T: Theme, ex: CveDetail): string {
   b += rect(xs(SITE_KNOB_MIN), sy - 14, xs(SITE_KNOB_MAX) - xs(SITE_KNOB_MIN), 6, 3, mix(T.accent, panel(T), 0.45));
   b += `<line x1="${kx}" y1="${sy - 20}" x2="${kx}" y2="${sy + bandH + 2}" stroke="${T.accent}" stroke-width="3" stroke-linecap="round"/>`;
   b += `<circle cx="${kx}" cy="${sy - 11}" r="7" fill="${T.accent}"/>`;
-  b += text(xs(SITE_KNOB_MAX) + 10, sy - 7, `evidence bar: site dial ${SITE_KNOB_MIN} to ${SITE_KNOB_MAX}, API and MCP ${KNOB_MIN} to ${KNOB_MAX}`, { size: 14, fill: T.muted });
+  const knobText = `evidence bar: site dial ${SITE_KNOB_MIN} to ${SITE_KNOB_MAX}, API and MCP ${KNOB_MIN} to ${KNOB_MAX}`;
+  let wy = sy + bandH + 66;
+  if (narrow) {
+    b += text(M, sy + bandH + 56, knobText.replace(/^e/, 'E'), { size: 14, fill: T.muted });
+    wy += 34;
+  } else b += text(xs(SITE_KNOB_MAX) + 10, sy - 7, knobText, { size: 14, fill: T.muted });
 
   // Worked example on the same scale
-  const wy = sy + bandH + 66;
   const pos = ex.reasons.filter((r) => r.points !== 0);
   const total = ex.score.value;
-  b += runs(48, wy, [
-    { s: ex.id, o: { size: 16, font: 'mono', weight: 600, fill: T.text } },
-    { s: `   ${ex.title ?? ''}`, o: { size: 16, fill: T.muted } },
-  ]);
+  const tierInk = T.ink[ex.score.tier as Tier];
+  if (narrow) {
+    b += text(M, wy, ex.id, { size: 16, font: 'mono', weight: 600, fill: T.text });
+    b += lines(M, wy + 22, wrap(ex.title ?? '', W - 2 * M, 15), 20, { size: 15, fill: T.muted });
+    wy += 22 + (wrap(ex.title ?? '', W - 2 * M, 15).length - 1) * 20;
+  } else
+    b += runs(M, wy, [
+      { s: ex.id, o: { size: 16, font: 'mono', weight: 600, fill: T.text } },
+      { s: `   ${ex.title ?? ''}`, o: { size: 16, fill: T.muted } },
+    ]);
   const by = wy + 16;
   const segs: { label: string; pts: number; color: string }[] = [{ label: 'base', pts: BASE_POINTS, color: T.faintUi }];
   const famColor: Record<string, string> = { X: T.likely, SEV: T.watch, SSVC: T.ai, PRIOR: T.ok, NOISE: T.faint, E: T.exploited };
@@ -774,19 +811,26 @@ function scoring(T: Theme, ex: CveDetail): string {
     const x = xs(cx);
     const w = xs(cx + s.pts) - x;
     b += rect(x + 1, by, w - 2, bh, 5, s.color, undefined, `opacity="${i === 0 ? 0.9 : 0.85}"`);
-    b += text(x + w / 2, by + 23, signed(s.pts).replace('+', i === 0 ? '' : '+'), { size: 15, font: 'mono', weight: 600, fill: T.name === 'dark' ? '#0a0b0d' : '#ffffff', anchor: 'middle' });
+    b += text(x + w / 2, by + 23, signed(s.pts).replace('+', i === 0 ? '' : '+'), { size: narrow ? 14 : 15, font: 'mono', weight: 600, fill: T.name === 'dark' ? '#0a0b0d' : '#ffffff', anchor: 'middle' });
     cx += s.pts;
   });
-  b += text(xs(cx) + 14, by + 24, `= ${total}`, { size: 22, font: 'mono', weight: 700, fill: T.ink[ex.score.tier as Tier] });
-  b += text(xs(cx) + 14 + measure(`= ${total}`, 22, 'mono', 700) + 12, by + 23, TIER_NAME[ex.score.tier as Tier], { size: 16, weight: 600, fill: T.ink[ex.score.tier as Tier] });
+  let ly: number;
+  if (narrow) {
+    b += text(xs(cx) + 10, by + 24, `= ${total}`, { size: 20, font: 'mono', weight: 700, fill: tierInk });
+    b += text(M, by + bh + 28, `${TIER_NAME[ex.score.tier as Tier]}: at or above the bar of ${KNOB_DEFAULT}`, { size: 15, weight: 600, fill: tierInk });
+    ly = by + bh + 28 + 34;
+  } else {
+    b += text(xs(cx) + 14, by + 24, `= ${total}`, { size: 22, font: 'mono', weight: 700, fill: tierInk });
+    b += text(xs(cx) + 14 + measure(`= ${total}`, 22, 'mono', 700) + 12, by + 23, TIER_NAME[ex.score.tier as Tier], { size: 16, weight: 600, fill: tierInk });
+    ly = by + bh + 32;
+  }
   // legend of the example's chips
-  let lx = 48;
-  let ly = by + bh + 32;
+  let lx = M;
   for (const s of segs.slice(1)) {
     const label = `${signed(s.pts)} ${s.label}`;
     const lw = measure(label, 14.5, 'sans', 400) + 34;
-    if (lx + lw > W - 48) {
-      lx = 48;
+    if (lx + lw > W - M) {
+      lx = M;
       ly += 30;
     }
     b += rect(lx, ly - 17, lw, 26, 6, tint(T, s.color, 0.12), mix(s.color, panel(T), 0.5));
@@ -796,7 +840,11 @@ function scoring(T: Theme, ex: CveDetail): string {
   }
   const zeroes = ex.reasons.filter((r) => r.points === 0).map((r) => r.label);
   ly += 34;
-  if (zeroes.length) b += lines(48, ly, wrap(`0 points, shown as context: ${zeroes.join(' · ')}`, W - 96, 14.5), 20, { size: 14.5, fill: T.faint });
+  if (zeroes.length) {
+    const zl = wrap(`0 points, shown as context: ${zeroes.join(' · ')}`, W - 2 * M, 14.5);
+    b += lines(M, ly, zl, 20, { size: 14.5, fill: T.faint });
+    ly += (zl.length - 1) * 20;
+  }
 
   // Tier rules
   const ty = ly + 50;
@@ -806,159 +854,343 @@ function scoring(T: Theme, ex: CveDetail): string {
     { t: 'watch', head: 'Keep an eye on it', body: `Score from ${WATCH_FLOOR} up to the bar.`, iconName: 'Eye' },
     { t: 'quiet', head: 'No evidence yet', body: `Below ${WATCH_FLOOR}. Quiet is not safe.`, iconName: 'Quiet' },
   ];
-  const tw = (W - 96 - 3 * 16) / 4;
-  const th = 136;
+  const tCols = narrow ? 2 : 4;
+  const tw = (W - 2 * M - (tCols - 1) * 16) / tCols;
+  const bodies = rules.map((r) => wrap(r.body, tw - 34, 14.5));
+  const th = narrow ? 80 + Math.max(...bodies.map((l) => l.length)) * 19 : 136;
   rules.forEach((r, i) => {
-    const x = 48 + i * (tw + 16);
+    const x = M + (i % tCols) * (tw + 16);
+    const y = ty + Math.floor(i / tCols) * (th + 16);
     const c = r.t === 'quiet' ? T.muted : T.ink[r.t];
-    b += rect(x, ty, tw, th, 12, tint(T, r.t === 'quiet' ? T.muted : T[r.t], T.name === 'dark' ? 0.1 : 0.07), mix(r.t === 'quiet' ? T.faintUi : T[r.t], panel(T), 0.4));
-    b += icon(r.iconName, x + 18, ty + 20, 18, c, 1.6);
-    b += text(x + 44, ty + 35, TIER_NAME[r.t], { size: 18, weight: 600, fill: c });
-    b += text(x + 18, ty + 64, r.head, { size: 15.5, weight: 600, fill: T.text });
-    b += lines(x + 18, ty + 88, wrap(r.body, tw - 34, 14.5), 19, { size: 14.5, fill: T.muted });
+    b += rect(x, y, tw, th, 12, tint(T, r.t === 'quiet' ? T.muted : T[r.t], T.name === 'dark' ? 0.1 : 0.07), mix(r.t === 'quiet' ? T.faintUi : T[r.t], panel(T), 0.4));
+    b += icon(r.iconName, x + 18, y + 20, 18, c, 1.6);
+    b += text(x + 44, y + 35, TIER_NAME[r.t], { size: 18, weight: 600, fill: c });
+    b += text(x + 18, y + 64, r.head, { size: 15.5, weight: 600, fill: T.text });
+    b += lines(x + 18, y + 88, bodies[i], 19, { size: 14.5, fill: T.muted });
   });
+  const tBottom = ty + Math.ceil(rules.length / tCols) * (th + 16) - 16;
 
-  const H = ty + th + 96;
-  b += footer(T, W, H, `Points from shared/model.ts (${SCORE_MODEL}). EPSS and "no exploit yet" wait ${COLD_START_DAYS} days. Example from the run of ${RUN}.`);
-  return svgDoc(W, H, 'How a CVErdict score adds up', '', frame(T, W, H, 'score') + b);
+  const H = tBottom + 96 + (narrow ? 10 : 0);
+  const foot = narrow ? `Points from shared/model.ts (${SCORE_MODEL}). Example from the run of ${RUN}.` : `Points from shared/model.ts (${SCORE_MODEL}). EPSS and "no exploit yet" wait ${COLD_START_DAYS} days. Example from the run of ${RUN}.`;
+  b += footer(T, W, H, foot, undefined, M);
+  return svgDoc(W, H, 'How a CVErdict score adds up', `A base of ${BASE_POINTS} plus five families of reason chips, the tiers on the 0 to 100 scale, and ${ex.id} worked through to ${total}.`, frame(T, W, H, id) + b);
 }
 
 // ------------------------------------------------------------------------------------------------
 // 5. Signal and noise: the last 30 days
 // ------------------------------------------------------------------------------------------------
 
-function waterfall(T: Theme, x0: number, y0: number, w: number, h: number, slotHours: number, opts: { labels?: boolean; axis?: boolean } = {}): string {
+/** Ticks per column are a square root of the count, as on the site, so a patch day does not flatten the rest. */
+const WF_PITCH = 3;
+const WF_SEG = 2;
+/** site/src/pulse.ts: the halo radius and how far apart two newly exploited columns share one ring. */
+const WF_HALO_R = 17;
+const WF_RING_R = 28;
+
+/**
+ * The site's spike labels (site/src/pages/Today.tsx annotationsFor): the biggest patch days merged
+ * per date, biggest first, at the day's busiest hour, e.g. "Oracle 1,076 + Chrome 353".
+ */
+function spikeLabels(): { at: number; text: string }[] {
+  const start = Date.parse(stats.hourly.start);
+  const byDate = new Map<string, BatchesFile['batches']>();
+  for (const bt of batches.batches) byDate.set(bt.date, [...(byDate.get(bt.date) ?? []), bt]);
+  return [...byDate.entries()]
+    .map(([date, list]) => ({ date, list: [...list].sort((a, b) => b.count - a.count), total: list.reduce((s, bt) => s + bt.count, 0) }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 4)
+    .map(({ date, list }) => {
+      const d0 = Date.parse(`${date}T00:00:00Z`);
+      let at = d0 + 12 * 3600e3;
+      let best = -1;
+      for (let hh = 0; hh < 24; hh++) {
+        const c = stats.hourly.counts[Math.floor((d0 + hh * 3600e3 - start) / 3600e3)];
+        if (!c) continue;
+        const sum = c[0] + c[1] + c[2] + c[3];
+        if (sum > best) {
+          best = sum;
+          at = d0 + hh * 3600e3;
+        }
+      }
+      const named = list.filter((bt) => bt.count >= 300).slice(0, 2);
+      return { at, text: (named.length ? named : list.slice(0, 1)).map((bt) => `${cnaName(bt.cna)} ${fmt(bt.count)}`).join(' + ') };
+    });
+}
+
+/**
+ * The signal waterfall as the site draws it (site/src/components/Waterfall.tsx): one column per
+ * time slot, LED-style ticks of 2 units every 3, height by the square root of the count, noise
+ * (Quiet, then Watch) at the bottom and the passed ticks (Likely next, then Exploited) lit on top
+ * with a glow. Columns holding a CVE newly exploited in the last 72 hours get the site's halo and
+ * ring. Each tier is one dashed path, which keeps the file small.
+ */
+function waterfall(T: Theme, x0: number, y0: number, w: number, h: number, opts: { labels?: number; axis?: boolean; id: string; glow?: number }): { svg: string; slotHours: number; fresh: number } {
   const hourly = stats.hourly;
   const start = Date.parse(hourly.start);
-  const cols: [number, number, number, number][] = [];
-  for (let i = 0; i < hourly.counts.length; i += slotHours) {
-    const s: [number, number, number, number] = [0, 0, 0, 0];
-    for (let j = i; j < Math.min(i + slotHours, hourly.counts.length); j++) for (let k = 0; k < 4; k++) s[k] += hourly.counts[j][k];
+  const per = Math.max(1, Math.ceil((hourly.counts.length * WF_PITCH) / w));
+  const cols: number[][] = [];
+  for (let i = 0; i < hourly.counts.length; i += per) {
+    const s = [0, 0, 0, 0];
+    for (let j = i; j < Math.min(i + per, hourly.counts.length); j++) for (let k = 0; k < 4; k++) s[k] += hourly.counts[j][k];
     cols.push(s);
   }
+  const freshHours = new Map<number, number>();
+  for (const [hour, n] of hourly.new_exploited ?? []) freshHours.set(hour, (freshHours.get(hour) ?? 0) + n);
+  const freshCol = cols.map((c, i) => {
+    let n = 0;
+    for (let hh = i * per; hh < (i + 1) * per; hh++) n += freshHours.get(hh) ?? 0;
+    return Math.min(n, c[0]);
+  });
   const totals = cols.map((c) => c[0] + c[1] + c[2] + c[3]);
-  const max = Math.max(...totals);
-  const pitch = w / cols.length;
-  const bw = Math.max(2, pitch * 0.62);
-  const scale = (n: number) => (h * n) / max;
-  // Columns holding a CVE that became Exploited in the last 72 hours ping, as on the site.
-  const pings = new Set((hourly.new_exploited ?? []).map(([hour]) => Math.floor(hour / slotHours)));
-  let b = '';
-  b += `<line x1="${x0}" y1="${y0 + h + 0.5}" x2="${x0 + w}" y2="${y0 + h + 0.5}" stroke="${T.border}"/>`;
+  const max = Math.max(1, ...totals);
+  const colW = w / cols.length;
+  const barW = Math.max(1, colW - (colW >= 3 ? 1 : 0.5));
+  const base = Math.round(y0 + h);
+  const paths: Record<'quiet' | 'watch' | 'likely' | 'exploited', string> = { quiet: '', watch: '', likely: '', exploited: '' };
+  const spots: { cx: number; cy: number; half: number }[] = [];
+  const tops: number[] = [];
   cols.forEach((c, i) => {
-    const x = x0 + i * pitch + (pitch - bw) / 2;
-    let y = y0 + h;
-    // bottom up: exploited, likely (lit), then watch, then quiet (noise)
-    const parts: [number, string, number][] = [
-      [c[0], T.exploited, 1],
-      [c[1], T.likely, 1],
-      [c[2], T.wfWatch, 1],
-      [c[3], T.name === 'dark' ? T.quiet : T.wfQuiet, 1],
-    ];
-    for (const [n, color, op] of parts) {
-      if (!n) continue;
-      const hh = Math.max(n && color !== T.wfQuiet && color !== T.wfWatch ? 2.5 : 0.5, scale(n));
-      y -= hh;
-      b += `<rect x="${r1(x)}" y="${r1(y)}" width="${r1(bw)}" height="${r1(hh)}" fill="${color}" opacity="${op}"/>`;
+    const total = totals[i];
+    tops.push(base);
+    if (total === 0) return;
+    const segs = Math.max(1, Math.round((h * Math.sqrt(total / max)) / WF_PITCH));
+    const e = c[0] > 0 ? Math.max(1, Math.round((segs * c[0]) / total)) : 0;
+    const l = c[1] > 0 ? Math.max(1, Math.round((segs * c[1]) / total)) : 0;
+    const rest = Math.max(0, segs - e - l);
+    const noise = c[2] + c[3];
+    const wt = c[2] > 0 && rest > 0 ? Math.max(1, Math.round((rest * c[2]) / Math.max(1, noise))) : 0;
+    const q = Math.max(0, rest - wt);
+    const cx = r1(x0 + i * colW + barW / 2);
+    let n = 0;
+    for (const [tier, k] of [['quiet', q], ['watch', wt], ['likely', l], ['exploited', e]] as const) {
+      // From the bottom of tick n up to the top of tick n + k - 1; the dashes start at the bottom.
+      if (k > 0) paths[tier] += `M${cx} ${base - WF_PITCH * n}v-${WF_PITCH * k - (WF_PITCH - WF_SEG)}`;
+      n += k;
     }
-    if (pings.has(i)) {
-      const cx = x + bw / 2;
-      b += `<circle cx="${r1(cx)}" cy="${r1(y0 + h - 2)}" r="9" fill="${T.exploited}" opacity="0.12"/><circle cx="${r1(cx)}" cy="${r1(y0 + h - 2)}" r="9" fill="none" stroke="${T.exploited}" stroke-width="1.3" opacity="0.7"/>`;
+    tops[i] = base - WF_PITCH * n;
+    const f = freshCol[i];
+    if (f > 0) {
+      // The newly exploited ticks are the top of the exploited stack (site/src/pulse.ts freshSegs).
+      const ef = f >= c[0] ? e : Math.max(1, Math.min(e - 1, Math.round((e * f) / c[0])));
+      const top = base - WF_PITCH * n;
+      const bottom = top + WF_PITCH * ef - (WF_PITCH - WF_SEG);
+      spots.push({ cx, cy: (top + bottom) / 2, half: (bottom - top) / 2 });
     }
   });
+  const glow = opts.glow ?? (T.name === 'dark' ? 3 : 2);
+  const dash = `stroke-width="${r1(barW)}" stroke-dasharray="${WF_SEG} ${WF_PITCH - WF_SEG}" fill="none"`;
+  let b = `<defs><filter id="${opts.id}-lit" x="-5%" y="-30%" width="110%" height="160%"><feGaussianBlur stdDeviation="${glow}" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+  b += `<radialGradient id="${opts.id}-halo"><stop offset="0" stop-color="${T.exploited}" stop-opacity="${T.name === 'dark' ? 0.5 : 0.32}"/><stop offset="0.3" stop-color="${T.exploited}" stop-opacity="${T.name === 'dark' ? 0.36 : 0.23}"/><stop offset="0.65" stop-color="${T.exploited}" stop-opacity="${T.name === 'dark' ? 0.14 : 0.09}"/><stop offset="1" stop-color="${T.exploited}" stop-opacity="0"/></radialGradient></defs>`;
+  b += `<rect x="${x0}" y="${base + 1}" width="${w}" height="1" fill="${T.border}"/>`;
+  // One ring per group of neighbouring columns, as the site draws them.
+  const rings: { cx: number; cy: number; half: number }[] = [];
+  for (const s of spots) {
+    const last = rings[rings.length - 1];
+    if (last && Math.abs(s.cx - last.cx) < WF_RING_R) {
+      const l = Math.min(last.cx - last.half, s.cx - s.half);
+      const r = Math.max(last.cx + last.half, s.cx + s.half);
+      last.cx = (l + r) / 2;
+      last.half = (r - l) / 2;
+    } else rings.push({ ...s });
+  }
+  for (const s of spots) b += `<circle cx="${r1(s.cx)}" cy="${r1(s.cy)}" r="${r1(WF_HALO_R + s.half)}" fill="url(#${opts.id}-halo)"/>`;
+  const noiseQuiet = T.wfQuiet;
+  b += `<path d="${paths.quiet}" stroke="${noiseQuiet}" ${dash}/>`;
+  b += `<path d="${paths.watch}" stroke="${T.wfWatch}" ${dash}/>`;
+  b += `<g filter="url(#${opts.id}-lit)"><path d="${paths.likely}" stroke="${T.likely}" ${dash}/><path d="${paths.exploited}" stroke="${T.exploited}" ${dash}/></g>`;
+  for (const s of rings) b += `<circle cx="${r1(s.cx)}" cy="${r1(s.cy)}" r="${r1(s.half + 10)}" fill="none" stroke="${T.exploited}" stroke-width="1.5" opacity="0.75"/>`;
+
   if (opts.labels) {
-    // The three biggest batches, labelled at their column like the site's spike labels.
-    const big = [...batches.batches].sort((a, b) => b.count - a.count).slice(0, 3);
-    for (const bt of big) {
-      const t = Date.parse(`${bt.date}T00:00:00Z`);
-      const from = Math.floor((t - start) / 3600e3 / slotHours);
-      const to = Math.floor((t + 86400e3 - start) / 3600e3 / slotHours);
-      let best = from;
-      for (let i = Math.max(0, from); i <= Math.min(cols.length - 1, to); i++) if (totals[i] > (totals[best] ?? -1)) best = i;
+    // The site's spike labels: one row above the plot, biggest first, a smaller one dropped on a collision.
+    const taken: [number, number][] = [];
+    let shown = 0;
+    for (const a of spikeLabels()) {
+      if (shown >= opts.labels) break;
+      const best = Math.floor((a.at - start) / 3600e3 / per);
       if (best < 0 || best >= cols.length) continue;
-      const cx = x0 + best * pitch + pitch / 2;
-      const top = y0 + h - scale(totals[best]);
-      const label = `${bt.cna === 'microsoft' ? 'Microsoft' : bt.cna === 'oracle' ? 'Oracle' : bt.cna} ${fmt(bt.count)}`;
-      const lw = measure(label, 13, 'mono', 500);
-      const lx = Math.min(x0 + w - lw, Math.max(x0, cx - lw / 2));
-      b += `<line x1="${r1(cx)}" y1="${r1(top - 6)}" x2="${r1(cx)}" y2="${r1(top - 16)}" stroke="${T.faintUi}"/>`;
-      b += text(lx, top - 22, label, { size: 13, font: 'mono', weight: 500, fill: T.muted });
+      const cx = x0 + best * colW + barW / 2;
+      const lw = measure(a.text, 13, 'mono', 400);
+      const clamp = (l: number) => Math.min(x0 + w - lw, Math.max(x0, l));
+      const hits = (l: number) => taken.some(([a, z]) => l < z + 10 && l + lw > a - 10);
+      // Centred on its column, or else just beside the label it would cover, if that stays near the column.
+      const tries = [clamp(cx - lw / 2), ...taken.flatMap(([a, z]) => [clamp(z + 12), clamp(a - 12 - lw)])];
+      const left = tries.find((l) => !hits(l) && Math.abs(l + lw / 2 - cx) <= lw);
+      if (left === undefined) continue;
+      taken.push([left, left + lw]);
+      shown++;
+      const ly = y0 - 14;
+      b += text(left, ly, a.text, { size: 13, font: 'mono', fill: T.muted });
+      b += `<line x1="${r1(left)}" y1="${ly + 4}" x2="${r1(left + lw)}" y2="${ly + 4}" stroke="${T.borderStrong}"/>`;
+      if (tops[best] - 5 > ly + 12) b += `<line x1="${r1(cx)}" y1="${ly + 9}" x2="${r1(cx)}" y2="${r1(tops[best] - 5)}" stroke="${T.border}" stroke-dasharray="2 3"/>`;
     }
   }
   if (opts.axis) {
-    for (let d = 0; d <= hourly.hours; d += 24) {
-      const t = start + d * 3600e3;
-      const dt = new Date(t);
-      if (dt.getUTCDay() !== 1) continue;
-      const x = x0 + (d / slotHours) * pitch;
-      b += `<line x1="${r1(x)}" y1="${y0 + h + 2}" x2="${r1(x)}" y2="${y0 + h + 8}" stroke="${T.faintUi}"/>`;
-      b += text(x, y0 + h + 26, day(new Date(t).toISOString(), false), { size: 13, font: 'mono', fill: T.faint, anchor: 'middle' });
+    const end = start + hourly.counts.length * 3600e3;
+    const xOf = (t: number) => x0 + ((t - start) / (end - start)) * w;
+    let lastEnd = -Infinity;
+    for (let t = Math.ceil(start / 86400e3) * 86400e3; t < end; t += 86400e3) {
+      const x = Math.round(xOf(t)) + 0.5;
+      const monday = new Date(t).getUTCDay() === 1;
+      b += `<line x1="${x}" y1="${base + 2}" x2="${x}" y2="${base + (monday ? 8 : 5)}" stroke="${T.border}"/>`;
+      if (monday) {
+        const label = day(new Date(t).toISOString(), false);
+        const lw = measure(label, 13, 'mono', 400);
+        const lx = Math.min(x0 + w - lw, Math.max(x0, x - lw / 2));
+        if (lx > lastEnd + 8) {
+          b += text(lx, base + 26, label, { size: 13, font: 'mono', fill: T.muted });
+          lastEnd = lx + lw;
+        }
+      }
     }
   }
-  return b;
+  return { svg: b, slotHours: per, fresh: freshCol.reduce((s, n) => s + n, 0) };
 }
 
-function signal(T: Theme): string {
-  const W = 1200;
+/** The site's waterfall legend: a short dash per tier, and the ring for newly exploited CVEs. */
+function legendItems(T: Theme, fresh: number): { label: string; ring: boolean; color: string }[] {
+  return [
+    { label: 'Exploited', ring: false, color: T.exploited },
+    { label: `New in 72h: ${fmt(fresh)}`, ring: true, color: T.exploited },
+    { label: 'Likely next', ring: false, color: T.likely },
+    { label: 'Watch', ring: false, color: T.wfWatch },
+    { label: 'Quiet', ring: false, color: T.wfQuiet },
+  ];
+}
+function legendKey(T: Theme, it: { label: string; ring: boolean; color: string }, x: number, y: number, size: number): string {
+  const key = it.ring
+    ? `<circle cx="${r1(x + 6)}" cy="${r1(y - size * 0.36)}" r="5" fill="none" stroke="${it.color}" stroke-width="1.5"/>`
+    : `<rect x="${r1(x)}" y="${r1(y - size * 0.36 - 1.5)}" width="12" height="3" rx="1.5" fill="${it.color}"/>`;
+  return key + text(x + 18, y, it.label, { size, fill: T.muted });
+}
+const LEGEND_GAP = 18;
+/** One row, ending at xRight. */
+function waterfallLegend(T: Theme, xRight: number, y: number, fresh: number, size = 14): string {
+  const items = legendItems(T, fresh);
+  const widths = items.map((it) => 18 + measure(it.label, size));
+  let x = xRight - widths.reduce((s, v) => s + v, 0) - LEGEND_GAP * (items.length - 1);
+  let b = '';
+  items.forEach((it, i) => {
+    b += legendKey(T, it, x, y, size);
+    x += widths[i] + LEGEND_GAP;
+  });
+  return b;
+}
+/** From the left, wrapped to maxW. Returns the svg and the height it adds below y. */
+function waterfallLegendRows(T: Theme, x0: number, y: number, fresh: number, maxW: number, size = 14): [string, number] {
+  let b = '';
+  let x = x0;
+  let yy = y;
+  for (const it of legendItems(T, fresh)) {
+    const w = 18 + measure(it.label, size);
+    if (x > x0 && x + w > x0 + maxW) {
+      x = x0;
+      yy += 24;
+    }
+    b += legendKey(T, it, x, yy, size);
+    x += w + LEGEND_GAP;
+  }
+  return [b, yy - y];
+}
+
+const TIER_ICON: Record<Tier, string> = { exploited: 'Flame', likely: 'Crosshair', watch: 'Eye', quiet: 'Quiet' };
+
+/**
+ * The hero: the last 30 days in numbers, the tier bar and the signal waterfall. `narrow` is the
+ * phone layout (540 wide), shown by <picture> below 600 px so the text stays readable there.
+ */
+function signal(T: Theme, narrow = false): string {
+  const W = narrow ? 540 : 1200;
+  const M = narrow ? 28 : 48;
+  const id = narrow ? 'sign' : 'sig';
   let b = '';
   const from = day(meta.window.from, false);
   const to = day(meta.window.to);
-  b += eyebrow(48, 64, `Last ${meta.window.days} days · ${from} to ${to}`, T.faint);
-  const big = 88;
-  const y = 158;
+  b += eyebrow(M, narrow ? 52 : 64, `Last ${meta.window.days} days · ${from} to ${to}`, T.faint, 'start', narrow ? 12 : 13);
+  const big = narrow ? 54 : 88;
+  const bigPass = narrow ? 72 : big + 18;
+  const y = narrow ? 126 : 158;
   const pub = fmt(C.window_published);
   const pass = fmt(C.window_passed);
-  const pw = measure(pub, big, 'sans', 600, -3);
-  b += text(48, y, pub, { size: big, weight: 600, fill: T.muted, ls: -3 });
-  b += icon('ArrowRight', 48 + pw + 22, y - 44, 34, T.faint, 1.5);
-  const sx = 48 + pw + 80;
-  b += `<defs><filter id="lime-${T.name}" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="14"/></filter></defs>`;
-  if (T.name === 'dark') b += text(sx, y, pass, { size: big + 18, weight: 700, fill: T.accent, ls: -3, opacity: 0.45 }).replace('<text ', `<text filter="url(#lime-${T.name})" `);
-  b += text(sx, y, pass, { size: big + 18, weight: 700, fill: T.accent, ls: -3 });
-  b += text(48, y + 34, 'new CVEs published', { size: 18, fill: T.muted });
-  b += text(sx, y + 34, 'worth your time', { size: 18, fill: T.text, weight: 500 });
+  const pw = measure(pub, big, 'sans', 600, narrow ? -2 : -3);
+  b += text(M, y, pub, { size: big, weight: 600, fill: T.muted, ls: narrow ? -2 : -3 });
+  const arrowS = narrow ? 24 : 34;
+  b += icon('ArrowRight', M + pw + (narrow ? 12 : 22), y - big / 2, arrowS, T.faint, 1.5);
+  const sx = M + pw + (narrow ? 48 : 80);
+  b += `<defs><filter id="${id}-lime" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="${narrow ? 10 : 14}"/></filter></defs>`;
+  if (T.name === 'dark') b += text(sx, y, pass, { size: bigPass, weight: 700, fill: T.accent, ls: -3, opacity: 0.45 }).replace('<text ', `<text filter="url(#${id}-lime)" `);
+  b += text(sx, y, pass, { size: bigPass, weight: 700, fill: T.accent, ls: -3 });
+  b += text(M, y + (narrow ? 28 : 34), 'new CVEs published', { size: narrow ? 16 : 18, fill: T.muted });
+  b += text(sx, y + (narrow ? 28 : 34), 'worth your time', { size: narrow ? 16 : 18, fill: T.text, weight: 500 });
   const ratio = Math.round(C.window_published / C.window_passed);
-  const rx = W - 48;
-  b += text(rx, y - 52, pct(C.window_passed, C.window_published), { size: 40, font: 'mono', weight: 600, fill: T.text, anchor: 'end' });
-  b += text(rx, y - 22, `of the flood, 1 in ${ratio}`, { size: 17, fill: T.muted, anchor: 'end' });
-  b += text(rx, y + 8, `Exploited or Likely next at ${KNOB_DEFAULT}`, { size: 15, fill: T.faint, anchor: 'end' });
+  let by: number;
+  if (narrow) {
+    const py = y + 74;
+    b += runs(M, py, [
+      { s: pct(C.window_passed, C.window_published), o: { size: 22, font: 'mono', weight: 600, fill: T.text } },
+      { s: ` of the flood, 1 in ${ratio}`, o: { size: 17, fill: T.muted } },
+    ]);
+    b += text(M, py + 24, `Exploited or Likely next at the evidence bar of ${KNOB_DEFAULT}`, { size: 14.5, fill: T.faint });
+    by = py + 50;
+  } else {
+    const rx = W - M;
+    b += text(rx, y - 52, pct(C.window_passed, C.window_published), { size: 40, font: 'mono', weight: 600, fill: T.text, anchor: 'end' });
+    b += text(rx, y - 22, `of the flood, 1 in ${ratio}`, { size: 17, fill: T.muted, anchor: 'end' });
+    b += text(rx, y + 8, `Exploited or Likely next at ${KNOB_DEFAULT}`, { size: 15, fill: T.faint, anchor: 'end' });
+    by = y + 70;
+  }
 
-  // Tier bar
-  const by = y + 70;
+  // Tier bar, and the site's tier row: icon, name, count.
   const tiers: Tier[] = ['exploited', 'likely', 'watch', 'quiet'];
   const counts = C.window_by_tier;
   const all = tiers.reduce((s, t) => s + counts[t], 0);
-  const bw = W - 96;
-  let x = 48;
+  const bw = W - 2 * M;
+  let x = M;
   tiers.forEach((t) => {
     const w = Math.max(6, (bw * counts[t]) / all);
     const c = t === 'quiet' ? T.wfQuiet : t === 'watch' ? T.watch : T[t];
     b += rect(x, by, w - 3, 12, 3, c, undefined, t === 'watch' ? 'opacity="0.75"' : '');
     x += w;
   });
-  let lx = 48;
-  tiers.forEach((t) => {
+  const ts = narrow ? 15.5 : 16;
+  const colW2 = (W - 2 * M) / 2;
+  let lx = M;
+  tiers.forEach((t, i) => {
     const label = TIER_NAME[t];
     const n = fmt(counts[t]);
     const c = t === 'quiet' ? T.muted : T.ink[t];
-    b += `<circle cx="${lx + 5}" cy="${by + 39}" r="5" fill="${t === 'quiet' ? T.faintUi : T[t]}"/>`;
-    b += runs(lx + 18, by + 44, [
-      { s: `${label} `, o: { size: 16, fill: c, weight: 500 } },
-      { s: n, o: { size: 16, font: 'mono', weight: 600, fill: T.text } },
+    const ly = narrow ? by + 44 + Math.floor(i / 2) * 28 : by + 44;
+    if (narrow) lx = M + (i % 2) * colW2;
+    b += icon(TIER_ICON[t], lx, ly - 13, 16, c, 1.6);
+    b += runs(lx + 24, ly, [
+      { s: `${label} `, o: { size: ts, fill: c, weight: 500 } },
+      { s: n, o: { size: ts, font: 'mono', weight: 600, fill: T.text } },
     ]);
-    lx += measure(`${label} `, 16, 'sans', 500) + measure(n, 16, 'mono', 600) + 46;
+    if (!narrow) lx += 24 + measure(`${label} `, ts, 'sans', 500) + measure(n, ts, 'mono', 600) + 40;
   });
 
-  // Waterfall
-  const wy = by + 110;
-  const wh = 290;
-  b += text(48, wy - 18, 'Signal waterfall', { size: 18, weight: 600, fill: T.text });
-  b += text(48 + measure('Signal waterfall', 18, 'sans', 600) + 14, wy - 18, 'every CVE of the window in 4-hour columns. Grey is noise; lit is what cleared the bar.', { size: 15, fill: T.muted });
-  b += waterfall(T, 48, wy + 26, W - 96, wh, 4, { labels: true, axis: true });
+  // Waterfall: title, the site's caption, the legend, then the chart.
+  const caption = (hours: number) => `Every CVE in the window, in ${hours}-hour slots. Lit ticks cleared the bar; amber is Watch and grey is Quiet, the noise.`;
+  const wh = narrow ? 150 : 200;
+  const plotW = W - 2 * M;
+  const probe = waterfall(T, M, 0, plotW, wh, { id });
+  let ty = narrow ? by + 44 + 28 + 58 : by + 104;
+  b += text(M, ty, 'Signal waterfall', { size: 18, weight: 600, fill: T.text });
+  if (!narrow) b += waterfallLegend(T, W - M, ty, probe.fresh);
+  const capLines = wrap(caption(probe.slotHours), plotW, narrow ? 14.5 : 15);
+  b += lines(M, ty + 26, capLines, 20, { size: narrow ? 14.5 : 15, fill: T.muted });
+  ty += 26 + (capLines.length - 1) * 20;
+  if (narrow) {
+    const [lg, lh] = waterfallLegendRows(T, M, ty + 28, probe.fresh, plotW);
+    b += lg;
+    ty += 28 + lh;
+  }
+  const wy = ty + (narrow ? 48 : 60);
+  const wf = waterfall(T, M, wy, plotW, wh, { id, labels: narrow ? 2 : 4, axis: true });
+  b += wf.svg;
 
-  const H = wy + 26 + wh + 40 + 80;
-  b += footer(T, W, H, `From meta.json and stats.json, run of ${RUN}.`);
-  return svgDoc(W, H, 'Signal and noise in the last 30 days', '', frame(T, W, H, 'sig') + b);
+  const H = wy + wh + 40 + 80;
+  b += footer(T, W, H, `From meta.json and stats.json, run of ${RUN}.`, undefined, M);
+  return svgDoc(W, H, 'Signal and noise in the last 30 days', `${fmt(C.window_published)} new CVEs in the last ${meta.window.days} days, ${fmt(C.window_passed)} worth your time, and the signal waterfall of the window.`, frame(T, W, H, id) + b);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1038,7 +1270,7 @@ function receiptsCard(T: Theme): string {
 
   const H = ly + lh + 98;
   b += footer(T, W, H, `receipts.json: backtest of ${day(bt.computed_at)} (${bt.score_model}), live record to ${stamp(fwd.last)}.`);
-  return svgDoc(W, H, 'CVErdict receipts', '', frame(T, W, H, 'rcpt') + b);
+  return svgDoc(W, H, 'CVErdict receipts', 'The hindsight backtest of CVErdict against CVSS 7 or more and EPSS 10% or more on recent KEV additions, and the live record since it started.', frame(T, W, H, 'rcpt') + b);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1080,7 +1312,7 @@ function surfaces(T: Theme): string {
   });
   const H = gy + 3 * (ch + gap) - gap + 96;
   b += footer(T, W, H, 'All of it reads the same open data branch, refreshed every hour.');
-  return svgDoc(W, H, 'CVErdict on the site', '', frame(T, W, H, 'surf') + b);
+  return svgDoc(W, H, 'CVErdict on the site', 'The twelve pages of cverdict.dev, each with its route and what it shows.', frame(T, W, H, 'surf') + b);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1103,7 +1335,7 @@ function socialPreview(): string {
     b += text(x + 28, 424, TIER_NAME[t], { size: 24, fill: T.text });
     x += 28 + measure(TIER_NAME[t], 24) + 40;
   }
-  b += waterfall(T, 80, 470, W - 160, 110, 6);
+  b += waterfall(T, 80, 466, W - 160, 114, { id: 'og' }).svg;
   b += text(W - 80, 140 - 26, BRAND.siteUrl.replace('https://', ''), { size: 26, font: 'mono', weight: 500, fill: T.muted, anchor: 'end' });
   return svgDoc(W, H, 'CVErdict social preview', 'CVErdict: every CVE gets a verdict, every verdict comes with receipts.', b);
 }
@@ -1124,7 +1356,9 @@ for (const T of THEMES) {
   write(`how-it-works-${T.name}.svg`, howItWorks(T));
   write(`architecture-${T.name}.svg`, architecture(T));
   write(`scoring-${T.name}.svg`, scoring(T, ex));
+  write(`scoring-narrow-${T.name}.svg`, scoring(T, ex, true));
   write(`signal-${T.name}.svg`, signal(T));
+  write(`signal-narrow-${T.name}.svg`, signal(T, true));
   write(`receipts-${T.name}.svg`, receiptsCard(T));
   write(`surfaces-${T.name}.svg`, surfaces(T));
 }

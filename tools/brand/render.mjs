@@ -43,8 +43,10 @@ if (preview) {
   const github = { dark: '#0d1117', light: '#ffffff' };
   for (const f of readdirSync(ASSETS).filter((n) => n.endsWith('.svg'))) {
     const theme = f.includes('-light') ? 'light' : 'dark';
-    // 880 px is about the width of a README on github.com.
-    await shot(f, join(preview, f.replace(/\.svg$/, '.png')), { scale: 2, bg: github[theme], width: f.startsWith('logo') ? 440 : 880 });
+    // 880 px is about the width of a README on github.com; the narrow variants are for phones,
+    // where the README is about 358 px wide.
+    const narrow = f.includes('-narrow-');
+    await shot(f, join(preview, f.replace(/\.svg$/, '.png')), { scale: narrow ? 3 : 2, bg: github[theme], width: narrow ? 358 : f.startsWith('logo') ? 440 : 880 });
   }
   console.log(`previews in ${preview}`);
 }

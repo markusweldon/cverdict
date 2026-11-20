@@ -14,10 +14,10 @@ Open-source CVE triage for the 2026 flood: the few CVEs that matter today, and e
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)
 [![refresh-data](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml)
 [![npm: cverdict-mcp](https://img.shields.io/npm/v/cverdict-mcp?label=npm%3A%20cverdict-mcp&color=c6f432&labelColor=111317)](https://www.npmjs.com/package/cverdict-mcp)
-[![code: MIT](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
-[![scores: CC0](https://img.shields.io/badge/scores-CC0-brightgreen)](#license)
+[![code: MIT](https://img.shields.io/badge/code-MIT-c6f432?labelColor=111317)](LICENSE)
+[![scores: CC0](https://img.shields.io/badge/scores-CC0-c6f432?labelColor=111317)](#license)
 
-[**Live site**](https://cverdict.dev) · [How it works](#how-it-works) · [Scoring](#how-scoring-works) · [Receipts](#receipts) · [MCP](#ask-from-an-ai-agent-mcp) · [Open data API](#open-data-api) · [Deploy your own](#deploy-your-own)
+[**Live site**](https://cverdict.dev) · [Use it](#use-it) · [How it works](#how-it-works) · [Scoring](#how-scoring-works) · [Receipts](#receipts) · [MCP](#ask-from-an-ai-agent-mcp) · [Open data API](#open-data-api) · [Deploy your own](#deploy-your-own)
 
 </div>
 
@@ -34,8 +34,10 @@ gives you your own copy.
 <br>
 
 <picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/signal-narrow-dark.svg">
+  <source media="(max-width: 600px)" srcset="docs/assets/signal-narrow-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/signal-dark.svg">
-  <img alt="The last 30 days, Oct 21 to Nov 20, 2026: 16,612 new CVEs published, 428 worth your time. That is 2.6% of the flood, 1 in 39, Exploited or Likely next at the default evidence bar of 50. By tier: 27 Exploited, 401 Likely next, 2,874 Watch and 13,310 Quiet. Below, the signal waterfall puts every CVE of the window in 4-hour columns: grey columns are noise, the lit red and orange ticks at their base are the CVEs that cleared the bar. Patch days stand out as spikes: Microsoft 1,094 on Nov 10, VulnCheck 389 and Oracle 578." src="docs/assets/signal-light.svg" width="100%">
+  <img alt="The last 30 days, Oct 21 to Nov 20, 2026: 16,612 new CVEs published, 428 worth your time. That is 2.6% of the flood, 1 in 39, Exploited or Likely next at the default evidence bar of 50. By tier: 27 Exploited, 401 Likely next, 2,874 Watch and 13,310 Quiet. Below, the signal waterfall as the site draws it: every CVE of the window in 2-hour slots, one column of small ticks per slot, taller for busier slots. Quiet ticks are grey and Watch ticks amber at the bottom of each column; the lit red and orange ticks on top are the Exploited and Likely next CVEs that cleared the bar. A red ring marks the 1 CVE newly exploited in the last 72 hours, near Nov 19. Patch days stand out as spikes, labelled Microsoft 1,094 on Nov 10, VulnCheck 389 on Nov 13 and Oracle 578 on Nov 17." src="docs/assets/signal-light.svg" width="100%">
 </picture>
 
 **Thousands in, a few hundred out.** The rest is not hidden: every CVE keeps its score, its tier and its reasons.
@@ -47,9 +49,18 @@ gives you your own copy.
 <sub>The Today page with the data of Nov 20, 2026 16:47 UTC, recorded from the production build with
 <a href="tools/brand/screens.mjs"><code>tools/brand/screens.mjs</code></a>. The evidence bar re-tiers the page live and the URL remembers it.</sub>
 
+## Use it
+
+| Where | How |
+|---|---|
+| **In the browser** | Open [cverdict.dev](https://cverdict.dev). No account, no cookies. |
+| **From an AI agent** | `claude mcp add cverdict -- npx -y cverdict-mcp` ([other clients](mcp/README.md)) |
+| **As JSON** | `curl -s https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/meta.json` ([every file](#open-data-api)) |
+| **Your own copy** | Fork it and deploy to Vercel or GitHub Pages ([how](#deploy-your-own)) |
+
 ## Why
 
-| | |
+| Number | What it means |
 |--:|:--|
 | **101.8k** | CVEs published in 2026 through Nov 20: more than all of 2025 (48.2k) twice over[^ours] |
 | **4,302 → 17,050** | CVEs per month, January → October 2026[^ours] |
@@ -99,6 +110,8 @@ in, so a bad run publishes nothing.
 ## How scoring works
 
 <picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/scoring-narrow-dark.svg">
+  <source media="(max-width: 600px)" srcset="docs/assets/scoring-narrow-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/scoring-dark.svg">
   <img alt="How a CVErdict score adds up. The score is a base of 15 plus five families: Exploits (exploit code, templates and EPSS) from minus 14 to plus 34, Severity (CVSS from the CNA or CISA) from minus 13 to plus 13, CISA SSVC (automatable, technical impact) from minus 8 to plus 14, KEV history (vendor or product exploited before) from minus 6 to plus 10, and Noise (tutorial code, disputed, WordPress) from minus 20 to 0. Confirmed exploitation adds 75 and floors the score at 90: CISA KEV, EU KEV, CIRCL, SSVC active or the vendor. On the 0 to 100 scale, at the default evidence bar of 50: Quiet below 25, Watch from 25 to 50, Likely next from 50, and Exploited from 90. The bar can be moved from 35 to 65 on the site and from 30 to 80 in the API and MCP server. Worked example, CVE-2026-119958, a Windows LDAP remote code execution vulnerability: base 15, plus 20 for two PoC repos (one vetted), plus 13 for Critical 9.8 network, plus 8 for CISA SSVC total technical impact, plus 6 for automatable, plus 8 for Vendor in KEV (Microsoft, 391 times) equals 70, Likely next. Its patch-day membership and its EPSS of 1.3% on day 9 count 0 points. The tier rules: Exploited means patch now, on any confirmed exploitation chip; Likely next means patch within days, for a score at or above the bar, or a Metasploit module or Nuclei template, which always passes; Watch means keep an eye on it, for a score from 25 up to the bar; Quiet means no evidence yet, below 25, and Quiet is not safe." src="docs/assets/scoring-light.svg" width="100%">
 </picture>
@@ -157,7 +170,7 @@ or `AI-credited: “Claude Security”`, and unknowns such as `Too new: day 9 of
 
 Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing,
 CISA's SSVC *active* and its EPSS score) and re-score the 272 CVEs added to KEV in 2026 up to the
-run of Oct 26, 2026: **74%** still land in Exploited or Likely next, while only **2.3%** of new CVEs do. Treat that as an upper
+run of Oct 26, 2026: **74%** still land in Exploited or Likely next, while only **2.3%** of new CVEs did on that run. Treat that as an upper
 bound, since the evidence was collected after the fact. `npm run calibrate` reproduces it.
 
 The full methodology, every chip with its points, the calibration and the known blind spots are in
@@ -170,7 +183,7 @@ The full methodology, every chip with its points, the calibration and the known 
   <img alt="Receipts, a hindsight backtest: flagged before CISA listed it in KEV. 134 CVEs CISA added to KEV from May 22 to Nov 18, 2026, scored with only the evidence dated before each listing, next to two common rules. KEV CVEs caught before the listing, of 134: CVErdict 58 (43%), CVSS 7 or more 77 (57%), EPSS 10% or more 18 (13%). Alert volume, the share of all 74,348 CVEs scored: CVErdict 1,911 (2.6%), CVSS 7 or more 39,437 (53.0%), EPSS 10% or more 127 (0.17%). Below, the live record since Nov 3, 2026, 465 runs: of 15 KEV listings, CVErdict flagged 5 before CISA, a median of 5 days early; CVSS 7 flagged 11 and EPSS 10% flagged 0. From receipts.json: backtest of Nov 18, 2026 (score model v0.2.0), live record to Nov 20, 2026 16:47 UTC." src="docs/assets/receipts-light.svg" width="100%">
 </picture>
 
-**Catch most of what CVSS 7 catches, with a twentieth of the alerts.** CVSS 7 or more flags about half of all new CVEs; CVErdict flags 2.6%.
+**In the hindsight backtest, CVErdict catches three quarters of what CVSS 7 catches, with a twentieth of the alerts:** 58 of 134 against 77, while flagging 2.6% of new CVEs against 53.0%. The live record is still small: 5 of 15 listings flagged early so far, against 11 for CVSS 7.
 
 The [Receipts page](https://cverdict.dev/receipts) holds the stricter tests. A live record notes,
 to the minute, when each method first flags a CVE and whether that came before CISA listed it; the
@@ -205,34 +218,19 @@ all new CVEs against CVErdict's 2.6%. The Receipts page always shows the latest 
 
 <sub>Screenshots of the production build with the data of Nov 20, 2026 16:47 UTC, dark theme. The site also has a light theme.</sub>
 
-- **Today**: the noise meter (every CVE of the last 30 days → the few worth your time), a signal
-  waterfall of the whole window, each column an hour or more (click a column to see that day's CVEs in Explore, or
-  a spike label to open its patch-day batch), the evidence bar, the signal feed with filters and a vendor
-  watchlist, patch-day batch cards, the KEV due-date clock, old CVEs that woke up in the last 7 days and
-  what changed since the last run.
-- **CVE pages**: a one-line verdict, the score arithmetic chip by chip, what we could *not* see,
-  an evidence timeline, the facts (CVSS vector, SSVC, EPSS, KEV, affected products) and
-  "Copy as ticket". A CVE link shared in Slack, X, LinkedIn, Mastodon, Discord or a messenger
-  shows its verdict and score in the preview, with an image for its tier.
-- **Woke Up**: CVEs published more than 30 days ago that gained exploitation evidence in the last
-  30 days: a CISA KEV listing, an EPSS jump, or their first public exploit of any kind (an
-  Exploit-DB entry, Metasploit module, Nuclei template, or a PoC repo on GitHub that is at least
-  3 days old or has 2 stars; the code is not checked). The 30-day views cannot see them, yet many
-  KEV additions are years old. Each one shows the dated evidence and a link to check it.
-- **Receipts**: how often CVErdict flagged a CVE before CISA added it to KEV, next to "CVSS 7 or
-  more" and "EPSS 10% or more", with lead times, alert volume and every hit and miss. The live
-  record notes each run, to the minute, from the day it started; a backtest of the last 180 days
-  is shown apart and marked as hindsight.
-- **Check Deps**: drop an SBOM (CycloneDX, SPDX or a list of package URLs) or a lockfile (npm, yarn,
-  pnpm, pip, Poetry, uv, Pipenv, Go, Cargo, Bundler, Composer, NuGet or Gradle) and see which of
-  the CVEs CVErdict tracks affect your package versions, grouped by verdict, each with the advisory,
-  its affected range and the fixed version. The file is read in your browser and never uploaded:
-  the page downloads one public file, the same for everyone. It knows only the tracked CVEs, so it
-  is not a full audit.
-- **KEV Clock**, **Batches**, **Explore** (every window CVE, searchable, filterable by publish
-  day), **The Surge** (monthly volume since 1999), **Method**, **Feeds & API** (Atom and iCalendar
-  feeds and the JSON files) and **MCP** (how to add the MCP server to an AI agent, and its tools).
-- Keyboard first: `j`/`k`, `/`, `⌘K`, `?`. No account, no tracking, no cookies.
+What the card leaves out:
+
+- **Today**: click a waterfall column to see that day's CVEs in Explore, or a spike label to open
+  its patch-day batch. The feed has filters and a vendor watchlist.
+- **CVE pages**: a link shared in Slack, X, LinkedIn, Mastodon, Discord or a messenger shows the
+  verdict and score in its preview.
+- **Woke Up** counts a CISA KEV listing, an EPSS jump or a first public exploit: an Exploit-DB
+  entry, Metasploit module, Nuclei template, or a GitHub PoC repo at least 3 days old or with 2
+  stars (the code is not checked).
+- **Check Deps** reads CycloneDX, SPDX, package URL lists and npm, yarn, pnpm, pip, Poetry, uv,
+  Pipenv, Go, Cargo, Bundler, Composer, NuGet and Gradle lockfiles. It knows only the tracked CVEs,
+  so it is not a full audit.
+- **Keys**: `j`/`k`, `/`, `Ctrl K`, `?`.
 
 ## Data sources
 
@@ -253,9 +251,8 @@ Only free, public data. Nothing from NVD.
 | [PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub) | Public proof-of-concept repositories per CVE | hourly | CC0-1.0 |
 | [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions affected by the tracked CVEs, for the Check Deps page only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
 
-If a source is down, the last good copy is used and marked stale on the site; one failing feed
-never stops a run. With no copy at all, that source's evidence is shown as unknown, not as absent.
-Details and required notices: [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+What happens when a source is down is under [How it works](#how-it-works). Details and required
+notices: [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
 
 ## Open data API
 

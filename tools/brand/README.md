@@ -32,6 +32,14 @@ used.
 - **Both GitHub themes.** Every diagram comes in a dark and a light version, shown with `<picture>`
   and `prefers-color-scheme`, so it sits on the page in the reader's theme, as the site does. The
   screenshots and the GIF show the dark theme, the site's default.
+- **Phones too.** The hero (`signal-*`) and the scoring card also come in a 540-wide
+  `*-narrow-*` version that `<picture>` shows below 600 px, so their text stays readable on
+  GitHub's mobile layout. The other diagrams scale down; their alt text carries every number.
+- **The site's waterfall.** The waterfall in `signal-*` and the social preview is drawn the way
+  `site/src/components/Waterfall.tsx` draws it: 2-hour slots, ticks by the square root of the
+  count, lit ticks on top, and the ring for CVEs newly exploited in the last 72 hours.
+- **One screenshot shape.** Every still is cropped to 1216 by 684 CSS px (16:9, 2x) below the
+  site header, starting at the part of the page that matters.
 - **Safe on GitHub.** No scripts, no external references, no `foreignObject`. The fonts are embedded
   as data URIs, so the text looks the same in GitHub's image sandbox as on the site.
 - **Plain copy.** Short sentences, no em dashes. Each image has full alt text in the README that
