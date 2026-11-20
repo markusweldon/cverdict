@@ -30,7 +30,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
 | `v1/packages.json` | `PackagesFile` | Package versions affected by the CVEs that have a detail shard (window, KEV, EU KEV or CIRCL exploited, woke up), from OSV.dev advisories, with each CVE's row | ~120 KB |
-| `v1/state.json` | — | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
+| `v1/state.json` | none | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
 | `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
@@ -103,7 +103,7 @@ Exploited when `x`; else Likely next when `w` or `s ≥ knob`; else Watch when `
 
 | Field | Meaning |
 |---|---|
-| `score_model` | Version of the scoring model (`shared/model.ts`), e.g. `v0.1.0` |
+| `score_model` | Version of the scoring model (`shared/model.ts`), e.g. `v0.2.0` |
 | `knob_default` | Evidence bar used for every stored `tier` (default 50) |
 | `window` | `{ from, to, days }` of the window |
 | `counts` | Headline numbers, below |
@@ -506,7 +506,7 @@ starts that state fresh. Its size is budgeted like every other file.
 - `feeds/kev-due.ics`: iCalendar with one all-day event per KEV due date, from 7 days ago to 60
   days ahead. Event UIDs are stable per CVE, so calendar apps update events instead of duplicating them.
 - `feeds/woke.xml`: Atom, up to 100 CVEs from `woke.json`, newest wake first. Every CVE with a
-  `kev` or `exploitdb` signal is kept before the cap; the rest fill it newest first. A CVE whose
+  `kev`, `catalog` or `exploitdb` signal is kept before the cap; the rest fill it newest first. A CVE whose
   only signal is `poc` is left out unless its tier is Exploited or Likely next. One entry per CVE
   with a stable id; a later signal updates the entry. Titles are `CVE-… · <vendor> <product> · woke up: <newest signal>`.
 

@@ -81,7 +81,7 @@ export default function Feeds() {
         <ul class="endpoints">
           <UrlRow url={`${feeds}signal.xml`} label="Signal (Atom)" note="The newest 100 Exploited and Likely-next CVEs." icon={<IconRss size={16} />} />
           <UrlRow url={`${feeds}kev.xml`} label="KEV additions (Atom)" note="CISA KEV entries added in the last 30 days." icon={<IconRss size={16} />} />
-          <UrlRow url={`${feeds}woke.xml`} label="Woke Up (Atom)" note="Up to 100 old CVEs that gained exploitation evidence in the last 30 days, newest first. KEV listings and Exploit-DB entries always make it in. A PoC repo alone counts only when the CVE is Likely next or Exploited." icon={<IconRss size={16} />} />
+          <UrlRow url={`${feeds}woke.xml`} label="Woke Up (Atom)" note="Up to 100 old CVEs that gained exploitation evidence in the last 30 days, newest first. CISA KEV, EU KEV and CIRCL listings and Exploit-DB entries always make it in. A PoC repo alone counts only when the CVE is Likely next or Exploited." icon={<IconRss size={16} />} />
           <UrlRow url={`${feeds}kev-due.ics`} label="KEV due dates (iCalendar)" note="One all-day event per deadline, from a week ago to 60 days out. Subscribe from any calendar app." icon={<IconCalendar size={16} />} />
         </ul>
       </section>
