@@ -995,8 +995,8 @@ a.chip:hover {
   background: var(--wf-watch);
 }
 
-/* Newly exploited in 72h: breathes like the chart's new ticks (same period), still when motion
-   is off. Only the opacity of an overlay animates, so the compositor does the work. */
+/* Newly exploited in 72h: pings like the chart's new ticks (same period), still when motion
+   is off. Only opacity and transform animate, so the compositor does the work. */
 .wf__key--new {
   position: relative;
   background: var(--exploited);
@@ -1020,18 +1020,52 @@ a.chip:hover {
   }
 }
 
+/* The legend swatch's own ring: drawn at full size and scaled up from a quarter, so the 1px line
+   ends thin, and gone before the next beat. Kept to the legend, not the tooltip key. */
+.legend__item--new .wf__key--new::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 1px solid var(--exploited);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.25);
+  pointer-events: none;
+  animation: wf-ping 2.8s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+}
+
+@keyframes wf-ping {
+  0% {
+    opacity: 0;
+    transform: scale(0.25);
+  }
+  8% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
 /* None new (or still loading): a dim, still swatch. */
 .legend__item--new.is-none .wf__key--new {
   opacity: 0.4;
   box-shadow: none;
 }
 
-.legend__item--new.is-none .wf__key--new::after {
+.legend__item--new.is-none .wf__key--new::after,
+.legend__item--new.is-none .wf__key--new::before {
   animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wf__key--new::after {
+  .wf__key--new::after,
+  .legend__item--new .wf__key--new::before {
     animation: none;
   }
 }

@@ -14,7 +14,7 @@ import { binDay, binRange, binsOf, dayStart, dayTotal, hoursPerBin, placeLabels,
 import type { HourCounts } from '../filters';
 import { fmtDate, fmtInt, HOUR_MS, DAY_MS, plural } from '../format';
 import { prefersReducedMotion } from '../hooks';
-import { freshPerBin, freshSegs, haloSpots, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulseRegions, type Rect, type Rgb, type Rgba, type Spot, type Tick } from '../pulse';
+import { freshPerBin, freshSegs, haloSpots, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulsePhase, pulseRegions, RING_W, ringAt, type Rect, type Rgb, type Rgba, type Ring, type Spot, type Tick } from '../pulse';
 import { navigate } from '../router';
 import { theme, useStore } from '../state';
 import { TIER_META } from '../tiers';
@@ -79,6 +79,7 @@ function readColors(el: Element) {
     cross: v('--faint-ui'),
     pulse: v('--wf-pulse'),
     halo: v('--wf-pulse-halo'),
+    ping: v('--wf-ping'),
     mono: v('--font-mono') || 'monospace',
   };
 }
@@ -96,16 +97,23 @@ interface Frame {
   to: Rgb;
   /** Halo colour and its opacity at the peak. */
   halo: Rgba;
+  /** Ring colour and its opacity as it leaves the ticks. */
+  ping: Rgba;
   cross: { x: number; y: number; h: number; color: string } | null;
 }
 
+/** The halo level and the ring for a time since the pulse started. */
+const beat = (ms: number): [number, Ring] => [pulseLevel(ms), ringAt(pulsePhase(ms))];
+const TROUGH: [number, Ring] = [0, ringAt(0)];
+
 /**
- * Repaint only the regions around the newly exploited ticks: the cached static pixels first, then (above
- * the trough) a soft halo slid in behind everything already drawn, so no neighbouring tick changes
- * colour, then those ticks again in the peak red, then the crosshair if any.
- * Level 0 leaves exactly the static chart.
+ * Repaint only the regions around the newly exploited ticks: the cached static pixels first, over
+ * the whole region, so a ring from the last frame never leaves a trail. Then (above the trough) a
+ * soft halo slid in behind everything already drawn, so no neighbouring tick changes colour, the
+ * thin ring on top, those ticks again in the peak red, and the crosshair if any.
+ * The trough (level 0, no ring) leaves exactly the static chart.
  */
-function paintPulse(cv: HTMLCanvasElement, f: Frame, level: number) {
+function paintPulse(cv: HTMLCanvasElement, f: Frame, [level, ring]: [number, Ring]) {
   const ctx = cv.getContext('2d');
   if (!ctx) return;
   const d = f.dpr;
@@ -132,12 +140,27 @@ function paintPulse(cv: HTMLCanvasElement, f: Frame, level: number) {
     for (const s of f.spots) {
       const grad = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r);
       grad.addColorStop(0, rgba(1));
-      grad.addColorStop(0.4, rgba(0.6));
+      grad.addColorStop(0.3, rgba(0.72));
+      grad.addColorStop(0.65, rgba(0.28));
       grad.addColorStop(1, rgba(0));
       ctx.fillStyle = grad;
       ctx.fillRect(s.cx - s.r, s.cy - s.r, s.r * 2, s.r * 2);
     }
     ctx.globalCompositeOperation = 'source-over';
+  }
+  if (ring.a > 0) {
+    const [r, g, b, a] = f.ping;
+    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${(a * ring.a).toFixed(3)})`;
+    ctx.lineWidth = RING_W;
+    ctx.beginPath();
+    for (const s of f.spots) {
+      const rr = s.half + ring.r;
+      ctx.moveTo(s.cx + rr, s.cy);
+      ctx.arc(s.cx, s.cy, rr, 0, 2 * Math.PI);
+    }
+    ctx.stroke();
+  }
+  if (level > 0 || ring.a > 0) {
     ctx.fillStyle = mixColor(f.from, f.to, level);
     for (const t of f.ticks) ctx.fillRect(t.x, t.y, f.barW, SEG);
   }
@@ -336,13 +359,14 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     const from = parseColor(col.exploited);
     const to = parseColor(col.pulse);
     const halo = parseRgba(col.halo);
-    if (progress >= 1 && hot.length > 0 && from && to && halo) {
+    const ping = parseRgba(col.ping);
+    if (progress >= 1 && hot.length > 0 && from && to && halo && ping) {
       const prev = frame.current?.cache;
       const cache = prev ?? document.createElement('canvas');
       cache.width = cv.width;
       cache.height = cv.height;
       cache.getContext('2d')?.drawImage(cv, 0, 0);
-      frame.current = { cache, dpr, ticks: hot, regions: pulseRegions(hot, barW, SEG, width, height, dpr), spots: haloSpots(hot, barW, SEG), barW, from, to, halo, cross };
+      frame.current = { cache, dpr, ticks: hot, regions: pulseRegions(hot, barW, SEG, width, height, dpr), spots: haloSpots(hot, barW, SEG), barW, from, to, halo, ping, cross };
     } else frame.current = null;
 
     if (cross) {
@@ -352,7 +376,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     pulseSync.current?.();
   }, [bins, freshBins, width, height, marked, progress, mode, counts.length, start, dpr]);
 
-  // Newly exploited ticks breathe: slowly, all together, only while the chart is on screen in a visible
+  // Newly exploited ticks ping: slowly, all together, only while the chart is on screen in a visible
   // tab and motion is welcome. A timer paints about 20 frames a second into small regions only.
   const grown = progress >= 1;
   useEffect(() => {
@@ -368,12 +392,12 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       if (!running) return;
       running = false;
       clearTimeout(timer);
-      if (frame.current) paintPulse(cv, frame.current, 0);
+      if (frame.current) paintPulse(cv, frame.current, TROUGH);
     };
     const step = () => {
       const f = frame.current;
       if (!running || !f) return;
-      paintPulse(cv, f, pulseLevel(performance.now() - t0));
+      paintPulse(cv, f, beat(performance.now() - t0));
       timer = window.setTimeout(step, PULSE_FRAME_MS);
     };
     const sync = () => {
@@ -385,7 +409,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
         timer = window.setTimeout(step, PULSE_FRAME_MS);
       } else if (!go) stop();
       // A static redraw while running shows the trough: put the current level straight back.
-      else if (frame.current) paintPulse(cv, frame.current, pulseLevel(performance.now() - t0));
+      else if (frame.current) paintPulse(cv, frame.current, beat(performance.now() - t0));
     };
     const io = new IntersectionObserver(([entry]) => {
       onScreen = entry.isIntersecting;

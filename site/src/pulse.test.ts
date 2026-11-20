@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { freshPerBin, freshSegs, HALO_R, haloSpots, mixColor, newLegend, parseColor, parseRgba, PULSE_PAD, PULSE_PERIOD_MS, pulseLevel, pulseRegions } from './pulse';
+import { freshPerBin, freshSegs, HALO_R, haloSpots, mixColor, newLegend, parseColor, parseRgba, PULSE_PAD, PULSE_PERIOD_MS, pulseLevel, pulsePhase, pulseRegions, RING_R, RING_R0, RING_W, ringAt } from './pulse';
 
 describe('pulseLevel', () => {
   it('is 0 at the trough, so a paused chart is the static one', () => {
@@ -38,6 +38,62 @@ describe('pulseLevel', () => {
     expect(pulseLevel(Number.NaN)).toBe(0);
     expect(pulseLevel(100, 0)).toBe(0);
     expect(pulseLevel(-PULSE_PERIOD_MS / 2)).toBeCloseTo(1, 12);
+  });
+});
+
+describe('ringAt', () => {
+  const at = (k: number) => ringAt(pulsePhase(k * PULSE_PERIOD_MS));
+
+  it('has no ring at the trough, so a paused or reduced-motion chart is the static one', () => {
+    expect(ringAt(0).a).toBe(0);
+    expect(at(0).a).toBe(0);
+    expect(at(1).a).toBe(0);
+    expect(at(5).a).toBe(0);
+    expect(ringAt(1).a).toBe(0);
+    expect(ringAt(Number.NaN).a).toBe(0);
+    expect(pulsePhase(Number.NaN)).toBe(0);
+  });
+
+  it('starts at the tick as the beat rises and widens to about 28 px, slowing as it goes', () => {
+    expect(at(0.001).r - RING_R0).toBeLessThan(0.1);
+    expect(RING_R).toBeGreaterThanOrEqual(26);
+    expect(RING_R).toBeLessThanOrEqual(30);
+    expect(at(0.999).r).toBeCloseTo(RING_R, 3);
+    let prev = 0;
+    let step = Infinity;
+    for (let k = 0.05; k < 1; k += 0.05) {
+      const { r } = at(k);
+      expect(r).toBeGreaterThan(prev);
+      // An ease-out: each step outward is smaller than the one before.
+      if (prev > 0) expect(r - prev).toBeLessThan(step + 1e-9);
+      if (prev > 0) step = r - prev;
+      prev = r;
+    }
+    expect(at(0.5).r).toBeGreaterThan(0.8 * RING_R);
+  });
+
+  it('fades in smoothly, then out all the way by the end of the beat, so rings never overlap', () => {
+    expect(at(0.02).a).toBeLessThan(at(0.05).a);
+    expect(at(0.05).a).toBeLessThan(at(0.1).a);
+    // No hard flash: no 50 ms frame jumps the opacity by more than a quarter.
+    const frame = 50 / PULSE_PERIOD_MS;
+    for (let k = 0; k < 1; k += frame) expect(Math.abs(at(k + frame).a - at(k).a)).toBeLessThan(0.25);
+    // Brightest early, then fading as it widens.
+    for (let k = 0.15; k < 0.95; k += 0.05) expect(at(k + 0.05).a).toBeLessThan(at(k).a);
+    expect(at(0.12).a).toBeGreaterThan(0.75);
+    expect(at(0.5).a).toBeLessThan(0.4);
+    expect(at(0.97).a).toBeLessThan(0.01);
+    for (let k = 0; k < 1; k += 0.01) {
+      expect(at(k).a).toBeGreaterThanOrEqual(0);
+      expect(at(k).a).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('is in phase with the halo: one ring per beat, starting at its trough', () => {
+    expect(PULSE_PAD).toBeGreaterThanOrEqual(RING_R + RING_W / 2);
+    expect(pulsePhase(PULSE_PERIOD_MS * 2.25)).toBeCloseTo(0.25, 12);
+    expect(pulseLevel(0)).toBe(0);
+    expect(ringAt(pulsePhase(0)).a).toBe(0);
   });
 });
 
@@ -80,14 +136,15 @@ describe('haloSpots', () => {
       2,
     );
     expect(spots).toEqual([
-      { cx: 11.5, cy: 101, r: HALO_R + 1 },
-      { cx: 41.5, cy: 48, r: HALO_R + 4 },
+      { cx: 11.5, cy: 101, r: HALO_R + 1, half: 1 },
+      { cx: 41.5, cy: 48, r: HALO_R + 4, half: 4 },
     ]);
   });
 
-  it('covers far more than the tick itself, and fits inside the repaint pad', () => {
+  it('is a strong core about 32 to 40 px across for one tick, inside the repaint pad', () => {
     const [s] = haloSpots([{ x: 0, y: 0 }], 2, 2);
-    expect(2 * s.r).toBeGreaterThanOrEqual(16);
+    expect(2 * s.r).toBeGreaterThanOrEqual(32);
+    expect(2 * s.r).toBeLessThanOrEqual(40);
     expect(PULSE_PAD).toBeGreaterThanOrEqual(HALO_R);
   });
 
@@ -105,7 +162,24 @@ describe('pulseRegions', () => {
     ];
     const [r, ...rest] = pulseRegions(ticks, 3, 2, 400, 176, 1, 10);
     expect(rest).toEqual([]);
-    expect(r).toEqual({ x: 30, y: 34, w: 23, h: 28 });
+    // Stack 44..52: 10 above and below, 10 plus half the stack (4) to each side.
+    expect(r).toEqual({ x: 26, y: 34, w: 31, h: 28 });
+  });
+
+  it('holds the whole ring and halo at their widest, for one tick and for a tall stack', () => {
+    for (const n of [1, 6]) {
+      const ticks = Array.from({ length: n }, (_, k) => ({ x: 200, y: 80 - 3 * k }));
+      const [r] = pulseRegions(ticks, 3, 2, 400, 176);
+      const [s] = haloSpots(ticks, 3, 2);
+      const reach = Math.max(s.r, s.half + RING_R + RING_W / 2);
+      expect(r.x).toBeLessThanOrEqual(s.cx - reach);
+      expect(r.x + r.w).toBeGreaterThanOrEqual(s.cx + reach);
+      expect(r.y).toBeLessThanOrEqual(s.cy - reach);
+      expect(r.y + r.h).toBeGreaterThanOrEqual(s.cy + reach);
+    }
+    // One tick at 1x (half the stack is 1 px): about 67 by 64 px.
+    const [one] = pulseRegions([{ x: 200, y: 80 }], 3, 2, 400, 176);
+    expect(one).toEqual({ x: 200 - PULSE_PAD - 1, y: 80 - PULSE_PAD, w: 3 + 2 * (PULSE_PAD + 1), h: 2 + 2 * PULSE_PAD });
   });
 
   it('sorts columns and clamps to the canvas', () => {
@@ -119,7 +193,7 @@ describe('pulseRegions', () => {
       400,
       176,
     );
-    expect(regions.map((r) => r.x)).toEqual([0, 398 - PULSE_PAD]);
+    expect(regions.map((r) => r.x)).toEqual([0, 398 - PULSE_PAD - 1]);
     expect(regions[0].y).toBe(0);
     expect(regions[1].x + regions[1].w).toBe(400);
   });
@@ -176,7 +250,7 @@ describe('only newly exploited ticks pulse', () => {
     expect(ticks).toEqual([{ x: 90, y: 94, fresh: true }]);
     const regions = pulseRegions(ticks, 2, 2, 400, 176);
     expect(regions).toHaveLength(1);
-    expect(regions[0].x).toBe(90 - PULSE_PAD);
+    expect(regions[0].x).toBe(90 - PULSE_PAD - 1);
   });
 });
 
