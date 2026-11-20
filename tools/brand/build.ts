@@ -1050,7 +1050,7 @@ function waterfall(T: Theme, x0: number, y0: number, w: number, h: number, opts:
 function legendItems(T: Theme, fresh: number): { label: string; ring: boolean; color: string }[] {
   return [
     { label: 'Exploited', ring: false, color: T.exploited },
-    { label: `New in 72h: ${fmt(fresh)}`, ring: true, color: T.exploited },
+    { label: `${fmt(fresh)} newly exploited`, ring: true, color: T.exploited },
     { label: 'Likely next', ring: false, color: T.likely },
     { label: 'Watch', ring: false, color: T.wfWatch },
     { label: 'Quiet', ring: false, color: T.wfQuiet },

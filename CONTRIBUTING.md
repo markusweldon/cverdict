@@ -120,7 +120,7 @@ issue. The site's "Disagree?" button prefills it through the form's field ids, w
 stable:
 
 ```text
-https://github.com/markusweldon/cverdict/issues/new?template=disagree-with-a-score.yml&title=Score%3A+CVE-2026-12345&cve=CVE-2026-12345&tier=likely&score=62&model=v0.1.0
+https://github.com/markusweldon/cverdict/issues/new?template=disagree-with-a-score.yml&title=Score%3A+CVE-2026-12345&cve=CVE-2026-12345&tier=likely&score=62&model=v0.2.0
 ```
 
 ## Adding a data source

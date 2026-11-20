@@ -168,10 +168,12 @@ Other CVEs carry chips such as `Vendor CVSS: working exploit code exists (E:F)` 
 not yet exploited), context worth 0 points such as `Part of Microsoft patch day · Nov 10 (1,094)`
 or `AI-credited: “Claude Security”`, and unknowns such as `Too new: day 9 of 14, exploit feeds lag`.
 
-Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing,
-CISA's SSVC *active* and its EPSS score) and re-score the 272 CVEs added to KEV in 2026 up to the
-run of Oct 26, 2026: **74%** still land in Exploited or Likely next, while only **2.3%** of new CVEs did on that run. Treat that as an upper
-bound, since the evidence was collected after the fact. `npm run calibrate` reproduces it.
+Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing, CISA's
+SSVC *active* and any EPSS score from the listing day on) and re-score the 134 recent CVEs CISA
+added to KEV from May 22 to Nov 18, 2026: **100 (75%)** still land in Exploited or Likely next,
+while CVErdict flagged only **2.6%** of the 74,348 new CVEs of that period. Treat that as an upper
+bound, since it counts evidence that has no date. With only evidence dated before each listing it is
+58 (43%). From the backtest of Nov 18, 2026 (score model v0.2.0); `npm run backtest` reproduces it.
 
 The full methodology, every chip with its points, the calibration and the known blind spots are in
 [docs/SCORING.md](docs/SCORING.md).
@@ -220,13 +222,14 @@ all new CVEs against CVErdict's 2.6%. The Receipts page always shows the latest 
 
 What the card leaves out:
 
-- **Today**: click a waterfall column to see that day's CVEs in Explore, or a spike label to open
-  its patch-day batch. The feed has filters and a vendor watchlist.
+- **Today**: CVEs newly exploited in the last 72 hours pulse on the waterfall, and the legend
+  opens a list of them. Click a waterfall column to see that day's CVEs in Explore, or a spike
+  label to open its patch-day batch. The feed has filters and a vendor watchlist.
 - **CVE pages**: a link shared in Slack, X, LinkedIn, Mastodon, Discord or a messenger shows the
   verdict and score in its preview.
-- **Woke Up** counts a CISA KEV listing, an EPSS jump or a first public exploit: an Exploit-DB
-  entry, Metasploit module, Nuclei template, or a GitHub PoC repo at least 3 days old or with 2
-  stars (the code is not checked).
+- **Woke Up** watches CVEs that left the window. It counts a CISA KEV, EU KEV or CIRCL listing,
+  an EPSS jump or a first public exploit: an Exploit-DB entry, Metasploit module, Nuclei template,
+  or a GitHub PoC repo at least 3 days old or with 2 stars (the code is not checked).
 - **Check Deps** reads CycloneDX, SPDX, package URL lists and npm, yarn, pnpm, pip, Poetry, uv,
   Pipenv, Go, Cargo, Bundler, Composer, NuGet and Gradle lockfiles. It knows only the tracked CVEs,
   so it is not a full audit.
@@ -381,7 +384,6 @@ demo GIF from a running build. See [tools/brand/README.md](tools/brand/README.md
 
 - **Browser extension** that puts the verdict next to any CVE ID on the web.
 - **MSRC exploitability index** as a chip for Microsoft CVEs.
-- **EUVD cross-check** against ENISA's EU Vulnerability Database.
 
 ## Honest limitations
 

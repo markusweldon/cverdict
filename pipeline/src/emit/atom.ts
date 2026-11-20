@@ -258,7 +258,7 @@ export function wokeFeed(woke: WokeFile, opts: FeedOptions): string {
   return renderFeed({
     id: `${idBase}/${PATHS.wokeFeed}`,
     title: `${BRAND.name} · old CVEs that woke up`,
-    subtitle: `CVEs published before the last ${woke.days} days that gained exploitation evidence in that time. Up to ${WOKE_FEED_MAX}: every KEV listing and Exploit-DB entry, and a PoC repo alone only when rated Likely next or Exploited.`,
+    subtitle: `CVEs published before the last ${woke.days} days that gained exploitation evidence in that time. Up to ${WOKE_FEED_MAX}: every CISA KEV, EU KEV and CIRCL listing and Exploit-DB entry, and a PoC repo alone only when rated Likely next or Exploited.`,
     self: `${siteUrl}/${PATHS.wokeFeed}`,
     alternate: `${siteUrl}/woke`,
     updated: latest(entries, now.toISOString()),

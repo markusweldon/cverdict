@@ -212,7 +212,7 @@ included, unknown-polarity chips excluded) for filtering.
   signal (CISA KEV, EU KEV or CIRCL listing, SSVC active, CNA flag) is within 72 hours of `now`, a listing day counted
   from 00:00 UTC; only those ticks pulse on the chart. `new_exploited_cves` names them, newest first signal first, capped
   at 50: `{ id, title, via, at, hour }`. The pairs are tallied from that same list before the cap, so the count, the
-  ticks and the names cannot disagree. The legend's "New in 72h: N" opens this list); `cnas` top 25 in window;
+  ticks and the names cannot disagree. The legend's count of CVEs newly exploited in the last 72 hours opens this list); `cnas` top 25 in window;
   `ai_credits` top 20 strings.
 - **Changes:** compare with `<previous>/v1/index.json` (if present): an item when the tier rose, or a new E/X chip
   appeared. Rows outside the window join when CISA added them to KEV in the last 7 days (new if absent from the
@@ -262,7 +262,8 @@ Unknown → 404 view. Update `document.title` per route.
 - **Today (`/`)**: (1) ticker strip (published 24h · passed 24h · KEV due ≤72h · batches this week · data age); (2) hero
   noise meter: big mono numbers counting up: "14,281 new CVEs published → 312 worth your time" under "Last 30 days · Oct 5 – Nov 4" with a % and
   "1 in N"; (3) **signal waterfall**: Canvas spectrogram of the window (x = hour, stacked ticks; quiet ticks dim
-  grey, passed ticks glow in tier colour; hover tooltip with hour + counts; re-colours live as the evidence bar turns;
+  grey, passed ticks glow in tier colour; ticks of CVEs newly exploited in the last 72 hours pulse with a ring,
+  and the legend's count opens the newly exploited list (`new_exploited_cves`); hover tooltip with hour + counts; re-colours live as the evidence bar turns;
   a column opens Explore for the UTC day it starts on (`/explore?day=YYYY-MM-DD&sort=score`): click, or Enter on
   the focused chart (`role="slider"`, arrow keys pick a column); on touch the first tap selects and the tooltip's
   "See Oct 13" link opens it; spike labels link to their batch card on `/batches`);
