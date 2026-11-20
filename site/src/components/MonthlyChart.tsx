@@ -19,6 +19,7 @@ import {
   WORDPRESS_CNAS,
   activeCnas,
   bucketLabel,
+  busiestPoint,
   buildSeries,
   csvColumns,
   exportName,
@@ -276,18 +277,18 @@ export function MonthlyChart({ monthly, generatedAt, surge: surgeProp }: Monthly
 
   const cols = csvColumns(view, series);
   const tableCols = cols.slice(4);
-  const rangeWords = n ? `${points[0].label} to ${partialLabel || last.label}` : '';
+  const rangeWords = n === 1 ? partialLabel || last.label : n ? `${points[0].label} to ${partialLabel || last.label}` : '';
   const total = points.reduce((a, p) => a + p.value, 0);
-  const complete = points.filter((p) => !p.partial);
-  const busiest = complete.reduce<Point | null>((a, p) => (!a || p.value > a.value ? p : a), null);
+  const busiest = busiestPoint(points);
   const prevTotal = points.every((p) => p.prev !== null) ? points.reduce((a, p) => a + (p.prev ?? 0), 0) : null;
   const summary = n
-    ? `${rangeWords}, by ${GROUP_NOUN[view.group]}: ${fmtInt(total)} CVEs ${view.count === 'reserved' ? 'reserved' : 'published'}${words ? `, ${words}` : ''}.${busiest && busiest.value > 0 && complete.length > 1 ? ` Busiest ${GROUP_NOUN[view.group]}: ${busiest.label}, with ${fmtInt(busiest.value)}.` : ''}${prevTotal && prevTotal > 0 ? ` ${fmtChange(total / prevTotal - 1)} on the same period a year earlier.` : ''}`
+    ? `${rangeWords}, by ${GROUP_NOUN[view.group]}: ${fmtInt(total)} CVEs ${view.count === 'reserved' ? 'reserved' : 'published'}${words ? `, ${words}` : ''}.${busiest ? ` Busiest ${GROUP_NOUN[view.group]}: ${busiest.partial ? `${busiest.label} so far` : busiest.label}, with ${fmtInt(busiest.value)}.` : ''}${prevTotal && prevTotal > 0 ? ` ${fmtChange(total / prevTotal - 1)} on the same period a year earlier.` : ''}`
     : 'No months in this range.';
 
-  const colorOf = (cls: string) => {
-    const el = wrap.current?.querySelector(`.legend__line.${cls.split(' ').pop()}`);
-    return el ? getComputedStyle(el).backgroundColor : '#888';
+  // A dashed swatch is a gradient of currentColor, so its colour is `color`; a solid one is its background.
+  const colorOf = (cls: string, dashed?: boolean) => {
+    const el = wrap.current?.querySelector(`.legend__line.${cls.split(' ').pop()}${dashed ? '.legend__line--dashed' : ':not(.legend__line--dashed)'}`);
+    return el ? getComputedStyle(el)[dashed ? 'color' : 'backgroundColor'] : '#888';
   };
   const onCsv = () => downloadBlob(new Blob([toCsv(points, cols)], { type: 'text/csv;charset=utf-8' }), exportName(points, view, 'csv'));
   const onPng = async () => {
@@ -299,7 +300,7 @@ export function MonthlyChart({ monthly, generatedAt, surge: surgeProp }: Monthly
         {
           title: `CVEs per ${GROUP_NOUN[view.group]}${words ? `: ${words}` : ''}`,
           subtitle: `${rangeWords}. ${view.count === 'published' ? 'By datePublished' : 'By dateReserved'}${log ? ', log scale' : ''}.`,
-          legend: legend.map((l) => ({ label: l.label, color: colorOf(l.cls), dashed: l.dashed })),
+          legend: legend.map((l) => ({ label: l.label, color: colorOf(l.cls, l.dashed), dashed: l.dashed })),
           footer: `cverdict.dev/surge · data as of ${generatedAt.slice(0, 16).replace('T', ' ')} UTC`,
         },
         exportName(points, view, 'png'),
@@ -356,7 +357,7 @@ export function MonthlyChart({ monthly, generatedAt, surge: surgeProp }: Monthly
             ))}
           </div>
           <Toggle on={stacked} onClick={() => set({ ...view, stack: !view.stack })} label="Stack by severity" />
-          <label class="select mc__field">
+          <label class="select mc__field mc__cna">
             <span>CNA</span>
             <select value={view.cnaOnly ? `+${view.cnaOnly}` : ''} onChange={(e) => onCna((e.currentTarget as HTMLSelectElement).value)}>
               <option value="">All CNAs</option>

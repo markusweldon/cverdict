@@ -4,6 +4,7 @@ import { shiftMonth } from './surge';
 import {
   DEFAULT_VIEW,
   buildSeries,
+  busiestPoint,
   csvColumns,
   exportName,
   filterIndex,
@@ -103,6 +104,34 @@ describe('range and grouping', () => {
     expect([monthly[r.a].month, monthly[r.b].month]).toEqual(['2024-01', '2025-06']);
     const y = viewRange(monthly, { ...DEFAULT_VIEW, from: '2024-02', to: '2026-03', group: 'year' });
     expect([monthly[y.a].month, monthly[y.b].month]).toEqual(['2024-01', '2026-11']);
+  });
+
+  it('a range end wholly outside the data is junk: dropped, and with both gone the preset shows', () => {
+    // to=1990-05 is dropped on read, from=2030-01 is past the data: the default view, not one month.
+    expect(viewRange(monthly, q('from=2030-01&to=1990-05'))).toEqual({ a: 0, b: N - 1, custom: false });
+    expect(viewRange(monthly, q('range=12m&from=2030-01'))).toEqual({ a: N - 12, b: N - 1, custom: false });
+    expect(viewRange(monthly, { ...DEFAULT_VIEW, from: '2027-01', to: '2030-01' })).toMatchObject({ custom: false });
+    expect(viewRange(monthly, { ...DEFAULT_VIEW, to: '1998-05' })).toMatchObject({ custom: false });
+    // An end past the data with a real start is clamped, as before.
+    expect(viewRange(monthly, q('from=2025-06&to=2030-01'))).toMatchObject({ a: N - 18, b: N - 1, custom: true });
+    // The latest month itself is still a fine start.
+    expect(viewRange(monthly, { ...DEFAULT_VIEW, from: '2026-11' })).toEqual({ a: N - 1, b: N - 1, custom: true });
+  });
+
+  it('the busiest period counts the one still filling once it is already the highest', () => {
+    // A year 2026 so far already above the full 2025, as on the real Nov 2026 data.
+    const y = [
+      { key: '2024', value: 40000, partial: false },
+      { key: '2025', value: 48151, partial: false },
+      { key: '2026', value: 90436, partial: true },
+    ];
+    expect(busiestPoint(y)).toMatchObject({ key: '2026', partial: true });
+    // A tie goes to the earlier, complete period.
+    expect(busiestPoint([{ key: 'a', value: 5 }, { key: 'b', value: 5 }])).toMatchObject({ key: 'a' });
+    const m = buildSeries(monthly, surge, { ...DEFAULT_VIEW, preset: '12m' }, AT).points;
+    expect(busiestPoint(m)).toMatchObject({ key: '2026-01', partial: false });
+    expect(busiestPoint(m.slice(-1))).toBeNull();
+    expect(busiestPoint([{ value: 0 }, { value: 0 }])).toBeNull();
   });
 
   it('sums months into quarters and years and marks the partial period', () => {

@@ -2958,6 +2958,11 @@ circle.dc__kev {
   padding-right: 6px;
 }
 
+/* A fixed width, so the CNA list arriving with surge.json does not widen it and push the toggles. */
+.mc__cna select {
+  width: 170px;
+}
+
 .mc__field input[type='month'] {
   max-width: 150px;
   font-family: var(--font-mono);

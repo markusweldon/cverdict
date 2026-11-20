@@ -205,7 +205,7 @@ export interface History {
   ai: Map<string, number>;
   /** Published records per month by CVSS band (SEVERITY_BANDS order). Absent in older fixtures. */
   bands?: Map<string, number[]>;
-  /** The same per CNA (assignerShortName), for stats.json breakdown.cnas. */
+  /** The same per CNA (assignerShortName), for surge.json cnas. */
   cnaBands?: Map<string, Map<string, number[]>>;
   totalRecords: number;
 }

@@ -243,12 +243,18 @@ export function viewRange(monthly: readonly Month[], v: View): Range {
   const first = monthly[0].month;
   const last = monthly[n - 1].month;
   const at = (m: string) => Math.min(n - 1, Math.max(0, mIndex(m) - mIndex(first)));
-  const custom = v.from !== null || v.to !== null;
+  // An end that lies wholly outside the data (a start after the latest month, an end before the first)
+  // is junk, not a range: drop it, and with both gone fall back to the preset.
+  // readView keeps from <= to, so a start past the data takes the end with it.
+  const past = v.from !== null && v.from > last;
+  const vFrom = past ? null : v.from;
+  const vTo = past || (v.to !== null && v.to < first) ? null : v.to;
+  const custom = vFrom !== null || vTo !== null;
   let from: string;
   let to: string;
   if (custom) {
-    from = v.from ?? first;
-    to = v.to ?? last;
+    from = vFrom ?? first;
+    to = vTo ?? last;
   } else {
     const len = PRESETS.find((p) => p.id === v.preset)?.months ?? null;
     to = last;
@@ -259,6 +265,17 @@ export function viewRange(monthly: readonly Month[], v: View): Range {
   if (from > to) from = to;
   from = bucketStart(from, v.group);
   return { a: at(from < first ? first : from), b: Math.min(n - 1, at(to) + (v.group === 'month' ? 0 : bucketEndPad(to, v.group))), custom };
+}
+
+/**
+ * The busiest period, for the summary line. The period still filling counts too: once its count so far
+ * is the highest, it is the busiest, whatever the rest of it brings. Null with fewer than two periods.
+ */
+export function busiestPoint<P extends Pick<Point, 'value'>>(points: readonly P[]): P | null {
+  if (points.length < 2) return null;
+  let best: P | null = null;
+  for (const p of points) if (!best || p.value > best.value) best = p;
+  return best && best.value > 0 ? best : null;
 }
 
 /** Months to add after `to` so it ends its quarter or year. */
