@@ -1,0 +1,1424 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<id>https://cverdict-psi.vercel.app/feeds/signal.xml</id>
+<title type="text">CVErdict · exploited and likely-next CVEs</title>
+<subtitle type="text">Every CVE gets a verdict. Every verdict comes with receipts.</subtitle>
+<link rel="self" type="application/atom+xml" href="https://cverdict.dev/feeds/signal.xml"/>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/"/>
+<updated>2026-11-21T02:30:25.000Z</updated>
+<author><name>CVErdict</name><uri>https://github.com/markusweldon/cverdict</uri></author>
+<generator uri="https://github.com/markusweldon/cverdict">cverdict-pipeline</generator>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129289/likely</id>
+<title type="text">CVE-2026-129289 · PHP Group PHP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129289"/>
+<updated>2026-11-21T02:30:25.000Z</updated>
+<published>2026-11-19T14:44:30.679Z</published>
+<category term="likely"/>
+<category term="php"/>
+<summary type="text">Likely next · score 72/100. 2 PoC repos (1 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); Product in KEV (×4): PHP Group PHP; CISA SSVC: total technical impact</summary>
+<content type="text">PHP-FPM request smuggling through an unread HTTP request body
+
+PHP-FPM request smuggling through an unread HTTP request body.
+
+PHP does not discard the unread part of an HTTP request body at request shutdown when the application has opened php://input without reading it to the end. When the front end reuses backend connections, which is not the default in nginx or Apache (for example nginx with fastcgi_keep_conn on, or Apache mod_proxy_fcgi with enablereuse=on), PHP-FPM can parse the leftover bytes as a new FastCGI request. An unauthenticated remote attacker can use a single crafted multipart/form-data request to forge a backend request with chosen parameters such as SCRIPT_FILENAME, REMOTE_ADDR and PHP_ADMIN_VALUE, which can lead to execution of attacker-controlled PHP code. With LSAPI, subsequent requests on the connection can be disrupted.
+
+This issue affects PHP versions before 8.2.36, 8.3.* before 8.3.37, 8.4.* before 8.4.28 and 8.5.* before 8.5.13.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-133680/likely</id>
+<title type="text">CVE-2026-133680 · D-Link DCS-935L · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133680"/>
+<updated>2026-11-20T19:38:11.662Z</updated>
+<published>2026-11-20T19:30:13.734Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 20; CISA SSVC: total technical impact; Vendor in KEV (×26): D-Link</summary>
+<content type="text">D-Link DCS-935L Local Recording CGI setconf.cgi loginRouter os command injection
+
+A vulnerability was found in D-Link DCS-935L 1.10.01. This affects the function loginRouter of the file web/cgi-bin/localrecording/setconf.cgi of the component Local Recording CGI. Performing a manipulation of the argument account/password results in os command injection. Remote exploitation of the attack is possible. The exploit has been made public and could be used.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-133968/exploited</id>
+<title type="text">CVE-2026-133968 · Project-MONIA MONAI Label · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133968"/>
+<updated>2026-11-20T18:31:38.363Z</updated>
+<published>2026-11-20T18:31:38.363Z</published>
+<category term="exploited"/>
+<category term="mitre"/>
+<summary type="text">Exploited · score 100/100. mitre says exploited in the wild · Nov 20; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">monailabel (aka MONAI Label) through 0.8.5 allows directory traversal, with resultant remote code execution, via the image parameter to the PUT /datastore/image endpoint, as exploited in the wild starting in September 2026.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-133493/likely</id>
+<title type="text">CVE-2026-133493 · D-Link DIR-600L · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133493"/>
+<updated>2026-11-20T16:58:44.863Z</updated>
+<published>2026-11-20T06:45:24.002Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 60/100. Critical 10.0 · network (v4.0); CISA SSVC: public PoC · Nov 20; CISA SSVC: total technical impact; Vendor in KEV (×26): D-Link</summary>
+<content type="text">D-Link DIR-600L GENA gena.cgi genacgi_main os command injection
+
+A vulnerability was identified in D-Link DIR-600L 2.17b02. Affected is the function genacgi_main of the file gena.cgi of the component GENA Handler. Such manipulation leads to os command injection. The attack can be launched remotely. The exploit is publicly available and might be used.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-119199/likely</id>
+<title type="text">CVE-2026-119199 · nuxt nuxt · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-119199"/>
+<updated>2026-11-20T10:40:36.000Z</updated>
+<published>2026-10-29T20:14:07.854Z</published>
+<category term="likely"/>
+<category term="GitHub_M"/>
+<summary type="text">Likely next · score 18/100. Nuclei template (http · medium) · added Nov 20: scannable at scale; Part of GitHub bulk release · Oct 29 (68); Medium 5.9 · network (v3.1); CISA SSVC: partial technical impact</summary>
+<content type="text">Nuxt dev server exposes private runtime config through the Nitro dev bundle
+
+Nuxt is an open-source web development framework for Vue.js. From 3.0.0 until 4.6.3, the Nuxt development server can expose the Nitro 2 development bundle at &lt;buildDir&gt;/dev/index.mjs through Vite file serving when the server is reachable over HTTP. Nitro inlines private runtimeConfig values resolved at build time into that bundle, including secrets configured in nuxt.config, and Nuxt 4.6.0 and later also inline the generated development appSecret. The default localhost binding limits remote exposure, production builds and Nitro 3 are not affected, and runtime configuration supplied only through NUXT_* environment variables at server startup is not inlined. This issue is fixed in version 4.6.3.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-123890/exploited</id>
+<title type="text">CVE-2026-123890 · VMware VMware vCenter · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123890"/>
+<updated>2026-11-20T00:00:00.000Z</updated>
+<published>2026-11-19T14:02:38.017Z</published>
+<category term="exploited"/>
+<category term="vmware"/>
+<summary type="text">Exploited · score 100/100. CISA KEV · added Nov 20 · due Nov 23; Critical 9.8 · network (v3.1); Product in KEV (×1): Broadcom VMware vCenter; CISA SSVC: total technical impact</summary>
+<content type="text">vCenter authentication-bypass vulnerability
+
+VMware vCenter contains an authentication bypass vulnerability in the VMware Directory Service.
+Affected versions: 9.1.x (fixed in 9.1.1.0200); 9.0.x (fixed in 9.0.2.0200); 8.0 (fixed in 8.0 U3m); 5.x (fixed in 5.2.5).
+Telco Cloud Platform 3.0, 4.x, 5.0.x, 5.1.x, 5.2 and Telco Cloud Infrastructure 3.0 are also affected (see KB463116).</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129448/exploited</id>
+<title type="text">CVE-2026-129448 · Apache Software Foundation Apache Roller · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129448"/>
+<updated>2026-11-20T00:00:00.000Z</updated>
+<published>2026-11-17T11:03:49.685Z</published>
+<category term="exploited"/>
+<category term="apache"/>
+<summary type="text">Exploited · score 100/100. CISA KEV · added Nov 20 · due Nov 23; 3 PoC repos (1 vetted), unverified, may be malware; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact</summary>
+<content type="text">Apache Roller: Unauthenticated deserialization in the XML-RPC endpoint (releases before 6.1.5)
+
+Deserialization of Untrusted Data in Apache Roller versions 4.0.0 through 6.1.4 allows an unauthenticated remote attacker to execute arbitrary code. The XML-RPC endpoint accepts vendor extension types and deserializes them before authenticating the requester.
+
+This is the same vulnerability as CVE-2026-82384, which listed only Apache Roller 6.1.5 as affected. This issue is being actively exploited.
+
+Users are recommended to upgrade to Apache Roller 6.1.6 or later, which disables the extension types and rejects XML-RPC requests when the XML-RPC feature is disabled.
+
+Users who cannot upgrade right away should set &quot;enabledForExtensions&quot; to &quot;false&quot; in WEB-INF/web.xml, or remove the &quot;/roller-services/xmlrpc&quot; servlet mapping, and restart Roller. Disabling XML-RPC in the administration UI is not enough, because older versions deserialize the request before checking that setting.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-133325/likely</id>
+<title type="text">CVE-2026-133325 · Apache Software Foundation Apache Tomcat · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133325"/>
+<updated>2026-11-19T21:38:22.705Z</updated>
+<published>2026-11-19T21:38:22.705Z</published>
+<category term="likely"/>
+<category term="apache"/>
+<summary type="text">Likely next · score 52/100. Critical 9.8 · network (v3.1); Product in KEV (×6): Apache Tomcat; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Apache Tomcat: Cluster TLS-PSK configured to use TLS 1.3 does not validate peer
+
+Key exchange without entity authentication vulnerability in Apache Tomcat allowed an unauthenticated node to join a cluster when the cluster was secured with TLS 1.3 and TLS-PSK.
+
+This issue affects Apache Tomcat: 11.0.28-11.0.29, 10.1.62, 9.0.124.
+
+Users are recommended to switch to TLS 1.2 and TLS-PSK or upgrade to version 11.0.30, 10.1.63 or 9.0.125 (when released), which fix the issue.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-118028/likely</id>
+<title type="text">CVE-2026-118028 · Apache Software Foundation Apache Tomcat · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-118028"/>
+<updated>2026-11-19T21:29:52.147Z</updated>
+<published>2026-11-19T21:29:52.147Z</published>
+<category term="likely"/>
+<category term="apache"/>
+<summary type="text">Likely next · score 52/100. Critical 9.1 · network (v3.1); Product in KEV (×6): Apache Tomcat; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Apache Tomcat: RewriteValve [F]/[G]/[R] rule matches do not stop processing
+
+Execution After Redirect (EAR) vulnerability in Apache Tomcat in RedirectValve affecting flags [F], [G] and [R].
+
+This issue affects Apache Tomcat: from 11.0.0-M18 through 11.0.27, from 10.1.20 through 10.1.61, from 9.0.87 through 9.0.123.
+
+The following versions were EOL at the time the CVE was created but are known to be affected: 8.5.100. Other unsupported versions may also be affected.
+
+Users are recommended to upgrade to version 11.0.29, 10.1.62, 9.0.124, which fixes the issue.
+Note: Tomcat 11.0.28 was not released</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-95517/likely</id>
+<title type="text">CVE-2026-95517 · Apache Software Foundation Apache Tomcat · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-95517"/>
+<updated>2026-11-19T21:23:22.328Z</updated>
+<published>2026-11-19T21:23:22.328Z</published>
+<category term="likely"/>
+<category term="apache"/>
+<summary type="text">Likely next · score 52/100. Critical 9.1 · network (v3.1); Product in KEV (×6): Apache Tomcat; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Apache Tomcat: Multiple vulnerabilities in EncryptInterceptor
+
+Reliance on obfuscation or encryption of Security-Relevant inputs without integrity checking, Improper validation of integrity check value, Cleartext transmission of sensitive information vulnerability in the EncryptInterceptor of Apache Tomcat.
+
+This issue affects Apache Tomcat: from 11.0.0-M1 through 11.0.27, from 10.1.0-M1 through 10.1.61, from 9.0.13 through 9.0.123.
+
+The following versions were EOL at the time the CVE was created but are known to be affected: from 8.5.38 through 8.5.100, from 7.0.100 through 7.0.109. Other unsupported versions may also be affected.
+
+Users are recommended to upgrade to version 11.0.29, 10.1.62 or 9.0.124 and switch to TLS-PSK to encrypt cluster communication, which fixes the issue.
+Note: Tomcat 11.0.28 was not released</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-132141/likely</id>
+<title type="text">CVE-2026-132141 · DrayTek Vigor2960 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-132141"/>
+<updated>2026-11-19T19:21:57.749Z</updated>
+<published>2026-11-18T21:15:13.882Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 19; CISA SSVC: total technical impact; Vendor in KEV (×5): DrayTek</summary>
+<content type="text">DrayTek Vigor2960 Jsonstatus mainfunction.cgi json_load_lock stack-based overflow
+
+A vulnerability was detected in DrayTek Vigor2960 up to 1.5.1.6. Affected by this issue is the function json_load_lock of the file /cgi-bin/mainfunction.cgi of the component Jsonstatus. The manipulation of the argument usefile results in stack-based buffer overflow. It is possible to launch the attack remotely. The exploit is now public and may be used. Upgrading to version 1.5.1.7 can resolve this issue. It is advisable to upgrade the affected component. The vendor recommends: &quot;1.5.1.6 isn&apos;t the latest version of 2960, the latest version fixes many security issues. And we have another one in our release plan which should solve the issues reported.&quot;</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129496/likely</id>
+<title type="text">CVE-2026-129496 · PHP Group PHP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129496"/>
+<updated>2026-11-19T18:23:30.000Z</updated>
+<published>2026-11-19T14:43:52.930Z</published>
+<category term="likely"/>
+<category term="php"/>
+<summary type="text">Likely next · score 64/100. 2 PoC repos (2 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); Product in KEV (×4): PHP Group PHP; CISA SSVC: total technical impact</summary>
+<content type="text">Timezone cache use-after-free can lead to remote code execution
+
+Timezone cache use-after-free can lead to remote code execution.
+
+In non-thread-safe builds, a diagnostic written to a file-based error_log during module startup, for example for an invalid date.timezone value or a session configuration warning, causes the timezone cache to be allocated in startup memory that is freed while a reference to it is kept. A diagnostic raised early in the first request of a worker, such as the max_input_vars warning, then accesses the freed cache. On such a deployment an unauthenticated remote attacker can crash PHP-FPM, Apache mod_php or CGI workers with a crafted request. Arbitrary code execution may be possible and has been demonstrated with known memory addresses.
+
+This issue affects PHP versions before 8.2.36, 8.3.* before 8.3.37, 8.4.* before 8.4.28 and 8.5.* before 8.5.13.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-132143/likely</id>
+<title type="text">CVE-2026-132143 · DrayTek Vigor2960 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-132143"/>
+<updated>2026-11-19T15:15:43.346Z</updated>
+<published>2026-11-18T21:45:17.593Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 19; CISA SSVC: total technical impact; Vendor in KEV (×5): DrayTek</summary>
+<content type="text">DrayTek Vigor2960 Backup mainfunction.cgi doWebBackup stack-based overflow
+
+A vulnerability has been found in DrayTek Vigor2960 up to 1.5.1.6. This vulnerability affects the function doWebBackup of the file /cgi-bin/mainfunction.cgi of the component Backup Handler. Such manipulation of the argument path/value leads to stack-based buffer overflow. The attack can be launched remotely. The exploit has been disclosed to the public and may be used. Upgrading to version 1.5.1.7 is able to resolve this issue. The affected component should be upgraded. The vendor recommends: &quot;1.5.1.6 isn&apos;t the latest version of 2960, the latest version fixes many security issues. And we have another one in our release plan which should solve the issues reported.&quot;</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-132139/likely</id>
+<title type="text">CVE-2026-132139 · DrayTek Vigor2960 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-132139"/>
+<updated>2026-11-19T15:01:40.082Z</updated>
+<published>2026-11-18T20:45:14.678Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 19; CISA SSVC: total technical impact; Vendor in KEV (×5): DrayTek</summary>
+<content type="text">DrayTek Vigor2960 mainfunction.cgi setSWMProfile stack-based overflow
+
+A weakness has been identified in DrayTek Vigor2960 up to 1.5.1.6. Affected is the function setSWMProfile of the file /cgi-bin/mainfunction.cgi. Executing a manipulation of the argument filename can lead to stack-based buffer overflow. The attack may be performed from remote. The exploit has been made available to the public and could be used for attacks. Upgrading to version 1.5.1.7 is able to address this issue. It is recommended to upgrade the affected component. The vendor recommends: &quot;1.5.1.6 isn&apos;t the latest version of 2960, the latest version fixes many security issues. And we have another one in our release plan which should solve the issues reported.&quot;</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126714/likely</id>
+<title type="text">CVE-2026-126714 · PHP Group PHP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126714"/>
+<updated>2026-11-19T14:43:19.430Z</updated>
+<published>2026-11-19T14:43:19.430Z</published>
+<category term="likely"/>
+<category term="php"/>
+<summary type="text">Likely next · score 52/100. Critical 9.2 · network (v4.0); Product in KEV (×4): PHP Group PHP; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Partially overwritten session files can lead to remote code execution
+
+Partially overwritten session files can lead to remote code execution.
+
+The files session save handler, which is the default, writes updated session data into the existing session file without first clearing it. If a write is interrupted, the file can contain the beginning of the new session followed by the end of the old one, and bytes of an ordinary string can later be unserialized as objects. An attacker who can influence the session data, for example through session upload progress, and interrupt a write at a suitable point may inject objects, which can lead to code execution when the application contains a suitable gadget chain. Session data can also be corrupted.
+
+This issue affects PHP versions before 8.2.36, 8.3.* before 8.3.37, 8.4.* before 8.4.28 and 8.5.* before 8.5.13.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-115560/likely</id>
+<title type="text">CVE-2026-115560 · PHP Group PHP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-115560"/>
+<updated>2026-11-19T14:42:48.511Z</updated>
+<published>2026-11-19T14:42:48.511Z</published>
+<category term="likely"/>
+<category term="php"/>
+<summary type="text">Likely next · score 64/100. 12 PoC repos (11 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); Product in KEV (×4): PHP Group PHP; CISA SSVC: total technical impact</summary>
+<content type="text">Session serializer mismatch can lead to remote code execution
+
+Session serializer mismatch can lead to remote code execution.
+
+Session upload progress, when enabled, can store attacker-controlled data in a session key using the php_binary or php_serialize session serializer. If the same session is later read with the php serializer, because session.serialize_handler is changed at runtime or differs between applications sharing a session store, bytes inside the key can be passed to the unserializer. A remote attacker able to submit a multipart upload can inject objects, which may lead to code execution when the reading application contains a suitable gadget chain, or to session corruption or denial of service.
+
+This issue affects PHP versions before 8.2.36, 8.3.* before 8.3.37, 8.4.* before 8.4.28 and 8.5.* before 8.5.13.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-130352/likely</id>
+<title type="text">CVE-2026-130352 · thorsten phpMyFAQ · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-130352"/>
+<updated>2026-11-19T07:31:17.000Z</updated>
+<published>2026-11-17T01:40:55.870Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 26/100. Nuclei template (http · medium) · added Nov 19: scannable at scale; CISA SSVC: automatable; Part of VulnCheck bulk release · Nov 17 (150); EPSS 0.9% · 60th pct · day 4, too new to trust</summary>
+<content type="text">phpMyFAQ before 4.1.12 and 4.2.0-alpha before 4.2.0-RC.2 Private Notes Disclosure via FAQ API
+
+phpMyFAQ before 4.1.12 and 4.2.0-alpha before 4.2.0-RC.2 contains an information disclosure vulnerability that allows unauthenticated attackers to read editor-only Private Notes by querying the public FAQ list API. Attackers can page through GET /api/v4.0/faqs or /api/v3.1/faqs without credentials to retrieve the notes field of every anonymously readable FAQ, exposing internal remarks and ticket details.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-73969/likely</id>
+<title type="text">CVE-2026-73969 · ansibleguy76 ansibleforms · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-73969"/>
+<updated>2026-11-19T06:10:42.000Z</updated>
+<published>2026-11-18T20:14:51.408Z</published>
+<category term="likely"/>
+<category term="GitHub_M"/>
+<summary type="text">Likely next · score 66/100. Nuclei template (http · critical) · added Nov 19: scannable at scale; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">AnsibleForms: Authentication bypass via hard-coded default JWT signing secret
+
+AnsibleForms is a self-hosted web application that turns automation into self-service forms. Prior to 6.2.1, AnsibleForms uses a public hard-coded fallback JWT signing secret from server/config/auth.config.js when ACCESS_TOKEN_SECRET is unset. An unauthenticated attacker can sign a self-contained token with privileged claims because server/src/auth/auth_jwt.js verifies the signature without reloading the user from the database, and server/src/lib/middleware.js trusts the token&apos;s roles and options for authorization. A forged token can therefore be accepted as an administrator session, resulting in authentication bypass and full privileged API access. This issue is fixed in version 6.2.1.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-124002/likely</id>
+<title type="text">CVE-2026-124002 · Copeland XWEB EVO · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-124002"/>
+<updated>2026-11-19T06:10:00.000Z</updated>
+<published>2026-11-12T19:34:26.958Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 66/100. Nuclei template (http · critical) · added Nov 19: scannable at scale; Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Dixell/Copeland XWEB EVO Pre-Auth OS Command Injection via Username
+
+XWEB EVO versions 5.2.3 through before 5.7.0 contains a pre-authentication OS command injection vulnerability that allows unauthenticated remote attackers to execute arbitrary OS commands by injecting shell metacharacters into the username field of login.lua, cleanout.lua, or api.lua before the password check occurs. Attackers can exploit this flaw combined with the setuid-root wlua interpreter to execute commands with root privileges, achieving full system compromise. This product line reached it&apos;s end of service date in March 2026.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-131914/exploited</id>
+<title type="text">CVE-2026-131914 · Idunno AntiCsrf · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-131914"/>
+<updated>2026-11-19T01:29:12.970Z</updated>
+<published>2026-11-19T01:29:12.970Z</published>
+<category term="exploited"/>
+<category term="Mandiant"/>
+<summary type="text">Exploited · score 100/100. Vendor CVSS: exploitation reported (E:A); Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Deserialization of untrusted data in CodePlex AntiCSRF
+
+Deserialization of untrusted data in double-submit cookie vs. form field validation in Idunno.AntiCsrf versions through 0.9.1 Beta on ASP.NET allows remote unauthenticated attackers to execute code via object injection</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-100397/likely</id>
+<title type="text">CVE-2026-100397 · rucio rucio · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-100397"/>
+<updated>2026-11-18T18:45:13.000Z</updated>
+<published>2026-11-17T19:35:18.247Z</published>
+<category term="likely"/>
+<category term="GitHub_M"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 10.0 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Rucio: Improper Authentication via SSH Challenge Tokens
+
+Rucio is a scientific data management framework. From 1.14.0 until 35.9.1, 38.6.1, 40.4.2, and 41.1.1, validate_auth_token in lib/rucio/core/authentication.py does not distinguish short-lived SSH challenge nonces from authentication tokens stored in the same token table. An unauthenticated attacker can request /auth/ssh_challenge_token for an arbitrary account by supplying X-Rucio-Account, then present the returned X-Rucio-SSH-Challenge-Token as X-Rucio-Auth-Token to authenticate to other API endpoints as that account, including an administrative account. This issue is fixed in versions 35.9.1, 38.6.1, 40.4.2, and 41.1.1.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129451/likely</id>
+<title type="text">CVE-2026-129451 · DrayTek Vigor2960 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129451"/>
+<updated>2026-11-18T17:42:50.274Z</updated>
+<published>2026-11-15T12:15:12.597Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 18; CISA SSVC: total technical impact; Vendor in KEV (×5): DrayTek</summary>
+<content type="text">DrayTek Vigor2960 mainfunction.cgi app_guest_export path traversal
+
+A flaw has been found in DrayTek Vigor2960 up to 1.5.1.6. This affects the function app_guest_export of the file /cgi-bin/mainfunction.cgi. This manipulation of the argument filename causes path traversal. The attack can be initiated remotely. The exploit has been published and may be used. Upgrading to version 1.5.1.7 is able to mitigate this issue. The affected component should be upgraded. The vendor recommends: &quot;1.5.1.6 isn&apos;t the latest version of 2960, the latest version fixes many security issues. And we have another one in our release plan which should solve the issues reported.&quot;</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-124990/likely</id>
+<title type="text">CVE-2026-124990 · masteriyo Masteriyo LMS – LMS Course Builder, Quizzes &amp; Certificates · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-124990"/>
+<updated>2026-11-18T17:20:23.000Z</updated>
+<published>2026-11-18T15:33:09.641Z</published>
+<category term="likely"/>
+<category term="Wordfence"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Masteriyo LMS &lt;= 3.5.1 - Unauthenticated PHP Object Injection via &apos;file&apos; Parameter
+
+The Masteriyo LMS – LMS Course Builder, Quizzes &amp; Certificates plugin for WordPress is vulnerable to PHP Object Injection in versions up to, and including, 3.5.1 via deserialization of untrusted input in the course importer. The set_post_metas() method calls maybe_unserialize() on attacker-controlled postmeta string values parsed from the uploaded JSON import file. This makes it possible for unauthenticated attackers to inject arbitrary PHP Objects. Exploitation by unauthenticated attackers requires that the site has enable_instructor_registration=true AND enable_guest_checkout=true AND at least one purchasable course exists. Install.php sets enable_instructor_registration=false on fresh installs, so this is a non-default configuration. On a default installation, where that is not configured, the vulnerability requires attackers with author-level access and above.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-113425/likely</id>
+<title type="text">CVE-2026-113425 · F5 NGINX Plus · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-113425"/>
+<updated>2026-11-18T16:42:22.000Z</updated>
+<published>2026-11-18T15:23:28.642Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 62/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×8): F5</summary>
+<content type="text">NGINX ngx_mail_proxy_module vulnerability
+
+When NGINX Plus or NGINX Open Source is configured as a mail proxy, undisclosed traffic can cause a use-after-free in an nginx worker process. Additionally, attackers can execute code on systems with Address Space Layout Randomization (ASLR) disabled or when the attacker can bypass ASLR.
+
+Impact:
+A remote unauthenticated attacker may crash an nginx worker process or corrupt its memory, disrupting service. Remote code execution is a potential impact. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-123633/likely</id>
+<title type="text">CVE-2026-123633 · F5 NGINX Open Source · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123633"/>
+<updated>2026-11-18T16:40:57.000Z</updated>
+<published>2026-11-18T15:23:27.197Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 62/100. 7 PoC repos (3 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×8): F5</summary>
+<content type="text">NGINX ngx_http_v2_module vulnerability
+
+When NGINX Plus or NGINX Open Source is configured to use HTTP/2 for client connections and proxy client requests to a backend, a specially crafted request can result in use-after-free in the worker process, if this process is running low on worker_connections. Additionally, attackers can execute code on systems with Address Space Layout Randomization (ASLR) disabled or when the attacker can bypass ASLR.
+
+Impact:
+
+This vulnerability may allow remote attackers to cause a denial-of-service (DoS) on the NGINX system or may allow a code execution. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-121810/likely</id>
+<title type="text">CVE-2026-121810 · F5 NGINX Plus · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121810"/>
+<updated>2026-11-18T16:40:35.000Z</updated>
+<published>2026-11-18T15:23:29.375Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 62/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×8): F5</summary>
+<content type="text">NGINX ngx_http_v3_module vulnerability
+
+Description:
+This issue affects NGINX Plus and NGINX Open Source configurations that use HTTP/3. A remote, unauthenticated attacker can cause a use-after-free condition in the NGINX worker process, leading to a restart. Exploitation also depends on conditions beyond the attacker’s control. Additionally, attackers can execute code on systems with Address Space Layout Randomization (ASLR) disabled or when the attacker can bypass ASLR.
+
+Impact:
+This vulnerability may allow remote attackers to cause a denial-of-service (DoS) on the NGINX system or to possibly trigger a code execution. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-123634/likely</id>
+<title type="text">CVE-2026-123634 · F5 NGINX Plus · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123634"/>
+<updated>2026-11-18T16:32:08.000Z</updated>
+<published>2026-11-18T15:23:28.277Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 62/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×8): F5</summary>
+<content type="text">NGINX resolver vulnerability
+
+This issue occurs when NGINX Plus or NGINX Open Source is configured as a proxy, the proxied server name includes variables, and a Server Side Includes (SSI) or mirror directive sends a subrequest to a location that resolves the same server name. Under these conditions, a specially crafted HTTP request may cause a use-after-free condition in a worker process. An attacker may also be able to execute code if Address Space Layout Randomization (ASLR) is disabled or the attacker can bypass ASLR.
+
+Impact:
+An attacker could leverage this vulnerability to crash the NGINX worker process, corrupt its memory, or perform remote code execution (RCE)
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-106152/likely</id>
+<title type="text">CVE-2026-106152 · Progress Software Telerik Report Server · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-106152"/>
+<updated>2026-11-18T15:39:07.000Z</updated>
+<published>2026-11-11T17:35:08.835Z</published>
+<category term="likely"/>
+<category term="ProgressSoftware"/>
+<summary type="text">Likely next · score 52/100. 1 PoC repo (1 vetted), unverified, may be malware; Product in KEV (×1): Progress Telerik Report Server; CISA SSVC: total technical impact; High 8.8 · network (v3.1)</summary>
+<content type="text">External Control of Configuration Setting in Telerik Report Server
+
+In Progress® Telerik® Report Server prior to version 12.3.26.1110, an external control of a system configuration setting vulnerability allows an unauthenticated remote attacker to influence the server address used by Report Server when generating links and notifications. With user interaction, this can lead to disclosure of sensitive information and account takeover.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-121805/likely</id>
+<title type="text">CVE-2026-121805 · F5 BIG-IP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121805"/>
+<updated>2026-11-18T15:23:33.438Z</updated>
+<published>2026-11-18T15:23:33.438Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 52/100. Critical 9.3 · network (v4.0); Product in KEV (×3): F5 BIG-IP; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">BIG-IP iRule Vulnerability
+
+Description:
+
+When an iRule that processes client traffic using the PEM::subscriber command is configured on a virtual server, undisclosed requests can cause the Traffic Management Microkernel (TMM) to terminate and may lead to remote code execution (RCE).
+
+Impact:
+
+Traffic is disrupted while the TMM process restarts. This vulnerability allows a remote unauthenticated attacker to cause a denial-of-service (DoS) on the BIG-IP system and may perform RCE. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-116953/likely</id>
+<title type="text">CVE-2026-116953 · F5 BIG-IP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116953"/>
+<updated>2026-11-18T15:23:31.575Z</updated>
+<published>2026-11-18T15:23:31.575Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 52/100. Critical 9.3 · network (v4.0); Product in KEV (×3): F5 BIG-IP; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">BIG-IP iRule Vulnerability
+
+Description:
+
+When an iRule that processes client traffic using the GENERICMESSAGE::route command is configured on a virtual server, undisclosed requests can cause the Traffic Management Microkernel (TMM) to terminate and may lead to remote code execution (RCE).
+
+Impact:
+
+Traffic is disrupted while the TMM process restarts. This vulnerability allows a remote, unauthenticated attacker to cause a denial-of-service (DoS) on the BIG-IP system and may allow the attacker to perform RCE. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-120292/likely</id>
+<title type="text">CVE-2026-120292 · F5 BIG-IP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120292"/>
+<updated>2026-11-18T15:23:31.202Z</updated>
+<published>2026-11-18T15:23:31.202Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 52/100. Critical 9.3 · network (v4.0); Product in KEV (×3): F5 BIG-IP; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">BIG-IP iRule vulnerability
+
+Description:
+
+When an HTTP profile and an iRule using the
+
+MR::message
+
+route command are configured on a virtual server, undisclosed requests can cause the Traffic Management Microkernel (TMM) to terminate and may lead to remote code execution (RCE)
+
+Impact:
+
+Traffic is disrupted while the TMM process restarts. This vulnerability allows a remote, unauthenticated attacker to cause a denial-of-service (DoS) on the BIG-IP system and may allow the attacker to perform RCE. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-120285/likely</id>
+<title type="text">CVE-2026-120285 · F5 BIG-IP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120285"/>
+<updated>2026-11-18T15:23:30.829Z</updated>
+<published>2026-11-18T15:23:30.829Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 52/100. Critical 9.3 · network (v4.0); Product in KEV (×3): F5 BIG-IP; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">BIG-IP iRule Vulnerability
+
+Description
+When an HTTP profile and an iRule containing the PSC::ip_address command are configured on a virtual server, undisclosed requests can cause the Traffic Management Microkernel (TMM) to terminate and may lead to remote code execution (RCE).
+
+Impact
+Traffic is disrupted while the TMM process restarts. This vulnerability allows a remote, unauthenticated attacker to cause a denial-of-service (DoS) on the BIG-IP system and may allow the attacker to perform RCE. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-123007/likely</id>
+<title type="text">CVE-2026-123007 · F5 NGINX Plus · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123007"/>
+<updated>2026-11-18T15:23:29.008Z</updated>
+<published>2026-11-18T15:23:29.008Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 62/100. 37 PoC repos (12 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×8): F5</summary>
+<content type="text">NGINX ngx_http_v2_module vulnerability
+
+This issue affects NGINX Plus or NGINX Open Source configurations that use HTTP/2. When NGINX processes undisclosed traffic, the flow control window can exceed the allowed threshold, potentially resulting in a heap buffer overflow typically followed by an NGINX worker segmentation fault. Additionally, attackers can execute code on systems with Address Space Layout Randomization (ASLR) disabled or when the attacker can bypass ASLR.
+
+Impact: An attacker could leverage this vulnerability to crash the NGINX worker process, corrupt its memory, or potentially execute code remotely. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-123637/likely</id>
+<title type="text">CVE-2026-123637 · F5 BIG-IP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123637"/>
+<updated>2026-11-18T15:23:26.802Z</updated>
+<published>2026-11-18T15:23:26.802Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 52/100. Critical 9.3 · network (v4.0); Product in KEV (×3): F5 BIG-IP; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">BIG-IP APM Vulnerability
+
+When BIG-IP APM is provisioned and a per-request policy that includes the Client Information agent and Endpoint Security agents is applied to a virtual server, undisclosed requests can cause the Traffic Management Microkernel (TMM) to terminate and may lead to remote code execution (RCE).
+
+Impact:
+
+Traffic is disrupted while the TMM process restarts. This vulnerability allows a remote, unauthenticated attacker to cause a denial-of-service (DoS) on the BIG-IP system and may allow the attacker to perform RCE. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-120722/likely</id>
+<title type="text">CVE-2026-120722 · F5 BIG-IP · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120722"/>
+<updated>2026-11-18T15:23:26.409Z</updated>
+<published>2026-11-18T15:23:26.409Z</published>
+<category term="likely"/>
+<category term="f5"/>
+<summary type="text">Likely next · score 52/100. Critical 9.3 · network (v4.0); Product in KEV (×3): F5 BIG-IP; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">BIG-IP iRule Vulnerability
+
+Description:
+
+When an iRule that processes client traffic using the DNS::scrape command is configured on a virtual server, undisclosed requests can cause the Traffic Management Microkernel (TMM) to terminate and may lead to remote code execution (RCE).
+
+Impact:
+
+Traffic is disrupted while the TMM process restarts. This vulnerability allows a remote, unauthenticated attacker to cause a denial-of-service (DoS) on the BIG-IP system. In addition, the attacker may be able to perform RCE. There is no control plane exposure; this is a data plane issue only.
+
+Note: Software versions which have reached End of Technical Support (EoTS) are not evaluated.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-116448/likely</id>
+<title type="text">CVE-2026-116448 · Dell PowerStore 500T · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116448"/>
+<updated>2026-11-18T14:35:35.043Z</updated>
+<published>2026-11-18T14:35:35.043Z</published>
+<category term="likely"/>
+<category term="dell"/>
+<summary type="text">Likely next · score 50/100. Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; Vendor in KEV (×2): Dell; CISA SSVC: automatable</summary>
+<content type="text">Dell PowerStore SDNAS contains an OS Command Injection vulnerability that could allow an attacker with internal network access to execute arbitrary commands as root on the NAS node.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129452/likely</id>
+<title type="text">CVE-2026-129452 · DrayTek Vigor2960 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129452"/>
+<updated>2026-11-18T13:59:23.302Z</updated>
+<published>2026-11-15T12:30:14.349Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 18; CISA SSVC: total technical impact; Vendor in KEV (×5): DrayTek</summary>
+<content type="text">DrayTek Vigor2960 mainfunction.cgi set_table command injection
+
+A vulnerability has been found in DrayTek Vigor2960 1.5.1.6. This vulnerability affects the function set_table of the file /cgi-bin/mainfunction.cgi. Such manipulation of the argument jsondata leads to command injection. The attack can be launched remotely. The exploit has been disclosed to the public and may be used. Upgrading to version 1.5.1.7 is able to resolve this issue. It is suggested to upgrade the affected component. The vendor recommends: &quot;1.5.1.6 isn&apos;t the latest version of 2960, the latest version fixes many security issues. And we have another one in our release plan which should solve the issues reported.&quot;</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-116289/likely</id>
+<title type="text">CVE-2026-116289 · Gitea Gitea · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116289"/>
+<updated>2026-11-18T10:00:28.000Z</updated>
+<published>2026-11-01T09:48:35.376Z</published>
+<category term="likely"/>
+<category term="Gitea"/>
+<summary type="text">Likely next · score 72/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.1 · network (v3.1); Product in KEV (×1): Gitea; CISA SSVC: total technical impact</summary>
+<content type="text">Gitea public-only token bypass through Actions runner registration
+
+Gitea did not reject personal access tokens restricted to public resources (`public-only`) on the organization Actions runner registration-token endpoint, and the runner registered with the resulting token was not limited to public repositories. Holding only such a token with `write:organization` that belongs to an owner of a public organization, an attacker could register an organization-level runner and receive jobs of the organization&apos;s private repositories that have Actions enabled, including the workflow content, Actions secrets and variables, and a task token with access to the private repository. The issue widens what the restricted token can reach; it gives nothing beyond what the owner&apos;s full account can already do.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-123655/likely</id>
+<title type="text">CVE-2026-123655 · moodle · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123655"/>
+<updated>2026-11-18T08:41:15.000Z</updated>
+<published>2026-11-06T11:45:43.719Z</published>
+<category term="likely"/>
+<category term="fedora"/>
+<summary type="text">Likely next · score 46/100. Nuclei template (http · high) · added Nov 18: scannable at scale; CISA SSVC: automatable; High 7.5 · network (v3.1); CISA SSVC: partial technical impact</summary>
+<content type="text">Moodle: missing access checks on h5p content files
+
+A flaw was found in Moodle. Insufficient access control checks on H5P content files allow unauthenticated remote attackers to view restricted materials, including content stored in the system context and files belonging to hidden or unavailable course modules. This issue results in unauthorized information disclosure of protected content.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-123751/exploited</id>
+<title type="text">CVE-2026-123751 · WP Duplicate · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123751"/>
+<updated>2026-11-18T08:00:22.000Z</updated>
+<published>2026-11-09T06:00:29.165Z</published>
+<category term="exploited"/>
+<category term="WPScan"/>
+<summary type="text">Exploited · score 100/100. WPScan says exploited in the wild · Nov 9; Nuclei template (http · critical) · added Nov 18: scannable at scale; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact</summary>
+<content type="text">WP Duplicate &lt;= 1.1.11 - Unauthenticated Arbitrary File Upload via Authentication Bypass
+
+The WP Duplicate WordPress plugin through 1.1.11 does not properly verify a request authentication value and does not validate the path or type of uploaded files, making it possible for unauthenticated attackers to write arbitrary files to the server and achieve remote code execution. This vulnerability is being actively exploited in the wild.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-116692/likely</id>
+<title type="text">CVE-2026-116692 · mlflow mlflow · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116692"/>
+<updated>2026-11-18T08:00:06.000Z</updated>
+<published>2026-10-27T20:03:49.661Z</published>
+<category term="likely"/>
+<category term="GitHub_M"/>
+<summary type="text">Likely next · score 82/100. Nuclei template (http · critical) · added Nov 18: scannable at scale; Critical 9.8 · network (v3.1); Product in KEV (×1): MLflow; CISA SSVC: total technical impact</summary>
+<content type="text">MLflow: Remote code execution on unauthenticated MLflow servers via third-party scorer deserialization importing caller-placed artifact modules
+
+MLflow is an open source AI engineering platform for agents, large language models, and machine learning models. From 3.12.0rc0 until 3.17.0, third-party scorer deserialization in mlflow/genai/scorers/base.py accepts request-selected descendants of THIRD_PARTY_SCORER_ALLOWED_MODULES rather than requiring an exact allowed module. A caller can use MLflow artifact endpoints to place a Python module beneath a writable allowed package and submit its module and class through /ajax-api/3.0/mlflow/scorer/invoke. Scorer.model_validate_json() imports the module and constructs the class before trace processing. Authentication-disabled deployments permit this code execution without credentials, while basic-auth deployments require a principal capable of creating an experiment and run and uploading artifacts. In either configuration, the allowed scorer package must be writable by the server process. This issue is fixed in version 3.17.0.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-121994/likely</id>
+<title type="text">CVE-2026-121994 · Red Hat Red Hat Enterprise Linux 10 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121994"/>
+<updated>2026-11-18T07:40:48.000Z</updated>
+<published>2026-11-05T16:08:46.589Z</published>
+<category term="likely"/>
+<category term="redhat"/>
+<summary type="text">Likely next · score 50/100. 1 PoC repo (1 vetted), unverified, may be malware; CISA SSVC: total technical impact; Vendor in KEV (×9): Red Hat; High 8.8 · network (v3.1)</summary>
+<content type="text">Gdb: gdb: stack buffer overflow in fetch_register_using_p via unchecked p-reply length
+
+A stack buffer overflow in the GDB client&apos;s remote protocol handler allows an attacker-controlled debug target to execute arbitrary code in the GDB process. The vulnerability exists in fetch_register_using_p, which decodes a stub&apos;s register reply into an alloca-sized buffer without bounding writes by the register width.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-124450/likely</id>
+<title type="text">CVE-2026-124450 · openemr openemr · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-124450"/>
+<updated>2026-11-18T06:26:16.000Z</updated>
+<published>2026-11-08T13:15:41.704Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 58/100. Nuclei template (http · high) · added Nov 18: scannable at scale; Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; Part of VulnCheck bulk release · Nov 8 (198)</summary>
+<content type="text">OpenEMR before 8.3.0 Arbitrary File Read/Write via disposeDocument
+
+OpenEMR before 8.3.0 contains a broken access control and path traversal vulnerability in the fax/sms module disposeDocument action via an unvalidated file_path parameter. Authenticated low-privilege users can read sqlconf.php to recover database credentials and write arbitrary files as the web user, enabling remote code execution.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-131852/likely</id>
+<title type="text">CVE-2026-131852 · OwnTracks Recorder · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-131852"/>
+<updated>2026-11-18T05:47:50.000Z</updated>
+<published>2026-11-17T23:42:28.106Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">OwnTracks Recorder before 1.0.5 Format String via Stored tid Value
+
+OwnTracks Recorder before 1.0.5 contains a format string vulnerability in json_response() and related output functions that allows unauthenticated attackers to execute code by storing a malicious tid value. Attackers can publish locations via POST /pub or MQTT with printf specifiers in tid, then read them back through GET /api/0/last to leak addresses and write memory.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-115731/exploited</id>
+<title type="text">CVE-2026-115731 · Perforce Puppet Enterprise · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-115731"/>
+<updated>2026-11-18T04:27:26.000Z</updated>
+<published>2026-11-03T20:40:10.100Z</published>
+<category term="exploited"/>
+<category term="Perforce"/>
+<summary type="text">Exploited · score 100/100. CISA KEV · added Nov 17 · due Dec 1; 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.4 · network (v4.0); CISA SSVC: total technical impact</summary>
+<content type="text">Report Deserialization Code Execution
+
+Deserialization of untrusted data in the report-processing code of Puppet, as used by Puppet Server, in the affected releases, allows a client that holds any CA-signed agent certificate to execute arbitrary code on the Puppet Server as its service user by submitting a report containing a crafted rich-data type via PUT request. Where the certificate authority autosigns requests without strong verification, an unauthenticated network attacker can obtain such a certificate.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129131/likely</id>
+<title type="text">CVE-2026-129131 · gameyfin gameyfin · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129131"/>
+<updated>2026-11-18T03:21:42.000Z</updated>
+<published>2026-11-13T16:23:36.890Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 26/100. Nuclei template (http · medium) · added Nov 18: scannable at scale; CISA SSVC: automatable; Part of VulnCheck bulk release · Nov 13 (389); EPSS 0.86% · 59th pct · day 8, too new to trust</summary>
+<content type="text">Gameyfin before 2.6.2 Missing Authorization in Hilla Endpoints
+
+Gameyfin before 2.6.2 contains a missing authorization vulnerability that allows unauthenticated attackers to bypass login-required mode by calling Hilla endpoints annotated with @AnonymousAllowed. Attackers can POST to synchronous endpoint methods such as GameEndpoint.sync, which LiveSubscriptionSecurity never checks, to retrieve game catalog metadata, libraries, platforms, plugins and game requests.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-121853/likely</id>
+<title type="text">CVE-2026-121853 · AppPresser · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121853"/>
+<updated>2026-11-18T03:21:10.000Z</updated>
+<published>2026-11-13T06:00:07.647Z</published>
+<category term="likely"/>
+<category term="WPScan"/>
+<summary type="text">Likely next · score 32/100. Nuclei template (http · medium) · added Nov 18: scannable at scale; CISA SSVC: automatable; No CNA score; CISA-ADP CVSS 5.3 used; EPSS 0.59% · 49th pct · day 8, too new to trust</summary>
+<content type="text">AppPresser &lt; 5.0.0 - Unauthenticated Plugin and Theme Version Disclosure
+
+The AppPresser WordPress plugin before 5.0.0 does not restrict access to two of its REST API endpoints, allowing unauthenticated visitors to retrieve the installed versions of AppPresser, its add-ons, several third-party AppPresser WordPress plugin before 5.0.0 and its .</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-114202/likely</id>
+<title type="text">CVE-2026-114202 · ASUS Control Center Express · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-114202"/>
+<updated>2026-11-18T02:02:25.712Z</updated>
+<published>2026-11-18T02:02:25.712Z</published>
+<category term="likely"/>
+<category term="ASUS"/>
+<summary type="text">Likely next · score 50/100. Critical 10.0 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×3): ASUS; CISA SSVC: automatable</summary>
+<content type="text">Use of Hard-coded Cryptographic Key in ASUS Control Center Express allows a remote user to gain administrative privileges via a forged authentication token.
+Refer to the &apos;
+Security Update for ASUS Control Center Express Agent &apos; section on the ASUS Security Advisory for more information.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-90436/exploited</id>
+<title type="text">CVE-2026-90436 · Apache Software Foundation Apache Axis 1.x (EOL) · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-90436"/>
+<updated>2026-11-18T00:00:00.000Z</updated>
+<published>2026-11-06T15:37:55.374Z</published>
+<category term="exploited"/>
+<category term="apache"/>
+<summary type="text">Exploited · score 100/100. CISA KEV · added Nov 18 · due Nov 21; 4 PoC repos (3 vetted), unverified, may be malware; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact</summary>
+<content type="text">Apache Axis 1.x (EOL): unauthenticated remote class instantiation via SOAP fault exceptionName
+
+** UNSUPPORTED WHEN ASSIGNED ** Deserialization of an inbound SOAP fault in Apache Axis 1.x allows unauthenticated remote class instantiation. When a SOAP &lt;Fault&gt; carries a &lt;detail&gt;&lt;exceptionName&gt; element, Axis loads the named class and, if a String &lt;data&gt; element is also present, instantiates it through its String constructor before checking that it is an AxisFault. Loading alone runs the class&apos;s static initializer. With a suitable class on the application&apos;s classpath this leads to remote code execution. The fault is parsed while the engine resolves the target service, before any per-service handler chain runs, so authentication handlers configured on a service do not protect against it. This affects all Apache Axis 1.x versions through 1.4.
+
+As Axis 1 has been EOL we recommend you migrate to a different SOAP engine, such as Apache Axis 2/Java. Alternatively you could use a build of Axis with the patch from…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126969/likely</id>
+<title type="text">CVE-2026-126969 · SmarterTools SmarterMail · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126969"/>
+<updated>2026-11-17T23:14:28.488Z</updated>
+<published>2026-11-17T23:14:28.488Z</published>
+<category term="likely"/>
+<category term="zdi"/>
+<summary type="text">Likely next · score 52/100. Critical 9.1 · network (v3.0); Product in KEV (×3): SmarterTools SmarterMail; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">SmarterTools SmarterMail Insufficient Entropy Authentication Bypass Vulnerability
+
+SmarterTools SmarterMail Insufficient Entropy Authentication Bypass Vulnerability. This vulnerability allows remote attackers to bypass authentication on affected installations of SmarterTools SmarterMail. Authentication is not required to exploit this vulnerability.
+
+The specific flaw exists within the generation of Application Passwords. The issue results from using insufficient entropy in the generation of credentials. An attacker can leverage this vulnerability to bypass authentication on the system. Was ZDI-CAN-33568.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-114952/likely</id>
+<title type="text">CVE-2026-114952 · Oracle Corporation MySQL Server · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-114952"/>
+<updated>2026-11-17T21:32:07.842Z</updated>
+<published>2026-11-17T21:32:07.842Z</published>
+<category term="likely"/>
+<category term="oracle"/>
+<summary type="text">Likely next · score 50/100. Critical 9.1 · network (v3.1); CISA SSVC: total technical impact; Vendor in KEV (×46): Oracle; CISA SSVC: automatable</summary>
+<content type="text">Vulnerability in the MySQL Server, MySQL Cluster product of Oracle MySQL (component: Client programs). Supported versions that are affected are MySQL Server: 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; MySQL Cluster: 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4 and 26.10. Easily exploitable vulnerability allows unauthenticated attacker with network access via multiple protocols to compromise MySQL Server, MySQL Cluster. Successful attacks of this vulnerability can result in unauthorized creation, deletion or modification access to critical data or all MySQL Server, MySQL Cluster accessible data as well as unauthorized access to critical data or complete access to all MySQL Server, MySQL Cluster accessible data. CVSS 3.1 Base Score 9.1 (Confidentiality and Integrity impacts). CVSS Vector: (CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N).</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-114938/likely</id>
+<title type="text">CVE-2026-114938 · Oracle Corporation Oracle Java SE · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-114938"/>
+<updated>2026-11-17T21:32:03.183Z</updated>
+<published>2026-11-17T21:32:03.183Z</published>
+<category term="likely"/>
+<category term="oracle"/>
+<summary type="text">Likely next · score 52/100. 77 PoC repos (59 vetted), unverified, may be malware; Product in KEV (×7): Oracle Java SE; CISA SSVC: total technical impact; High 8.1 · network (v3.1)</summary>
+<content type="text">Vulnerability in the Oracle Java SE, Oracle GraalVM for JDK, Oracle GraalVM Enterprise Edition product of Oracle Java SE (component: Compiler). Supported versions that are affected are Oracle Java SE: 8u511b33-perf, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3; Oracle GraalVM for JDK: 17.0.21.0.3 and 21.0.13.0.3; Oracle GraalVM Enterprise Edition: 21.3.20.0.3. Difficult to exploit vulnerability allows unauthenticated attacker with network access via multiple protocols to compromise Oracle Java SE, Oracle GraalVM for JDK, Oracle GraalVM Enterprise Edition. Successful attacks of this vulnerability can result in takeover of Oracle Java SE, Oracle GraalVM for JDK, Oracle GraalVM Enterprise Edition. Note: This vulnerability can only be exploited by supplying data to APIs in the specified Component without using Untrusted Java Web Start applications or Untrusted Java applets, such as through a web service. CVSS 3.1 Base Score 8.1 (Confidentiality, Integrity and Availability impacts).…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-128023/likely</id>
+<title type="text">CVE-2026-128023 · php frankenphp · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-128023"/>
+<updated>2026-11-17T13:30:14.500Z</updated>
+<published>2026-11-13T09:34:05.836Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 52/100. Critical 9.1 · network (v4.0); CISA SSVC: public PoC · Nov 17; CISA SSVC: total technical impact; Vendor in KEV (×6): PHP Group</summary>
+<content type="text">FrankenPHP before 1.13.0 Authentication Bypass via Dot-Form Header Name Aliasing
+
+FrankenPHP before 1.13.0 contains an authentication bypass vulnerability that allows unauthenticated attackers to spoof trusted headers by sending dot-form header names that PHP rewrites to underscores. Attackers can send headers like X.Authenticated.User or X.Forwarded.For that map to $_SERVER keys, spoofing user identity, client IP, or scheme.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-125160/exploited</id>
+<title type="text">CVE-2026-125160 · TYPO3 TYPO3 CMS · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-125160"/>
+<updated>2026-11-17T11:11:10.151Z</updated>
+<published>2026-11-17T11:11:10.151Z</published>
+<category term="exploited"/>
+<category term="TYPO3"/>
+<summary type="text">Exploited · score 90/100. Vendor CVSS: exploitation reported (E:A); EPSS 0.52% · 44th pct · day 4, too new to trust; Medium 6.3 · network (v4.0); CISA SSVC: partial technical impact</summary>
+<content type="text">TYPO3 CMS - Information Disclosure in Form Framework
+
+Files uploaded through FileUpload or ImageUpload elements are stored in an unguessable sub-folder that remains the same for the whole form session. If storing an uploaded file failed, for example because of a file name exceeding the file system&apos;s length limit, the raw error message was shown to the frontend user disclosing the storage path including the unguessable folder name and the server&apos;s temporary upload directory. With this information, attackers could determine the public URL of files they upload through the form.
+
+If a form allows uploading files that browsers can execute, such as HTML documents, this could lead to Cross-Site Scripting on web servers that do not apply the Content-Security-Policy recommended by TYPO3 to the form upload target folder. This vulnerability is known to be actively exploited.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-120409/likely</id>
+<title type="text">CVE-2026-120409 · All-in-One Video Gallery · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120409"/>
+<updated>2026-11-17T08:20:17.000Z</updated>
+<published>2026-11-09T06:00:27.125Z</published>
+<category term="likely"/>
+<category term="WPScan"/>
+<summary type="text">Likely next · score 32/100. Nuclei template (http · medium) · added Nov 17: scannable at scale; CISA SSVC: automatable; No CNA score; CISA-ADP CVSS 5.3 used; EPSS 0.59% · 49th pct · day 12, too new to trust</summary>
+<content type="text">All-in-One Video Gallery &lt; 5.1.1 - Unauthenticated Password-Protected Video Disclosure via Player Page and Download Handler
+
+The All-in-One Video Gallery WordPress plugin before 5.1.1 does not check whether a video is password protected before serving it through its standalone player page and its download link, allowing unauthenticated visitors to obtain the media source of password-protected videos, such as unlisted YouTube or Vimeo links and external file URLs.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-109991/likely</id>
+<title type="text">CVE-2026-109991 · teamfunnelkit FunnelKit Payment Gateway for Stripe WooCommerce · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-109991"/>
+<updated>2026-11-17T07:42:24.000Z</updated>
+<published>2026-11-07T11:26:33.813Z</published>
+<category term="likely"/>
+<category term="Wordfence"/>
+<summary type="text">Likely next · score 40/100. Nuclei template (http · high) · added Nov 17: scannable at scale; CISA SSVC: automatable; High 7.5 · network (v3.1); Part of Wordfence bulk release · Nov 7 (107)</summary>
+<content type="text">FunnelKit Payment Gateway for Stripe WooCommerce &lt;= 1.15.0.2 - Insecure Direct Object Reference to Unauthenticated Sensitive Information Exposure via &apos;order-pay&apos; URL Path Parameter
+
+The FunnelKit Payment Gateway for Stripe WooCommerce plugin for WordPress is vulnerable to Insecure Direct Object Reference in all versions up to, and including, 1.15.0.2 via the &apos;order-pay (WP query var from /checkout/order-pay/&lt;ID&gt;/)&apos; parameter due to missing validation on a user controlled key. This makes it possible for unauthenticated attackers to read the full billing PII — including name, email address, phone number, and complete street address — of any store order by enumerating sequential order IDs, as this data is emitted into the inline fkwcs_data JavaScript object via wp_localize_script on every matching page response. Exploitation occurs even when WooCommerce itself rejects the order-pay page request, because the plugin&apos;s wp_localize_script call runs independently of WooCommerce&apos;s own order-key validation on the same request.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-102657/likely</id>
+<title type="text">CVE-2026-102657 · esm-dev esm.sh · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-102657"/>
+<updated>2026-11-17T07:41:46.000Z</updated>
+<published>2026-11-06T20:49:28.708Z</published>
+<category term="likely"/>
+<category term="GitHub_M"/>
+<summary type="text">Likely next · score 40/100. Nuclei template (http · high) · added Nov 17: scannable at scale; CISA SSVC: automatable; High 7.5 · network (v3.1); Part of GitHub bulk release · Nov 6 (68)</summary>
+<content type="text">esm.sh: web.NewHandler allows arbitrary file read via encoded dot-segment path traversal
+
+esm.sh is a no-build content delivery network (CDN) for web development. Prior to server version 137_7, the documented web.NewHandler static file server in web/handler.go joins the URL-decoded r.URL.Path with Config.AppDir without verifying that the result remains inside the configured application directory. URL-encoded dot segments such as %2e%2e bypass the plain traversal redirect performed by Go&apos;s ServeMux, allowing an unauthenticated remote attacker to make the server open and return files outside Config.AppDir that are readable by the server process. The confirmed impact is file disclosure only, and the issue is reachable with Dev disabled. This issue is fixed in server version 137_7.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-123807/likely</id>
+<title type="text">CVE-2026-123807 · SignalK signalk-server · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123807"/>
+<updated>2026-11-17T07:28:59.000Z</updated>
+<published>2026-11-09T20:39:48.711Z</published>
+<category term="likely"/>
+<category term="GitHub_M"/>
+<summary type="text">Likely next · score 66/100. Nuclei template (http · critical) · added Nov 17: scannable at scale; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Signal K Server: Unauthenticated path traversal in resources-provider v2 API leads to JWT secret disclosure, admin impersonation and remote code execution
+
+Signal K Server is a server application that runs on a central hub in a boat. From 2.0.0 until 2.34.0 for Signal K Server and from 1.0.0 until 1.5.3 for @signalk/resources-provider, the v2 REST route GET /signalk/v2/api/resources/:resourceType/:resourceId accepts an unsafe resourceId that can escape the intended resource directory. The route passes the attacker-controlled resourceId through src/api/resources/index.ts to FileStore.getResource() in packages/resources-provider-plugin/src/filestorage.ts without adequate path containment, allowing arbitrary JSON files reachable by the server to be read. Related PUT and DELETE resource operations can write or delete files outside the storage root. Deployments with allow_readonly enabled permit anonymous reads, while other deployments require a readonly user token. Reading security.json exposes the HS256 JWT signing secret and password hashes, allowing an attacker to forge an administrator token. Administrative access to POST…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-39732/likely</id>
+<title type="text">CVE-2026-39732 · INTINITUM FORM Transliterator · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-39732"/>
+<updated>2026-11-17T07:06:30.000Z</updated>
+<published>2026-10-30T18:30:33.419Z</published>
+<category term="likely"/>
+<category term="Patchstack"/>
+<summary type="text">Likely next · score 52/100. Nuclei template (http · critical) · added Nov 17: scannable at scale; Critical 9.3 · network (v3.1); CISA SSVC: automatable; Part of Patchstack bulk release · Oct 30 (58)</summary>
+<content type="text">WordPress Transliterator plugin &lt;= 2.5.13 - SQL Injection vulnerability
+
+Improper Neutralization of Special Elements used in an SQL Command (&apos;SQL Injection&apos;) vulnerability in INTINITUM FORM Transliterator serbian-transliteration allows Blind SQL Injection.This issue affects Transliterator: from n/a through 2.5.13.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-102895/exploited</id>
+<title type="text">CVE-2026-102895 · gpustack gpustack · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-102895"/>
+<updated>2026-11-17T03:04:31.000Z</updated>
+<published>2026-11-04T21:16:59.842Z</published>
+<category term="exploited"/>
+<category term="GitHub_M"/>
+<summary type="text">Exploited · score 100/100. CISA KEV · added Nov 9 · due Nov 12; Nuclei template (http · critical) · added Nov 17: scannable at scale; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact</summary>
+<content type="text">GPUStack: Authentication bypass via trusted loopback source (reverse-proxy TCP peer or X-GPUStack-Real-IP header) grants unauthenticated admin
+
+GPUStack is an open-source GPU cluster manager for AI model serving and GPU instance provisioning. Prior to 2.2.0, get_current_user in gpustack/api/auth.py treated a loopback request source as the built-in administrator when force_auth_localhost was false, which was the default. A remote request could appear to originate from 127.0.0.1 because client_ip_getter accepted a same-host reverse proxy peer or a client-supplied X-GPUStack-Real-IP loopback value. The bypass allowed unauthenticated administrative access, including user and model changes, persistent administrator API-key creation, disclosure of worker and cloud-provider secrets, and code execution through POST /v2/inference-backends/from-yaml. Exploitation was observed in the wild against a 2.1.1 deployment. This issue is fixed in version 2.2.0.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-116779/exploited</id>
+<title type="text">CVE-2026-116779 · signalwire freeswitch · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116779"/>
+<updated>2026-11-17T02:56:48.000Z</updated>
+<published>2026-11-05T19:30:25.492Z</published>
+<category term="exploited"/>
+<category term="GitHub_M"/>
+<summary type="text">Exploited · score 100/100. CISA KEV · added Nov 9 · due Nov 12; Nuclei template (javascript · critical) · added Nov 17: scannable at scale; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact</summary>
+<content type="text">FreeSWITCH: Inbound SIP MESSAGE can select the api chat proto and run FreeSWITCH API commands
+
+FreeSWITCH is a Software Defined Telecom Stack enabling the digital transformation from proprietary telecom switches to a software implementation that runs on any commodity hardware. Prior to 1.11.3, sofia_presence_handle_sip_i_message() split the To user of an inbound SIP MESSAGE on a plus sign and treated the left side as a chat protocol selector. Selecting the api chat proto reached switch_api_execute(), allowing a peer whose MESSAGE was accepted to run FreeSWITCH API commands, including operating-system command sinks, with the daemon&apos;s privileges. Inbound chat is enabled on the stock internal and external profiles, and any authenticated profile account is sufficient; stock directory users without password material can also remove that barrier in affected configurations. The flaw permits configuration and credential disclosure, arbitrary call control, and command execution, and exploitation has been observed in the wild. This issue is fixed in version 1.11.3.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-111760/likely</id>
+<title type="text">CVE-2026-111760 · git git · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-111760"/>
+<updated>2026-11-16T20:58:39.543Z</updated>
+<published>2026-11-16T20:58:39.543Z</published>
+<category term="likely"/>
+<category term="GitHub_M"/>
+<summary type="text">Likely next · score 52/100. 4 PoC repos (4 vetted), unverified, may be malware; Product in KEV (×1): Git; CISA SSVC: total technical impact; High 8.0 · network (v3.1)</summary>
+<content type="text">Git: Recursive clones are susceptible to Remote Code Execution
+
+Git is a fast, scalable, distributed revision control system with an unusually rich command set that provides both high-level operations and full access to internals. Prior to 2.50.2, 2.51.3, 2.52.1, 2.53.1, 2.54.1, 2.55.1, and 2.56.1, an attacker-controlled repository hosted by the attacker rather than on a normal forge site can exploit git clone --recurse-submodules by causing Git to overwrite a submodule gitfile with a symbolic link. The symbolic link can point to a directory containing attacker-controlled Git configuration or hooks, allowing those hooks or configuration to execute code on the cloning user&apos;s system. The issue requires the recursive-submodule option, and users should avoid cloning repositories from untrusted sources. This issue is fixed in versions 2.50.2, 2.51.3, 2.52.1, 2.53.1, 2.54.1, 2.55.1, and 2.56.1.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129450/likely</id>
+<title type="text">CVE-2026-129450 · DrayTek Vigor2960 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129450"/>
+<updated>2026-11-16T18:34:23.654Z</updated>
+<published>2026-11-15T11:45:15.185Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 16; CISA SSVC: total technical impact; Vendor in KEV (×5): DrayTek</summary>
+<content type="text">DrayTek Vigor2960 mainfunction.cgi sub_1E084 path traversal
+
+A vulnerability was detected in DrayTek Vigor2960 1.5.1.6. Affected by this issue is the function sub_1E084 of the file /cgi-bin/mainfunction.cgi?action=doWebBackup. The manipulation of the argument option results in path traversal. It is possible to launch the attack remotely. The exploit is now public and may be used. Upgrading to version 1.5.1.7 can resolve this issue. You should upgrade the affected component. The vendor recommends: &quot;1.5.1.6 isn&apos;t the latest version of 2960, the latest version fixes many security issues. And we have another one in our release plan which should solve the issues reported.&quot;</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-110960/likely</id>
+<title type="text">CVE-2026-110960 · Auth Armor · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-110960"/>
+<updated>2026-11-16T15:49:42.000Z</updated>
+<published>2026-11-15T06:00:06.639Z</published>
+<category term="likely"/>
+<category term="WPScan"/>
+<summary type="text">Likely next · score 62/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Auth Armor &lt;= 1.0.3 - Unauthenticated Account Takeover
+
+The Auth Armor WordPress plugin through 1.0.3 does not require authentication on several handlers available to logged-out users, which leak the site&apos;s stored API credentials and allow an unauthenticated attacker to reset an administrator&apos;s enrollment and take over that administrator account.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129453/likely</id>
+<title type="text">CVE-2026-129453 · DrayTek Vigor2960 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129453"/>
+<updated>2026-11-16T15:13:08.134Z</updated>
+<published>2026-11-15T13:30:11.581Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 16; CISA SSVC: total technical impact; Vendor in KEV (×5): DrayTek</summary>
+<content type="text">DrayTek Vigor2960 File Existence Check mainfunction.cgi check_file_exist heap-based overflow
+
+A vulnerability was found in DrayTek Vigor2960 1.5.1.6. This issue affects the function check_file_exist of the file /cgi-bin/mainfunction.cgi of the component File Existence Check. Performing a manipulation of the argument upload_name results in heap-based buffer overflow. The attack may be initiated remotely. The exploit has been made public and could be used. Upgrading to version 1.5.1.7 is capable of addressing this issue. Upgrading the affected component is recommended. The vendor recommends: &quot;1.5.1.6 isn&apos;t the latest version of 2960, the latest version fixes many security issues. And we have another one in our release plan which should solve the issues reported.&quot;</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129449/likely</id>
+<title type="text">CVE-2026-129449 · DrayTek Vigor2960 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129449"/>
+<updated>2026-11-16T15:13:05.363Z</updated>
+<published>2026-11-15T11:00:20.950Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 16; CISA SSVC: total technical impact; Vendor in KEV (×5): DrayTek</summary>
+<content type="text">DrayTek Vigor2960 mainfunction.cgi sub_14914 command injection
+
+A security vulnerability has been detected in DrayTek Vigor2960 up to 1.5.1.6. Affected by this vulnerability is the function sub_14914 of the file /cgi-bin/mainfunction.cgi. The manipulation of the argument swmconfigupload leads to command injection. It is possible to initiate the attack remotely. The exploit has been disclosed publicly and may be used. Upgrading to version 1.5.1.7 addresses this issue. It is advisable to upgrade the affected component. The vendor recommends: &quot;1.5.1.6 isn&apos;t the latest version of 2960, the latest version fixes many security issues. And we have another one in our release plan which should solve the issues reported.&quot;</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129258/likely</id>
+<title type="text">CVE-2026-129258 · Tenda AC18 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129258"/>
+<updated>2026-11-16T15:12:58.266Z</updated>
+<published>2026-11-14T14:30:22.937Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 16; CISA SSVC: total technical impact; Vendor in KEV (×3): Tenda</summary>
+<content type="text">Tenda AC18 Firmware Upgrade upgrade data authenticity
+
+A vulnerability was identified in Tenda AC18 15.03.05.05_multi/15.03.05.19 Build 6318. Affected by this vulnerability is an unknown functionality of the file /cgi-bin/upgrade of the component Firmware Upgrade Handler. Such manipulation of the argument upgradeFile leads to insufficient verification of data authenticity. The attack may be launched remotely. The exploit is publicly available and might be used.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129250/likely</id>
+<title type="text">CVE-2026-129250 · Edimax BR6478ACV2 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129250"/>
+<updated>2026-11-16T15:12:54.654Z</updated>
+<published>2026-11-14T11:30:19.430Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 52/100. Critical 9.4 · network (v4.0); CISA SSVC: public PoC · Nov 16; CISA SSVC: total technical impact; Vendor in KEV (×1): Edimax</summary>
+<content type="text">Edimax BR6478ACV2 webs formPPTPSetup buffer overflow
+
+A security vulnerability has been detected in Edimax BR6478ACV2 1.23. The impacted element is the function formPPTPSetup of the file webs. The manipulation of the argument pptpUserName leads to buffer overflow. It is possible to initiate the attack remotely. The exploit has been disclosed publicly and may be used. The vendor was contacted early about this disclosure but did not respond in any way.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-111559/likely</id>
+<title type="text">CVE-2026-111559 · sruupl Batflat · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-111559"/>
+<updated>2026-11-16T14:35:07.000Z</updated>
+<published>2026-11-16T12:23:00.032Z</published>
+<category term="likely"/>
+<category term="CERT-PL"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">Remote Code Execution in Batflat CMS
+
+Batflat CMS does not sanitize data passed to the /contact endpoint. A remote unauthenticated attacker can send a POST request with a crafted message, causing arbitrary PHP code execution with www-data user privileges.
+
+The project is no longer maintained and the issue has not been fixed.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-125423/likely</id>
+<title type="text">CVE-2026-125423 · Gitea Gitea · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-125423"/>
+<updated>2026-11-16T09:43:55.000Z</updated>
+<published>2026-11-15T21:10:23.428Z</published>
+<category term="likely"/>
+<category term="Gitea"/>
+<summary type="text">Likely next · score 52/100. 1 PoC repo (1 vetted), unverified, may be malware; Product in KEV (×1): Gitea; CISA SSVC: total technical impact; High 8.8 · network (v3.1)</summary>
+<content type="text">Gitea command execution through repository auto-initialization
+
+A repository created with auto-init accepted pushes before its initialization had finished, and the initial commit was built in a checkout of whatever the repository already contained. A user who is allowed to create repositories could push a crafted tree during that window so that writing the README followed a symbolic link and overwrote a server-side git hook, which runs commands as the Gitea system user. The initial commit is now built in a freshly initialized directory, and a new repository only becomes ready, and accepts pushes, once its initialization is complete.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-112477/likely</id>
+<title type="text">CVE-2026-112477 · Apple iOS and iPadOS · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-112477"/>
+<updated>2026-11-16T01:06:27.000Z</updated>
+<published>2026-10-26T20:42:36.366Z</published>
+<category term="likely"/>
+<category term="apple"/>
+<summary type="text">Likely next · score 52/100. 2 PoC repos (2 vetted), unverified, may be malware; Product in KEV (×6): Apple macOS; CISA SSVC: total technical impact; High 7.0 · local (v3.1)</summary>
+<content type="text">A race condition was addressed with improved locking. This issue is fixed in iOS 26.7.2 and iPadOS 26.7.2, iOS 27.2 and iPadOS 27.2, macOS Golden Gate 27.2, macOS Sequoia 15.8.2, macOS Tahoe 26.7.2, tvOS 27.2, visionOS 27.2, watchOS 27.2. An app may be able to cause unexpected system termination or corrupt kernel memory.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-119485/likely</id>
+<title type="text">CVE-2026-119485 · weDevs Dokan · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-119485"/>
+<updated>2026-11-16T00:01:39.000Z</updated>
+<published>2026-11-03T16:57:33.723Z</published>
+<category term="likely"/>
+<category term="Patchstack"/>
+<summary type="text">Likely next · score 26/100. Nuclei template (http · medium) · added Nov 16: scannable at scale; CISA SSVC: automatable; Medium 5.3 · network (v3.1); CISA SSVC: partial technical impact</summary>
+<content type="text">WordPress Dokan plugin &lt;= 5.3.2 - Broken Access Control vulnerability
+
+Missing Authorization vulnerability in weDevs Dokan dokan-lite allows Exploiting Incorrectly Configured Access Control Security Levels.This issue affects Dokan: from n/a through 5.3.2.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129349/likely</id>
+<title type="text">CVE-2026-129349 · Apache Software Foundation Apache Shiro · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129349"/>
+<updated>2026-11-15T17:14:29.000Z</updated>
+<published>2026-11-15T09:31:50.485Z</published>
+<category term="likely"/>
+<category term="apache"/>
+<summary type="text">Likely next · score 64/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.1 · network (v4.0); Product in KEV (×1): Apache Shiro; CISA SSVC: total technical impact</summary>
+<content type="text">Apache Shiro: DefaultLdapRealm accepts any password when authentication caching is enabled
+
+When authentication caching is enabled on DefaultLdapRealm, after a user logs in successfully once, subsequent logins for that user succeed with any password.
+A cached authentication skips the LDAP bind, and the AllowAllCredentialsMatcher installed by default in DefaultLdapRealm accepts any credentials, allowing an attacker who knows a valid username to authenticate as that user.
+This issue affects all Apache Shiro versions through 3.0.0, only when using DefaultLdapRealm (or JndiLdapRealm) with authenticationCachingEnabled set to true, which is not the default.
+
+Mitigation: Upgrade to version 3.0.1 or later, which fixes the issue by no longer installing AllowAllCredentialsMatcher by default.
+Alternatively, disable authentication caching on the LDAP realm (this is the default), or configure a credentials matcher, such as SimpleCredentialsMatcher, that verifies credentials against the cached authentication info.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129351/likely</id>
+<title type="text">CVE-2026-129351 · TRENDnet TEW-657BRM · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129351"/>
+<updated>2026-11-15T07:59:42.000Z</updated>
+<published>2026-11-14T22:30:23.821Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 10.0 · network (v4.0); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">TRENDnet TEW-657BRM mini_httpd setup.cgi sprintf out-of-bounds write
+
+A security vulnerability has been detected in TRENDnet TEW-657BRM 1.00.1. This vulnerability affects the function sprintf of the file /setup.cgi of the component mini_httpd. Such manipulation leads to out-of-bounds write. The attack can be executed remotely. The exploit has been disclosed publicly and may be used. The vendor explains: &quot;&quot;I am not able to confirm if such vulnerability exists as the product has been EOL for more than 15 years. We will send out an announcement letting customers know.&quot; This vulnerability only affects products that are no longer supported by the maintainer.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129354/likely</id>
+<title type="text">CVE-2026-129354 · D-Link DIR-600L · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129354"/>
+<updated>2026-11-15T07:29:03.000Z</updated>
+<published>2026-11-15T00:45:26.093Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 70/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 10.0 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×26): D-Link</summary>
+<content type="text">D-Link DIR-600L HNAP cgibin hnap_main stack-based overflow
+
+A flaw has been found in D-Link DIR-600L 2.17b02. Affected by this issue is the function hnap_main of the file htdocs/cgibin of the component HNAP Handler. Executing a manipulation can lead to stack-based buffer overflow. The attack can be executed remotely. The exploit has been published and may be used.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129353/likely</id>
+<title type="text">CVE-2026-129353 · D-Link DIR-600L · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129353"/>
+<updated>2026-11-15T07:20:39.000Z</updated>
+<published>2026-11-14T23:15:19.934Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 70/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 10.0 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×26): D-Link</summary>
+<content type="text">D-Link DIR-600L authentication.cgi authenticationcgi_main stack-based overflow
+
+A vulnerability was detected in D-Link DIR-600L 2.17/2.17b02. Affected by this vulnerability is the function authenticationcgi_main of the file authentication.cgi. Performing a manipulation of the argument id/password results in stack-based buffer overflow. Remote exploitation of the attack is possible. The exploit is now public and may be used.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126915/likely</id>
+<title type="text">CVE-2026-126915 · Google Chrome · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126915"/>
+<updated>2026-11-15T03:38:12.000Z</updated>
+<published>2026-11-11T22:39:03.463Z</published>
+<category term="likely"/>
+<category term="Chrome"/>
+<summary type="text">Likely next · score 52/100. 1 PoC repo (1 vetted), unverified, may be malware; Product in KEV (×1): Google Chrome; CISA SSVC: total technical impact; High 7.5 · network (v3.1)</summary>
+<content type="text">Use of uninitialized variable in Skia in Google Chrome on on Android prior to 157.0.8103.78 allowed a remote attacker who had compromised the renderer process to potentially execute arbitrary code outside the sandbox via a crafted HTML page. (Chromium security severity: High)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126902/likely</id>
+<title type="text">CVE-2026-126902 · Google Chrome · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126902"/>
+<updated>2026-11-15T03:23:46.000Z</updated>
+<published>2026-11-11T22:39:05.414Z</published>
+<category term="likely"/>
+<category term="Chrome"/>
+<summary type="text">Likely next · score 52/100. 1 PoC repo (1 vetted), unverified, may be malware; Product in KEV (×1): Google Chrome; CISA SSVC: total technical impact; High 7.5 · network (v3.1)</summary>
+<content type="text">Incorrect reference resolution in Browser in Google Chrome on on Mac prior to 157.0.8103.78 allowed a remote attacker who had compromised the renderer process to execute arbitrary code outside the sandbox via a crafted HTML page. (Chromium security severity: High)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126919/likely</id>
+<title type="text">CVE-2026-126919 · Google Chrome · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126919"/>
+<updated>2026-11-15T03:19:53.000Z</updated>
+<published>2026-11-11T22:38:51.305Z</published>
+<category term="likely"/>
+<category term="Chrome"/>
+<summary type="text">Likely next · score 52/100. 1 PoC repo (1 vetted), unverified, may be malware; Product in KEV (×1): Google Chrome; CISA SSVC: total technical impact; High 8.8 · network (v3.1)</summary>
+<content type="text">Use after free in BrowserTag in Google Chrome prior to 157.0.8103.78 allowed a remote attacker to execute arbitrary code inside the sandbox via a crafted HTML page. (Chromium security severity: High)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126916/likely</id>
+<title type="text">CVE-2026-126916 · Google Chrome · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126916"/>
+<updated>2026-11-15T02:50:22.000Z</updated>
+<published>2026-11-11T22:38:52.403Z</published>
+<category term="likely"/>
+<category term="Chrome"/>
+<summary type="text">Likely next · score 52/100. 1 PoC repo (1 vetted), unverified, may be malware; Product in KEV (×1): Google Chrome; CISA SSVC: total technical impact; High 8.8 · network (v3.1)</summary>
+<content type="text">Integer overflow in V8 in Google Chrome prior to 157.0.8103.78 allowed a remote attacker to execute arbitrary code inside the sandbox via a crafted HTML page. (Chromium security severity: High)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126910/likely</id>
+<title type="text">CVE-2026-126910 · Google Chrome · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126910"/>
+<updated>2026-11-15T02:23:10.000Z</updated>
+<published>2026-11-11T22:38:52.770Z</published>
+<category term="likely"/>
+<category term="Chrome"/>
+<summary type="text">Likely next · score 52/100. 1 PoC repo (1 vetted), unverified, may be malware; Product in KEV (×1): Google Chrome; CISA SSVC: total technical impact; High 8.8 · network (v3.1)</summary>
+<content type="text">Type confusion in V8 in Google Chrome prior to 157.0.8103.78 allowed a remote attacker to execute arbitrary code inside the sandbox via a crafted HTML page. (Chromium security severity: High)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126909/likely</id>
+<title type="text">CVE-2026-126909 · Google Chrome · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126909"/>
+<updated>2026-11-15T02:09:15.000Z</updated>
+<published>2026-11-11T22:38:51.676Z</published>
+<category term="likely"/>
+<category term="Chrome"/>
+<summary type="text">Likely next · score 64/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.6 · network (v3.1); Product in KEV (×1): Google Chrome; CISA SSVC: total technical impact</summary>
+<content type="text">Use after free in Passwords in Google Chrome prior to 157.0.8103.78 allowed a remote attacker leveraging social engineering to execute arbitrary code outside the sandbox via a crafted HTML page. (Chromium security severity: High)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126912/likely</id>
+<title type="text">CVE-2026-126912 · Google Chrome · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126912"/>
+<updated>2026-11-15T01:55:14.000Z</updated>
+<published>2026-11-11T22:38:51.126Z</published>
+<category term="likely"/>
+<category term="Chrome"/>
+<summary type="text">Likely next · score 64/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.6 · network (v3.1); Product in KEV (×1): Google Chrome; CISA SSVC: total technical impact</summary>
+<content type="text">Buffer overflow in Skia in Google Chrome prior to 157.0.8103.78 allowed a remote attacker to execute arbitrary code outside the sandbox via a crafted HTML page. (Chromium security severity: High)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-115934/exploited</id>
+<title type="text">CVE-2026-115934 · craftcms cms · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-115934"/>
+<updated>2026-11-14T15:38:37.000Z</updated>
+<published>2026-11-09T22:57:57.368Z</published>
+<category term="exploited"/>
+<category term="Hackrate"/>
+<summary type="text">Exploited · score 100/100. Vendor CVSS: exploitation reported (E:A); 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.3 · network (v4.0); CISA SSVC: total technical impact</summary>
+<content type="text">SQL injection leading to privilege escalation
+
+An unauthenticated SQL injection can occur on the front end of any site that uses craft.search to perform a search, allowing stacked query execution and enabling escalation to an administrator.
+
+Note that this only affects MySQL/MariaDB.
+
+Impact * SQL injection — The attribute parameter is concatenated into the query unsanitized, and because PDO runs with emulated prepares, stacked statements execute. This gives unauthenticated read and write access to the application database.
+* Privilege escalation to administrator — The write primitive was used to set the admin flag on user ID 1 in the users table, confirmed by reading the value back. Craft short-circuits its permission checks on this single column, so no further changes were needed. The same primitive can overwrite any account’s password hash.
+
+Update to the patched versions (4.18.9 and 5.11.2) to get the fix.
+
+If you cannot update immediately, you can block front-end requests with %5Battribute%5D and [attribute] anywhere in the…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-74756/likely</id>
+<title type="text">CVE-2026-74756 · Apache Software Foundation Apache James · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-74756"/>
+<updated>2026-11-14T11:15:46.000Z</updated>
+<published>2026-11-06T11:43:38.423Z</published>
+<category term="likely"/>
+<category term="apache"/>
+<summary type="text">Likely next · score 70/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.1 · network (v3.1); CISA SSVC: total technical impact; Vendor in KEV (×43): Apache</summary>
+<content type="text">Apache James: WebAdmin exposed without authentication on official Docker default
+
+Some docker-compose shipped by the project exposes by default Webadmin REST API publically without proper authentication setup.
+Version 3.9.1 onward sets a random credential by default on unprotected webadmin endpoints to prevent this while retain convenience.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-117551/exploited</id>
+<title type="text">CVE-2026-117551 · jdownloads.com jDownloads extension for Joomla · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-117551"/>
+<updated>2026-11-14T09:57:35.000Z</updated>
+<published>2026-11-12T17:58:35.141Z</published>
+<category term="exploited"/>
+<category term="Joomla"/>
+<summary type="text">Exploited · score 100/100. Vendor CVSS: exploitation reported (E:A); 1 PoC repo (1 vetted), unverified, may be malware; Critical 10.0 · network (v4.0); CISA SSVC: total technical impact</summary>
+<content type="text">Joomla Extension - jdownloads.com - RCE through file upload in jDownloads &lt; 4.1.8
+
+Joomla Extension - jdownloads.com - RCE through file upload in jDownloads &lt; 4.1.8 - Insufficient validation of frontend thumbnail uploads allowed users with upload permission to place executable files on the server. This results in PHP code execution.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-125855/likely</id>
+<title type="text">CVE-2026-125855 · Elextensions ELEX WordPress HelpDesk &amp; Customer Ticketing System · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-125855"/>
+<updated>2026-11-14T09:06:11.000Z</updated>
+<published>2026-11-13T15:08:39.659Z</published>
+<category term="likely"/>
+<category term="Patchstack"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">WordPress ELEX WordPress HelpDesk &amp; Customer Ticketing System plugin &lt;= 3.3.9 - PHP Object Injection vulnerability
+
+Deserialization of Untrusted Data vulnerability in Elextensions ELEX WordPress HelpDesk &amp; Customer Ticketing System elex-helpdesk-customer-support-ticket-system allows Object Injection.This issue affects ELEX WordPress HelpDesk &amp; Customer Ticketing System: from n/a through 3.3.9.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126473/likely</id>
+<title type="text">CVE-2026-126473 · openemr openemr · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126473"/>
+<updated>2026-11-14T08:48:50.000Z</updated>
+<published>2026-11-13T09:34:58.505Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">OpenEMR before 8.4.0 OAuth Authorization Bypass via Scope Canonicalization
+
+OpenEMR before 8.4.0 contains OAuth scope canonicalization and containment flaws that allow unauthenticated attackers to obtain unapproved system-level FHIR access. Attackers can register a colon-form system:Patient.read client that bypasses approval, then request unregistered system/Patient.write scope to read, modify, and create Patient records.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126173/likely</id>
+<title type="text">CVE-2026-126173 · AutomatorWP AutomatorWP Webhooks · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126173"/>
+<updated>2026-11-14T08:40:02.000Z</updated>
+<published>2026-11-14T04:46:10.057Z</published>
+<category term="likely"/>
+<category term="Wordfence"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">AutomatorWP Pro Webhooks addon &lt;= 1.4.4 - Missing Authorization to Unauthenticated Arbitrary User Password Reset / Account Takeover via Webhook with &apos;Is the user ID&apos; Field
+
+The AutomatorWP Pro plugin for WordPress&apos; webhook addon is vulnerable to authorization bypass in all versions up to, and including, 1.4.4. This is due to the plugin not properly verifying that a user is authorized to perform an action. This makes it possible for unauthenticated attackers to reset the password of any WordPress account, including administrators, resulting in full account takeover. This is only exploitable when an administrator has configured an automation pairing a Receive Webhook trigger — with an &apos;Is the user ID&apos; field — to an Update-User action whose User ID field is left blank and whose Password field is mapped to the webhook password tag, which is a documented, supported plugin configuration.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-128027/likely</id>
+<title type="text">CVE-2026-128027 · php frankenphp · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-128027"/>
+<updated>2026-11-14T07:11:12.000Z</updated>
+<published>2026-11-13T09:34:03.119Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 70/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×6): PHP Group</summary>
+<content type="text">FrankenPHP before 1.1.11 Delayed Propagation of Base Image Security Fixes
+
+FrankenPHP Docker images before 1.1.11 were rebuilt only when new base image tags were created, so security fixes that Alpine, PHP, and Go applied under existing tags were not propagated. Remote attackers could exploit known flaws in the stale system libraries, such as CVE-2025-15467 in libcrypto3, to execute code.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-128014/likely</id>
+<title type="text">CVE-2026-128014 · php frankenphp · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-128014"/>
+<updated>2026-11-14T06:39:16.000Z</updated>
+<published>2026-11-13T09:34:12.011Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 62/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.2 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×6): PHP Group</summary>
+<content type="text">FrankenPHP 1.8.0 before 1.13.2 Out-of-Bounds Write via Bundled Brotli Decoder
+
+FrankenPHP standalone static binaries 1.8.0 before 1.13.2 bundle the PHP brotli extension statically linked with Brotli 1.2.0, whose decoder contains an out-of-bounds write (CVE-2026-111497). Unauthenticated remote attackers can send crafted data to applications that pass it to brotli_uncompress_add() to crash the entire FrankenPHP process, and possibly cause memory disclosure or code execution.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-126837/likely</id>
+<title type="text">CVE-2026-126837 · MongoDB Node.js Driver · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126837"/>
+<updated>2026-11-14T05:57:52.000Z</updated>
+<published>2026-11-12T17:00:11.830Z</published>
+<category term="likely"/>
+<category term="mongodb"/>
+<summary type="text">Likely next · score 62/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.1 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×2): MongoDB</summary>
+<content type="text">Attacker able to redirect a client&apos;s database traffic to a host they control via special characters in an SRV target, bypassing the SRV parent-domain guard
+
+A validation flaw in the DNS SRV host discovery of the MongoDB Node.js driver may cause the driver to connect to a host outside the expected domain. For a mongodb+srv:// connection string, the driver checks each host name in the DNS SRV response against the domain of the connection string. The driver then builds the connection address from the original name, in which certain characters end the host name early. An unauthenticated party who can forge or change the DNS SRV response may redirect the connection to a host of their choice. TLS does not prevent this, because the driver verifies the server certificate against the redirected host name. This may result in unintended disclosure of application data and authentication credentials, and in altered query results. Applications that use mongodb:// connection strings are not affected.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-114713/exploited</id>
+<title type="text">CVE-2026-114713 · UnrealIRCd UnrealIRCd · Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-114713"/>
+<updated>2026-11-14T04:30:46.000Z</updated>
+<published>2026-11-08T02:31:48.387Z</published>
+<category term="exploited"/>
+<category term="mitre"/>
+<summary type="text">Exploited · score 100/100. CISA KEV · added Nov 13 · due Nov 16; 3 PoC repos (3 vetted), unverified, may be malware; CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">The labeled-response module in UnrealIRCd 6.0.0 before 6.2.7.1 does not escape the IRCv3 &quot;label&quot; message tag when echoing it into replies, which allows any user on a network with two or more linked servers to inject server-to-server commands that are executed with server authority.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-129110/likely</id>
+<title type="text">CVE-2026-129110 · nuxsmin sysPass · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129110"/>
+<updated>2026-11-13T22:59:38.000Z</updated>
+<published>2026-11-13T15:46:29.636Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">sysPass 3.0.1 through 3.2.11 Unauthenticated Reinstallation RCE via install/install
+
+sysPass 3.0.1 through 3.2.11 contains an authentication bypass vulnerability that allows unauthenticated attackers to reinstall an already-installed instance by POSTing to the install/install handler, which never checks isInstalled(). Attackers can overwrite config.xml, point the application at an attacker-controlled database, create an administrator account, and plant serialized PublicLink gadget chains triggered via account/viewLink to execute commands.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-124027/likely</id>
+<title type="text">CVE-2026-124027 · zhimaAi chatwiki · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-124027"/>
+<updated>2026-11-13T15:59:46.000Z</updated>
+<published>2026-11-06T19:14:44.954Z</published>
+<category term="likely"/>
+<category term="VulnCheck"/>
+<summary type="text">Likely next · score 40/100. Nuclei template (http · high) · added Nov 13: scannable at scale; CISA SSVC: automatable; High 8.7 · network (v4.0); Part of VulnCheck bulk release · Nov 6 (52)</summary>
+<content type="text">ChatWiki before 2.10.0 Unauthenticated Document Disclosure via getLibRawFileOnePage
+
+ChatWiki before 2.10.0 contains a missing authentication vulnerability in the GET /manage/getLibRawFileOnePage route that allows unauthenticated attackers to read other tenants&apos; documents. Attackers can enumerate sequential admin_user_id and file id query parameters, bypassing the ownership check, to retrieve PDF-rendered pages of any tenant&apos;s knowledge-base documents.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-125086/likely</id>
+<title type="text">CVE-2026-125086 · D-Link M60 · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-125086"/>
+<updated>2026-11-13T14:56:34.756Z</updated>
+<published>2026-11-10T00:45:28.122Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 60/100. Critical 10.0 · network (v4.0); CISA SSVC: public PoC · Nov 13; CISA SSVC: total technical impact; Vendor in KEV (×26): D-Link</summary>
+<content type="text">D-Link M60 emDaemon MQTT Broker mosquitto.conf system hard-coded credentials
+
+A vulnerability has been found in D-Link M60 1.12.B01. Impacted is the function system of the file /etc/emDaemon/mosquitto.conf of the component emDaemon MQTT Broker. Such manipulation leads to hard-coded credentials. The attack can be executed remotely. The exploit has been disclosed to the public and may be used.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-116000/likely</id>
+<title type="text">CVE-2026-116000 · Zylon PrivateGPT · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116000"/>
+<updated>2026-11-13T10:39:29.000Z</updated>
+<published>2026-10-25T02:15:12.758Z</published>
+<category term="likely"/>
+<category term="VulDB"/>
+<summary type="text">Likely next · score 26/100. Nuclei template (http · high) · added Nov 13: scannable at scale; CISA SSVC: automatable; Medium 6.9 · network (v4.0); CISA SSVC: partial technical impact</summary>
+<content type="text">Zylon PrivateGPT URI Artifact Loader uri_loader.py load_file_from_uri server-side request forgery
+
+A security flaw has been discovered in Zylon PrivateGPT 1.0.0/1.0.1. This vulnerability affects the function load_file_from_uri of the file private_gpt/server/ingest/uri_loader.py of the component URI Artifact Loader. Performing a manipulation of the argument Value results in server-side request forgery. It is possible to initiate the attack remotely. The exploit has been released to the public and may be used for attacks. The vendor was contacted early about this disclosure but did not respond in any way.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-119077/likely</id>
+<title type="text">CVE-2026-119077 · elextensions ELEX WordPress HelpDesk &amp; Customer Ticketing System · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-119077"/>
+<updated>2026-11-13T09:35:17.360Z</updated>
+<published>2026-11-13T09:35:17.360Z</published>
+<category term="likely"/>
+<category term="Wordfence"/>
+<summary type="text">Likely next · score 56/100. 1 PoC repo (1 vetted), unverified, may be malware; Critical 9.8 · network (v3.1); CISA SSVC: total technical impact; CISA SSVC: automatable</summary>
+<content type="text">ELEX WordPress HelpDesk &amp; Customer Ticketing System &lt;= 3.3.9 - Unauthenticated PHP Object Injection to Remote Code Execution via &apos;form&apos; Parameter
+
+The ELEX WordPress HelpDesk &amp; Customer Ticketing System plugin for WordPress is vulnerable to PHP Object Injection in all versions up to, and including, 3.3.9 via the &apos;form (specifically the attacker-controlled ticket_label field inside the url-encoded form string)&apos; parameter parameter. This is due to missing server-side authentication and the absence of a class allowlist on deserialization, with the only guard being a nonce publicly emitted on any page carrying the [wsdesk_support] shortcode. This makes it possible for unauthenticated attackers to execute code on the server. A successful exploit requires a single anonymous GET to any public page carrying the [wsdesk_support] shortcode to harvest the publicly emitted wsdesk_nonce value, after which a single unauthenticated POST completes the attack.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-120864/likely</id>
+<title type="text">CVE-2026-120864 · Citrix NetScaler ADC · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120864"/>
+<updated>2026-11-13T08:10:07.476Z</updated>
+<published>2026-11-13T08:10:07.476Z</published>
+<category term="likely"/>
+<category term="NetScaler"/>
+<summary type="text">Likely next · score 50/100. Critical 9.3 · network (v4.0); CISA SSVC: total technical impact; Vendor in KEV (×27): Citrix; CISA SSVC: automatable</summary>
+<content type="text">Memory overflow in ICA proxy can lead to unpredictable or erroneous behavior or Denial of Service in Citrix NetScaler ADC and Citrix NetScaler Gateway
+
+Memory overflow in ICA proxy can lead to unpredictable or erroneous behavior or Denial of Service in Citrix NetScaler ADC and Citrix NetScaler Gateway.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/signal/CVE-2026-64858/likely</id>
+<title type="text">CVE-2026-64858 · ckotzbauer vulnerability-operator · Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-64858"/>
+<updated>2026-11-13T07:55:43.000Z</updated>
+<published>2026-11-11T17:45:16.495Z</published>
+<category term="likely"/>
+<category term="GitHub_M"/>
+<summary type="text">Likely next · score 18/100. Nuclei template (http · medium) · added Nov 13: scannable at scale; Part of GitHub bulk release · Nov 11 (56); EPSS 1.1% · 66th pct · day 10, too new to trust; Medium 5.3 · network (v3.1)</summary>
+<content type="text">vulnerability-operator: IDOR exposing vulnerability reports via unauthenticated Report Handler
+
+vulnerability-operator scans SBOMs and Images for vulnerabilities. Prior to version 0.28.16, an unauthenticated information-disclosure vulnerability exposes all vulnerability scan reports served by the operator. The /report/ HTTP endpoint mounts a raw http.FileServer over the reports directory (default /reports) with no authentication, authorization, or middleware. Any client that can reach the operator&apos;s HTTP port (default 8080) can list and download every JSON vulnerability report, disclosing CVE IDs, affected package names/versions, and container image identifiers for every workload scanned in the cluster. This issue has been patched in version 0.28.16.</content>
+</entry>
+</feed>

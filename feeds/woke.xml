@@ -1,0 +1,1319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<id>https://cverdict-psi.vercel.app/feeds/woke.xml</id>
+<title type="text">CVErdict · old CVEs that woke up</title>
+<subtitle type="text">CVEs published before the last 30 days that gained exploitation evidence in that time. Up to 100: every CISA KEV, EU KEV and CIRCL listing and Exploit-DB entry, and a PoC repo alone only when rated Likely next or Exploited.</subtitle>
+<link rel="self" type="application/atom+xml" href="https://cverdict.dev/feeds/woke.xml"/>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/woke"/>
+<updated>2026-11-21T01:31:48.214Z</updated>
+<author><name>CVErdict</name><uri>https://github.com/markusweldon/cverdict</uri></author>
+<generator uri="https://github.com/markusweldon/cverdict">cverdict-pipeline</generator>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-33638</id>
+<title type="text">CVE-2026-33638 · lin-snow Ech0 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-33638"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-33638.yaml"/>
+<updated>2026-11-21T01:31:48.214Z</updated>
+<published>2026-11-21T01:31:48.214Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Mar 26. Nov 21: first Nuclei template (the day we first saw it). Likely next · score 26/100.</summary>
+<content type="text">Ech0 authenticated user-list exposed data via public `/api/allusers` endpoint</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-109618</id>
+<title type="text">CVE-2026-109618 · PHP Group PHP · woke up: EPSS rose from 5.3% to 100.0% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-109618"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-109618&amp;scope=time-series"/>
+<updated>2026-11-21T00:00:00.000Z</updated>
+<published>2026-10-26T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="epss"/>
+<category term="exploited"/>
+<summary type="text">Published Oct 21. Oct 26: added to CISA KEV. Nov 21: EPSS rose from 5.3% to 100.0% in 30 days (the day we first saw it). Exploited · score 100/100.</summary>
+<content type="text">RCE via OOM corruption</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-109619</id>
+<title type="text">CVE-2026-109619 · PHP Group PHP · woke up: EPSS rose from 5.8% to 100.0% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-109619"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-109619&amp;scope=time-series"/>
+<updated>2026-11-21T00:00:00.000Z</updated>
+<published>2026-10-26T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="epss"/>
+<category term="exploited"/>
+<summary type="text">Published Oct 21. Oct 26: added to CISA KEV. Nov 21: EPSS rose from 5.8% to 100.0% in 30 days (the day we first saw it). Exploited · score 100/100.</summary>
+<content type="text">RCE via stale global state</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-110264</id>
+<title type="text">CVE-2026-110264 · GitLab GitLab · woke up: EPSS rose from 0.51% to 54.0% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-110264"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-110264&amp;scope=time-series"/>
+<updated>2026-11-21T00:00:00.000Z</updated>
+<published>2026-11-21T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="likely"/>
+<summary type="text">Published Oct 22. Nov 21: EPSS rose from 0.51% to 54.0% in 30 days (the day we first saw it). Likely next · score 79/100.</summary>
+<content type="text">Integer Overflow or Wraparound in GitLab</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-98432</id>
+<title type="text">CVE-2026-98432 · Linux Linux · woke up: EPSS rose from 0.17% to 82.1% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-98432"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-98432&amp;scope=time-series"/>
+<updated>2026-11-21T00:00:00.000Z</updated>
+<published>2026-11-21T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="likely"/>
+<summary type="text">Published Oct 15. Nov 21: EPSS rose from 0.17% to 82.1% in 30 days (the day we first saw it). Likely next · score 63/100.</summary>
+<content type="text">ipv4: free inet_opt and ireq_opt after an RCU grace period</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-4840</id>
+<title type="text">CVE-2026-4840 · Netcore Power 15AX · woke up: EPSS rose from 3.8% to 11.9% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-4840"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-4840&amp;scope=time-series"/>
+<updated>2026-11-21T00:00:00.000Z</updated>
+<published>2026-11-21T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="watch"/>
+<summary type="text">Published Mar 26. Nov 21: EPSS rose from 3.8% to 11.9% in 30 days (the day we first saw it). Watch · score 43/100.</summary>
+<content type="text">Netcore Power 15AX Diagnostic Tool netis.cgi setTools os command injection</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-70229</id>
+<title type="text">CVE-2026-70229 · Microsoft Windows 10 Version 1607 · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-70229"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-70229.json"/>
+<updated>2026-11-20T14:45:49.000Z</updated>
+<published>2026-11-20T14:45:49.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Oct 13. Nov 20: first PoC repo on GitHub (unverified). Likely next · score 50/100.</summary>
+<content type="text">Windows Active Directory Domain Services Remote Code Execution Vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-30778</id>
+<title type="text">CVE-2026-30778 · Apache Software Foundation Apache SkyWalking · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-30778"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-30778.yaml"/>
+<updated>2026-11-20T11:35:25.422Z</updated>
+<published>2026-11-20T11:35:25.422Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Apr 15. Nov 20: first Nuclei template (the day we first saw it). Likely next · score 54/100.</summary>
+<content type="text">Apache SkyWalking: The SkyWalking OAP /debugging/config/dump endpoint may leak sensitive configuration information of MySQL/PostgreSQL.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-76466</id>
+<title type="text">CVE-2026-76466 · Cisco Cisco TelePresence Video Communication Server (VCS) Expressway · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-76466"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-76466"/>
+<updated>2026-11-20T00:00:00.000Z</updated>
+<published>2026-11-20T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Oct 21. Nov 20: added to CISA KEV. Exploited · score 100/100.</summary>
+<content type="text">Cisco Expressway Series Remote Code Execution Vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2025-42884</id>
+<title type="text">CVE-2025-42884 · SAP_SE SAP NetWeaver Enterprise Portal · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-42884"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2025-42884"/>
+<updated>2026-11-20T00:00:00.000Z</updated>
+<published>2026-11-20T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Nov 11, 2025. Nov 20: added to CISA KEV. Exploited · score 90/100.</summary>
+<content type="text">JNDI Injection vulnerability in SAP NetWeaver Enterprise Portal</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-49980</id>
+<title type="text">CVE-2026-49980 · rclone rclone · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-49980"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-49980.yaml"/>
+<updated>2026-11-19T12:47:41.733Z</updated>
+<published>2026-11-19T12:47:41.733Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jun 24. Nov 19: first Nuclei template (the day we first saw it). Likely next · score 66/100.</summary>
+<content type="text">Rclone: Unauthenticated command execution in `rclone rcd --rc-serve` via inline remote instantiation, bypassing CVE-2026-41179 fix</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2017-7577</id>
+<title type="text">CVE-2017-7577 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2017-7577"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2017/CVE-2017-7577.yaml"/>
+<updated>2026-11-19T09:47:26.851Z</updated>
+<published>2026-11-19T09:47:26.851Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Apr 7, 2017. Nov 19: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">XiongMai uc-httpd has directory traversal allowing the reading of arbitrary files via a &quot;GET ../&quot; HTTP request.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-41661</id>
+<title type="text">CVE-2026-41661 · Admidio admidio · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-41661"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-41661.yaml"/>
+<updated>2026-11-19T09:47:26.851Z</updated>
+<published>2026-11-19T09:47:26.851Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published May 7. Nov 19: first Nuclei template (the day we first saw it). Likely next · score 18/100.</summary>
+<content type="text">Admidio: Reflected XSS in msg_window.php via Square Bracket to HTML Tag Conversion</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-90817</id>
+<title type="text">CVE-2026-90817 · Vanderbilt University REDCap · woke up: EPSS rose from 0.88% to 25.2% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-90817"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-90817&amp;scope=time-series"/>
+<updated>2026-11-19T00:00:00.000Z</updated>
+<published>2026-11-18T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="epss"/>
+<category term="exploited"/>
+<summary type="text">Published Sep 20. Nov 18: added to CISA KEV. Nov 19: EPSS rose from 0.88% to 25.2% in 30 days (the day we first saw it). Exploited · score 100/100.</summary>
+<content type="text">An unauthenticated Remote Code Execution vulnerability was found in the survey passthrough routing and Data Import processing logic, in which a malicious user…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2022-4140</id>
+<title type="text">CVE-2022-4140 · Welcart e-Commerce · woke up: EPSS rose from 3.0% to 10.6% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2022-4140"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2022-4140&amp;scope=time-series"/>
+<updated>2026-11-19T00:00:00.000Z</updated>
+<published>2026-11-19T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="likely"/>
+<summary type="text">Published Jan 2, 2023. Nov 19: EPSS rose from 3.0% to 10.6% in 30 days (the day we first saw it). Likely next · score 50/100.</summary>
+<content type="text">Welcart e-Commerce &lt; 2.8.5 - Unauthenticated Arbitrary File Access</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-10631</id>
+<title type="text">CVE-2026-10631 · Zimbra Zimbra Collaboration Suite · woke up: first Metasploit module</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-10631"/>
+<link rel="related" href="https://github.com/rapid7/metasploit-framework/blob/master/modules/auxiliary/gather/zimbra_ews_mailbox_access.rb"/>
+<updated>2026-11-18T17:47:31.570Z</updated>
+<published>2026-11-18T17:47:31.570Z</published>
+<category term="woke"/>
+<category term="metasploit"/>
+<category term="likely"/>
+<summary type="text">Published Oct 8. Nov 18: first Metasploit module (the day we first saw it). Likely next · score 38/100.</summary>
+<content type="text">Zimbra Collaboration Suite EWS Extension Authorization Bypass via Crafted Composite Folder/Item Identifier</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-71960</id>
+<title type="text">CVE-2026-71960 · Shenzhen Cudy Technology Co., Ltd. WR3000 2.0 · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-71960"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-71960.json"/>
+<updated>2026-11-18T12:18:52.000Z</updated>
+<published>2026-11-18T12:18:52.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 19. Nov 18: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">Cudy WR3000 2.0 Hard-coded JWT Secret Authentication Bypass via MQTT</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2025-40553</id>
+<title type="text">CVE-2025-40553 · SolarWinds Web Help Desk · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-40553"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2025/CVE-2025-40553.yaml"/>
+<updated>2026-11-18T08:47:31.698Z</updated>
+<published>2026-11-18T08:47:31.698Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jan 28. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 82/100.</summary>
+<content type="text">SolarWinds Web Help Desk Deserialization of Untrusted Data Remote Code Execution Vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2020-4450</id>
+<title type="text">CVE-2020-4450 · IBM WebSphere Application Server · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2020-4450"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/network/cves/2020/CVE-2020-4450.yaml"/>
+<updated>2026-11-18T08:47:31.698Z</updated>
+<published>2026-11-18T08:47:31.698Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jun 5, 2020. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 66/100.</summary>
+<content type="text">IBM WebSphere Application Server 8.5 and 9.0 traditional could allow a remote attacker to execute arbitrary code on the system with a specially-crafted…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2024-34193</id>
+<title type="text">CVE-2024-34193 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2024-34193"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2024/CVE-2024-34193.yaml"/>
+<updated>2026-11-18T08:47:31.698Z</updated>
+<published>2026-11-18T08:47:31.698Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published May 20, 2024. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 46/100.</summary>
+<content type="text">smanga 3.2.7 does not filter the file parameter at the PHP/get file flow.php interface, resulting in a path traversal vulnerability that can cause arbitrary…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-59148</id>
+<title type="text">CVE-2026-59148 · mockoon mockoon · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-59148"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-59148.yaml"/>
+<updated>2026-11-18T08:47:31.698Z</updated>
+<published>2026-11-18T08:47:31.698Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jul 9. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 46/100.</summary>
+<content type="text">Mockoon: Unauthenticated admin API + wildcard CORS allows mock-state hijack and secret theft</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2017-17733</id>
+<title type="text">CVE-2017-17733 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2017-17733"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2017/CVE-2017-17733.yaml"/>
+<updated>2026-11-18T08:47:31.698Z</updated>
+<published>2026-11-18T08:47:31.698Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Dec 18, 2017. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">Maccms 8.x allows remote command execution via the wd parameter in an index.php?m=vod-search request.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2018-18084</id>
+<title type="text">CVE-2018-18084 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2018-18084"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2018/CVE-2018-18084.yaml"/>
+<updated>2026-11-18T08:47:31.698Z</updated>
+<published>2026-11-18T08:47:31.698Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Oct 9, 2018. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">An issue was discovered in DuomiCMS 3.0. SQL injection exists in the ajax.php file, as demonstrated by the uid parameter.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-32609</id>
+<title type="text">CVE-2026-32609 · nicolargo glances · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-32609"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-32609.yaml"/>
+<updated>2026-11-18T08:47:31.698Z</updated>
+<published>2026-11-18T08:47:31.698Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Mar 18. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">Glances has Incomplete Secrets Redaction: /api/v4/args Endpoint Leaks Password Hash and SNMP Credentials</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-55641</id>
+<title type="text">CVE-2026-55641 · decolua 9router · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-55641"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-55641.yaml"/>
+<updated>2026-11-18T08:47:31.698Z</updated>
+<published>2026-11-18T08:47:31.698Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jul 10. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">9router: Unauthenticated `/v1` proxy access via `Host`-header spoofing → open AI relay + SSRF</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-88995</id>
+<title type="text">CVE-2026-88995 · Bookit — Booking &amp; Appointment Calendar · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-88995"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-88995.yaml"/>
+<updated>2026-11-18T06:47:21.638Z</updated>
+<published>2026-11-18T06:47:21.638Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Sep 13. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 32/100.</summary>
+<content type="text">Bookit &lt; 2.6.0.1 - Unauthenticated Appointment PII Disclosure via Availability Check</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-63445</id>
+<title type="text">CVE-2026-63445 · perses perses · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-63445"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-63445.yaml"/>
+<updated>2026-11-18T05:47:26.776Z</updated>
+<published>2026-11-18T05:47:26.776Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Sep 18. Nov 18: first Nuclei template (the day we first saw it). Likely next · score 32/100.</summary>
+<content type="text">Perses: Unvalidated project parameter enables filesystem path traversal</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2024-10441</id>
+<title type="text">CVE-2024-10441 · Synology DiskStation Manager (DSM) · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2024-10441"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2024-10441"/>
+<updated>2026-11-18T00:00:00.000Z</updated>
+<published>2026-10-25T01:51:37.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Mar 19, 2025. Oct 25: first PoC repo on GitHub (unverified). Nov 18: added to CISA KEV. Exploited · score 100/100.</summary>
+<content type="text">Improper encoding or escaping of output vulnerability in the system plugin daemon in Synology BeeStation OS (BSM) before 1.1-65374 and Synology DiskStation…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-40217</id>
+<title type="text">CVE-2026-40217 · BerriAI LiteLLM · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-40217"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-40217"/>
+<updated>2026-11-18T00:00:00.000Z</updated>
+<published>2026-11-18T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Apr 10. Nov 18: added to CISA KEV. Exploited · score 100/100.</summary>
+<content type="text">LiteLLM through 2026-04-08 allows remote attackers to execute arbitrary code via bytecode rewriting at the /guardrails/test_custom_code URI.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-19773</id>
+<title type="text">CVE-2026-19773 · libwebsockets libwebsockets · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-19773"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-19773.json"/>
+<updated>2026-11-17T18:21:23.000Z</updated>
+<published>2026-11-17T18:21:23.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Sep 15. Nov 17: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">libwebsockets HTTP/2 HPACK Path Header Parsing Out-Of-Bounds Write Remote Code Execution Vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-75918</id>
+<title type="text">CVE-2026-75918 · thorsten phpMyFAQ · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-75918"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-75918.yaml"/>
+<updated>2026-11-17T12:47:24.538Z</updated>
+<published>2026-11-17T12:47:24.538Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Aug 19. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 46/100.</summary>
+<content type="text">phpMyFAQ before 4.1.7 Authentication Bypass via Tracking File</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-104476</id>
+<title type="text">CVE-2026-104476 · backdrop backdrop · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-104476"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-104476.yaml"/>
+<updated>2026-11-17T12:47:24.538Z</updated>
+<published>2026-11-17T12:47:24.538Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Oct 2. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 32/100.</summary>
+<content type="text">Backdrop CMS before 1.35.1 Information Disclosure via Configuration Export Archive</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-41428</id>
+<title type="text">CVE-2026-41428 · Budibase budibase · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-41428"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-41428.yaml"/>
+<updated>2026-11-17T10:47:23.169Z</updated>
+<published>2026-11-17T10:47:23.169Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Apr 24. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 44/100.</summary>
+<content type="text">Budibase: Authentication Bypass via Unanchored Regex in Public Endpoint Matcher — Unauthenticated Access to Protected Endpoints</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-81197</id>
+<title type="text">CVE-2026-81197 · MasterStudy LMS WordPress Plugin · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-81197"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-81197.yaml"/>
+<updated>2026-11-17T10:47:23.169Z</updated>
+<published>2026-11-17T10:47:23.169Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Sep 2. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 32/100.</summary>
+<content type="text">MasterStudy LMS &lt; 3.7.46 - Unauthenticated Unpublished Course Title Disclosure via course-list REST Route</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-87916</id>
+<title type="text">CVE-2026-87916 · WPBot · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-87916"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-87916.yaml"/>
+<updated>2026-11-17T10:47:23.169Z</updated>
+<published>2026-11-17T10:47:23.169Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Sep 12. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 32/100.</summary>
+<content type="text">WPBot 8.4.9 - 8.5.9 - Unauthenticated Chat Visitor PII Disclosure</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-42608</id>
+<title type="text">CVE-2026-42608 · getgrav grav · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-42608"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-42608.yaml"/>
+<updated>2026-11-17T08:47:26.481Z</updated>
+<published>2026-11-17T08:47:26.481Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published May 11. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 54/100.</summary>
+<content type="text">Grav: Unauthenticated Path Traversal &amp; Arbitrary File Write in FormFlash component.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-86538</id>
+<title type="text">CVE-2026-86538 · knowns-dev knowns · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-86538"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-86538.yaml"/>
+<updated>2026-11-17T08:47:26.481Z</updated>
+<published>2026-11-17T08:47:26.481Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Sep 7. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">knowns before 0.30.0 Path Traversal via templateFile parameter</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2021-4473</id>
+<title type="text">CVE-2021-4473 · Beijing Topsec Network Security Technology Co., Ltd. Tianxin Internet Behavior Management System · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2021-4473"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2021/CVE-2021-4473.yaml"/>
+<updated>2026-11-17T07:47:27.254Z</updated>
+<published>2026-11-17T07:47:27.254Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Apr 7. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 66/100.</summary>
+<content type="text">Tianxin Internet Behavior Management System Command Injection via toQuery.php</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-62032</id>
+<title type="text">CVE-2026-62032 · Designinvento DirectoryPress · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-62032"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-62032.yaml"/>
+<updated>2026-11-17T07:47:27.254Z</updated>
+<published>2026-11-17T07:47:27.254Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Oct 10. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 66/100.</summary>
+<content type="text">WordPress DirectoryPress plugin &lt;= 3.6.27 - Local File Inclusion vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-19715</id>
+<title type="text">CVE-2026-19715 · WP OAuth Server ( Login with WordPress ) · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-19715"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-19715.yaml"/>
+<updated>2026-11-17T07:47:27.254Z</updated>
+<published>2026-11-17T07:47:27.254Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Aug 27. Nov 17: first Nuclei template (the day we first saw it). Likely next · score 46/100.</summary>
+<content type="text">WP OAuth Server &lt; 6.3.1 - Unauthenticated OAuth Token and User Data Disclosure via Debug Log File</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-59309</id>
+<title type="text">CVE-2026-59309 · VMware Cloud Foundation · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-59309"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-59309.json"/>
+<updated>2026-11-17T02:40:40.000Z</updated>
+<published>2026-11-17T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Jul 30. Nov 17: EPSS rose from 0.61% to 22.9% in 30 days (the day we first saw it). Nov 17: first PoC repo on GitHub (unverified). Likely next · score 77/100.</summary>
+<content type="text">vCenter authentication-bypass vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-4537</id>
+<title type="text">CVE-2026-4537 · Cudy TR1200 · woke up: EPSS rose from 2.1% to 10.6% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-4537"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-4537&amp;scope=time-series"/>
+<updated>2026-11-17T00:00:00.000Z</updated>
+<published>2026-11-17T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="quiet"/>
+<summary type="text">Published Mar 22. Nov 17: EPSS rose from 2.1% to 10.6% in 30 days (the day we first saw it). Quiet · score 15/100.</summary>
+<content type="text">Cudy TR1200 ipsec.lua action_ipsec_conn command injection</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2023-39964</id>
+<title type="text">CVE-2023-39964 · 1Panel-dev 1Panel · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2023-39964"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2023/CVE-2023-39964.yaml"/>
+<updated>2026-11-16T06:47:44.711Z</updated>
+<published>2026-11-16T06:47:44.711Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Aug 10, 2023. Nov 16: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">1Panel O&amp;M management panel has a background arbitrary file reading vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-63645</id>
+<title type="text">CVE-2026-63645 · openobserve openobserve · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-63645"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-63645.yaml"/>
+<updated>2026-11-16T06:47:44.711Z</updated>
+<published>2026-11-16T06:47:44.711Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Sep 24. Nov 16: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">OpenObserve: Unauthenticated /config/runtime endpoint exposes PostgreSQL database credentials</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2025-34469</id>
+<title type="text">CVE-2025-34469 · Cowrie Cowrie · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-34469"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/javascript/cves/2025/CVE-2025-34469.yaml"/>
+<updated>2026-11-16T06:47:44.711Z</updated>
+<published>2026-11-16T06:47:44.711Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Dec 31, 2025. Nov 16: first Nuclei template (the day we first saw it). Likely next · score 26/100.</summary>
+<content type="text">Cowrie &lt; 2.9.0 Unrestricted wget/curl Emulation Enables SSRF-Based DDoS Amplification</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2022-0142</id>
+<title type="text">CVE-2022-0142 · Visual Form Builder · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2022-0142"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2022/CVE-2022-0142.yaml"/>
+<updated>2026-11-16T05:47:23.772Z</updated>
+<published>2026-11-16T05:47:23.772Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Apr 12, 2022. Nov 16: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">Visual Form Builder &lt; 3.0.6 - CSV Injection</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2021-36901</id>
+<title type="text">CVE-2021-36901 · Phil Baker Age Gate (WordPress plugin) · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2021-36901"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2021/CVE-2021-36901.yaml"/>
+<updated>2026-11-16T05:47:23.772Z</updated>
+<published>2026-11-16T05:47:23.772Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jun 15, 2022. Nov 16: first Nuclei template (the day we first saw it). Likely next · score 18/100.</summary>
+<content type="text">WordPress Age Gate plugin &lt;= 2.17.0 - Unauthenticated Stored Cross-Site Scripting (XSS) vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2024-56337</id>
+<title type="text">CVE-2024-56337 · Apache Software Foundation Apache Tomcat · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2024-56337"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2024/CVE-2024-56337.yaml"/>
+<updated>2026-11-16T00:47:35.300Z</updated>
+<published>2026-11-16T00:47:35.300Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Dec 20, 2024. Nov 16: first Nuclei template (the day we first saw it). Likely next · score 82/100.</summary>
+<content type="text">Apache Tomcat: RCE due to TOCTOU issue in JSP compilation - CVE-2024-50379 mitigation was incomplete</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-6875</id>
+<title type="text">CVE-2026-6875 · ServiceNow ServiceNow AI Platform · woke up: EPSS rose from 1.4% to 78.5% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-6875"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-6875&amp;scope=time-series"/>
+<updated>2026-11-15T00:00:00.000Z</updated>
+<published>2026-11-15T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="likely"/>
+<summary type="text">Published Jul 13. Nov 15: EPSS rose from 1.4% to 78.5% in 30 days (the day we first saw it). Likely next · score 72/100.</summary>
+<content type="text">Sandbox Escape in ServiceNow AI Platform</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-62253</id>
+<title type="text">CVE-2026-62253 · sipcapture homer · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-62253"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-62253.json"/>
+<updated>2026-11-14T11:46:00.000Z</updated>
+<published>2026-11-14T11:46:00.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Oct 7. Nov 14: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">Homer: Complete Authentication Bypass When coordinator.jwt.secret Is Empty (Default)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-105857</id>
+<title type="text">CVE-2026-105857 · payloadcms payload · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-105857"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-105857.json"/>
+<updated>2026-11-14T10:59:21.000Z</updated>
+<published>2026-11-14T10:59:21.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Oct 6. Nov 14: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">Payload: RCE in Payload Form Builder</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-93637</id>
+<title type="text">CVE-2026-93637 · Zimbra Zimbra Collaboration Suite · woke up: first Metasploit module</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-93637"/>
+<link rel="related" href="https://github.com/rapid7/metasploit-framework/blob/master/modules/auxiliary/scanner/http/zimbra_graphql_brute.rb"/>
+<updated>2026-11-13T17:47:29.900Z</updated>
+<published>2026-11-13T17:47:29.900Z</published>
+<category term="woke"/>
+<category term="metasploit"/>
+<category term="likely"/>
+<summary type="text">Published Oct 14. Nov 13: first Metasploit module (the day we first saw it). Likely next · score 38/100.</summary>
+<content type="text">Zimbra Collaboration Suite GraphQL Batched Authentication Bypasses Pre-Auth Rate Limiting</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-33344</id>
+<title type="text">CVE-2026-33344 · dagu-org dagu · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-33344"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-33344.yaml"/>
+<updated>2026-11-13T16:47:26.652Z</updated>
+<published>2026-11-13T16:47:26.652Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Mar 24. Nov 13: first Nuclei template (the day we first saw it). Likely next · score 46/100.</summary>
+<content type="text">Dagu has an incomplete fix for CVE-2026-27598: path traversal via %2F-encoded slashes in locateDAG</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-65600</id>
+<title type="text">CVE-2026-65600 · traefik traefik · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-65600"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2024/CVE-2026-65600.yaml"/>
+<updated>2026-11-13T15:47:28.352Z</updated>
+<published>2026-11-09T10:55:13.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jul 22. Nov 9: first PoC repo on GitHub (unverified). Nov 13: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">Traefik before v2.11.52 Authentication Bypass via ReplacePathRegex</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-73571</id>
+<title type="text">CVE-2026-73571 · Zimbra Collaboration · woke up: first Metasploit module</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-73571"/>
+<link rel="related" href="https://github.com/rapid7/metasploit-framework/blob/master/modules/auxiliary/admin/http/zimbra_email_impersonation.rb"/>
+<updated>2026-11-13T09:47:50.018Z</updated>
+<published>2026-11-13T09:47:50.018Z</published>
+<category term="woke"/>
+<category term="metasploit"/>
+<category term="likely"/>
+<summary type="text">Published Aug 13. Nov 13: first Metasploit module (the day we first saw it). Likely next · score 36/100.</summary>
+<content type="text">An authorization bypass vulnerability exists in Zimbra Collaboration (ZCS) before 10.1.17 due to improper authorization validation in delegated email sending…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2021-44868</id>
+<title type="text">CVE-2021-44868 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2021-44868"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2021/CVE-2021-44868.yaml"/>
+<updated>2026-11-13T08:47:37.187Z</updated>
+<published>2026-11-13T08:47:37.187Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Feb 17, 2022. Nov 13: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">A problem was found in ming-soft MCMS v5.1. There is a sql injection vulnerability in /ms/cms/content/list.do</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-34265</id>
+<title type="text">CVE-2026-34265 · SAP_SE SAP NetWeaver and ABAP Platform · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-34265"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-34265.json"/>
+<updated>2026-11-13T06:15:37.000Z</updated>
+<published>2026-11-13T06:15:37.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 11. Nov 13: first PoC repo on GitHub (unverified). Likely next · score 70/100.</summary>
+<content type="text">Memory Corruption vulnerability in Application Server ABAP for SAP NetWeaver and ABAP Platform</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2017-5963</id>
+<title type="text">CVE-2017-5963 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2017-5963"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2017/CVE-2017-5963.yaml"/>
+<updated>2026-11-13T02:47:29.565Z</updated>
+<published>2026-11-13T02:47:29.565Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Feb 12, 2017. Nov 13: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">An issue was discovered in caddy (for TYPO3) before 7.2.10. The vulnerability exists due to insufficient filtration of user-supplied data in the…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2022-30047</id>
+<title type="text">CVE-2022-30047 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2022-30047"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2022/CVE-2022-30047.yaml"/>
+<updated>2026-11-13T02:47:29.565Z</updated>
+<published>2026-11-13T02:47:29.565Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published May 11, 2022. Nov 13: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">Mingsoft MCMS v5.2.7 was discovered to contain a SQL injection vulnerability in /mdiy/dict/listExcludeApp URI via orderBy parameter.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2025-4283</id>
+<title type="text">CVE-2025-4283 · SourceCodester Stock Management System · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-4283"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2025/CVE-2025-4283.yaml"/>
+<updated>2026-11-13T02:47:29.565Z</updated>
+<published>2026-11-13T02:47:29.565Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published May 5, 2025. Nov 13: first Nuclei template (the day we first saw it). Likely next · score 26/100.</summary>
+<content type="text">SourceCodester/oretnom23 Stock Management System Login.php sql injection</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-110447</id>
+<title type="text">CVE-2026-110447 · Collabora Collabora Online - Built-in CODE Server · woke up: EPSS rose from 1.2% to 73.3% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-110447"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-110447&amp;scope=time-series"/>
+<updated>2026-11-13T00:00:00.000Z</updated>
+<published>2026-10-23T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="epss"/>
+<category term="exploited"/>
+<summary type="text">Published Oct 14. Oct 23: added to CISA KEV. Nov 13: EPSS rose from 1.2% to 73.3% in 30 days (the day we first saw it). Exploited · score 100/100.</summary>
+<content type="text">Collabora Online Built-in CODE Server before 26.4.303 (richdocumentscode), a Nextcloud app, allows remote code execution, as exploited in the wild in…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-27175</id>
+<title type="text">CVE-2026-27175 · sergejey MajorDoMo · woke up: EPSS rose from 7.2% to 24.0% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-27175"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-27175&amp;scope=time-series"/>
+<updated>2026-11-13T00:00:00.000Z</updated>
+<published>2026-11-13T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="likely"/>
+<summary type="text">Published Feb 18. Nov 13: EPSS rose from 7.2% to 24.0% in 30 days (the day we first saw it). Likely next · score 70/100.</summary>
+<content type="text">MajorDoMo Command Injection in rc/index.php via Race Condition</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2017-1000226</id>
+<title type="text">CVE-2017-1000226 · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2017-1000226"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2017/CVE-2017-1000226.yaml"/>
+<updated>2026-11-12T07:47:25.386Z</updated>
+<published>2026-11-12T07:47:25.386Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Nov 17, 2017. Nov 12: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">Stop User Enumeration 1.3.8 allows user enumeration via the REST API</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2021-24353</id>
+<title type="text">CVE-2021-24353 · Simple 301 Redirects by BetterLinks · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2021-24353"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2021/CVE-2021-24353.yaml"/>
+<updated>2026-11-12T07:47:25.386Z</updated>
+<published>2026-11-12T07:47:25.386Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jun 14, 2021. Nov 12: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">Simple 301 Redirects by BetterLinks - 2.0.0 – 2.0.3 - Unauthenticated Redirect Import</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-97229</id>
+<title type="text">CVE-2026-97229 · GitLab GitLab · woke up: EPSS rose from 0.56% to 69.3% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-97229"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-97229&amp;scope=time-series"/>
+<updated>2026-11-12T00:00:00.000Z</updated>
+<published>2026-10-29T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="epss"/>
+<category term="exploited"/>
+<summary type="text">Published Oct 13. Oct 29: added to CISA KEV. Nov 12: EPSS rose from 0.56% to 69.3% in 30 days (the day we first saw it). Exploited · score 100/100.</summary>
+<content type="text">Integer Overflow or Wraparound in GitLab</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-61511</id>
+<title type="text">CVE-2026-61511 · vBulletin vBulletin · woke up: EPSS rose from 5.6% to 74.3% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-61511"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-61511&amp;scope=time-series"/>
+<updated>2026-11-12T00:00:00.000Z</updated>
+<published>2026-11-12T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="likely"/>
+<summary type="text">Published Jul 27. Nov 12: EPSS rose from 5.6% to 74.3% in 30 days (the day we first saw it). Likely next · score 82/100.</summary>
+<content type="text">vBulletin &lt; 6.2.2 Eval Injection RCE via vb5/template/runtime.php</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2023-7335</id>
+<title type="text">CVE-2023-7335 · Hangzhou Kuozhi Network Technology Co., Ltd. EduSoho · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2023-7335"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2023/CVE-2023-7335.yaml"/>
+<updated>2026-11-11T09:47:28.741Z</updated>
+<published>2026-11-11T09:47:28.741Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jan 22. Nov 11: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">EduSoho &lt; 22.4.7 Arbitrary File Read via classroom-course-statistics</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-34577</id>
+<title type="text">CVE-2026-34577 · gitroomhq postiz-app · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-34577"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-34577.yaml"/>
+<updated>2026-11-11T09:47:28.741Z</updated>
+<published>2026-11-11T09:47:28.741Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Apr 2. Nov 11: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">Postiz: Unauthenticated Full-Read SSRF via /public/stream Endpoint with Trivially Bypassable Extension Check</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2024-6695</id>
+<title type="text">CVE-2024-6695 · User Profile Builder · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2024-6695"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2024/CVE-2024-6695.yaml"/>
+<updated>2026-11-11T08:47:26.702Z</updated>
+<published>2026-11-11T08:47:26.702Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jul 31, 2024. Nov 11: first Nuclei template (the day we first saw it). Likely next · score 72/100.</summary>
+<content type="text">profile-builder &lt;= 3.11.8 - Unauthenticated Privilege Escalation</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2021-24981</id>
+<title type="text">CVE-2021-24981 · Directorist – Business Directory Plugin · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2021-24981"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2021/CVE-2021-24981.yaml"/>
+<updated>2026-11-11T08:47:26.702Z</updated>
+<published>2026-11-11T08:47:26.702Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Dec 21, 2021. Nov 11: first Nuclei template (the day we first saw it). Likely next · score 45/100.</summary>
+<content type="text">Directorist – Business Directory Plugin &lt; 7.0.6.2 - CSRF to Remote File Upload</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2021-4358</id>
+<title type="text">CVE-2021-4358 · legalweb WP DSGVO Tools (GDPR) · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2021-4358"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2021/CVE-2021-4358.yaml"/>
+<updated>2026-11-11T08:47:26.702Z</updated>
+<published>2026-11-11T08:47:26.702Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Jun 7, 2023. Nov 11: first Nuclei template (the day we first saw it). Likely next · score 40/100.</summary>
+<content type="text">WP DSGVO Tools (GDPR) &lt;= 3.1.23 - Unauthenticated Stored Cross-Site Scripting</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-19697</id>
+<title type="text">CVE-2026-19697 · GutenKit · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-19697"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-19697.yaml"/>
+<updated>2026-11-11T04:47:28.434Z</updated>
+<published>2026-11-11T04:47:28.434Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Aug 20. Nov 11: first Nuclei template (the day we first saw it). Likely next · score 38/100.</summary>
+<content type="text">GutenKit &lt; 2.5.0 - Author+ Stored XSS via SVG Upload</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-66613</id>
+<title type="text">CVE-2026-66613 · Crocoblock. Jetimpex Inc. JetEngine · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-66613"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-66613.json"/>
+<updated>2026-11-10T21:22:55.000Z</updated>
+<published>2026-11-10T21:22:55.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 19. Nov 10: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">WordPress JetEngine plugin &lt;= 3.8.14 - Remote Code Execution (RCE) vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2025-6020</id>
+<title type="text">CVE-2025-6020 · linux-pam · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-6020"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2025/CVE-2025-6020.json"/>
+<updated>2026-11-10T15:44:15.000Z</updated>
+<published>2026-11-10T15:44:15.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Jun 17, 2025. Nov 10: first PoC repo on GitHub (unverified). Likely next · score 50/100.</summary>
+<content type="text">Linux-pam: linux-pam directory traversal</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-73373</id>
+<title type="text">CVE-2026-73373 · Joomla! Project Joomla! CMS · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-73373"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-73373.json"/>
+<updated>2026-11-10T14:20:50.000Z</updated>
+<published>2026-11-10T14:20:50.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 18. Nov 10: first PoC repo on GitHub (unverified). Likely next · score 50/100.</summary>
+<content type="text">Joomla! Core - [20260810] - Unrestricted uploads of SHTML files in Joomla 1.0.0-5.4.7, 6.0.0-6.1.2</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-73663</id>
+<title type="text">CVE-2026-73663 · FreePBX missedcall · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-73663"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-73663.json"/>
+<updated>2026-11-10T14:20:32.000Z</updated>
+<published>2026-11-10T14:20:32.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 13. Nov 10: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">FreePBX: Unauthenticated SQL injection in FreePBX missedcall via inbound Caller ID name leads to administrator takeover</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-73665</id>
+<title type="text">CVE-2026-73665 · FreePBX ucp · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-73665"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-73665.json"/>
+<updated>2026-11-10T14:20:24.000Z</updated>
+<published>2026-11-10T14:20:24.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 13. Nov 10: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">FreePBX UCP: Unauthenticated remote code execution via socket.io namespace auth bypass and AMI action injection</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-92414</id>
+<title type="text">CVE-2026-92414 · Apache Software Foundation Apache Jackrabbit · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-92414"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-92414.json"/>
+<updated>2026-11-10T06:45:37.000Z</updated>
+<published>2026-11-10T06:45:37.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Oct 7. Nov 10: first PoC repo on GitHub (unverified). Likely next · score 70/100.</summary>
+<content type="text">Apache Jackrabbit: Pre-auth hijack of cached sessions via derivable WebDAV lock tokens</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-104711</id>
+<title type="text">CVE-2026-104711 · Apache Software Foundation Apache Struts · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-104711"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-104711.json"/>
+<updated>2026-11-10T06:45:07.000Z</updated>
+<published>2026-11-10T06:45:07.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Oct 5. Nov 10: first PoC repo on GitHub (unverified). Likely next · score 72/100.</summary>
+<content type="text">Apache Struts: OGNL injection in the legacy RESTful action mapper</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-20320</id>
+<title type="text">CVE-2026-20320 · Cisco Cisco BroadWorks · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-20320"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-20320"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Aug 19. Nov 10: added to CISA KEV. Exploited · score 100/100.</summary>
+<content type="text">A vulnerability in the Open Client Interface (OCI) XML Parser of Cisco BroadWorks could allow an unauthenticated, remote attacker to read sensitive…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-111793</id>
+<title type="text">CVE-2026-111793 · Openwave Messaging (Ireland) Limited Webtop Media Transcoder · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-111793"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-111793"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Oct 16. Nov 10: added to CISA KEV. Exploited · score 90/100.</summary>
+<content type="text">Openwave Webtop Media Transcoder does not enforce administrator-defined file type restrictions to restrict the file-types to be converted. This may allow an…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-6692</id>
+<title type="text">CVE-2026-6692 · Revolution Slider Slider Revolution · woke up: listed by CIRCL as exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-6692"/>
+<link rel="related" href="https://vulnerability.circl.lu/vuln/cve-2026-6692"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="catalog"/>
+<category term="exploited"/>
+<summary type="text">Published May 7. Nov 10: listed by CIRCL as exploited. Exploited · score 90/100.</summary>
+<content type="text">Slider Revolution 7.0.0 - 7.0.10 - Authenticated (Subscriber+) Arbitrary File Upload via _get_media_url</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-4408</id>
+<title type="text">CVE-2026-4408 · Red Hat Red Hat Enterprise Linux 10 · woke up: EPSS rose from 1.8% to 46.9% in 30 days</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-4408"/>
+<link rel="related" href="https://api.first.org/data/v1/epss?cve=CVE-2026-4408&amp;scope=time-series"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="epss"/>
+<category term="likely"/>
+<summary type="text">Published May 28. Nov 10: EPSS rose from 1.8% to 46.9% in 30 days (the day we first saw it). Likely next · score 69/100.</summary>
+<content type="text">Samba: remote code execution in samr</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-4961</id>
+<title type="text">CVE-2026-4961 · Tenda AC6 · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-4961"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-4961.json"/>
+<updated>2026-11-09T23:54:08.000Z</updated>
+<published>2026-11-09T23:54:08.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Mar 27. Nov 9: first PoC repo on GitHub (unverified). Likely next · score 50/100.</summary>
+<content type="text">Tenda AC6 POST Request QuickIndex formQuickIndex stack-based overflow</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2025-4609</id>
+<title type="text">CVE-2025-4609 · Google Chrome · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-4609"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2025/CVE-2025-4609.json"/>
+<updated>2026-11-09T22:48:16.000Z</updated>
+<published>2026-11-09T22:48:16.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 22, 2025. Nov 9: first PoC repo on GitHub (unverified). Likely next · score 64/100.</summary>
+<content type="text">Incorrect handle provided in unspecified circumstances in Mojo in Google Chrome on Windows prior to 136.0.7103.113 allowed a remote attacker to potentially…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2024-25420</id>
+<title type="text">CVE-2024-25420 · woke up: first Metasploit module</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2024-25420"/>
+<link rel="related" href="https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/multi/http/openfire_deleted_admin_rce_cve_2024_25420.rb"/>
+<updated>2026-11-09T18:46:20.458Z</updated>
+<published>2026-11-09T18:46:20.458Z</published>
+<category term="woke"/>
+<category term="metasploit"/>
+<category term="likely"/>
+<summary type="text">Published Mar 26, 2024. Nov 9: first Metasploit module (the day we first saw it). Likely next · score 56/100.</summary>
+<content type="text">An issue in Ignite Realtime Openfire before 4.8.1 allows a remote attacker to escalate privileges via the admin.authorizedJIDs system property component.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-72422</id>
+<title type="text">CVE-2026-72422 · Linux Linux · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-72422"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-72422.json"/>
+<updated>2026-11-09T11:25:51.000Z</updated>
+<published>2026-11-09T11:25:51.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 15. Nov 9: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">ksmbd: fix use-after-free of conn-&gt;preauth_info in concurrent SMB2 NEGOTIATE</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-79657</id>
+<title type="text">CVE-2026-79657 · nltk nltk · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-79657"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-79657.json"/>
+<updated>2026-11-09T11:09:10.000Z</updated>
+<published>2026-11-09T11:09:10.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 25. Nov 9: first PoC repo on GitHub (unverified). Likely next · score 56/100.</summary>
+<content type="text">NLTK before 3.10.3 Remote Code Execution via Unsafe Pickle Deserialization</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-11800</id>
+<title type="text">CVE-2026-11800 · Red Hat Red Hat build of Keycloak 26.6 · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-11800"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2026/CVE-2026-11800.json"/>
+<updated>2026-11-09T10:59:25.000Z</updated>
+<published>2026-11-09T10:59:25.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Jun 25. Nov 9: first PoC repo on GitHub (unverified). Likely next · score 50/100.</summary>
+<content type="text">Org.keycloak:keycloak-services: keycloak: authentication bypass via jwt algorithm confusion</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2021-3711</id>
+<title type="text">CVE-2021-3711 · OpenSSL OpenSSL · woke up: first PoC repo on GitHub (unverified)</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2021-3711"/>
+<link rel="related" href="https://github.com/nomi-sec/PoC-in-GitHub/blob/master/2021/CVE-2021-3711.json"/>
+<updated>2026-11-09T10:23:57.000Z</updated>
+<published>2026-11-09T10:23:57.000Z</published>
+<category term="woke"/>
+<category term="poc"/>
+<category term="likely"/>
+<summary type="text">Published Aug 24, 2021. Nov 9: first PoC repo on GitHub (unverified). Likely next · score 66/100.</summary>
+<content type="text">SM2 Decryption Buffer Overflow</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-16065</id>
+<title type="text">CVE-2026-16065 · Welcart e-Commerce · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-16065"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-16065.yaml"/>
+<updated>2026-11-09T09:47:40.342Z</updated>
+<published>2026-11-09T09:47:40.342Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Aug 6. Nov 9: first Nuclei template (the day we first saw it). Likely next · score 38/100.</summary>
+<content type="text">Welcart e-Commerce &lt; 2.11.32 - Editor+ SQL Injection via CSV Import</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2025-49387</id>
+<title type="text">CVE-2025-49387 · add-ons.org Drag and Drop File Upload for Elementor Forms · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-49387"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2025/CVE-2025-49387.yaml"/>
+<updated>2026-11-09T04:47:31.255Z</updated>
+<published>2026-11-09T04:47:31.255Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Aug 28, 2025. Nov 9: first Nuclei template (the day we first saw it). Likely next · score 66/100.</summary>
+<content type="text">WordPress Drag and Drop File Upload for Elementor Forms Plugin &lt;= 1.5.3 - Arbitrary File Upload Vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-16062</id>
+<title type="text">CVE-2026-16062 · Event Booking Manager for WooCommerce · woke up: first Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-16062"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-16062.yaml"/>
+<updated>2026-11-09T03:47:26.465Z</updated>
+<published>2026-11-09T03:47:26.465Z</published>
+<category term="woke"/>
+<category term="nuclei"/>
+<category term="likely"/>
+<summary type="text">Published Aug 2. Nov 9: first Nuclei template (the day we first saw it). Likely next · score 38/100.</summary>
+<content type="text">Event Booking Manager for WooCommerce &lt; 5.3.7 - Contributor+ PHP Object Injection via Event Timeline and FAQ Content</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2024-27834</id>
+<title type="text">CVE-2024-27834 · Apple Safari · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2024-27834"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2024-27834"/>
+<updated>2026-11-04T00:00:00.000Z</updated>
+<published>2026-11-04T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published May 13, 2024. Nov 4: added to CISA KEV. Exploited · score 90/100.</summary>
+<content type="text">The issue was addressed with improved checks. This issue is fixed in Safari 17.5, iOS 16.7.8 and iPadOS 16.7.8, iOS 17.5 and iPadOS 17.5, macOS Sonoma 14.5,…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-111357</id>
+<title type="text">CVE-2026-111357 · Ivanti Connect Secure · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-111357"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-111357"/>
+<updated>2026-10-30T00:00:00.000Z</updated>
+<published>2026-10-30T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Oct 15. Oct 30: added to CISA KEV. Exploited · score 93/100.</summary>
+<content type="text">Ivanti Connect Secure 22.8R2.4 mishandles the manner in which the dsinvoked broker trusts DSCache configuration data, leading to privilege escalation to root,…</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-46300</id>
+<title type="text">CVE-2026-46300 · Linux Linux · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-46300"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-46300"/>
+<updated>2026-10-28T00:00:00.000Z</updated>
+<published>2026-10-28T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published May 23. Oct 28: added to CISA KEV. Exploited · score 100/100.</summary>
+<content type="text">net: skbuff: preserve shared-frag marker during coalescing</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-41709</id>
+<title type="text">CVE-2026-41709 · VMware Cloud Foundation · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-41709"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-41709"/>
+<updated>2026-10-28T00:00:00.000Z</updated>
+<published>2026-10-28T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Jul 30. Oct 28: added to CISA KEV. Exploited · score 90/100.</summary>
+<content type="text">ESX insufficient logging vulnerability</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-111497</id>
+<title type="text">CVE-2026-111497 · Google Brotli · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-111497"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-111497"/>
+<updated>2026-10-27T00:00:00.000Z</updated>
+<published>2026-10-27T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Oct 22. Oct 27: added to CISA KEV. Exploited · score 100/100.</summary>
+<content type="text">Out-of-Bounds Write in Google Brotli Decoder</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2026-48356</id>
+<title type="text">CVE-2026-48356 · Adobe Adobe Commerce · woke up: added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-48356"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-48356"/>
+<updated>2026-10-27T00:00:00.000Z</updated>
+<published>2026-10-27T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="kev"/>
+<category term="exploited"/>
+<summary type="text">Published Jul 14. Oct 27: added to CISA KEV. Exploited · score 100/100.</summary>
+<content type="text">Adobe Commerce | Unrestricted Upload of File with Dangerous Type (CWE-434)</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/woke/CVE-2015-0279</id>
+<title type="text">CVE-2015-0279 · woke up: listed in ENISA EU KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2015-0279"/>
+<link rel="related" href="https://euvd.enisa.europa.eu/vulnerability/EUVD-2015-0292"/>
+<updated>2026-10-25T00:00:00.000Z</updated>
+<published>2026-10-25T00:00:00.000Z</published>
+<category term="woke"/>
+<category term="catalog"/>
+<category term="exploited"/>
+<summary type="text">Published Mar 26, 2015. Oct 25: listed in ENISA EU KEV. Exploited · score 98/100.</summary>
+<content type="text">JBoss RichFaces before 4.5.4 allows remote attackers to inject expression language (EL) expressions and execute arbitrary Java code via the do parameter.</content>
+</entry>
+</feed>
