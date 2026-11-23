@@ -152,6 +152,11 @@ export interface EventsInput {
   rows: ReadonlyMap<string, Row>;
   /** This run against the previous index (diffRuns), or null on a first run. */
   diff: RunDiff | null;
+  /**
+   * Why the chip and tier comparison starts from a baseline this run, e.g. the previous run used
+   * another score model: its moves are the model's, not new evidence. Null to compare as usual.
+   */
+  baseline?: string | null;
   /** Items of the previous events.json, or null when there was none. */
   previous: EventItem[] | null;
   previousState: EventsState | null;
@@ -211,7 +216,8 @@ function chipLabels(s: ScoredCve | undefined, ids: readonly string[], max = 3): 
 export function buildEvents(input: EventsInput): EventsOutput {
   const { now, byId, rows, diff, previous, kev, catalogs, woke } = input;
   const nowMs = now.getTime();
-  const nowIso = now.toISOString();
+  // Whole seconds, like the backfilled dates, so `at` strings compare in time order.
+  const nowIso = now.toISOString().replace(/\.\d+Z$/, 'Z');
   const cutoffMs = nowMs - EVENTS_DAYS * DAY_MS;
   const today = ymd(now);
   const sinceDay = ymd(new Date(cutoffMs));
@@ -278,7 +284,8 @@ export function buildEvents(input: EventsInput): EventsOutput {
   }
 
   // Moves and new chips since the previous index.
-  for (const { prev, cur, published } of diff?.pairs ?? []) {
+  if (input.baseline && diff) notes.push(`chip and tier comparison starts from a baseline: ${input.baseline}`);
+  for (const { prev, cur, published } of input.baseline ? [] : (diff?.pairs ?? [])) {
     const s = byId.get(cur.id);
     // Chips are only new when the previous row had a chip list to compare, or the CVE is new.
     const before = prev ? (Array.isArray(prev.r) ? new Set(prev.r) : null) : published ? new Set<string>() : null;

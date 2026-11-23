@@ -1,7 +1,7 @@
 /**
  * Pure output assembly: an IngestResult in, every output file (path → content) out.
  * Scores all records, assigns batches, builds rows/details, meta, stats, changes, and renders
- * the JSON tree and feeds. The only I/O is reading the previous run for changes.json.
+ * the JSON tree and feeds. The only I/O is reading the previous run (changes.json, events.json, meta.json).
  */
 import {
   KNOB_DEFAULT,
@@ -21,6 +21,8 @@ import {
   type Tier,
   type WokeFile,
 } from '../../../shared/contract';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { BRAND } from '../../../shared/brand';
 import { BATCH_MIN, SCORE_MODEL } from '../../../shared/model';
 import { backtestProblems, runBacktest } from '../backtest';
@@ -292,6 +294,7 @@ export function buildOutput({
     byId,
     rows: rowById,
     diff: runDiff,
+    baseline: modelChange(previous),
     previous: readPreviousEvents(previous),
     previousState: readSection(previousState, EVENTS_SECTION),
     kev: ing.kev,
@@ -326,6 +329,18 @@ export function buildOutput({
     .slice(0, TOP_SUMMARY)
     .map(toRow);
   return { files, meta, batches, top, scored, woke: woke.file, receipts, packages, events: events.file, notes };
+}
+
+/** "score model v0.3.0 → v0.4.0" when the previous run scored with another model, else null. */
+export function modelChange(previous: string | null): string | null {
+  if (!previous) return null;
+  let model: unknown;
+  try {
+    model = (JSON.parse(readFileSync(join(previous, PATHS.meta), 'utf8')) as { score_model?: unknown }).score_model;
+  } catch {
+    return null;
+  }
+  return typeof model === 'string' && model !== SCORE_MODEL ? `score model ${model} → ${SCORE_MODEL}` : null;
 }
 
 /** receipts.json `definitions`: what each method and figure means, in plain words. */

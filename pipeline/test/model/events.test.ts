@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -67,7 +67,7 @@ describe('events.json across runs', () => {
       catalogs: { [E]: [listing('eu-kev', dateAgo(1, T2))] },
     };
     const r2 = await runAt('r2', T2, spec2, r1.out);
-    const at2 = T2.toISOString();
+    const at2 = T2.toISOString().replace('.000Z', 'Z');
     expect(r2.file.previous_at).toBe(T1.toISOString());
     const byId = new Map(r2.file.items.map((i) => [i.id, i]));
     expect([...byId.keys()].sort()).toEqual([`catalog_listed:eu-kev:${E}`, `kev_added:${B}`, `kev_added:${D}`, `metasploit_module:${A}`].sort());
@@ -114,6 +114,16 @@ describe('events.json across runs', () => {
     expect(f).toMatchObject({ id: `vendor_exploited:${F}`, tier_before: null, tier_after: 'exploited', via: 'cvelist' });
     expect(f.detail).toMatch(/^New CVE, published /);
     expect(ev.items.filter((i) => i.cve === F)).toHaveLength(1);
+  });
+
+  it('starts the chip and tier comparison from a baseline when the score model changed', async () => {
+    const r1 = await runAt('r1', T1, {}, null);
+    const meta = JSON.parse(readFileSync(join(r1.out, PATHS.meta), 'utf8'));
+    writeFileSync(join(r1.out, PATHS.meta), JSON.stringify({ ...meta, score_model: 'v0.0.1' }));
+    const spec: EnrichmentSpec = { kev: [makeKev(D, { dateAdded: dateAgo(0, T2) })], metasploit: { [A]: [msf('exploit/x')] } };
+    const r2 = await runAt('r2', T2, spec, r1.out);
+    // The module and the tier move are the model's to judge, not news; a KEV listing still is.
+    expect(r2.file.items.map((i) => i.id)).toEqual([`kev_added:${D}`]);
   });
 
   it('emits nothing for the diff types on a first run', async () => {
@@ -191,7 +201,7 @@ describe('buildEvents', () => {
     const base = input({ byId: new Map([[B, s]]), rows: new Map([[B, row]]) });
     const woke = { ...base.woke, items: [{ id: B, at: sig.at, signals: [old, sig], row }] };
     const normal = buildEvents({ ...base, woke, previous: [] });
-    expect(normal.file.items.map((i) => [i.id, i.at, i.backfill, i.via, i.url])).toEqual([[`metasploit_module:${B}`, T1.toISOString(), false, 'metasploit', 'https://example.test/m']]);
+    expect(normal.file.items.map((i) => [i.id, i.at, i.backfill, i.via, i.url])).toEqual([[`metasploit_module:${B}`, T1.toISOString().replace('.000Z', 'Z'), false, 'metasploit', 'https://example.test/m']]);
     expect(normal.file.items[0].detail).toBe('Published Mar 1, 2019. First Metasploit module.');
     const first = buildEvents({ ...base, woke, previous: null });
     expect(first.file.items.map((i) => [i.id, i.at, i.backfill])).toEqual([[`metasploit_module:${B}`, daysAgo(2).replace(/\.\d+Z$/, 'Z'), true]]);
