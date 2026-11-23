@@ -1,6 +1,6 @@
 # Scoring methodology
 
-Score model **v0.2.0** (v0.1.0 plus the ENISA EU KEV and CIRCL catalog chips; see [Other known-exploited catalogs](#other-known-exploited-catalogs)). The single source of truth is [`shared/model.ts`](../shared/model.ts)
+Score model **v0.3.0** (v0.2.0 plus `x.early`, −3 for no exploit signal in the first 14 days, except on internet-facing edge devices; see [Cold start](#cold-start) and [Internet-facing edge devices](#internet-facing-edge-devices). v0.2.0 added the ENISA EU KEV and CIRCL catalog chips; see [Other known-exploited catalogs](#other-known-exploited-catalogs)). The single source of truth is [`shared/model.ts`](../shared/model.ts)
 (chips and points) and [`pipeline/src/score.ts`](../pipeline/src/score.ts) (when each chip fires).
 The site's Method page renders its chip table from the same file. If this document and the code
 disagree, the code is right and this document has a bug.
@@ -36,8 +36,9 @@ E chips    = kev.listed | ssvc.active | vendor.exploited (CVSS v4 E:A) | vendor.
 X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24 (CVSS v3 E:F/E:H),
                      x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10 (E:P), epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
-             if none: x.none −14 when age ≥ 14, every exploit source and EPSS loaded, and no unvetted PoC repo;
-                      else x.too_new (unknown, 0)
+             if none, with every exploit source and EPSS loaded and no unvetted PoC repo:
+                      x.none −14 when age ≥ 14, else x.early −3 (x.too_new, 0, on an edge device)
+                      otherwise x.too_new (unknown, 0)
 SEV        = sev.crit_net 13 (≥9.0 and AV:N) | sev.crit 6 (≥9.0) | sev.high 1 (7–8.9) | sev.low −13 (<7) | sev.none (unknown)
 SSVC       = (ssvc.automatable 6 | ssvc.not_automatable −2) + (ssvc.total 8 | ssvc.partial −6) | ssvc.missing (unknown)
 PRIOR      = prior.product 10 | prior.vendor 8 | prior.none −6 | prior.unknown (no vendor named, or KEV unavailable)
@@ -50,7 +51,8 @@ raw        = 15 + X + SEV + SSVC + PRIOR + NOISE
 score      = E ? min(100, max(raw + 75, 90) + (ransomware Known ? 5 : 0)) : clamp(raw, 0, 100)
 weaponized = x.metasploit or x.nuclei present
 tier       = tierFor(score, E, weaponized, knob)          (shared/contract.ts)
-INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hype, poc.unvetted, tag.eol (0 points)
+INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hype, poc.unvetted, tag.eol, edge.device (0 points)
+edge       = affected vendor/product (or CPE) in the curated list of shared/edge.ts, and AV:N when CVSS exists
 ```
 
 Details that matter when you read a score:
@@ -94,7 +96,8 @@ Details that matter when you read a score:
 - **A missing source is unknown, not absent.** When a source has neither a fresh nor a cached
   copy, its silence is not evidence. Without KEV, PRIOR is `prior.unknown`. Without Metasploit,
   Nuclei, Exploit-DB, PoC-in-GitHub or EPSS, a CVE with no exploit chip gets `x.too_new` ("Exploit
-  check incomplete") instead of `x.none`, and NOISE stays off. The CVE page names the missing
+  check incomplete") instead of `x.none`, and NOISE stays off. In the first 14 days EPSS does not
+  score, so an EPSS outage alone does not stop `x.early`. The CVE page names the missing
   sources under "what we could not see".
 - **Row chips.** List views carry up to four chip ids per CVE (`Row.c`), strongest first, positive
   chips before negative ones. `Row.r` lists every chip that fired, family losers included and
@@ -120,7 +123,7 @@ Any of the first six puts the CVE in **Exploited**. The first that fires, in thi
 
 ### X: exploit artifacts and prediction
 
-Strongest one counts; the rest are shown with 0. `x.too_new` also stands in for `x.none` after the cold start when a PoC repo is still too new to vet or an exploit source could not be loaded.
+Strongest one counts; the rest are shown with 0. `x.too_new` stands in for `x.none` or `x.early` when a PoC repo is still too new to vet or an exploit source could not be loaded, and for `x.early` on an [internet-facing edge device](#internet-facing-edge-devices).
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
@@ -134,7 +137,8 @@ Strongest one counts; the rest are shown with 0. `x.too_new` also stands in for 
 | `vendor.poc` | Vendor: PoC | +10 | `cvelist` | The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored. |
 | `epss.mid` | EPSS 1–10% | +8 | `epss` | EPSS between 1% and 10% (only trusted after 14 days). |
 | `x.none` | No exploit yet | −14 | `computed` | Two weeks after publication there is still no public exploit and EPSS is below 1%. |
-| `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: the CVE is less than 14 days old, a PoC repo is too new to vet, or an exploit source could not be loaded this run. |
+| `x.early` | No exploit yet (early) | −3 | `computed` | Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone stay under the default evidence bar. Not applied to internet-facing edge devices. |
+| `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: a PoC repo is too new to vet, an exploit source could not be loaded this run, or the CVE is an internet-facing edge device under 14 days old. |
 
 ### SEV: severity
 
@@ -197,6 +201,7 @@ Only applied when there is no exploitation and the X family is ≤ 0, and not wh
 | `circl.suspected` | CIRCL: suspected | 0 | `circl-kev` | CIRCL lists exploitation as suspected, not confirmed (CC0-1.0). Information only. |
 | `circl.attempts` | CIRCL: attempts | 0 | `circl-kev` | CIRCL lists it as confirmed in its known-exploited catalog (CC0-1.0), but the only evidence is exploitation attempts, such as hits on a sinkhole. Attempts are not proof that an attack worked: information only. |
 | `honeypot.siberkapan` | Honeypot attempts | 0 | `siberkapan` | SiberKapan’s honeypot and web sensors in Turkey saw exploitation attempts (CC-BY-4.0). Attempts are not proof that an attack worked, and one sensor network gives too little data to set points: information only. |
+| `edge.device` | Edge device | 0 | `computed` | An internet-facing edge device: VPN, firewall, load balancer, email gateway, file transfer, webmail, remote support, SD-WAN or edge router (curated list in shared/edge.ts, explained in docs/SCORING.md). These are often attacked before any exploit is public, so the early no-exploit penalty does not apply. |
 | `tag.eol` | Unsupported product | 0 | `cvelist` | The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate. |
 
 ## Other known-exploited catalogs
@@ -280,8 +285,12 @@ weights in [`shared/model.ts`](../shared/model.ts):
 - **From 40 up, a CVE that has gone two weeks with no exploit sign can never pass.** The most such a
   CVE can score is 38: 15 base + 13 critical network bug + 14 SSVC (total, automatable) + 10 product
   in KEV − 14 for no exploit yet.
-- **From 55 up, every CVE listed has some exploit sign.** Without one (a PoC, Exploit-DB, EPSS, CISA or the vendor saying an
-  exploit exists, exploitation, Metasploit or Nuclei), the most a CVE can score is 52.
+- **From 50 up (the default), every CVE listed has some exploit sign.** Without one (a PoC, Exploit-DB, EPSS, CISA or the vendor saying an
+  exploit exists, exploitation, Metasploit or Nuclei), the most a CVE can score is 49: 52 from the
+  profile, − 3 for no exploit signal yet in its first two weeks. The exception is a CVE whose
+  question is still open (a PoC repo too new to vet, or an exploit source down this run) or that
+  is on an [internet-facing edge device](#internet-facing-edge-devices) in its first 14 days: it
+  can reach 52. From 53 up there is no exception.
 - **80 is the most a CVE can score without being exploited or having a Metasploit module or Nuclei
   template:** 15 + 28 Exploit-DB + 13 + 14 + 10. At 80 nothing passes on score; only the CVEs that
   always pass are left.
@@ -301,13 +310,102 @@ to go on (78 of the 333 CVEs published on 2026-10-26, 23%, had an EPSS score tha
 publication (`COLD_START_DAYS`):
 
 - EPSS does not score. If a score exists it is shown as the `epss.cold` info chip.
-- Silence is not evidence: instead of `x.none` (−14) the CVE gets `x.too_new`, an unknown worth 0,
-  and the CVE page says how many days remain.
+- Silence is weak evidence: instead of `x.none` (−14) the CVE gets `x.early` (−3), and the CVE
+  page says how many days remain. While a PoC repo is too new to vet or an exploit source is down,
+  it gets `x.too_new`, an unknown worth 0, as after the cold start.
+- On an [internet-facing edge device](#internet-facing-edge-devices) silence says even less, so
+  the CVE gets `x.too_new` (0) instead of `x.early`, plus the `edge.device` info chip.
 
 Everything else, including exploitation, exploit artifacts, severity, SSVC and prior, counts from
-day 0. So a critical network bug from a vendor with KEV history can reach Likely next before any
-exploit feed has caught up, as CVE-2026-105016 does on day 13 in the
-[example below](#worked-examples).
+day 0. A critical network bug from a vendor with KEV history scores at most 49 before any exploit
+signal, just under the default bar: it is at the top of Watch, and any exploit signal (a vetted
+PoC, Exploit-DB, CISA or the vendor saying a PoC exists) lifts it to Likely next. See
+CVE-2026-105016 in the [examples below](#worked-examples). On an edge device the same profile
+scores 50 or 52 and is Likely next from day 0.
+
+**Why −3 (v0.3.0).** Up to v0.2.0 silence in the first two weeks was worth 0, and that profile
+scored 50 or 52: Likely next on severity, SSVC and KEV history alone. In the 2026-11-20 16:47 UTC
+window that was 171 of the 401 Likely CVEs, 6 of the 6 that passed in the last 24 hours, and none
+had any exploit sign. Every one of them falls back to Watch on day 14 unless an exploit sign
+appears, because `x.none` then takes 14 points. In the 180-day backtest to 2026-11-18 the profile alone
+flagged 1 of the 134 recent KEV additions before CISA listed it (1 or 2 with undated evidence). −3 is the smallest penalty that keeps the
+strongest such profile (52) under the default bar. In that window it took Likely from 401 to 238
+(Exploited or Likely: about 14 a day to about 9); the 8 that stay have a PoC repo too new to vet.
+With the edge device exemption Likely is 257 (about 9.5 a day): 19 more of the 171 stay, all on
+edge devices, and the backtest keeps its one profile catch, CVE-2026-85102 (Check Point Quantum
+Security Gateway).
+
+## Internet-facing edge devices
+
+VPN gateways, firewalls, load balancers and the like exist to take connections from the internet.
+Attackers find them with a scan and often exploit a new bug in days, before anyone publishes an
+exploit, so a quiet first two weeks says little about them. A CVE whose affected product is on the
+list below does not get `x.early`: it keeps `x.too_new` (unknown, 0) and gets the `edge.device`
+info chip (0 points), so the CVE page says why. After day 14 nothing differs: no exploit signal is
+`x.none` (−14) like for any other CVE. The list is in [`shared/edge.ts`](../shared/edge.ts).
+
+**How it matches.** Every affected vendor and product in the CNA record, and any CPE 2.3 name in it,
+is lower-cased and reduced to plain words ("PAN-OS" → "pan os"). The vendor must be the entry's
+vendor; a product name alone never matches, so "Acme Connect Secure" is not Ivanti. A combined
+product ("FortiOS, FortiProxy", "IOS and IOS XE") is split and each part is checked. A part that
+names a client, app, agent, desktop app or management tools is endpoint software and never matches
+("BIG-IP Edge Client", "GlobalProtect App", "FortiClient", "Zimbra Desktop"). Fortinet's hosted
+services ("FortiManager Cloud", "FortiGate Cloud") never match: Fortinet patches them, not you. With a CVSS score, the attack vector must be Network.
+
+**Why this list.** Each product faces the internet by design and has at least one CISA KEV entry
+from 2021-11-20 to 2026-11-20, or shares its code with one that does (Policy Secure and ZTA
+Gateway with Connect Secure, FortiGate, FortiProxy and FortiADC with FortiOS). Counts are KEV
+entries in those five years, matched by KEV's own vendor and product, or by the CVE record when
+KEV says "Multiple Products". Together they are 284 of the 1,499 entries.
+
+| Kind | Products (KEV entries) |
+|---|---|
+| VPN and remote access | Ivanti Connect Secure, Policy Secure and ZTA Gateway, with Pulse Secure (9), Ivanti Cloud Services Appliance (5), Ivanti EPMM and Sentry (10), Palo Alto PAN-OS with GlobalProtect (13), SonicWall SMA and SRA (11), Array Networks AG (2), Cisco Expressway (1) |
+| Firewalls and UTM | Fortinet FortiOS, FortiGate and FortiProxy (16), FortiWeb (4), FortiManager (1), Cisco ASA and FTD (12), SonicWall SonicOS (4), Check Point Security Gateway (3), Juniper Junos OS and ScreenOS (8), Zyxel ATP, USG, USG FLEX, VPN and ZyWALL (5), Sophos Firewall, XG and SG UTM (5), WatchGuard Firebox (4) |
+| Load balancers and ADCs | Citrix NetScaler ADC and Gateway (16), F5 BIG-IP (6), Fortinet FortiADC, Progress Kemp LoadMaster (2), Ivanti Virtual Traffic Manager (1) |
+| Email and web gateways | Barracuda Email Security Gateway (3), Cisco Secure Email (3), Fortinet FortiMail (2), Sophos Web Appliance (1) |
+| File transfer | Progress MOVEit Transfer (1) and WS_FTP Server (1), Fortra GoAnywhere MFT (2), Cleo Harmony, VLTrader and LexiCom (2), CrushFTP (3), Wing FTP Server (2), SolarWinds Serv-U (3), IBM Aspera Faspex (2), Gladinet CentreStack and Triofox (4), Citrix ShareFile Storage Zones Controller (2) |
+| Webmail | Zimbra Collaboration (19), Roundcube Webmail (10), Microsoft Exchange Server (9), SmarterTools SmarterMail (3) |
+| Remote support | BeyondTrust Remote Support and PRA (4), ConnectWise ScreenConnect (4), SimpleHelp (4) |
+| SD-WAN | Cisco Catalyst SD-WAN (9), Arista and VMware VeloCloud (4), Versa Director and Concerto (2) |
+| Edge routers | Cisco IOS XE and IOS XR, whose web UI and management plane face the network edge (31), Cisco RV series VPN routers (9), MikroTik RouterOS (5), DrayTek Vigor (4) |
+
+Choices worth stating:
+
+- **Webmail is in.** A mail server's web interface (Zimbra, Roundcube, SmarterMail, Exchange's
+  Outlook on the web, EWS and ActiveSync) faces the internet by design, and these are some of the
+  most listed products in KEV. Exchange Online is not: Microsoft patches it, not you.
+- **FortiManager is in, FortiAnalyzer is not.** Managed FortiGates reach FortiManager over FGFM,
+  often across the internet, and that port was mass-exploited in 2024. FortiAnalyzer,
+  FortiSandbox, FortiAuthenticator and FortiClient EMS are internal or endpoint products.
+- **Management consoles are out** unless they face the internet by design: Cisco FMC, Check Point
+  Security Management, F5 BIG-IQ, SonicWall GMS, WatchGuard Dimension, Ivanti EPM and Cisco ISE
+  sit inside the network. Cisco Secure Email and Web Manager is in, as part of Cisco Secure Email.
+- **Home routers, cameras and NAS are out.** D-Link, TP-Link, Netgear, Tenda and similar products
+  are in KEV too, but they bring a large volume of CVEs that are never exploited, many for devices
+  past end of life, and they rarely reach the bar without an exploit sign anyway.
+- **Business software that is often published is out**: SharePoint, Confluence, Oracle E-Business
+  Suite, SAP NetWeaver, vCenter, video conferencing (TrueConf) and PBX servers. They are not edge
+  devices by design, and adding them would turn the list into "popular software".
+- **No KEV entry, not yet.** Edge products with no KEV entry in the five years (Barracuda
+  CloudGen Firewall and WAF, SonicWall Email Security, Juniper Session Smart Router) are left out
+  until they have one.
+- **Classic Cisco IOS is out**, IOS XE and IOS XR are in. Most classic IOS entries in KEV are bugs
+  from 2017 and 2018 listed in bulk in 2022, and IOS XE now runs Cisco's edge routers.
+
+**What it changes** (2026-11-20 16:47 UTC window, 16,612 CVEs): 233 window CVEs are on edge
+devices. Of the 171 Likely CVEs that had no exploit sign, 19 stay Likely because of the exemption
+(Citrix NetScaler 8, F5 BIG-IP 6, Fortinet 4: FortiOS, FortiMail twice and FortiManager, and
+SmarterMail 1). In the 180-day backtest, CVE-2026-85102 (Check Point Quantum Security Gateway, 13
+days old when CISA listed it) stays caught on its profile alone. These counts match on affected vendor and
+product. Adding the CNA's CPE names, read from the raw CVE List records, changes none of them.
+
+**Proposing an addition.** Open an issue or pull request that changes `EDGE_ENTRIES` in
+[`shared/edge.ts`](../shared/edge.ts) and adds the product's real CNA spellings to
+[`shared/edge.test.ts`](../shared/edge.test.ts), with near misses for the same vendor's endpoint or
+management products. Say why the product faces the internet by design, and link its KEV entries:
+at least one in the last five years is the bar used here. The list changes scores, so a change to
+it is a new score model.
 
 ## PoC vetting
 
@@ -373,14 +471,15 @@ would score 56, Likely next.
    +8  CISA SSVC: total technical impact
    +6  CISA SSVC: automatable
    +8  Vendor in KEV (×390): Microsoft
-    0  Too new: day 13 of 14, exploit feeds lag
+   −3  No exploit signal yet: day 13 of 14, exploit feeds lag
     0  EPSS 1.7% · 76th pct · day 13, too new to trust   (info)
   ───
-   50  Likely next at the default evidence bar
+   47  Watch at the default evidence bar (Likely next at Broad, 40)
 ```
 
-One day later the cold start ends. If EPSS is still at 1% or more, `epss.mid` (+8) lifts the score
-to 58; below 1% and with no public exploit, `x.none` (−14) drops it to 36, which is Watch.
+Up to v0.2.0, without the −3, this scored 50: Likely next on its profile alone. One day later the
+cold start ends. If EPSS is still at 1% or more, `epss.mid` (+8) lifts the score to 58; below 1%
+and with no public exploit, `x.none` (−14) drops it to 36, which is Watch.
 
 **CVE-2013-10076** · ExtUtils::Typemaps::STL::Vector (Perl) · day 16
 
@@ -454,7 +553,8 @@ more of the 288 KEV CVEs; going to 55 removes 135 CVEs but loses 41. The drop st
 the KEV CVEs that score exactly 50 or 52 are mostly vendor or product KEV history + High + SSVC
 total − not automatable + a PoC on GitHub. Much of the window at 50 is the cold start: a critical
 network bug with SSVC total and automatable from a vendor with KEV history scores 50 for its first
-two weeks, then most fall to 36 (the pattern of CVE-2026-105016 above). Because the knee is one
+two weeks under v0.2.0 (47 from v0.3.0), then most fall to 36 (the pattern of CVE-2026-105016
+above). These figures are from a v0.2.0 run; rerun `npm run calibrate` for v0.3.0. Because the knee is one
 exact sum of weights, a small weight change can move it: re-check it after any change.
 
 On the stricter backtest there is no sharp knee: recall falls steadily as the bar rises, and 50 is
@@ -504,7 +604,7 @@ Resolved blind spot: a CVE listed only in ENISA EU KEV or CIRCL's catalog (not i
 be scored only while it was in the 30-day window or woke up, so an older one never showed. The
 pipeline now keeps every CVE with an exploited listing in those catalogs whatever its age, the same
 way it keeps every CISA KEV CVE: it gets a CVE page in the Exploited tier, and a first listing
-dated in the last 30 days, after the CVE left the window, is a Woke Up signal (`catalog`) and a "what changed" arrival
+dated in the last 30 days is a Woke Up signal (`catalog`) once the CVE has left the window, and a "what changed" arrival
 when it is under 7 days old. Only the listings that set Exploited count: every EU KEV listing, and a
 CIRCL entry that is *confirmed* with evidence beyond attempts. SiberKapan, CIRCL *suspected* and
 CIRCL attempts-only listings stay information only and never pull a CVE in. These CVEs have no CISA
@@ -547,7 +647,9 @@ as the pipeline reports it); the extra work is one set union and 19 more records
 - **Vendor zero-days without artifacts.** Targeted exploitation of edge devices and enterprise
   software is often disclosed with a patch, with no public exploit, no "in the wild" wording in the
   CVE record and no KEV entry for days. These sit in Watch, or even Quiet, until KEV or the vendor
-  catches up.
+  catches up. Products on the [edge device list](#internet-facing-edge-devices) skip the early
+  no-exploit penalty, which helps only when the profile is strong; the list is curated, so a new
+  edge product is missed until someone adds it.
 - **KEV lag.** KEV lists exploitation CISA can confirm, which typically trails the first reports by
   days to weeks, and it covers products US federal agencies care about. Not in KEV ≠ not exploited.
 - **EPSS cold start.** EPSS needs time to observe a CVE; it is ignored for 14 days and missing for

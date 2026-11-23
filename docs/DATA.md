@@ -26,11 +26,12 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/batches.json` | `BatchesFile` | Batches (patch days and bulk releases) in the window; newest first | ~30 KB |
 | `v1/kev.json` | `KevFile` | KEV entries added in the last 30 days or due from 14 days ago on; newest first | ~4 KB |
 | `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
+| `v1/surge.json` | `SurgeFile` | Published CVEs per month by CVSS severity band and by top CNA, and CISA KEV CVEs by publication month (The Surge's filters) | ~18 KB |
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
 | `v1/packages.json` | `PackagesFile` | Package versions affected by the CVEs that have a detail shard (window, KEV, EU KEV or CIRCL exploited, woke up), from OSV.dev advisories, with each CVE's row | ~120 KB |
-| `v1/state.json` | — | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
+| `v1/state.json` | none | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
 | `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
@@ -103,7 +104,7 @@ Exploited when `x`; else Likely next when `w` or `s ≥ knob`; else Watch when `
 
 | Field | Meaning |
 |---|---|
-| `score_model` | Version of the scoring model (`shared/model.ts`), e.g. `v0.1.0` |
+| `score_model` | Version of the scoring model (`shared/model.ts`), e.g. `v0.2.0` |
 | `knob_default` | Evidence bar used for every stored `tier` (default 50) |
 | `window` | `{ from, to, days }` of the window |
 | `counts` | Headline numbers, below |
@@ -195,7 +196,8 @@ confirmed entry whose evidence is more than attempts) and the information-only `
 is attempts, such as sinkhole hits) and `honeypot.siberkapan` ("SiberKapan honeypots (CC-BY-4.0):
 attempts seen", 0 points). Their `at` is the day the catalog added the CVE when it gives one it can
 vouch for; an EU KEV listing that the EUVD dump dates only by its CISA KEV date has no `at`. For
-`honeypot.siberkapan`, `at` is the first attempt the sensors saw.
+`honeypot.siberkapan`, `at` is the first attempt the sensors saw, else the listing day; its
+timeline entry uses the same day.
 Chips that lost to a stronger one in their family are included with `points: 0`, so
 `15 + Σ points` equals `score.raw` for a CVE that is not exploited (`score.value` is that clamped to
 0–100, so the two differ only when `raw` is negative), and equals `score.value` for an exploited
@@ -230,14 +232,38 @@ description, required_action`, plus `in_window` (the CVE was published in the wi
 |---|---|
 | `monthly[]` | Every month since 1999: `{ month, published, reserved, rejected, ai, kev_added }`. `published` counts records in PUBLISHED state by `datePublished`, and `reserved` buckets the same records by their reservation month. `rejected` counts REJECTED records by `datePublished`, else by rejection date (most were never published). `ai` counts published records that credit an AI system or lab |
 | `daily[]` | Each full UTC day of the window, then today so far, oldest first: `{ date, published, passed, exploited }`. The partial day the window starts in is left out |
-| `hourly` | `{ start, hours, counts, new_exploited }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start`. `new_exploited` is `[h, n]` pairs, oldest hour first, for the hours holding `n` Exploited CVEs (by publication) whose first exploited signal is within 72 hours of `generated_at`. The signals are the ones that set the Exploited tier: a CISA KEV, ENISA EU KEV or CIRCL listing, CISA SSVC "exploitation active", and the CNA's own exploited flag. The first one decides, so a CVE already Exploited through SSVC is not new when KEV lists it later. Listings are dated by day, so a day counts from 00:00 UTC; SSVC counts from its timestamp and the CNA flag from publication. A signal qualifies when it is at or after `generated_at` minus 72 hours (inclusive). A signal with no date rules the CVE out, unless it is an EU KEV row known to come after the CISA KEV date. Hours with none are left out, and `[]` means none. Older files have no `new_exploited`: read that as none. The waterfall pulses only these ticks |
+| `hourly` | `{ start, hours, counts, new_exploited, new_exploited_cves, new_exploited_total }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start`. **Newly exploited** means an Exploited CVE whose first exploited signal is within 72 hours of `generated_at`, or that a CISA KEV, ENISA EU KEV or confirmed CIRCL listing dated within those 72 hours names. The first-signal rule uses the signals that set the Exploited tier: a CISA KEV, EU KEV or CIRCL listing, CISA SSVC "exploitation active", and the CNA's own exploited flag. A signal with no date rules that path out, unless it is an EU KEV row known to come after the CISA KEV date. The listing rule makes a new catalog listing news even when the CVE was Exploited before (through SSVC, the CNA flag or another catalog), and whatever the CVE's age. Listings are dated by day, so a day counts from 00:00 UTC; SSVC counts from its timestamp and the CNA flag from publication. A signal qualifies when it is at or after `generated_at` minus 72 hours (inclusive). `new_exploited` is `[h, n]` pairs, oldest hour first, for the hours holding `n` newly exploited CVEs of the window (by publication). Hours with none are left out, and `[]` means none. Older files have no `new_exploited`: read that as none. The waterfall pulses only these ticks. `new_exploited_cves` names the newly exploited CVEs, newest signal first, at most 50 (`NEW_EXPLOITED_LIST_MAX`): `{ id, title, via, at, hour }` for a CVE in the window, `{ id, title, via, at, published }` for one published before it. `title` is the short name the site shows ("Vendor · Product", else the CNA's name, else the CVE ID, at most 80 characters). `via` is the newest signal that makes it new: `CISA KEV`, `EU KEV`, `CIRCL`, `CISA SSVC` or `Vendor` (the CNA's own flag); for a CVE before the window it is always a listing. `at` is when it came: `YYYY-MM-DD` for a catalog listing, an ISO 8601 UTC time for SSVC and the CNA flag. `hour` is the CVE's column in `counts`; a CVE published before the window has no `hour` (it is not on the chart) and has `published` (`YYYY-MM-DD`) instead. `new_exploited_total` is how many there are before the cap, both kinds; the site's legend shows it. All three come from one list, so below the cap the list's hours tally to `new_exploited` exactly and the total is the list's length; at the cap the older ones are left out of the list but still counted. Older files have no `new_exploited_cves` or `new_exploited_total`: the legend then counts the chart and stays a plain label. |
 | `cnas[]` | Top 25 CNAs in the window: `{ cna, count, passed, no_cvss, ssvc_missing }` |
 | `ai_credits[]` | Top 20 AI credit excerpts (≤ 80 characters, as in `ai_credit`): `{ text, count }` |
+
+## `surge.json`
+
+Monthly breakdowns behind the filters of The Surge's monthly chart. Counts are by `datePublished`, like
+`stats.json` `monthly[].published`, and come from the same streaming pass over the CVE List. Older data has no
+`surge.json`: the site then shows the chart without its filters. Band arrays are always
+`[critical, high, medium, low, none]` (`SEVERITY_BANDS`), by the base score of the CVSS the site shows for the record
+(CNA v4.0, v3.1, v3.0, then CISA-ADP, then CNA v2.0): Critical 9.0 and up, High 7.0, Medium 4.0, Low 0.1, None for 0.0
+or no score. Most records before about 2016 carry no CVSS in the CVE List, so they are None.
+
+| Field | Meaning |
+|---|---|
+| `start` | First month, `1999-01`. Row `i` of every series is month `start` + `i`, through the month of `generated_at` |
+| `severity[]` | One band array per month. It sums to that month's `published` in a `stats.json` from the same run |
+| `cnas[]` | The 30 CNAs (`SURGE_TOP_CNAS`, by `assignerShortName`) with the most published CVEs since 1999, most first: `{ cna, from, severity }`. `severity[j]` is month `from + j`; months before `from` or past the last row have none. "Other" is `severity` minus every listed CNA |
+| `kev[]` | CVEs in the CISA KEV catalog by the month the CVE was published (not the month KEV added it): `[month, cna, band, count]`, where `cna` is an index in `cnas` or `-1` for Other. Sorted by month, CNA and band; cells with no CVEs are left out |
+
+```sh
+# Critical and High CVEs per month this year, without the WordPress plugin CNAs
+curl -s $BASE/surge.json | jq -r '
+  (.cnas | map(select(.cna == "Wordfence" or .cna == "WPScan" or .cna == "Patchstack"))) as $wp
+  | range(.severity | length) as $i | select($i >= 324)
+  | ["\(1999 + ($i / 12 | floor))-\($i % 12 + 1)", (.severity[$i][0] + .severity[$i][1]) - ([$wp[] | .severity[$i - .from] // [0,0] | .[0] + .[1]] | add)] | @tsv'
+```
 
 ## `changes.json`
 
 `{ schema_version, generated_at, items: Change[] }`: escalations in the last 7 days, newest first,
-at most 500. An item is recorded when a CVE's tier rose, or a new exploitation or exploit chip
+at most 500. Over the cap, moves into Exploited or Likely next are kept first. An item is recorded when a CVE's tier rose, or a new exploitation or exploit chip
 appeared, between two hourly runs: `{ id, at, from, to, added }`. `from` is `null` for a CVE seen for
 the first time; `added` lists the chip ids that appeared. CVEs outside the window are compared too
 when CISA added them to KEV in the last 7 days, or, for those not in CISA KEV, when EU KEV or CIRCL
@@ -294,12 +320,15 @@ A signal is `{ kind, at, first_seen, label, source, url }`:
   loaded, or the two files come from different EPSS models (a new model moves many scores at once),
   the check is skipped and `skipped` says so. After a pause of more than 48 hours, jump tracking
   restarts from a baseline, so jumps from the pause are not all dated on the day it resumes.
-- Evidence only counts when it arrived after the CVE was already older than the window, so a CVE
-  does not join the list by ageing out of the window. Signals with a time (`poc`, first-seen
-  kinds) are compared to the minute; date-only ones (`kev`, `catalog`, `exploitdb`, `epss`) by UTC day. A CVE
-  that was in CISA KEV, or listed as exploited by EU KEV or CIRCL, before the period, or while it
-  was still in the window, is left out: it never fell asleep. After an exploit artifact from while it was still in the window, no later artifact
-  counts as its first.
+- A `kev` or `catalog` listing in the period always counts once the CVE is older than the window,
+  even when the listing came while it was still in the window: a CVE listed at 25 days old leaves
+  every 30-day view a few days later, and the listing is still news.
+- Other evidence only counts when it arrived after the CVE was already older than the window, so a
+  CVE does not join the list by ageing out of the window. Signals with a time (`poc`, first-seen
+  kinds) are compared to the minute; date-only ones (`exploitdb`, `epss`) by UTC day. A CVE that
+  was in CISA KEV, or listed as exploited by EU KEV or CIRCL, before the period is left out: it
+  never fell asleep. After an exploit artifact from while it was still in the window, no later
+  artifact counts as its first.
 - `label` is our own plain text, written to read after "Woke up Oct 30:" (e.g. `added to CISA KEV`).
   `url` links the evidence where a stable link exists (KEV catalog search, Exploit-DB entry,
   Metasploit module, Nuclei template, the PoC-in-GitHub index file, the FIRST EPSS time series).
@@ -502,7 +531,7 @@ starts that state fresh. Its size is budgeted like every other file.
 - `feeds/kev-due.ics`: iCalendar with one all-day event per KEV due date, from 7 days ago to 60
   days ahead. Event UIDs are stable per CVE, so calendar apps update events instead of duplicating them.
 - `feeds/woke.xml`: Atom, up to 100 CVEs from `woke.json`, newest wake first. Every CVE with a
-  `kev` or `exploitdb` signal is kept before the cap; the rest fill it newest first. A CVE whose
+  `kev`, `catalog` or `exploitdb` signal is kept before the cap; the rest fill it newest first. A CVE whose
   only signal is `poc` is left out unless its tier is Exploited or Likely next. One entry per CVE
   with a stable id; a later signal updates the entry. Titles are `CVE-… · <vendor> <product> · woke up: <newest signal>`.
 

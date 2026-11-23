@@ -1,9 +1,10 @@
 /**
  * The exploited-tick pulse on the signal waterfall. Only CVEs that became Exploited in the last
- * 72 hours (stats.json hourly.new_exploited) pulse: a soft red halo slowly swells behind their
- * ticks and fades again, while the ticks themselves shift toward a stronger red, all in
- * phase, like one calm breath. The ticks are only about 2x2 px, so the halo carries the visible
- * change. Pure helpers live here so they can be tested without a canvas; Waterfall.tsx owns the
+ * 72 hours (stats.json hourly.new_exploited) pulse, like a contact on a radar: each beat a thin
+ * red ring leaves the ticks and fades as it widens, while a soft red halo swells behind them and
+ * the ticks shift toward a stronger red, all in phase. The ticks are only about 2x2 px, so the
+ * halo and the ring carry the visible change. Both sit behind the chart, so no other tick changes
+ * colour. Pure helpers live here so they can be tested without a canvas; Waterfall.tsx owns the
  * timer and the drawing.
  */
 import { fmtInt } from './format';
@@ -12,10 +13,21 @@ import { fmtInt } from './format';
 export const PULSE_PERIOD_MS = 2800;
 /** Time between pulse frames: about 20 fps, which is plenty for a change this slow. */
 export const PULSE_FRAME_MS = 50;
-/** Halo radius around a column's exploited ticks, in CSS px (so about 20px across for one tick). */
-export const HALO_R = 9;
-/** Room kept around each column for its halo, so a repaint never cuts a halo off mid-fade. */
-export const PULSE_PAD = HALO_R + 2;
+/** Halo radius around a column's exploited ticks, in CSS px (so about 36px across for one tick). */
+export const HALO_R = 17;
+/** How far the ring travels past the ends of a column's exploited stack, in CSS px. */
+export const RING_R = 28;
+/** Where the ring starts, past the ends of the stack: just outside the ticks. */
+export const RING_R0 = 1.5;
+/** Ring stroke width, in CSS px. */
+export const RING_W = 1.5;
+/** Room kept around each column for its halo and ring, so a repaint never cuts either off. */
+export const PULSE_PAD = Math.ceil(Math.max(HALO_R, RING_R + RING_W / 2)) + 2;
+/**
+ * The halo and the ring fade out over this many CSS px before an edge of the canvas, so a column
+ * near the edge (the newest ones sit at the right) never shows a flat cut through either.
+ */
+export const EDGE_FADE = 10;
 
 /**
  * Pulse level for a time since the pulse started: 0 at the trough (the static colour), 1 at the
@@ -23,10 +35,38 @@ export const PULSE_PAD = HALO_R + 2;
  */
 export function pulseLevel(elapsedMs: number, periodMs = PULSE_PERIOD_MS): number {
   if (!(periodMs > 0) || !Number.isFinite(elapsedMs)) return 0;
-  const phase = (((elapsedMs % periodMs) + periodMs) % periodMs) / periodMs;
+  const phase = pulsePhase(elapsedMs, periodMs);
   const v = (1 - Math.cos(2 * Math.PI * phase)) / 2;
   // Snap the float residue at the trough so level 0 really means "draw nothing".
   return v < 1e-9 ? 0 : v;
+}
+
+/** Phase within the beat, 0 at the trough up to (not including) 1. */
+export function pulsePhase(elapsedMs: number, periodMs = PULSE_PERIOD_MS): number {
+  if (!(periodMs > 0) || !Number.isFinite(elapsedMs)) return 0;
+  return (((elapsedMs % periodMs) + periodMs) % periodMs) / periodMs;
+}
+
+export interface Ring {
+  /** Distance past the ends of the stack, CSS px. */
+  r: number;
+  /** Opacity factor 0..1, multiplied by the ring colour's own alpha. */
+  a: number;
+}
+
+/**
+ * The ring for a phase of the beat: it leaves the ticks as the beat rises, slows as it widens
+ * (an ease-out, like a sonar return) and fades all the way, so one ring ends before the next
+ * starts. Its opacity eases in over the first eighth or so (no hard flash) and is exactly 0 at the
+ * trough, so a paused chart shows no ring.
+ */
+export function ringAt(phase: number): Ring {
+  if (!(phase > 0) || !(phase < 1)) return { r: RING_R0, a: 0 };
+  const grow = 1 - Math.pow(1 - phase, 3);
+  const k = Math.min(1, phase / 0.12);
+  const fadeIn = k * k * (3 - 2 * k);
+  const a = fadeIn * Math.pow(1 - phase, 1.6);
+  return { r: RING_R0 + (RING_R - RING_R0) * grow, a: a < 1e-4 ? 0 : a };
 }
 
 export type Rgb = readonly [number, number, number];
@@ -76,6 +116,8 @@ export interface Spot {
   cx: number;
   cy: number;
   r: number;
+  /** Half the height of the column's exploited stack: the ring is measured from here. */
+  half: number;
 }
 
 /**
@@ -92,8 +134,32 @@ export function haloSpots(ticks: readonly Tick[], barW: number, segH: number, ra
     } else cols.set(t.x, { top: t.y, bottom: t.y + segH });
   }
   return [...cols.entries()]
-    .map(([x, c]) => ({ cx: x + barW / 2, cy: (c.top + c.bottom) / 2, r: radius + (c.bottom - c.top) / 2 }))
+    .map(([x, c]) => ({ cx: x + barW / 2, cy: (c.top + c.bottom) / 2, r: radius + (c.bottom - c.top) / 2, half: (c.bottom - c.top) / 2 }))
     .sort((a, b) => a.cx - b.cx);
+}
+
+/**
+ * The rings for a set of halo spots: columns whose centres are closer than `gap` share one ring
+ * around the group, so neighbouring new columns send out a single ring instead of several that
+ * cross each other. The group's `half` reaches the far end of every stack in it. Sorted left to
+ * right; `r` is kept from the widest member.
+ */
+export function ringSpots(spots: readonly Spot[], gap = RING_R): Spot[] {
+  const sorted = [...spots].sort((a, b) => a.cx - b.cx);
+  const groups: Spot[][] = [];
+  for (const s of sorted) {
+    const g = groups[groups.length - 1];
+    const last = g?.[g.length - 1];
+    if (last && Math.hypot(s.cx - last.cx, s.cy - last.cy) < gap) g.push(s);
+    else groups.push([s]);
+  }
+  return groups.map((g) => {
+    if (g.length === 1) return g[0];
+    const cx = (Math.min(...g.map((s) => s.cx)) + Math.max(...g.map((s) => s.cx))) / 2;
+    const cy = (Math.min(...g.map((s) => s.cy - s.half)) + Math.max(...g.map((s) => s.cy + s.half))) / 2;
+    const half = Math.max(...g.map((s) => Math.hypot(s.cx - cx, s.cy - cy) + s.half));
+    return { cx, cy, half, r: Math.max(...g.map((s) => s.r)) };
+  });
 }
 
 export interface Rect {
@@ -105,7 +171,7 @@ export interface Rect {
 
 /**
  * The rects to repaint for a set of exploited ticks: one per column (a column's exploited ticks
- * are stacked together at its top), padded for the halo, snapped outward to whole device pixels
+ * are stacked together at its top), padded for the halo and the ring, snapped outward to whole device pixels
  * and clamped to the canvas. All values are in CSS px.
  */
 export function pulseRegions(ticks: readonly Tick[], barW: number, segH: number, width: number, height: number, dpr = 1, pad = PULSE_PAD): Rect[] {
@@ -121,11 +187,59 @@ export function pulseRegions(ticks: readonly Tick[], barW: number, segH: number,
   const snapDown = (v: number) => Math.floor(v * dpr) / dpr;
   const snapUp = (v: number) => Math.ceil(v * dpr) / dpr;
   for (const c of cols.values()) {
-    const x0 = Math.max(0, snapDown(c.x - pad));
+    // The halo and the ring are round and grow with the stack, so a tall stack needs as much room
+    // to the sides as above and below.
+    const side = pad + (c.bottom - c.top) / 2;
+    const x0 = Math.max(0, snapDown(c.x - side));
     const y0 = Math.max(0, snapDown(c.top - pad));
-    const x1 = Math.min(width, snapUp(c.x + barW + pad));
+    const x1 = Math.min(width, snapUp(c.x + barW + side));
     const y1 = Math.min(height, snapUp(c.bottom + pad));
     if (x1 > x0 && y1 > y0) out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+  }
+  return out.sort((a, b) => a.x - b.x);
+}
+
+/**
+ * The rects to repaint for a set of rings at their widest (see ringSpots), snapped outward to whole
+ * device pixels and clamped to the canvas. CSS px.
+ */
+export function ringRegions(rings: readonly Spot[], width: number, height: number, dpr = 1, reach = RING_R + RING_W / 2 + 1): Rect[] {
+  const snapDown = (v: number) => Math.floor(v * dpr) / dpr;
+  const snapUp = (v: number) => Math.ceil(v * dpr) / dpr;
+  const out: Rect[] = [];
+  for (const s of rings) {
+    const R = s.half + reach;
+    const x0 = Math.max(0, snapDown(s.cx - R));
+    const y0 = Math.max(0, snapDown(s.cy - R));
+    const x1 = Math.min(width, snapUp(s.cx + R));
+    const y1 = Math.min(height, snapUp(s.cy + R));
+    if (x1 > x0 && y1 > y0) out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+  }
+  return out.sort((a, b) => a.x - b.x);
+}
+
+/**
+ * Rects that overlap or touch are replaced by their bounding rect until none do, so each pixel is
+ * repainted once a frame. Sorted left to right.
+ */
+export function mergeRects(rects: readonly Rect[]): Rect[] {
+  let out = rects.map((r) => ({ ...r }));
+  for (let merged = true; merged; ) {
+    merged = false;
+    const next: Rect[] = [];
+    for (const r of out) {
+      const o = next.find((n) => r.x <= n.x + n.w && n.x <= r.x + r.w && r.y <= n.y + n.h && n.y <= r.y + r.h);
+      if (o) {
+        const x1 = Math.max(o.x + o.w, r.x + r.w);
+        const y1 = Math.max(o.y + o.h, r.y + r.h);
+        o.x = Math.min(o.x, r.x);
+        o.y = Math.min(o.y, r.y);
+        o.w = x1 - o.x;
+        o.h = y1 - o.y;
+        merged = true;
+      } else next.push(r);
+    }
+    out = next;
   }
   return out.sort((a, b) => a.x - b.x);
 }
@@ -157,10 +271,10 @@ export function freshSegs(segs: number, exploited: number, fresh: number): numbe
 }
 
 /**
- * The legend entry for newly exploited CVEs, e.g. "New in 72h: 3". It is always shown, 0 included,
- * so the legend keeps its size when the data arrives; null `fresh` (still loading) reads "…".
+ * The legend entry for newly exploited CVEs, number first: "3 newly exploited". It is always
+ * shown, 0 included, so the legend keeps its size when the data arrives; null (still loading)
+ * reads "… newly exploited".
  */
-export function newLegend(fresh: readonly number[] | null): string {
-  if (!fresh) return 'New in 72h: …';
-  return `New in 72h: ${fmtInt(fresh.reduce((a, b) => a + b, 0))}`;
+export function newLegend(count: number | null): string {
+  return `${count === null ? '…' : fmtInt(count)} newly exploited`;
 }

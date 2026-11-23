@@ -18,10 +18,11 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "mcp": "tsx mcp/src/stdio.ts",
-    "build:mcp": "vite build --config mcp/vite.config.ts"
+    "build:mcp": "vite build --config mcp/vite.config.ts",
+    "brand": "tsx tools/brand/build.ts"
   },
   "dependencies": {
-    "preact": "^11.0.2"
+    "preact": "^11.2.0"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, WATCH_FLOOR, tierFor, type Family, type Reason } from '../../../shared/contract';
-import { BASE_POINTS, CHIPS, COLD_START_DAYS, EXPLOITED_FLOOR, chip } from '../../../shared/model';
-import { buildKevPrior, kevVendorKey, orderReasons, vendorTokens } from '../../src/score';
+import { BASE_POINTS, CHIPS, COLD_START_DAYS, EARLY_NO_EXPLOIT, EXPLOITED_FLOOR, chip } from '../../../shared/model';
+import { EDGE_DOC_URL, buildKevPrior, kevVendorKey, orderReasons, vendorTokens } from '../../src/score';
 import type { NormalizedCve, ScoredCve } from '../../src/types';
 import {
   NOW,
@@ -211,6 +211,17 @@ describe('other known-exploited catalogs', () => {
     expect(byId(weak, 'honeypot.siberkapan')!.label).toBe('SiberKapan honeypots (CC-BY-4.0): attempts seen, suspected');
   });
 
+  it('honeypot.siberkapan: the timeline uses the same day as the chip (first seen, else the listing day)', () => {
+    const event = 'First exploitation attempt seen by SiberKapan honeypots';
+    const seen = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', '2026-09-01', { seen: '2026-08-09' })] } });
+    expect(seen.timeline).toContainEqual({ at: '2026-08-09', event, source: 'siberkapan' });
+    const listedOnly = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', '2026-09-01', { seen: null })] } });
+    expect(byId(listedOnly, 'honeypot.siberkapan')!.at).toBe('2026-09-01');
+    expect(listedOnly.timeline).toContainEqual({ at: '2026-09-01', event, source: 'siberkapan' });
+    const undated = score(makeCve(), { catalogs: { [ID]: [listing('siberkapan', null, { seen: null })] } });
+    expect(undated.timeline.some((e) => e.source === 'siberkapan')).toBe(false);
+  });
+
   it('ignores a listing dated after now (a frozen --now), and keeps an undated one', () => {
     const s = score(makeCve(), { catalogs: { [ID]: [listing('eu-kev', '2026-10-27'), listing('circl-kev', '2026-10-26')] } });
     expect(byId(s, 'eukev.listed')).toBeUndefined();
@@ -318,11 +329,103 @@ describe('X family (exploit artifacts and prediction)', () => {
     expect(byId(s, 'x.none')).toMatchObject({ points: -14, label: 'No public exploit after 20 days · EPSS 0.4%' });
   });
 
-  it('x.too_new before day 14 (unknown, 0 points)', () => {
+  it('x.early before day 14 (down, -3 points)', () => {
     const s = score(makeCve({ published: daysAgo(3) }));
-    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Too new: day 3 of 14, exploit feeds lag' });
+    expect(byId(s, 'x.early')).toMatchObject({ points: EARLY_NO_EXPLOIT, polarity: 'down', label: 'No exploit signal yet: day 3 of 14, exploit feeds lag' });
+    expect(byId(s, 'x.too_new')).toBeUndefined();
     expect(byId(s, 'x.none')).toBeUndefined();
     expect(s.unknowns).toContain('Exploit feeds have not caught up yet (day 3 of 14).');
+  });
+
+  it('x.too_new before day 14 while an unvetted PoC repo leaves it open (unknown, 0 points)', () => {
+    const s = score(makeCve({ published: daysAgo(3) }), { poc: { [ID]: [repo(daysAgo(1))] } });
+    expect(byId(s, 'x.too_new')).toMatchObject({ points: 0, polarity: 'unknown', label: 'Not settled: 1 PoC repo too new to vet (day 3 of 14)' });
+    expect(byId(s, 'x.early')).toBeUndefined();
+  });
+
+  it('x.early still fires before day 14 when only EPSS is down (EPSS does not score yet)', () => {
+    const s = score(makeCve({ published: daysAgo(3), cna: 'Wordfence' }), { down: ['epss'] });
+    expect(byId(s, 'x.early')).toMatchObject({ points: EARLY_NO_EXPLOIT });
+    expect(byId(s, 'x.too_new')).toBeUndefined();
+    expect(pointsOf(s, 'noise.wordpress')).toBeLessThan(0);
+  });
+
+  it('severity, SSVC and KEV history alone stay under the default bar during the cold start', () => {
+    // The strongest profile without an exploit signal: 15 + 13 + 6 + 8 + 10 = 52, minus 3.
+    const cve = makeCve({ published: daysAgo(3), ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') });
+    const kev = [makeKev('CVE-2024-1')];
+    const s = score(cve, { kev });
+    expect(pointsOf(s, 'prior.product')).toBe(10);
+    expect(s.score).toBe(52 + EARLY_NO_EXPLOIT);
+    expect(s.tier).toBe('watch');
+    // The same profile with any exploit signal clears it.
+    const poc = score(cve, { kev, poc: { [ID]: [repo(daysAgo(10))] } });
+    expect(poc.tier).toBe('likely');
+  });
+
+  describe('internet-facing edge devices', () => {
+    const fortios = [{ vendor: 'Fortinet', product: 'FortiOS', purl: null }];
+    const profile = { ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') } as const;
+    const kev = [makeKev('CVE-2024-1', { vendorProject: 'Fortinet', product: 'FortiOS' })];
+
+    it('keep x.too_new (unknown, 0) instead of x.early before day 14, with the edge.device chip', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: fortios, ...profile }), { kev });
+      expect(byId(s, 'x.early')).toBeUndefined();
+      expect(byId(s, 'x.too_new')).toMatchObject({
+        points: 0,
+        polarity: 'unknown',
+        label: 'Too new: edge devices are often attacked before exploits are public (day 5 of 14)',
+      });
+      expect(byId(s, 'edge.device')).toMatchObject({
+        points: 0,
+        polarity: 'info',
+        family: 'INFO',
+        label: 'Internet-facing edge device: Fortinet FortiOS (firewall, SSL VPN)',
+        url: EDGE_DOC_URL,
+      });
+      expect(s.score).toBe(52);
+      expect(s.tier).toBe('likely');
+      expect(total(s)).toBe(s.score);
+    });
+
+    it('get x.none after day 14 like any other CVE; the chip still shows', () => {
+      const s = score(makeCve({ affected: fortios, ...profile }), { kev });
+      expect(pointsOf(s, 'x.none')).toBe(-14);
+      expect(byId(s, 'edge.device')).toBeDefined();
+      expect(s.score).toBe(38);
+    });
+
+    it('do not change a CVE with an exploit signal', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: fortios, ...profile }), { kev, poc: { [ID]: [repo(daysAgo(10))] } });
+      expect(pointsOf(s, 'x.poc')).toBe(20);
+      expect(byId(s, 'x.too_new')).toBeUndefined();
+      expect(byId(s, 'edge.device')).toBeDefined();
+    });
+
+    it('need attack vector Network when there is a CVSS score', () => {
+      const local = score(makeCve({ published: daysAgo(5), affected: fortios, ...cvss(7.8, 'L') }));
+      expect(byId(local, 'edge.device')).toBeUndefined();
+      expect(pointsOf(local, 'x.early')).toBe(EARLY_NO_EXPLOIT);
+      const noCvss = score(makeCve({ published: daysAgo(5), affected: fortios, cvss: null, cvssMetrics: {} }));
+      expect(byId(noCvss, 'edge.device')).toBeDefined();
+      expect(byId(noCvss, 'x.early')).toBeUndefined();
+    });
+
+    it('endpoint software from an edge vendor still gets x.early', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: [{ vendor: 'Fortinet', product: 'FortiClientWindows', purl: null }], ...profile }), { kev });
+      expect(byId(s, 'edge.device')).toBeUndefined();
+      expect(pointsOf(s, 'x.early')).toBe(EARLY_NO_EXPLOIT);
+    });
+
+    it('match on a CPE name when the affected entry names no product', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: [], cpes: ['cpe:2.3:o:paloaltonetworks:pan-os:11.1.0:*:*:*:*:*:*:*'], ...profile }));
+      expect(byId(s, 'edge.device')!.label).toBe('Internet-facing edge device: Palo Alto PAN-OS (firewall, SSL VPN)');
+    });
+
+    it('a missing exploit source still names the outage first', () => {
+      const s = score(makeCve({ published: daysAgo(5), affected: fortios, ...profile }), { down: ['metasploit'] });
+      expect(byId(s, 'x.too_new')!.label).toBe('Exploit check incomplete: metasploit unavailable this run (day 5 of 14)');
+    });
   });
 
   it('exploit artifacts count during the cold start', () => {
@@ -338,7 +441,7 @@ describe('EPSS cold start', () => {
     expect(byId(s, 'epss.high')).toBeUndefined();
     expect(byId(s, 'epss.mid')).toBeUndefined();
     expect(byId(s, 'epss.cold')).toMatchObject({ points: 0, polarity: 'info', label: 'EPSS 50.0% · 99th pct · day 5, too new to trust' });
-    expect(byId(s, 'x.too_new')).toBeDefined();
+    expect(byId(s, 'x.early')).toBeDefined();
     expect(s.epss).toMatchObject({ score: 0.5, percentile: 0.999, model: 'v2026.06.15' });
     expect(s.unknowns).toContain('EPSS is not trusted until day 14; this CVE is on day 5.');
   });
@@ -601,7 +704,8 @@ describe('unavailable sources are unknown, not absent', () => {
 
   it('cold start keeps its own label and NOISE rule when feeds are down', () => {
     const s = score(makeCve({ published: daysAgo(3), cna: 'Wordfence' }), { down: ['metasploit'] });
-    expect(byId(s, 'x.too_new')!.label).toBe('Too new: day 3 of 14, exploit feeds lag');
+    expect(byId(s, 'x.too_new')!.label).toBe('Exploit check incomplete: metasploit unavailable this run (day 3 of 14)');
+    expect(byId(s, 'x.early')).toBeUndefined();
     expect(pointsOf(s, 'noise.wordpress')).toBe(0);
   });
 });

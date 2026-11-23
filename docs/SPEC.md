@@ -21,7 +21,7 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 ## 1. Repository layout
 
 ```
-shared/            contract.ts  model.ts  shard.ts  brand.ts  cna.ts   (imported by both sides; no Node/DOM APIs)
+shared/            contract.ts  model.ts  edge.ts  shard.ts  brand.ts  cna.ts   (imported by both sides; no Node/DOM APIs)
                    verdict.ts  share.ts  share-images.ts        (verdict words and link-preview tags; .js imports)
                    versions.ts  packages.ts  mcp.ts             (version ranges and package keys; MCP copy)
 api/               share.ts   (Vercel Function for link-preview bots; tests in api/_test/)
@@ -138,7 +138,7 @@ From `containers.cna` and `containers.adp[]` (ADP with `providerMetadata.shortNa
 - SSVC from CISA-ADP `metrics[].other` where `type === 'ssvc'`: `content.options[]` is a list of single-key
   objects (`Exploitation`, `Automatable`, `Technical Impact`); values lower-cased. Also `content.version`, `content.timestamp`.
 - ADP KEV block: `metrics[].other.type === 'kev'` → treat as KEV-listed with `content.dateAdded` (fallback source).
-- CWE ids from `problemTypes[].descriptions[].cweId`; affected `{vendor, product, purl?}` (max 10; skip `n/a`).
+- CWE ids from `problemTypes[].descriptions[].cweId`; affected `{vendor, product, purl?}` (max 10; skip `n/a`); CPE 2.3 names from `affected[].cpes` (max 10, only for the edge device check).
 - credits text joined; tags (`cna.tags`); references (max 10 URLs, http(s) only).
 - AI credit: first credit value matching (case-insensitive)
   `\b(claude|anthropic|openai|gpt-?\d+(\.\d+)?o?|codex|aardvark|big ?sleep|gemini|xbow|zeropath|depthfirst|striga|zerotrail|mythos|glasswing|llm|large language model|agentic|ai[- ](assisted|agent|powered|driven|discovered|found|security|scanner))\b`
@@ -174,8 +174,8 @@ INFO       = … | circl.suspected (CIRCL, suspected) | circl.attempts (CIRCL, c
 X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24
                      (v3 E:F/E:H), x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10, epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
-             if none: age ≥ 14, every exploit source and EPSS loaded this run and no unvetted PoC repo → x.none −14;
-             else x.too_new (unknown, 0)
+             if none, with every exploit source and EPSS loaded this run and no unvetted PoC repo:
+             x.none −14 when age ≥ 14, else x.early −3 (model v0.3.0; x.too_new on an edge device); otherwise x.too_new (unknown, 0)
 SEV        = sev.crit_net 13 (≥9.0 and AV:N) | sev.crit 6 (≥9.0) | sev.high 1 (7–8.9) | sev.low −13 (<7) | sev.none (unknown)
 SSVC       = (ssvc.automatable 6 | ssvc.not_automatable −2) + (ssvc.total 8 | ssvc.partial −6) | ssvc.missing (unknown)
 PRIOR      = prior.product 10 | prior.vendor 8 | prior.none −6
@@ -189,7 +189,8 @@ raw        = 15 + X + SEV + SSVC + PRIOR + NOISE
 score      = E ? min(100, max(raw + 75, 90) + (ransomware Known ? 5 : 0)) : clamp(raw, 0, 100)
 weaponized = x.metasploit or x.nuclei present
 tier       = tierFor(score, E, weaponized, knob)          (shared/contract.ts)
-INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hype, poc.unvetted, tag.eol (0 points)
+INFO chips = ai.credit, batch, kev.due, kev.forensic, sev.adp, epss.cold, poc.hype, poc.unvetted, tag.eol, edge.device (0 points)
+edge       = shared/edge.ts: affected vendor/product or CPE in the curated edge device list, AV:N when CVSS exists
 ```
 
 Chip labels are specific and dated, e.g. `CISA KEV · added Oct 21 · due Oct 24`, `Metasploit: exploit/linux/http/foo (excellent)`,
@@ -208,12 +209,18 @@ included, unknown-polarity chips excluded) for filtering.
   and `Row.b`.
 - **Stats:** `monthly` from the streaming pass + KEV `dateAdded` months; `daily` for the window's full UTC days,
   then today so far (published, passed = exploited+likely at default knob, exploited); `hourly` waterfall buckets across the window
-  (`counts[h] = [exploited, likely, watch, quiet]`, plus `new_exploited` `[h, n]` pairs for Exploited CVEs whose first exploited
-  signal (CISA KEV, EU KEV or CIRCL listing, SSVC active, CNA flag) is within 72 hours of `now`, a listing day counted
-  from 00:00 UTC; only those ticks pulse on the chart); `cnas` top 25 in window; `ai_credits` top 20 strings.
+  (`counts[h] = [exploited, likely, watch, quiet]`, plus `new_exploited` `[h, n]` pairs for the newly exploited CVEs of
+  the window: Exploited, and either the first exploited signal (CISA KEV, EU KEV or CIRCL listing, SSVC active, CNA
+  flag) or a CISA KEV, EU KEV or confirmed CIRCL listing is within 72 hours of `now`, a listing day counted from
+  00:00 UTC; only those ticks pulse on the chart. `new_exploited_cves` names them, newest signal first, capped at 50:
+  `{ id, title, via, at, hour }`, and also CVEs published before the window that a catalog listed in those 72 hours,
+  as `{ id, title, via, at, published }` with no `hour`. `new_exploited_total` counts the whole list before the cap.
+  The pairs and the total come from that same list, so the count, the ticks and the names cannot disagree. The
+  legend's "N newly exploited" shows the total and opens this list); `cnas` top 25 in window;
+  `ai_credits` top 20 strings.
 - **Changes:** compare with `<previous>/v1/index.json` (if present): an item when the tier rose, or a new E/X chip
   appeared. Rows outside the window join when CISA added them to KEV in the last 7 days (new if absent from the
-  previous `kev.json`), or, when not in CISA KEV, when EU KEV or CIRCL first listed them as exploited in the last 7 days. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500.
+  previous `kev.json`), or, when not in CISA KEV, when EU KEV or CIRCL first listed them as exploited in the last 7 days. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500 (over the cap, moves into Exploited or Likely next are kept first).
 
 ### Emit (all JSON minified, UTF-8; `schema_version`, `generated_at` on every file)
 
@@ -225,6 +232,7 @@ v1/cve/<xx>.json    CveShard for window CVEs ∪ KEV CVEs ∪ EU KEV/CIRCL explo
 v1/batches.json     BatchesFile (newest first)
 v1/kev.json         KevFile
 v1/stats.json       StatsFile
+v1/surge.json       SurgeFile: published per month by CVSS band and top 30 CNA, KEV CVEs by publication month (optional; The Surge only)
 v1/changes.json     ChangesFile
 v1/woke.json        WokeFile: CVEs published before the window with new exploitation evidence in 30 days (pipeline/src/woke.ts)
 v1/receipts.json    ReceiptsFile: forward log of KEV catches (pipeline/src/receipts.ts) + hindsight backtest (pipeline/src/backtest.ts)
@@ -295,8 +303,21 @@ Unknown → 404 view. Update `document.title` per route.
   (`--font-mono-system`) so no web font subset is fetched for it; rows do not prefetch shards; results stay in module
   memory until Clear or reload (`check/session.ts`). Caps: files 50 MB, pasted text 5 MB, lines 64 KB in line formats.
   The chunk is not warmed on other pages.
-- **The Surge (`/surge`)**: monthly published since 1999 (SVG area/line, log toggle, Published/Reserved toggle),
-  KEV additions per month overlay, AI-credited line, daily published vs passed for the window, top CNAs table.
+- **The Surge (`/surge`)**: monthly published since 1999 (SVG area/line), daily published vs passed for the window,
+  top CNAs table. The monthly chart's controls all live in the query string, and the default view has none:
+  `range=12m|24m|5y` or `from=YYYY-MM&to=YYYY-MM` (also set by dragging across the chart; Reset zoom goes back to
+  the preset), `group=quarter|year` (custom ranges widen to whole periods; the period holding the current month is
+  marked partial), `count=reserved`, `sev=critical,high,…` and `view=severity` (stacked bands), `cna=<name>` for one
+  CNA or `cna=-<name>,-<name>` to leave CNAs out (the Exclude WordPress and Exclude Linux kernel toggles set
+  `-wordfence,-wpscan,-patchstack` and `-linux`), `kev=1` (only CVEs in CISA KEV, by publication month),
+  `scale=log` (off while stacked), `compare=1` (dashed line for the same period a year earlier; the partial period
+  is compared at the same point), and `lines=kevpub,kevadd,ai|none` (default `kevadd,ai`). Severity, CNA and KEV
+  come from `surge.json`; without it, or for Reserved, those controls are disabled with a short note. The KEV
+  additions and AI-credited lines count every CVE, so they hide while a filter narrows the count; the in-KEV line
+  follows the filters. Download CSV and Download PNG save exactly the series on screen (Blob and a temporary
+  `<a download>`; the PNG draws the SVG through a `data:` image, as the CSP allows). The tooltip, keys, summary line
+  and View as table read the same filtered series. The lede and tiles stay fixed on every CVE; the summary line
+  under the chart follows the selection.
 - **Method (`/method`)**: how it works, the formula, the chip table generated from `shared/model.ts`, sources status
   from `meta.sources` (fresh/stale), blind spots ("Not in KEV ≠ not exploited", "exposure is yours"), attributions.
 - **Feeds & API (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`; section `#mcp` (kept
