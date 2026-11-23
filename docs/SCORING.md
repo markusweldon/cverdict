@@ -125,7 +125,7 @@ Any of the first six puts the CVE in **Exploited**. The first that fires, in thi
 
 ### X: exploit artifacts and prediction
 
-Strongest one counts; the rest are shown with 0. `fast.lane` is the one X chip that is not an exploit sign: it marks a profile that attack tools exploit fast (see [Fast lane](#fast-lane)). `x.too_new` stands in for `x.none` or `x.early` when a PoC repo is still too new to vet or an exploit source could not be loaded, and for `x.early` on an [internet-facing edge device](#internet-facing-edge-devices).
+Strongest one counts; the rest are shown with 0. `fast.lane` also scores in X but is not an exploit sign, so it is listed under [Exposure](#exposure-shown-apart-scored-in-x-and-info) below. `x.too_new` stands in for `x.none` or `x.early` when a PoC repo is still too new to vet or an exploit source could not be loaded, and for `x.early` on an [internet-facing edge device](#internet-facing-edge-devices).
 
 | Chip | Short label | Points | Source | Meaning |
 |---|---|--:|---|---|
@@ -138,10 +138,18 @@ Strongest one counts; the rest are shown with 0. `fast.lane` is the one X chip t
 | `vendor.functional` | Vendor: working exploit | +24 | `cvelist` | The CNA’s CVSS v3 vector says functional or autonomous exploit code exists (E:F/E:H). That is weaponization, not proof of attacks: about a quarter of such CVEs reach KEV. VulDB vectors are ignored. |
 | `vendor.poc` | Vendor: PoC | +10 | `cvelist` | The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored. |
 | `epss.mid` | EPSS 1–10% | +8 | `epss` | EPSS between 1% and 10% (only trusted after 14 days). |
-| `fast.lane` | Fast lane | +12 | `computed` | Less than 14 days old, attack vector Network with no user interaction, CISA SSVC automatable with total impact (or CVSS 9.0 or more while SSVC is not in yet), on an internet-facing edge device or a product already in CISA KEV. Attack tools can now turn a public reproducer into an exploit within hours for some bugs, before exploit feeds see it, so this stands in for an exploit sign. It is not evidence of attacks. The strongest X chip counts, so a real exploit replaces it. |
 | `x.none` | No exploit yet | −14 | `computed` | Two weeks after publication there is still no public exploit and EPSS is below 1%. |
 | `x.early` | No exploit yet (early) | −3 | `computed` | Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone stay under the default evidence bar. Not applied to internet-facing edge devices, and replaced by the fast lane when that fires. |
 | `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: a PoC repo is too new to vet, an exploit source could not be loaded this run, or the CVE is an internet-facing edge device under 14 days old. |
+
+### Exposure: shown apart, scored in X and INFO
+
+Exposed, automatable and high impact: attacked fast, often before any exploit is public. This is a display group, not a scoring family: the CVE page, the Method page and the Explore reason filter show these chips in their own Exposure section, right after exploit artifacts. For the score, `fast.lane` is an X chip, so a stronger exploit chip replaces it (it is then shown with 0, "counted 0: a stronger exploit chip won"), and `edge.device` is an INFO chip worth 0. See [Fast lane](#fast-lane) and [Internet-facing edge devices](#internet-facing-edge-devices).
+
+| Chip | Short label | Points | Source | Meaning |
+|---|---|--:|---|---|
+| `fast.lane` | Fast lane | +12 | `computed` | Less than 14 days old, attack vector Network with no user interaction, CISA SSVC automatable with total impact (or CVSS 9.0 or more while SSVC is not in yet), on an internet-facing edge device or a product already in CISA KEV. Attack tools can now turn a public reproducer into an exploit within hours for some bugs, before exploit feeds see it, so this stands in for an exploit sign. It is not evidence of attacks. The strongest X chip counts, so a real exploit replaces it. |
+| `edge.device` | Edge device | 0 | `computed` | An internet-facing edge device: VPN, firewall, load balancer, email gateway, file transfer, webmail, remote support, SD-WAN or edge router (curated list in shared/edge.ts, explained in docs/SCORING.md). These are often attacked before any exploit is public, so the early no-exploit penalty does not apply. |
 
 ### SEV: severity
 
@@ -204,7 +212,6 @@ Only applied when there is no exploitation and the X family is ≤ 0, and not wh
 | `circl.suspected` | CIRCL: suspected | 0 | `circl-kev` | CIRCL lists exploitation as suspected, not confirmed (CC0-1.0). Information only. |
 | `circl.attempts` | CIRCL: attempts | 0 | `circl-kev` | CIRCL lists it as confirmed in its known-exploited catalog (CC0-1.0), but the only evidence is exploitation attempts, such as hits on a sinkhole. Attempts are not proof that an attack worked: information only. |
 | `honeypot.siberkapan` | Honeypot attempts | 0 | `siberkapan` | SiberKapan’s honeypot and web sensors in Turkey saw exploitation attempts (CC-BY-4.0). Attempts are not proof that an attack worked, and one sensor network gives too little data to set points: information only. |
-| `edge.device` | Edge device | 0 | `computed` | An internet-facing edge device: VPN, firewall, load balancer, email gateway, file transfer, webmail, remote support, SD-WAN or edge router (curated list in shared/edge.ts, explained in docs/SCORING.md). These are often attacked before any exploit is public, so the early no-exploit penalty does not apply. |
 | `tag.eol` | Unsupported product | 0 | `cvelist` | The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate. |
 
 ## Other known-exploited catalogs

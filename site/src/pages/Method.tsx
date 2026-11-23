@@ -13,7 +13,7 @@ import { fmtAge, fmtDateTime, fmtInt, signed } from '../format';
 import { useData, useNow, useTitle } from '../hooks';
 import { href } from '../router';
 import { SITE_KNOB_MAX, SITE_KNOB_MIN } from '../state';
-import { FAMILY_META, FAMILY_ORDER, SOURCE_NAMES, TIER_META } from '../tiers';
+import { GROUP_META, GROUP_ORDER, groupOf, SOURCE_NAMES, TIER_META } from '../tiers';
 
 const FORMULA = `raw   = ${BASE_POINTS} + X + SEV + SSVC + PRIOR + NOISE
 score = exploited ? min(100, max(raw + ${EXPLOITED_BONUS}, ${EXPLOITED_FLOOR}) + ransomware·${RANSOMWARE_BONUS})
@@ -235,11 +235,11 @@ export default function Method() {
 
       <section id="chips" class="prose-section">
         <h2 class="section__title">Chips</h2>
-        <p class="muted">Generated from the scoring model the pipeline runs. Within a family only the strongest chip counts, except SSVC, whose two decision points add.</p>
-        {FAMILY_ORDER.map((f) => (
-          <div key={f} class="chipfamily">
+        <p class="muted">Generated from the scoring model the pipeline runs. Within a family only the strongest chip counts, except SSVC, whose two decision points add. Exposure is shown on its own but scores with exploit artifacts: the fast lane is an X chip, and the edge device chip is worth 0.</p>
+        {GROUP_ORDER.map((g) => (
+          <div key={g} class="chipfamily">
             <h3 class="chipfamily__title">
-              {FAMILY_META[f].label} <span class="muted">{FAMILY_META[f].blurb}</span>
+              {GROUP_META[g].label} <span class="muted">{GROUP_META[g].blurb}</span>
             </h3>
             <div class="tablewrap">
               <table class="table table--chips">
@@ -252,7 +252,7 @@ export default function Method() {
                   </tr>
                 </thead>
                 <tbody>
-                  {CHIPS.filter((c) => c.family === f).map((c) => (
+                  {CHIPS.filter((c) => groupOf(c) === g).map((c) => (
                     <tr key={c.id}>
                       <td>
                         <Chip id={c.id} />

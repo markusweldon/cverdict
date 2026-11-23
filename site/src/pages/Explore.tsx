@@ -15,7 +15,7 @@ import { cnaName, fmtDate, fmtDateTime, fmtInt } from '../format';
 import { useData, useDebounced, useKnobUrl, useListController, useMediaQuery, useNow, useSearchTarget, useTitle } from '../hooks';
 import { cveHref, navigate, setQuery, useLocation } from '../router';
 import { isWatched, knob, useStore, watchlist } from '../state';
-import { FAMILY_META, FAMILY_ORDER, TIER_META } from '../tiers';
+import { GROUP_META, GROUP_ORDER, groupOf, TIER_META } from '../tiers';
 
 type Sort = 'date' | 'score';
 
@@ -206,9 +206,9 @@ export default function Explore() {
             <span>Reason</span>
             <select value={p.chip} onChange={(e) => setQuery({ chip: e.currentTarget.value || null })}>
               <option value="">Any</option>
-              {FAMILY_ORDER.map((f) => (
-                <optgroup key={f} label={FAMILY_META[f].label}>
-                  {CHIPS.filter((c) => c.family === f && c.polarity !== 'unknown').map((c) => (
+              {GROUP_ORDER.map((g) => (
+                <optgroup key={g} label={GROUP_META[g].label}>
+                  {CHIPS.filter((c) => groupOf(c) === g && c.polarity !== 'unknown').map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.short}
                     </option>

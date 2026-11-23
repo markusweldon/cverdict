@@ -36,7 +36,7 @@ import { useData, useMetaDescription, useNow, useTitle } from '../hooks';
 import { cveHref, href } from '../router';
 import { keyTargets, knob, normalizeName, toggleWatch, useStore, watchlist } from '../state';
 import { feedbackIssueUrl } from '../ticket';
-import { chipDef, chipTone, detailTier, FAMILY_META, FAMILY_ORDER, SOURCE_NAMES, verdict } from '../tiers';
+import { chipDef, chipTone, detailTier, GROUP_META, groupReasons, lostNote, SOURCE_NAMES, verdict } from '../tiers';
 import { wakeSentence } from '../woke';
 
 const MSF_RANK: Readonly<Record<number, string>> = { 600: 'excellent', 500: 'great', 400: 'good', 300: 'normal', 200: 'average', 100: 'low', 0: 'manual' };
@@ -99,46 +99,41 @@ function Evidence({ d }: { d: CveDetail }) {
       <h2 id="ev-h" class="section__title">
         Evidence
       </h2>
-      {FAMILY_ORDER.map((f) => {
-        const rs = d.reasons.filter((r) => r.family === f && r.polarity !== 'unknown');
-        if (rs.length === 0) return null;
-        const pts = rs.reduce((a, r) => a + r.points, 0);
-        return (
-          <section key={f} class="family" aria-label={FAMILY_META[f].label}>
-            <header class="family__head">
-              <h3 class="family__title">{FAMILY_META[f].label}</h3>
-              {f !== 'INFO' && <span class="family__pts mono">{signed(pts)}</span>}
-            </header>
-            <p class="family__blurb">{FAMILY_META[f].blurb}</p>
-            <ul class="reasons">
-              {rs.map((r) => {
-                const def = chipDef(r.id);
-                const lost = r.points === 0 && r.polarity !== 'info' && f !== 'E';
-                return (
-                  <li key={r.id} class={`reason reason--${def ? chipTone(def) : r.polarity}${lost ? ' is-lost' : ''}`}>
-                    <span class="reason__icon">
-                      <ToneIcon r={r} />
-                    </span>
-                    <div class="reason__body">
-                      <p class="reason__label">{r.label}</p>
-                      <p class="reason__meta">
-                        <a class="reason__chip" href={`${href('explore')}?chip=${encodeURIComponent(r.id)}`} data-tip={def?.explain}>
-                          {def?.short ?? r.id}
-                        </a>
-                        <span>{SOURCE_NAMES[r.source] ?? r.source}</span>
-                        {r.at && <span>{fmtDate(r.at)}</span>}
-                        {r.url && <ExtLink href={r.url}>evidence</ExtLink>}
-                        {lost && <span class="reason__lost">counted 0: a stronger chip in this family won</span>}
-                      </p>
-                    </div>
-                    {r.polarity !== 'info' && <span class="reason__pts mono">{signed(r.points)}</span>}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
+      {groupReasons(d.reasons).map(({ group: g, pts, scored, items }) => (
+        <section key={g} class="family" aria-label={GROUP_META[g].label}>
+          <header class="family__head">
+            <h3 class="family__title">{GROUP_META[g].label}</h3>
+            {scored && <span class="family__pts mono">{signed(pts)}</span>}
+          </header>
+          <p class="family__blurb">{GROUP_META[g].blurb}</p>
+          <ul class="reasons">
+            {items.map((it) => {
+              const r = it.reason;
+              const def = chipDef(r.id);
+              return (
+                <li key={r.id} class={`reason reason--${def ? chipTone(def) : r.polarity}${it.lost ? ' is-lost' : ''}`}>
+                  <span class="reason__icon">
+                    <ToneIcon r={r} />
+                  </span>
+                  <div class="reason__body">
+                    <p class="reason__label">{r.label}</p>
+                    <p class="reason__meta">
+                      <a class="reason__chip" href={`${href('explore')}?chip=${encodeURIComponent(r.id)}`} data-tip={def?.explain}>
+                        {def?.short ?? r.id}
+                      </a>
+                      <span>{SOURCE_NAMES[r.source] ?? r.source}</span>
+                      {r.at && <span>{fmtDate(r.at)}</span>}
+                      {r.url && <ExtLink href={r.url}>evidence</ExtLink>}
+                      {it.lost && <span class="reason__lost">{lostNote(it)}</span>}
+                    </p>
+                  </div>
+                  {r.polarity !== 'info' && <span class="reason__pts mono">{signed(r.points)}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
       {d.unknowns.length > 0 && (
         <section class="family family--unknown" aria-label="Unknowns">
           <header class="family__head">
