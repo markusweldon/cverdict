@@ -32,14 +32,17 @@ jobs:
 
       - run: npm run typecheck
 
-      # The link-preview function runs as plain Node ESM: check it with Node's own resolution
-      # rules (every relative import needs its .js extension), then compile it and import it.
-      - name: Check the link-preview function as Node ESM
+      # The functions (link previews, vendor feeds) run as plain Node ESM: check them with Node's
+      # own resolution rules (every relative import needs its .js extension), then compile and
+      # import each.
+      - name: Check the functions as Node ESM
         run: |
           npx tsc -p api/tsconfig.json
           npx tsc -p api/tsconfig.json --noEmit false --outDir "$RUNNER_TEMP/api-check"
           echo '{"type":"module"}' >"$RUNNER_TEMP/api-check/package.json"
-          node -e 'import(process.argv[1]).then((m) => { if (typeof m.GET !== "function" || m.HEAD !== m.GET) throw new Error("api/share.ts must export GET and HEAD"); })' "$RUNNER_TEMP/api-check/api/share.js"
+          for fn in share feed; do
+            node -e 'import(process.argv[1]).then((m) => { if (typeof m.GET !== "function" || m.HEAD !== m.GET) throw new Error(process.argv[1] + " must export GET and HEAD"); })' "$RUNNER_TEMP/api-check/api/$fn.js"
+          done
 
       - run: npm test
 

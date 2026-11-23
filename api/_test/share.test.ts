@@ -95,9 +95,12 @@ describe('api/share', () => {
     expect(GET).toBe(HEAD);
   });
 
-  it('is the only function: Vercel deploys every file in api/ except those under _ or . names', () => {
+  it('is one of the only two functions: Vercel deploys every file in api/ except those under _ or . names', () => {
     const functions = readdirSync(new URL('..', import.meta.url)).filter((f) => !f.startsWith('_') && !f.startsWith('.') && /\.(ts|js|mjs|cjs)$/.test(f));
-    expect(functions).toEqual(['share.ts']);
+    expect(functions.sort()).toEqual(['feed.ts', 'share.ts']);
+    // Each has its own entry (and time limit) in vercel.json.
+    const vercel = JSON.parse(readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')) as { functions: Record<string, unknown> };
+    expect(Object.keys(vercel.functions).sort()).toEqual(functions.map((f) => `api/${f}`).sort());
   });
 
   it('answers HEAD with the headers and no body', async () => {

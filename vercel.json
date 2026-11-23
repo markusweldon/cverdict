@@ -5,12 +5,18 @@
   "buildCommand": "npm run build",
   "outputDirectory": "site/dist",
   "functions": {
-    "api/share.ts": { "maxDuration": 10 }
+    "api/share.ts": { "maxDuration": 10 },
+    "api/feed.ts": { "maxDuration": 10 }
   },
   "rewrites": [
     {
       "source": "/data/:path+",
       "destination": "https://raw.githubusercontent.com/markusweldon/cverdict/data/:path+"
+    },
+    {
+      "source": "/feeds/v/:slug([a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)\\.xml",
+      "missing": [{ "type": "query", "key": "v" }],
+      "destination": "/api/feed?v=:slug"
     },
     {
       "source": "/feeds/:file([^/]+\\.(?:xml|ics))",
@@ -56,7 +62,11 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     },
     {
-      "source": "/(data|feeds)/(.*)",
+      "source": "/data/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=60, s-maxage=300, stale-while-revalidate=600" }]
+    },
+    {
+      "source": "/feeds/([^/]+)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=60, s-maxage=300, stale-while-revalidate=600" }]
     },
     {
@@ -64,7 +74,7 @@
       "headers": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }]
     },
     {
-      "source": "/(feeds|data/feeds)/(.*)\\.xml",
+      "source": "/(feeds|data/feeds)/([^/]+)\\.xml",
       "headers": [{ "key": "Content-Type", "value": "application/atom+xml; charset=utf-8" }]
     },
     {

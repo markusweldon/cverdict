@@ -15,6 +15,7 @@
 import { BRAND, RAW_DATA_URL, REPO_URL } from '../shared/brand.js';
 import { CVE_ID_RE, shardOf } from '../shared/shard.js';
 import { hasShareBlock, injectHead, minimalTemplate, notInDataHead, readShareRecord, shareHead, siteOrigin } from '../shared/share.js';
+import { fetchText, isOutage } from './_http.js';
 
 export const DEADLINE_MS = 1500;
 export const SHARD_MAX_BYTES = 2 * 1024 * 1024;
@@ -25,6 +26,7 @@ const TEMPLATE_RETRY_MS = 60_000;
 const BREAKER_MS = 10 * 60_000;
 const SHARD_RETRY_MS = 60_000;
 const ID_MAX = 24;
+const UA = `${BRAND.slug}-share (+${REPO_URL})`;
 
 /** CDN caching: 15 minutes, then stale copies while it revalidates, and for a week if the function fails. */
 export const CDN_CACHE_OK = 'max-age=900, stale-while-revalidate=3600, stale-if-error=604800';
@@ -35,52 +37,6 @@ interface Options {
   fetch?: typeof fetch;
   env?: Readonly<Record<string, string | undefined>>;
 }
-
-type Fetched = { ok: true; text: string; etag: string | null } | { ok: false; status: number | 'error' | 'too_big'; notModified?: boolean };
-
-/** GET `url` and read at most `max` decompressed bytes; Content-Length is not trusted. */
-async function fetchText(doFetch: typeof fetch, url: string, signal: AbortSignal, max: number, etag: string | null): Promise<Fetched> {
-  let res: Response;
-  try {
-    const headers: Record<string, string> = { 'user-agent': `${BRAND.slug}-share (+${REPO_URL})` };
-    if (etag) headers['if-none-match'] = etag;
-    res = await doFetch(url, { signal, headers, redirect: 'error' });
-  } catch {
-    return { ok: false, status: 'error' };
-  }
-  if (res.status === 304) return { ok: false, status: 304, notModified: true };
-  if (res.status !== 200 || !res.body) {
-    void res.body?.cancel().catch(() => {});
-    return { ok: false, status: res.status };
-  }
-  const reader = res.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > max) {
-        void reader.cancel().catch(() => {});
-        return { ok: false, status: 'too_big' };
-      }
-      chunks.push(value);
-    }
-  } catch {
-    return { ok: false, status: 'error' };
-  }
-  const bytes = new Uint8Array(size);
-  let at = 0;
-  for (const c of chunks) {
-    bytes.set(c, at);
-    at += c.byteLength;
-  }
-  return { ok: true, text: new TextDecoder().decode(bytes), etag: res.headers.get('etag') };
-}
-
-/** Upstream trouble that the fallback may not share: rate limits, server errors, timeouts, network. */
-const isOutage = (status: Fetched & { ok: false }) => status.status === 'error' || status.status === 429 || (typeof status.status === 'number' && status.status >= 500);
 
 interface ShardEntry {
   text: string;
@@ -107,7 +63,7 @@ export function createShareHandler(options: Options = {}): (request: Request) =>
     if (template && now - template.at < TEMPLATE_FRESH_MS) return { html: template.html, fallback: false };
     if (now >= templateRetryAt) {
       templateInflight ??= (async () => {
-        const got = await fetchText(doFetch, `${origin}/index.html`, signal, TEMPLATE_MAX_BYTES, null);
+        const got = await fetchText(doFetch, `${origin}/index.html`, signal, TEMPLATE_MAX_BYTES, null, UA);
         if (got.ok && hasShareBlock(got.text)) template = { html: got.text, at: Date.now() };
         else templateRetryAt = Date.now() + TEMPLATE_RETRY_MS;
       })().finally(() => {
@@ -125,7 +81,7 @@ export function createShareHandler(options: Options = {}): (request: Request) =>
     const cached = shards.get(name);
     const order = Date.now() < rawDownUntil ? [own, raw] : [raw, own];
     for (const url of order) {
-      const got = await fetchText(doFetch, url, signal, SHARD_MAX_BYTES, cached?.from === url ? cached.etag : null);
+      const got = await fetchText(doFetch, url, signal, SHARD_MAX_BYTES, cached?.from === url ? cached.etag : null, UA);
       if (got.ok) {
         shards.set(name, { text: got.text, etag: got.etag, from: url, at: Date.now() });
         return got.text;
