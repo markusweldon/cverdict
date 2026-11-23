@@ -144,11 +144,12 @@ describe('api/feed', () => {
     ['v=a&v=b', 'two names'],
     ['v=https://evil.example/x', 'a URL'],
     ['v=%00', 'NUL'],
-  ])('rejects %j (%s) with a 400 cached for a day, without fetching', async (query) => {
+  ])('rejects %j (%s) with a 404 the CDN keeps for a day, without fetching', async (query) => {
     const { h, calls } = handlerWith({ [EVENTS_URL]: [json(file([ev()]))] });
     const res = await h(req(query));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(404);
     expect(res.headers.get('vercel-cdn-cache-control')).toBe(CDN_CACHE_BAD);
+    expect(res.headers.get('cache-control')).toBe('public, max-age=3600');
     expect(res.headers.get('content-type')).toBe('text/plain; charset=utf-8');
     expect(calls).toHaveLength(0);
   });
@@ -272,7 +273,12 @@ describe('api/feed', () => {
     expect(cdnTtl(GENERATED, gen)).toBe(TTL_MAX_S);
     expect(cdnTtl(GENERATED, gen + 65 * 60_000)).toBe(300);
     expect(cdnTtl(GENERATED, gen + 69 * 60_000)).toBe(TTL_MIN_S);
-    expect(cdnTtl(GENERATED, gen + 5 * 3_600_000)).toBe(TTL_MIN_S);
+    // A publish up to 10 minutes late is waited for at the floor.
+    expect(cdnTtl(GENERATED, gen + 75 * 60_000)).toBe(TTL_MIN_S);
+    // Later than that (an hour without changes publishes nothing): the same minute of the next hour.
+    expect(cdnTtl(GENERATED, gen + 85 * 60_000)).toBe(TTL_MAX_S);
+    expect(cdnTtl(GENERATED, gen + 5 * 3_600_000)).toBe(600);
+    expect(cdnTtl(GENERATED, gen + 5 * 3_600_000 + 9 * 60_000)).toBe(TTL_MIN_S);
     expect(cdnTtl('nonsense', gen)).toBe(TTL_MIN_S);
   });
 });
@@ -305,6 +311,14 @@ describe('vercel.json routes for vendor feeds', () => {
     expect(at).toBeLessThan(file);
     expect(toRegExp(vercel.rewrites[file].source).test('/feeds/v/fortinet.xml')).toBe(false);
     expect(vercel.functions['api/feed.ts'].maxDuration).toBe(10);
+  });
+
+  it('sends every other /feeds/v/ path to the function too, which answers a cacheable 404, never the SPA', () => {
+    const at = vercel.rewrites.indexOf(rule);
+    const rest = vercel.rewrites.findIndex((r) => r.source === '/feeds/v/(.*)');
+    expect(rest).toBe(at + 1);
+    expect(vercel.rewrites[rest].destination).toBe('/api/feed?v=');
+    expect(rest).toBeLessThan(vercel.rewrites.findIndex((r) => r.source === '/(.*)'));
   });
 
   it('sets no Cache-Control on the function: its own CDN headers stand', () => {

@@ -34,10 +34,16 @@ export const TTL_MIN_S = 120;
 export const TTL_MAX_S = 1800;
 const UA = `${BRAND.slug}-feed (+${REPO_URL})`;
 
-/** A bad slug is the same mistake every time: cached for a day. */
+/**
+ * A bad name is the same mistake every time: a 404, which Vercel's CDN caches (it does not cache a
+ * 400 or a 503), for a day.
+ */
 export const CDN_CACHE_BAD = 'max-age=86400';
-/** No data at all: retried after a minute. */
+/** No data at all: a 503, which the CDN does not cache; the header only asks clients to wait. */
 export const CDN_CACHE_DOWN = 'max-age=60';
+/** How late an hourly publish may be before the feed stops waiting for it at the 120 s floor. */
+const LATE_MS = 10 * 60_000;
+const HOUR_MS = 3_600_000;
 
 interface Options {
   fetch?: typeof fetch;
@@ -80,10 +86,16 @@ function parseEvents(text: string): Omit<Loaded, 'text' | 'etag' | 'at'> | null 
   return { generatedAt: d.generated_at, days: Number.isInteger(d.days) ? (d.days as number) : 7, items };
 }
 
-/** Seconds the CDN keeps a feed: until shortly after the next hourly publish, within TTL_MIN_S..TTL_MAX_S. */
+/**
+ * Seconds the CDN keeps a feed: until shortly after the next hourly publish, within
+ * TTL_MIN_S..TTL_MAX_S. When the expected publish is more than LATE_MS overdue (an hour with no
+ * change publishes nothing, so generated_at stays old), it waits for the same minute of the next hour.
+ */
 export function cdnTtl(generatedAt: string, now: number): number {
-  const s = Math.round((Date.parse(generatedAt) + NEXT_RUN_MS - now) / 1000);
-  return Math.min(TTL_MAX_S, Math.max(TTL_MIN_S, Number.isFinite(s) ? s : TTL_MIN_S));
+  let ms = Date.parse(generatedAt) + NEXT_RUN_MS - now;
+  if (!Number.isFinite(ms)) return TTL_MIN_S;
+  if (ms < -LATE_MS) ms = ((ms % HOUR_MS) + HOUR_MS) % HOUR_MS;
+  return Math.min(TTL_MAX_S, Math.max(TTL_MIN_S, Math.round(ms / 1000)));
 }
 
 /** The feed for one slug, entries dropped from the oldest end until it fits FEED_MAX_BYTES. */
@@ -158,11 +170,11 @@ export function createFeedHandler(options: Options = {}): (request: Request) => 
   return async function handler(request: Request): Promise<Response> {
     const head = request.method === 'HEAD';
     const text = (status: number, body: string, cdn: string, extra: Record<string, string> = {}) =>
-      new Response(head ? null : body, { status, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': `public, max-age=${status === 400 ? 3600 : 60}`, 'vercel-cdn-cache-control': cdn, ...extra } });
+      new Response(head ? null : body, { status, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': `public, max-age=${status === 404 ? 3600 : 60}`, 'vercel-cdn-cache-control': cdn, ...extra } });
 
     const values = new URL(request.url).searchParams.getAll('v');
     const slug = values.length === 1 ? values[0] : '';
-    if (!SLUG_RE.test(slug)) return text(400, 'Not a feed name. Use lower-case letters, digits and hyphens, as in /feeds/v/fortinet.xml.\n', CDN_CACHE_BAD);
+    if (!SLUG_RE.test(slug)) return text(404, 'Not a feed name. Use lower-case letters, digits and hyphens, as in /feeds/v/fortinet.xml.\n', CDN_CACHE_BAD);
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(new Error('deadline')), DEADLINE_MS);

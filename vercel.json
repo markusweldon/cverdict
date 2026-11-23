@@ -19,6 +19,10 @@
       "destination": "/api/feed?v=:slug"
     },
     {
+      "source": "/feeds/v/(.*)",
+      "destination": "/api/feed?v="
+    },
+    {
       "source": "/feeds/:file([^/]+\\.(?:xml|ics))",
       "destination": "https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/:file"
     },
