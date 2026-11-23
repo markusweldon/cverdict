@@ -310,6 +310,8 @@ export const BUDGETS = {
     'v1/signal.json': 120 * 1024,
     'v1/index.json': 1024 * 1024,
     'v1/stats.json': 80 * 1024,
+    /** Measured 18 KB gzip on 2026-11-20 (30 CNAs, 1,774 KEV CVEs). Read only by The Surge. */
+    'v1/surge.json': 48 * 1024,
     'v1/batches.json': 96 * 1024,
     'v1/kev.json': 32 * 1024,
     'v1/changes.json': 32 * 1024,

@@ -14,7 +14,7 @@ import {
   type WakeInput,
   type WokeState,
 } from '../../src/woke';
-import { NOW, dateAgo, daysAgo, makeCve, makeIngest, makeKev, makeKevCatalog, msf, nucleiTemplate, repo, score } from '../fixtures/model/builders';
+import { NOW, dateAgo, daysAgo, makeCve, makeIngest, makeKev, makeKevCatalog, msf, nucleiTemplate, repo, score, ssvc } from '../fixtures/model/builders';
 
 const HOUR = 3_600_000;
 const later = (hours: number) => new Date(NOW.getTime() + hours * HOUR);
@@ -289,7 +289,7 @@ describe('buildWoke', () => {
     expect(out.file.published_before).toBe(daysAgo(30));
   });
 
-  it('only counts evidence that arrived after the CVE left the window, so ageing out is not waking up', () => {
+  it('counts a KEV listing in the period even from while the CVE was in the window, once it has left it', () => {
     const early = [makeKev('CVE-2026-90001', { dateAdded: dateAgo(8) })]; // listed at 27 days old
     const late = [makeKev('CVE-2026-90002', { dateAdded: dateAgo(3) })]; // listed at 32 days old
     const wake = detectWakes(input({ kev: makeKevCatalog([...early, ...late]) }));
@@ -297,7 +297,34 @@ describe('buildWoke', () => {
       score(old('CVE-2026-90001', daysAgo(35)), { kev: early }),
       score(old('CVE-2026-90002', daysAgo(35)), { kev: late }),
     ];
-    expect(buildWoke(scored, wake, NOW, new Date(NOW.getTime() - 30 * 86_400_000)).file.items.map((i) => i.id)).toEqual(['CVE-2026-90002']);
+    expect(buildWoke(scored, wake, NOW, new Date(NOW.getTime() - 30 * 86_400_000)).file.items.map((i) => i.id)).toEqual(['CVE-2026-90002', 'CVE-2026-90001']);
+  });
+
+  it('only counts other evidence that arrived after the CVE left the window, so ageing out is not waking up', () => {
+    // A first PoC at 27 days old came while it was in the window; one at 32 days old did not.
+    const pocs = { 'CVE-2026-90003': [repo(daysAgo(8))], 'CVE-2026-90004': [repo(daysAgo(3))] };
+    const wake = detectWakes(input({ poc: new Map(Object.entries(pocs)) }));
+    const scored = [score(old('CVE-2026-90003', daysAgo(35)), { poc: pocs }), score(old('CVE-2026-90004', daysAgo(35)), { poc: pocs })];
+    expect(buildWoke(scored, wake, NOW, new Date(NOW.getTime() - 30 * 86_400_000)).file.items.map((i) => i.id)).toEqual(['CVE-2026-90004']);
+  });
+
+  it('wakes the six KEV additions the old rule missed: listed while in the window, since aged out (PHP x2, GitLab, Collabora, Ivanti, Openwave)', () => {
+    // Shapes from the Nov 20 run (days before now): published 30 to 38 days ago, listed by CISA KEV 10 to 28 days ago.
+    const cases: [string, number, number][] = [
+      ['CVE-2026-109618', 30.1, 25], // PHP: published Oct 21, KEV Oct 26
+      ['CVE-2026-109619', 30.1, 25], // PHP
+      ['CVE-2026-97229', 38, 22], // GitLab: published Oct 13, KEV Oct 29
+      ['CVE-2026-110447', 37, 28], // Collabora: published Oct 14, KEV Oct 23
+      ['CVE-2026-111357', 36, 21], // Ivanti Connect Secure: published Oct 15, KEV Oct 30
+      ['CVE-2026-111793', 35, 10], // Openwave: published Oct 16, KEV Nov 10
+    ];
+    const kev = cases.map(([id, , listed]) => makeKev(id, { dateAdded: dateAgo(listed) }));
+    const wake = detectWakes(input({ kev: makeKevCatalog(kev) }));
+    // Some were flagged by SSVC or the CNA first; that does not keep a listing out.
+    const scored = cases.map(([id, pub]) => score(makeCve({ id, published: daysAgo(pub), inWindow: false, ssvc: ssvc('active', 'no', 'total', daysAgo(pub)) }), { kev }));
+    const items = buildWoke(scored, wake, NOW, new Date(NOW.getTime() - 30 * 86_400_000)).file.items;
+    expect(items.map((i) => i.id).sort()).toEqual(cases.map(([id]) => id).sort());
+    for (const it of items) expect(it.signals.map((x) => x.kind)).toEqual(['kev']);
   });
 
   it('leaves out CVEs that were in KEV before the period: they never fell asleep', () => {

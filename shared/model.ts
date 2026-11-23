@@ -8,7 +8,7 @@
  */
 import type { Family, Polarity, SourceId } from './contract';
 
-export const SCORE_MODEL = 'v0.2.0';
+export const SCORE_MODEL = 'v0.3.0';
 
 export const BASE_POINTS = 15;
 /** Added to the raw score when any E-family chip fires… */
@@ -19,6 +19,12 @@ export const EXPLOITED_FLOOR = 90;
 export const RANSOMWARE_BONUS = 5;
 /** Below this age (days since publication) EPSS and "no exploit yet" are not trusted. */
 export const COLD_START_DAYS = 14;
+/**
+ * Points for "no exploit signal yet" during the cold start (x.early). Small, because early silence
+ * is weak evidence, but large enough that severity, SSVC and KEV history alone (at most 52) stay
+ * under the default evidence bar of 50.
+ */
+export const EARLY_NO_EXPLOIT = -3;
 /** A (cna, publish date) group at least this large is a patch-day batch. */
 export const BATCH_MIN = 50;
 
@@ -65,7 +71,8 @@ export const CHIPS: readonly ChipDef[] = [
   c('vendor.poc', 'X', 'up', 10, 'cvelist', 'Vendor: PoC', 'The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored.'),
   c('epss.mid', 'X', 'up', 8, 'epss', 'EPSS 1–10%', 'EPSS between 1% and 10% (only trusted after 14 days).'),
   c('x.none', 'X', 'down', -14, 'computed', 'No exploit yet', 'Two weeks after publication there is still no public exploit and EPSS is below 1%.'),
-  c('x.too_new', 'X', 'unknown', 0, 'computed', 'Too new', 'No exploit chip, but absence is not settled: the CVE is less than 14 days old, a PoC repo is too new to vet, or an exploit source could not be loaded this run.'),
+  c('x.early', 'X', 'down', EARLY_NO_EXPLOIT, 'computed', 'No exploit yet (early)', 'Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone stay under the default evidence bar. Not applied to internet-facing edge devices.'),
+  c('x.too_new', 'X', 'unknown', 0, 'computed', 'Too new', 'No exploit chip, but absence is not settled: a PoC repo is too new to vet, an exploit source could not be loaded this run, or the CVE is an internet-facing edge device under 14 days old.'),
 
   // SEV — CVSS base score as published by the CNA (or CISA-ADP when the CNA gave none).
   c('sev.crit_net', 'SEV', 'up', 13, 'cvelist', 'Critical · network', 'CVSS ≥ 9.0 and attack vector Network.'),
@@ -105,6 +112,7 @@ export const CHIPS: readonly ChipDef[] = [
   c('circl.suspected', 'INFO', 'info', 0, 'circl-kev', 'CIRCL: suspected', 'CIRCL lists exploitation as suspected, not confirmed (CC0-1.0). Information only.'),
   c('circl.attempts', 'INFO', 'info', 0, 'circl-kev', 'CIRCL: attempts', 'CIRCL lists it as confirmed in its known-exploited catalog (CC0-1.0), but the only evidence is exploitation attempts, such as hits on a sinkhole. Attempts are not proof that an attack worked: information only.'),
   c('honeypot.siberkapan', 'INFO', 'info', 0, 'siberkapan', 'Honeypot attempts', 'SiberKapan’s honeypot and web sensors in Turkey saw exploitation attempts (CC-BY-4.0). Attempts are not proof that an attack worked, and one sensor network gives too little data to set points: information only.'),
+  c('edge.device', 'INFO', 'info', 0, 'computed', 'Edge device', 'An internet-facing edge device: VPN, firewall, load balancer, email gateway, file transfer, webmail, remote support, SD-WAN or edge router (curated list in shared/edge.ts, explained in docs/SCORING.md). These are often attacked before any exploit is public, so the early no-exploit penalty does not apply.'),
   c('tag.eol', 'INFO', 'info', 0, 'cvelist', 'Unsupported product', 'The product was unsupported when the CVE was assigned: there may be no patch. Replace or mitigate.'),
 ];
 

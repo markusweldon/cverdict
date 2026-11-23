@@ -12,7 +12,7 @@ export const MCP_SERVER = {
   name: `io.github.${BRAND.repo}`,
   title: BRAND.name,
   /** Same as mcp/package.json (checked by a test). */
-  version: '0.1.4',
+  version: '0.1.5',
   /** npm package name: `npx -y cverdict-mcp`. */
   npm: `${BRAND.slug}-mcp`,
   /** Where the server is documented. */
@@ -76,7 +76,7 @@ export const MCP_TOOLS: readonly { name: McpToolName; title: string; description
     name: 'woke_up',
     title: 'Old CVEs that woke up',
     description:
-      'CVEs published before the 30-day window that gained exploitation evidence in the last 30 days (a CISA KEV listing, a first exploited listing in ENISA EU KEV or the CIRCL catalog, an EPSS jump, or a first public exploit), newest first, with the dated evidence.' + UNTRUSTED,
+      'CVEs published before the 30-day window that gained exploitation evidence in the last 30 days, newest first, with the dated evidence. Kinds: kev (a CISA KEV listing), catalog (a first exploited listing in ENISA EU KEV or the CIRCL catalog), exploitdb, metasploit, nuclei and poc (a first public exploit), epss (an EPSS jump). A kev or catalog listing in the period counts even when it came while the CVE was still in the window.' + UNTRUSTED,
   },
   {
     name: 'receipts',

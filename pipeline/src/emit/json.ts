@@ -31,6 +31,7 @@ export const PATHS = {
   batches: 'v1/batches.json',
   kev: 'v1/kev.json',
   stats: 'v1/stats.json',
+  surge: 'v1/surge.json',
   changes: 'v1/changes.json',
   woke: 'v1/woke.json',
   state: 'v1/state.json',

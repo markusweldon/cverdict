@@ -2,7 +2,7 @@
 import type { ComponentChildren } from 'preact';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, SIGNAL_MIN_SCORE, WATCH_FLOOR } from '../../../shared/contract';
 import { BRAND, REPO_URL } from '../../../shared/brand';
-import { BASE_POINTS, BATCH_MIN, CHIPS, COLD_START_DAYS, EXPLOITED_BONUS, EXPLOITED_FLOOR, RANSOMWARE_BONUS, SCORE_MODEL } from '../../../shared/model';
+import { BASE_POINTS, BATCH_MIN, CHIP_BY_ID, CHIPS, COLD_START_DAYS, EARLY_NO_EXPLOIT, EXPLOITED_BONUS, EXPLOITED_FLOOR, RANSOMWARE_BONUS, SCORE_MODEL } from '../../../shared/model';
 import { Chip } from '../components/Chip';
 import { ExtLink } from '../components/ExtLink';
 import { IconAlert, IconCheck } from '../components/icons';
@@ -20,7 +20,7 @@ score = exploited ? min(100, max(raw + ${EXPLOITED_BONUS}, ${EXPLOITED_FLOOR}) +
                   : clamp(raw, 0, 100)
 
 X      strongest exploit signal (Metasploit, Nuclei, Exploit-DB, EPSS, PoC…)
-       EPSS and "no exploit yet" only after ${COLD_START_DAYS} days
+       EPSS only after ${COLD_START_DAYS} days; until then "no exploit yet" is ${EARLY_NO_EXPLOIT} (0 on edge devices)
 SSVC   automatable + technical impact (they add)
 NOISE  only when nothing exploits it: hobby code, disputed, WordPress, kernel`;
 
@@ -43,7 +43,15 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
   ['Not in KEV ≠ not exploited', 'KEV lists only exploitation CISA can confirm, often weeks late. Plenty of exploited bugs never appear.'],
   ['Quiet ≠ safe', 'Quiet means no public evidence yet. A brand-new CVE in an internet-facing product you run can matter before anyone writes an exploit.'],
   ['Exposure is yours', 'We can’t see your assets. A Likely CVE in software you don’t run is noise; a Watch CVE on your perimeter may not be.'],
-  ['Feeds lag', `Exploit feeds and EPSS need about ${COLD_START_DAYS} days to catch up, so new CVEs show “Too new” instead of a penalty.`],
+  ['Feeds lag', `Exploit feeds and EPSS need about ${COLD_START_DAYS} days to catch up, so until then no exploit signal costs ${-EARLY_NO_EXPLOIT} points, not ${-CHIP_BY_ID['x.none'].points}.`],
+  [
+    'Edge devices are a curated list',
+    <>
+      VPNs, firewalls, gateways and similar internet-facing devices are often attacked before any exploit is public, so they skip the early {-EARLY_NO_EXPLOIT}-point penalty and show the
+      “Edge device” chip. The list is picked by hand from CISA KEV, so a product not on it is missed. See the{' '}
+      <ExtLink href={`${REPO_URL}/blob/main/docs/SCORING.md#internet-facing-edge-devices`}>list and how to propose an addition</ExtLink>.
+    </>,
+  ],
   ['PoCs are unverified', 'Proof-of-concept repos are counted, never run. Fake PoCs that carry malware are common, so treat every link as hostile.'],
   ['Vendor text is data', 'Descriptions are written by CNAs and sometimes contain hostile markup. Everything is shown as plain text.'],
   [

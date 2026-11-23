@@ -995,8 +995,8 @@ a.chip:hover {
   background: var(--wf-watch);
 }
 
-/* Newly exploited in 72h: breathes like the chart's new ticks (same period), still when motion
-   is off. Only the opacity of an overlay animates, so the compositor does the work. */
+/* Newly exploited (last 72 hours): pings like the chart's new ticks (same period), still when motion
+   is off. Only opacity and transform animate, so the compositor does the work. */
 .wf__key--new {
   position: relative;
   background: var(--exploited);
@@ -1020,20 +1020,171 @@ a.chip:hover {
   }
 }
 
+/* The legend swatch's own ring: drawn at full size and scaled up from a quarter, so the 1px line
+   ends thin, and gone before the next beat. Kept to the legend, not the tooltip key. */
+.legend__item--new .wf__key--new::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 1px solid var(--exploited);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.25);
+  pointer-events: none;
+  animation: wf-ping 2.8s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+}
+
+@keyframes wf-ping {
+  0% {
+    opacity: 0;
+    transform: scale(0.25);
+  }
+  8% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* The count leads ("3 newly exploited"): same-width digits, so a new count moves nothing beside it. */
+.legend__item--new {
+  font-variant-numeric: tabular-nums;
+}
+
 /* None new (or still loading): a dim, still swatch. */
 .legend__item--new.is-none .wf__key--new {
   opacity: 0.4;
   box-shadow: none;
 }
 
-.legend__item--new.is-none .wf__key--new::after {
+.legend__item--new.is-none .wf__key--new::after,
+.legend__item--new.is-none .wf__key--new::before {
   animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wf__key--new::after {
+  .wf__key--new::after,
+  .legend__item--new .wf__key--new::before {
     animation: none;
   }
+}
+
+/* With names in the data, "N newly exploited" opens a list. The button keeps the label's exact size
+   (no padding, border or icon of its own), so the legend does not move when it turns clickable;
+   a negative margin gives it a taller hit area without moving the text. */
+.newx {
+  position: relative;
+}
+
+.newx__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -5px -6px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.newx__btn:hover,
+.newx__btn[aria-expanded='true'] {
+  color: var(--text);
+  text-decoration-color: currentColor;
+}
+
+/* Floats over the chart (not in the flow), placed by script to stay inside the viewport. */
+.newx__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  padding: 12px 6px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  font-size: 12.5px;
+  animation: dialog-in 0.15s var(--ease);
+}
+
+.newx__panel:focus {
+  outline: none;
+}
+
+.newx__title {
+  margin: 0 6px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.newx__note {
+  margin: -4px 6px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.newx__list {
+  display: grid;
+  gap: 2px;
+  max-height: min(320px, 60vh);
+  overflow-y: auto;
+}
+
+.newx__link {
+  display: grid;
+  gap: 1px;
+  padding: 6px;
+  border-radius: var(--r-sm);
+  color: inherit;
+}
+
+.newx__row:hover .newx__link,
+.newx__link:focus-visible {
+  background: var(--raised);
+}
+
+.newx__link:hover .newx__id {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.newx__id {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.newx__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.newx__via,
+.newx__older {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Published before the chart starts, so no column to mark: said once, quieter still. */
+.newx__older {
+  font-style: italic;
 }
 
 /* ── Tooltip, toasts, dialogs ── */

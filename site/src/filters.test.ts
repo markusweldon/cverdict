@@ -13,6 +13,8 @@ import {
   isWordpress,
   matches,
   newExploitedAt,
+  newExploitedCount,
+  newExploitedList,
   pubMs,
   readFeedFilter,
   retier,
@@ -214,5 +216,59 @@ describe('newExploitedAt', () => {
     expect(newExploitedAt(hourly({ new_exploited: bad }), counts)).toEqual([]);
     expect(newExploitedAt(hourly({ new_exploited: 'x' }), counts)).toEqual([]);
     expect(newExploitedAt(hourly({ new_exploited: [...bad, [2, 1]] }), counts)).toEqual([0, 0, 1]);
+  });
+});
+
+describe('newExploitedList', () => {
+  const counts = [
+    [2, 0, 0, 0],
+    [1, 0, 0, 0],
+  ] as [number, number, number, number][];
+  const hourly = (extra: object = {}) => ({ start: '2026-09-26T19:00:00.000Z', hours: 2, counts, ...extra });
+  const item = { id: 'CVE-2026-1001', title: 'Acme · Widget', via: 'CISA KEV', at: '2026-09-27', hour: 1 };
+
+  it('reads older data without the field as no names (null), and [] as none', () => {
+    expect(newExploitedList(hourly())).toBeNull();
+    expect(newExploitedList(hourly({ new_exploited: [[0, 1]] }))).toBeNull();
+    expect(newExploitedList(hourly({ new_exploited_cves: 'x' }))).toBeNull();
+    expect(newExploitedList(hourly({ new_exploited_cves: [] }))).toEqual([]);
+  });
+
+  it('keeps good entries in order and drops malformed ones, repeats and hours off the chart', () => {
+    const list = [
+      item,
+      { ...item, id: 'CVE-2026-1002', hour: 0, via: 'Vendor', at: '2026-09-26T20:00:00.000Z' },
+      item,
+      { ...item, id: 'nope' },
+      { ...item, id: 'CVE-2026-1003', hour: 2 },
+      { ...item, id: 'CVE-2026-1004', at: 'soon' },
+      { ...item, id: 'CVE-2026-1005', title: 7, via: 9 },
+      null,
+      'CVE-2026-1006',
+    ];
+    expect(newExploitedList(hourly({ new_exploited_cves: list }))).toEqual([
+      item,
+      { ...item, id: 'CVE-2026-1002', hour: 0, via: 'Vendor', at: '2026-09-26T20:00:00.000Z' },
+      { ...item, id: 'CVE-2026-1005', title: '', via: '' },
+    ]);
+  });
+
+  it('keeps CVEs published before the chart (no hour, a publication day) and drops ones that say neither', () => {
+    const { hour: _h, ...base } = item;
+    const older = { ...base, id: 'CVE-2024-4577', published: '2024-03-12' };
+    const list = [older, { ...base, id: 'CVE-2024-1' }, { ...base, id: 'CVE-2024-1111', published: 'long ago' }, { ...older, id: 'CVE-2024-2222', hour: null }, item];
+    expect(newExploitedList(hourly({ new_exploited_cves: list }))).toEqual([older, { ...older, id: 'CVE-2024-2222' }, item]);
+  });
+});
+
+describe('newExploitedCount', () => {
+  const hourly = (extra: object = {}) => ({ start: '2026-09-26T19:00:00.000Z', hours: 2, counts: [[2, 0, 0, 0]] as [number, number, number, number][], ...extra });
+  it('takes the data total (window and older CVEs), else the chart count', () => {
+    expect(newExploitedCount(hourly({ new_exploited_total: 5 }), [1, 1])).toBe(5);
+    // Older data: the chart's own count.
+    expect(newExploitedCount(hourly(), [1, 1])).toBe(2);
+    expect(newExploitedCount(hourly(), [])).toBe(0);
+    // Unusable totals (less than the chart shows, or not a count) fall back too.
+    for (const t of [1, -1, 2.5, '9', null]) expect(newExploitedCount(hourly({ new_exploited_total: t }), [1, 1])).toBe(2);
   });
 });

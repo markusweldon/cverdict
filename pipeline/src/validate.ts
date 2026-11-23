@@ -6,9 +6,14 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import {
+  NEW_EXPLOITED_HOURS,
+  NEW_EXPLOITED_LIST_MAX,
+  NEW_EXPLOITED_VIA,
   PACKAGE_ECOSYSTEMS,
   ROW_COLS,
   SCHEMA_VERSION,
+  SEVERITY_BANDS,
+  SURGE_TOP_CNAS,
   SIGNAL_MIN_SCORE,
   TIERS,
   rowFromColumns,
@@ -170,25 +175,171 @@ export function validateOutput(root: string, log?: Logger): ValidationResult {
   return result;
 }
 
-/** stats.json hourly.new_exploited (optional): [hour, count] pairs in range, ascending, never more than the hour's exploited count. */
-function checkNewExploited(json: Map<string, JsonObject>, errors: string[]): void {
-  const hourly = asObject(json.get(PATHS.stats)?.hourly);
-  if (!hourly || hourly.new_exploited === undefined) return;
-  const pairs = hourly.new_exploited;
+/** Signals that can make a CVE published before the window newly exploited: a dated catalog listing. */
+const LISTING_VIA: readonly string[] = ['CISA KEV', 'EU KEV', 'CIRCL'];
+
+/**
+ * stats.json hourly.new_exploited (optional): [hour, count] pairs in range, ascending, never more than the hour's
+ * exploited count. hourly.new_exploited_cves (optional): unique CVEs, signal inside the 72 hours before
+ * generated_at, newest first, at most the cap. A row with an `hour` is an Exploited CVE of the index in the column
+ * of its publication hour, and those rows tally per hour to the pairs (exactly, below the cap). A row without one
+ * is a CVE published before the window: no `hour`, a `published` day before hourly.start, a catalog listing day as
+ * its signal, and not in the index. hourly.new_exploited_total (optional): the list's length before the cap, so
+ * equal to it below the cap, never less than it or than the pairs' sum.
+ */
+function checkNewExploited(json: Map<string, JsonObject>, index: readonly Row[] | null, errors: string[]): void {
+  const stats = json.get(PATHS.stats);
+  const hourly = asObject(stats?.hourly);
+  if (!hourly) return;
   const counts = Array.isArray(hourly.counts) ? hourly.counts : [];
-  if (!Array.isArray(pairs)) {
-    errors.push(`${PATHS.stats}: hourly.new_exploited is not an array`);
-    return;
-  }
-  let prev = -1;
-  for (const p of pairs) {
-    const [h, n] = Array.isArray(p) ? p : [];
-    const exploited = Array.isArray(counts[h as number]) ? Number((counts[h as number] as unknown[])[0]) : -1;
-    if (!Number.isInteger(h) || !Number.isInteger(n) || (n as number) < 1 || (h as number) <= prev || (n as number) > exploited) {
-      errors.push(`${PATHS.stats}: hourly.new_exploited has a bad entry ${JSON.stringify(p)}`);
+  const pairs = new Map<number, number>();
+  if (hourly.new_exploited !== undefined) {
+    if (!Array.isArray(hourly.new_exploited)) {
+      errors.push(`${PATHS.stats}: hourly.new_exploited is not an array`);
       return;
     }
-    prev = h as number;
+    let prev = -1;
+    for (const p of hourly.new_exploited) {
+      const [h, n] = Array.isArray(p) ? p : [];
+      const exploited = Array.isArray(counts[h as number]) ? Number((counts[h as number] as unknown[])[0]) : -1;
+      if (!Number.isInteger(h) || !Number.isInteger(n) || (n as number) < 1 || (h as number) <= prev || (n as number) > exploited) {
+        errors.push(`${PATHS.stats}: hourly.new_exploited has a bad entry ${JSON.stringify(p)}`);
+        return;
+      }
+      prev = h as number;
+      pairs.set(h as number, n as number);
+    }
+  }
+
+  const list = hourly.new_exploited_cves;
+  const total = hourly.new_exploited_total;
+  const bad = (why: string) => errors.push(`${PATHS.stats}: ${why}`);
+  if (total !== undefined) {
+    if (!Number.isInteger(total) || (total as number) < 0) return void bad(`hourly.new_exploited_total is not a count: ${JSON.stringify(total)}`);
+    if (list === undefined) return void bad('hourly.new_exploited_total is present without hourly.new_exploited_cves');
+  }
+  if (list === undefined) return;
+  const badList = (why: string) => bad(`hourly.new_exploited_cves ${why}`);
+  if (!Array.isArray(list)) return void badList('is not an array');
+  if (hourly.new_exploited === undefined) return void badList('is present without hourly.new_exploited');
+  if (list.length > NEW_EXPLOITED_LIST_MAX) return void badList(`has ${list.length} entries, the cap is ${NEW_EXPLOITED_LIST_MAX}`);
+  const generated = typeof stats?.generated_at === 'string' ? Date.parse(stats.generated_at) : NaN;
+  const start = typeof hourly.start === 'string' ? Date.parse(hourly.start) : NaN;
+  const rows = index ? new Map(index.map((r) => [r.id, r])) : null;
+  const seen = new Set<string>();
+  const tally = new Map<number, number>();
+  let prevMs = Infinity;
+  for (const item of list) {
+    const c = asObject(item);
+    const id = c?.id;
+    const h = c?.hour as number;
+    const day = typeof c?.at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.at);
+    const ms = typeof c?.at === 'string' ? Date.parse(day ? `${c.at}T00:00:00Z` : c.at) : NaN;
+    const common =
+      typeof id === 'string' &&
+      CVE_ID_RE.test(id) &&
+      typeof c?.title === 'string' &&
+      c.title.length > 0 &&
+      c.title.length <= 80 &&
+      (NEW_EXPLOITED_VIA as readonly unknown[]).includes(c.via) &&
+      ms <= generated &&
+      ms >= generated - NEW_EXPLOITED_HOURS * 3_600_000;
+    if (!common) return void badList(`has a bad entry ${JSON.stringify(item)}`);
+    if (seen.has(id)) return void badList(`lists ${id} twice`);
+    if (ms > prevMs) return void badList(`is not newest first at ${id}`);
+    if (c.hour === undefined) {
+      // Published before the window: not on the chart, so no hour; a catalog listing is its signal.
+      const pub = typeof c.published === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.published) ? Date.parse(`${c.published}T00:00:00Z`) : NaN;
+      if (!(pub < start) || !day || !LISTING_VIA.includes(c.via as string)) return void badList(`has a bad entry from before the window ${JSON.stringify(item)}`);
+      if (rows?.has(id)) return void badList(`lists ${id} without an hour, but it is in the index`);
+    } else {
+      const exploited = Array.isArray(counts[h]) ? Number((counts[h] as unknown[])[0]) : 0;
+      if (!Number.isInteger(h) || exploited <= 0 || c.published !== undefined) return void badList(`has a bad entry ${JSON.stringify(item)}`);
+      const row = rows?.get(id);
+      if (rows && (!row || row.tier !== 'exploited')) return void badList(`lists ${id}, which is not an Exploited CVE in the index`);
+      if (row && Math.floor((Date.parse(row.pub) - start) / 3_600_000) !== h) return void badList(`puts ${id} in hour ${h}, not its publication hour`);
+      tally.set(h, (tally.get(h) ?? 0) + 1);
+    }
+    seen.add(id);
+    prevMs = ms;
+  }
+  // At the cap, older ones are left out of the list but still counted.
+  const full = list.length === NEW_EXPLOITED_LIST_MAX;
+  for (const h of new Set([...pairs.keys(), ...tally.keys()])) {
+    const t = tally.get(h) ?? 0;
+    const p = pairs.get(h) ?? 0;
+    if (full ? t > p : t !== p) return void badList(`has ${t} in hour ${h}, hourly.new_exploited has ${p}`);
+  }
+  if (typeof total === 'number') {
+    const charted = [...pairs.values()].reduce((a, n) => a + n, 0);
+    if (full ? total < list.length : total !== list.length) return void bad(`hourly.new_exploited_total is ${total}, the list has ${list.length}`);
+    if (total < charted) return void bad(`hourly.new_exploited_total is ${total}, less than the ${charted} in hourly.new_exploited`);
+  }
+}
+
+/** A listed CNA's count in month index `m` and band `k`, 0 outside its rows. */
+function cnaBand(c: JsonObject | null, m: number, k: number): number {
+  const rows = c?.severity as number[][];
+  return rows[m - (c?.from as number)]?.[k] ?? 0;
+}
+
+/**
+ * surge.json (optional; older data has none): band rows of five whole counts, one per month from `start` to
+ * generated_at's month; at most SURGE_TOP_CNAS distinct CNAs whose rows fit the months and never add up to more
+ * than the month's band; KEV cells in range, sorted, unique, positive and within their month, CNA and band. From
+ * the same run as stats.json, each month's bands sum to its published count there.
+ */
+export function checkSurge(surge: JsonObject | undefined, stats: JsonObject | undefined, errors: string[]): void {
+  if (!surge) return;
+  const bad = (why: string) => errors.push(`${PATHS.surge}: ${why}`);
+  const isRow = (r: unknown): r is number[] => Array.isArray(r) && r.length === SEVERITY_BANDS.length && r.every((v) => Number.isInteger(v) && v >= 0);
+  const sev = surge.severity;
+  const generated = typeof surge.generated_at === 'string' ? surge.generated_at : '';
+  if (surge.start !== '1999-01') return void bad(`start is ${JSON.stringify(surge.start)}, expected "1999-01"`);
+  const months = Number(generated.slice(0, 4)) * 12 + Number(generated.slice(5, 7)) - (1999 * 12 + 1) + 1;
+  if (!Array.isArray(sev) || sev.length !== months) return void bad(`severity has ${Array.isArray(sev) ? sev.length : 'no'} rows, expected ${months}`);
+  const monthly = stats && stats.generated_at === surge.generated_at && Array.isArray(stats.monthly) ? stats.monthly : null;
+  for (let i = 0; i < sev.length; i++) {
+    const row = sev[i];
+    if (!isRow(row)) return void bad(`severity[${i}] is not five whole counts`);
+    const published = monthly ? asObject(monthly[i])?.published : undefined;
+    const sum = row.reduce((a, v) => a + v, 0);
+    if (monthly && sum !== published) return void bad(`severity[${i}] sums to ${sum}, stats.json monthly says ${String(published)}`);
+  }
+  const cnas = surge.cnas;
+  if (!Array.isArray(cnas) || cnas.length > SURGE_TOP_CNAS) return void bad(`cnas is not a list of at most ${SURGE_TOP_CNAS}`);
+  const names = new Set<string>();
+  const used = sev.map(() => SEVERITY_BANDS.map(() => 0));
+  for (const item of cnas) {
+    const c = asObject(item);
+    const name = c?.cna;
+    const from = c?.from;
+    const rows = c?.severity;
+    if (typeof name !== 'string' || !name || names.has(name)) return void bad(`cnas has a missing or repeated name ${JSON.stringify(name)}`);
+    names.add(name);
+    if (!Number.isInteger(from) || (from as number) < 0 || !Array.isArray(rows) || (from as number) + rows.length > sev.length) return void bad(`cnas ${name} does not fit the months`);
+    for (let j = 0; j < rows.length; j++) {
+      const r = rows[j];
+      const i = (from as number) + j;
+      if (!isRow(r)) return void bad(`cnas ${name} month ${i} is not five whole counts`);
+      for (let k = 0; k < r.length; k++) {
+        used[i][k] += r[k];
+        if (used[i][k] > (sev[i] as number[])[k]) return void bad(`cnas add up to more than month ${i} has in band ${k}`);
+      }
+    }
+  }
+  const kev = surge.kev;
+  if (!Array.isArray(kev)) return void bad('kev is not an array');
+  let prev = '';
+  for (const cell of kev) {
+    const [m, c, k, n] = Array.isArray(cell) && cell.length === 4 ? (cell as number[]) : [];
+    const shape = [m, c, k, n].every(Number.isInteger) && m >= 0 && m < sev.length && c >= -1 && c < cnas.length && k >= 0 && k < SEVERITY_BANDS.length && n > 0;
+    if (!shape) return void bad(`kev has a bad cell ${JSON.stringify(cell)}`);
+    const key = [m, c + 1, k].map((v) => String(v).padStart(6, '0')).join('|');
+    if (key <= prev) return void bad(`kev is not sorted by month, CNA and band at ${JSON.stringify(cell)}`);
+    prev = key;
+    const room = c < 0 ? (sev[m] as number[])[k] - used[m][k] : cnaBand(asObject(cnas[c]), m, k);
+    if (n > room) return void bad(`kev cell ${JSON.stringify(cell)} is more than its month, CNA and band hold`);
   }
 }
 
@@ -270,7 +421,8 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
   }
 
   checkWoke(json, details, index ? new Set(index.map((r) => r.id)) : null, errors);
-  checkNewExploited(json, errors);
+  checkNewExploited(json, index, errors);
+  checkSurge(json.get(PATHS.surge), json.get(PATHS.stats), errors);
   checkReceipts(json, errors);
   checkPackages(json, details, index, errors, warnings);
 

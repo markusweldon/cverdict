@@ -63,7 +63,7 @@ const SCHEMAS = {
       .min(1)
       .max(WAKE_KINDS.length)
       .optional()
-      .describe('Only CVEs with a signal of these kinds.'),
+      .describe('Only CVEs with a signal of these kinds: kev (CISA KEV), catalog (ENISA EU KEV or CIRCL as exploited), exploitdb, metasploit, nuclei, poc (first public exploit), epss (EPSS jump).'),
     limit: limit(25),
     offset,
   }),

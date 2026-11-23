@@ -1,5 +1,5 @@
 /** Pure formatting helpers. Dates are shown in UTC: batches, KEV due dates and the window are UTC days. */
-import { cnaName, isBulkCna } from '../../shared/cna';
+import { cnaName, isBulkCna, vendorProduct } from '../../shared/cna';
 import { NON_SCORING_SOURCES, type Meta } from '../../shared/contract';
 
 const NUMBER = new Intl.NumberFormat('en-US');
@@ -120,7 +120,7 @@ export function fmtCountdown(ms: number, precise = false): string {
 export const kevDeadline = (dueDate: string): number => toMs(dueDate) + DAY_MS;
 
 /** CNA short names → display names ("GitHub_M" → "GitHub"), shared with the pipeline. */
-export { cnaName, isBulkCna };
+export { cnaName, isBulkCna, vendorProduct };
 
 /** What a CNA's ≥50-record day is called: aggregators publish bulk releases, vendors have patch days. */
 export const batchKind = (cna: string): string => (isBulkCna(cna) ? 'bulk release' : 'patch-day batch');
@@ -129,16 +129,6 @@ export const batchKind = (cna: string): string => (isBulkCna(cna) ? 'bulk releas
 export function batchLabel(batchId: string, cna: string): string {
   const date = batchId.slice(-10);
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${cnaName(cna)} · ${fmtDate(date)}` : cnaName(cna);
-}
-
-/** "Fortinet · FortiSandbox"; collapses "Microsoft · Microsoft Exchange" and "Linux · Linux". */
-export function vendorProduct(v: string, p: string): string {
-  const vendor = v.trim();
-  const product = p.trim();
-  if (!vendor || /^(unknown|n\/a)$/i.test(vendor)) return product;
-  if (!product || vendor.toLowerCase() === product.toLowerCase()) return vendor;
-  if (product.toLowerCase().startsWith(vendor.toLowerCase())) return product;
-  return `${vendor} · ${product}`;
 }
 
 /** Only absolute http(s) URLs are ever turned into links. */

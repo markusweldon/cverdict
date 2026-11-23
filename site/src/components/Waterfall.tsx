@@ -14,7 +14,7 @@ import { binDay, binRange, binsOf, dayStart, dayTotal, hoursPerBin, placeLabels,
 import type { HourCounts } from '../filters';
 import { fmtDate, fmtInt, HOUR_MS, DAY_MS, plural } from '../format';
 import { prefersReducedMotion } from '../hooks';
-import { freshPerBin, freshSegs, haloSpots, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulseRegions, type Rect, type Rgb, type Rgba, type Spot, type Tick } from '../pulse';
+import { EDGE_FADE, freshPerBin, freshSegs, haloSpots, mergeRects, mixColor, parseColor, parseRgba, PULSE_FRAME_MS, pulseLevel, pulsePhase, pulseRegions, RING_W, ringAt, ringRegions, ringSpots, type Rect, type Rgb, type Rgba, type Ring, type Spot, type Tick } from '../pulse';
 import { navigate } from '../router';
 import { theme, useStore } from '../state';
 import { TIER_META } from '../tiers';
@@ -48,10 +48,12 @@ interface Props {
    * every other exploited tick stays still. Empty or missing: nothing moves.
    */
   fresh?: readonly number[];
+  /** An hour to mark like a hovered column (from the newly exploited list), while no column is picked. */
+  mark?: number | null;
 }
 
 /** Tooltip and screen reader label for the newly exploited count of a column. */
-export const NEW_LABEL = 'Newly exploited in 72h';
+export const NEW_LABEL = 'Newly exploited';
 
 const PITCH = 3;
 const SEG = 2;
@@ -77,6 +79,7 @@ function readColors(el: Element) {
     cross: v('--faint-ui'),
     pulse: v('--wf-pulse'),
     halo: v('--wf-pulse-halo'),
+    ping: v('--wf-ping'),
     mono: v('--font-mono') || 'monospace',
   };
 }
@@ -86,56 +89,98 @@ interface Frame {
   /** The finished static chart minus the hover crosshair, in device pixels. */
   cache: HTMLCanvasElement;
   dpr: number;
+  /** Canvas size in CSS px. */
+  width: number;
+  height: number;
   ticks: Tick[];
   regions: Rect[];
+  /** One halo per column. */
   spots: Spot[];
+  /** One ring per group of neighbouring columns. */
+  rings: Spot[];
   barW: number;
   from: Rgb;
   to: Rgb;
   /** Halo colour and its opacity at the peak. */
   halo: Rgba;
+  /** Ring colour and its opacity as it leaves the ticks. */
+  ping: Rgba;
   cross: { x: number; y: number; h: number; color: string } | null;
 }
 
+/** The halo level and the ring for a time since the pulse started. */
+const beat = (ms: number): [number, Ring] => [pulseLevel(ms), ringAt(pulsePhase(ms))];
+const TROUGH: [number, Ring] = [0, ringAt(0)];
+
 /**
- * Repaint only the regions around the newly exploited ticks: the cached static pixels first, then (above
- * the trough) a soft halo slid in behind everything already drawn, so no neighbouring tick changes
- * colour, then those ticks again in the peak red, then the crosshair if any.
- * Level 0 leaves exactly the static chart.
+ * Repaint only the regions around the newly exploited ticks. Above the trough the halo and the
+ * ring are drawn first into the cleared regions and faded out near the canvas edges, then the
+ * cached static chart goes on top, so both show only through the chart's empty or faint pixels and
+ * no neighbouring tick changes colour. Then those ticks again in the peak red, and the crosshair if
+ * any. The trough (level 0, no ring) leaves exactly the static chart.
  */
-function paintPulse(cv: HTMLCanvasElement, f: Frame, level: number) {
+function paintPulse(cv: HTMLCanvasElement, f: Frame, [level, ring]: [number, Ring]) {
   const ctx = cv.getContext('2d');
   if (!ctx) return;
   const d = f.dpr;
+  const px = f.regions.map((r) => [Math.round(r.x * d), Math.round(r.y * d), Math.round(r.w * d), Math.round(r.h * d)] as const);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.shadowBlur = 0;
-  for (const r of f.regions) {
-    const x = Math.round(r.x * d);
-    const y = Math.round(r.y * d);
-    const w = Math.round(r.w * d);
-    const h = Math.round(r.h * d);
-    ctx.clearRect(x, y, w, h);
-    ctx.drawImage(f.cache, x, y, w, h, x, y, w, h);
-  }
-  ctx.setTransform(d, 0, 0, d, 0, 0);
   ctx.beginPath();
-  for (const r of f.regions) ctx.rect(r.x, r.y, r.w, r.h);
+  for (const [x, y, w, h] of px) ctx.rect(x, y, w, h);
   ctx.clip();
-  if (level > 0) {
-    const [r, g, b, a] = f.halo;
-    const rgba = (k: number) => `rgba(${r}, ${g}, ${b}, ${(a * level * k).toFixed(3)})`;
-    // Behind the existing pixels: the halo only shows through where the chart is empty or faint.
-    ctx.globalCompositeOperation = 'destination-over';
-    for (const s of f.spots) {
-      const grad = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r);
-      grad.addColorStop(0, rgba(1));
-      grad.addColorStop(0.4, rgba(0.6));
-      grad.addColorStop(1, rgba(0));
-      ctx.fillStyle = grad;
-      ctx.fillRect(s.cx - s.r, s.cy - s.r, s.r * 2, s.r * 2);
+  for (const [x, y, w, h] of px) ctx.clearRect(x, y, w, h);
+  if (level > 0 || ring.a > 0) {
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    if (level > 0) {
+      const [r, g, b, a] = f.halo;
+      const rgba = (k: number) => `rgba(${r}, ${g}, ${b}, ${(a * level * k).toFixed(3)})`;
+      for (const s of f.spots) {
+        const grad = ctx.createRadialGradient(s.cx, s.cy, 0, s.cx, s.cy, s.r);
+        grad.addColorStop(0, rgba(1));
+        grad.addColorStop(0.3, rgba(0.72));
+        grad.addColorStop(0.65, rgba(0.28));
+        grad.addColorStop(1, rgba(0));
+        ctx.fillStyle = grad;
+        ctx.fillRect(s.cx - s.r, s.cy - s.r, s.r * 2, s.r * 2);
+      }
     }
+    if (ring.a > 0) {
+      const [r, g, b, a] = f.ping;
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${(a * ring.a).toFixed(3)})`;
+      ctx.lineWidth = RING_W;
+      ctx.beginPath();
+      for (const s of f.rings) {
+        const rr = s.half + ring.r;
+        ctx.moveTo(s.cx + rr, s.cy);
+        ctx.arc(s.cx, s.cy, rr, 0, 2 * Math.PI);
+      }
+      ctx.stroke();
+    }
+    // Soften both toward the canvas edges instead of cutting them off there.
+    ctx.globalCompositeOperation = 'destination-out';
+    const W = f.width;
+    const H = f.height;
+    const E = EDGE_FADE;
+    const edge = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(rx, ry, rw, rh);
+    };
+    const near = (test: (r: Rect) => boolean) => f.regions.some(test);
+    if (near((r) => r.x < E)) edge(0, 0, E, 0, 0, 0, E, H);
+    if (near((r) => r.x + r.w > W - E)) edge(W, 0, W - E, 0, W - E, 0, E, H);
+    if (near((r) => r.y < E)) edge(0, 0, 0, E, 0, 0, W, E);
+    if (near((r) => r.y + r.h > H - E)) edge(0, H, 0, H - E, 0, H - E, W, E);
     ctx.globalCompositeOperation = 'source-over';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+  for (const [x, y, w, h] of px) ctx.drawImage(f.cache, x, y, w, h, x, y, w, h);
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  if (level > 0 || ring.a > 0) {
     ctx.fillStyle = mixColor(f.from, f.to, level);
     for (const t of f.ticks) ctx.fillRect(t.x, t.y, f.barW, SEG);
   }
@@ -157,7 +202,7 @@ interface Placed {
 
 const NO_FRESH: readonly number[] = [];
 
-export function Waterfall({ counts, start, annotations = [], height = 176, summary, onBinHours, dayHref, fresh = NO_FRESH }: Props) {
+export function Waterfall({ counts, start, annotations = [], height = 176, summary, onBinHours, dayHref, fresh = NO_FRESH, mark = null }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const tip = useRef<HTMLDivElement>(null);
@@ -241,6 +286,8 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     return placeLabels(labels, width).map(({ item, left, right }) => ({ a: item, left, right }));
   }, [annotations, bins.length, per, width, start, mode]);
 
+  // A picked column wins over a marked hour.
+  const marked = active ?? (mark !== null && mark >= 0 && mark < counts.length ? Math.floor(mark / per) : null);
   useEffect(() => {
     const cv = canvas.current;
     if (!cv || width === 0) return;
@@ -289,7 +336,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       const total = b.c[0] + b.c[1] + b.c[2] + b.c[3];
       if (total === 0) return;
       const x = i * colW;
-      if (active === i) {
+      if (marked === i) {
         ctx.fillStyle = col.hover;
         ctx.fillRect(x - 1, TOP - 4, barW + 2, plotH + 4);
       }
@@ -326,19 +373,24 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
     }
     ctx.shadowBlur = 0;
 
-    const cross = active !== null && bins[active] ? { x: Math.round(active * colW + barW / 2), y: TOP - 2, h: plotH + 2, color: col.cross } : null;
+    const cross = marked !== null && bins[marked] ? { x: Math.round(marked * colW + barW / 2), y: TOP - 2, h: plotH + 2, color: col.cross } : null;
     // Once the grow entrance is done, keep a copy of the finished chart for the pulse to restore from.
     const hot = lit.filter((t) => t.fresh).map(({ x, y }) => ({ x, y }));
     const from = parseColor(col.exploited);
     const to = parseColor(col.pulse);
     const halo = parseRgba(col.halo);
-    if (progress >= 1 && hot.length > 0 && from && to && halo) {
+    const ping = parseRgba(col.ping);
+    if (progress >= 1 && hot.length > 0 && from && to && halo && ping) {
       const prev = frame.current?.cache;
       const cache = prev ?? document.createElement('canvas');
       cache.width = cv.width;
       cache.height = cv.height;
       cache.getContext('2d')?.drawImage(cv, 0, 0);
-      frame.current = { cache, dpr, ticks: hot, regions: pulseRegions(hot, barW, SEG, width, height, dpr), spots: haloSpots(hot, barW, SEG), barW, from, to, halo, cross };
+      const spots = haloSpots(hot, barW, SEG);
+      const rings = ringSpots(spots);
+      // Neighbouring regions are merged, so each pixel is repainted once a frame.
+      const regions = mergeRects([...pulseRegions(hot, barW, SEG, width, height, dpr), ...ringRegions(rings, width, height, dpr)]);
+      frame.current = { cache, dpr, width, height, ticks: hot, regions, spots, rings, barW, from, to, halo, ping, cross };
     } else frame.current = null;
 
     if (cross) {
@@ -346,9 +398,9 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       ctx.fillRect(cross.x, cross.y, 1, cross.h);
     }
     pulseSync.current?.();
-  }, [bins, freshBins, width, height, active, progress, mode, counts.length, start, dpr]);
+  }, [bins, freshBins, width, height, marked, progress, mode, counts.length, start, dpr]);
 
-  // Newly exploited ticks breathe: slowly, all together, only while the chart is on screen in a visible
+  // Newly exploited ticks ping: slowly, all together, only while the chart is on screen in a visible
   // tab and motion is welcome. A timer paints about 20 frames a second into small regions only.
   const grown = progress >= 1;
   useEffect(() => {
@@ -364,12 +416,12 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
       if (!running) return;
       running = false;
       clearTimeout(timer);
-      if (frame.current) paintPulse(cv, frame.current, 0);
+      if (frame.current) paintPulse(cv, frame.current, TROUGH);
     };
     const step = () => {
       const f = frame.current;
       if (!running || !f) return;
-      paintPulse(cv, f, pulseLevel(performance.now() - t0));
+      paintPulse(cv, f, beat(performance.now() - t0));
       timer = window.setTimeout(step, PULSE_FRAME_MS);
     };
     const sync = () => {
@@ -381,7 +433,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
         timer = window.setTimeout(step, PULSE_FRAME_MS);
       } else if (!go) stop();
       // A static redraw while running shows the trough: put the current level straight back.
-      else if (frame.current) paintPulse(cv, frame.current, pulseLevel(performance.now() - t0));
+      else if (frame.current) paintPulse(cv, frame.current, beat(performance.now() - t0));
     };
     const io = new IntersectionObserver(([entry]) => {
       onScreen = entry.isIntersecting;
@@ -460,7 +512,7 @@ export function Waterfall({ counts, start, annotations = [], height = 176, summa
   const hf = active !== null ? (freshBins[active] ?? 0) : 0;
   const describe = (b: Bin<number[]>, nf = 0) => {
     const range = binRange(b.from, b.hours);
-    const recent = nf > 0 ? `, ${fmtInt(nf)} ${NEW_LABEL.toLowerCase()}` : '';
+    const recent = nf > 0 ? `, ${fmtInt(nf)} ${NEW_LABEL.toLowerCase()} in the last 72 hours` : '';
     return { range, text: `${range}: ${ORDER.map((t, k) => `${fmtInt(b.c[k])} ${TIER_META[t].label.toLowerCase()}`).join(', ')}${recent}` };
   };
   const info = hb && interactive ? dayInfo(hb) : null;

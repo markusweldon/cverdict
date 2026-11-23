@@ -153,7 +153,8 @@ export function setQuery(updates: Readonly<Record<string, string | null>>): void
     if (v === null || v === '') params.delete(k);
     else params.set(k, v);
   }
-  const qs = params.toString();
+  // Commas are fine in a query and keep lists readable: ?sev=critical,high, not critical%2Chigh.
+  const qs = params.toString().replace(/%2C/gi, ',');
   const next = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
   if (next !== window.location.pathname + window.location.search + window.location.hash) {
     history.replaceState(history.state, '', next);

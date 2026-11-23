@@ -78,6 +78,8 @@ export interface NormalizedCve {
   adpKev: { dateAdded: string | null; reference: string | null } | null;
   cwe: string[];
   affected: { vendor: string; product: string; purl: string | null }[];
+  /** CPE 2.3 names from the CNA's affected entries (≤ 10), for the edge device check only. Optional in fixtures. */
+  cpes?: string[];
   tags: string[];
   references: string[];
   /** Matched AI credit text (≤ 80 chars), if any. */
@@ -203,6 +205,10 @@ export interface History {
   reserved: Map<string, number>;
   rejected: Map<string, number>;
   ai: Map<string, number>;
+  /** Published records per month by CVSS band (SEVERITY_BANDS order). Absent in older fixtures. */
+  bands?: Map<string, number[]>;
+  /** The same per CNA (assignerShortName), for surge.json cnas. */
+  cnaBands?: Map<string, Map<string, number[]>>;
   totalRecords: number;
 }
 
