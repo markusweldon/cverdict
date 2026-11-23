@@ -126,6 +126,35 @@ describe('events.json across runs', () => {
     expect(r2.file.items.map((i) => i.id)).toEqual([`kev_added:${D}`]);
   });
 
+  it('reports no chip or tier moves while an exploit feed is down, nor when it comes back', async () => {
+    const T4 = new Date(NOW.getTime() + 3 * HOUR);
+    // Run 1: A has a Metasploit module (Likely next).
+    const r1 = await runAt('r1', T1, { metasploit: { [A]: [msf('exploit/a')] } }, null);
+    // Run 2: Metasploit has no usable copy. A loses its chip and tier; C's "no exploit" turns unknown.
+    const r2 = await runAt('r2', T2, { down: ['metasploit'] }, r1.out);
+    expect(r2.file.items).toEqual([]);
+    expect(r2.built.notes.some((n) => /baseline: sources down this run: metasploit/.test(n))).toBe(true);
+    // Run 3: back. A's module and its tier return: not news, and not remembered.
+    const r3 = await runAt('r3', T3, { metasploit: { [A]: [msf('exploit/a')] } }, r2.out);
+    expect(r3.file.items).toEqual([]);
+    expect(r3.built.notes.some((n) => /down last run: metasploit/.test(n))).toBe(true);
+    expect(Object.keys(readSection(loadState(r3.out), EVENTS_SECTION)!.keys).filter((k) => k.includes(A))).toEqual([]);
+    // Run 4: healthy on both sides. A real new module for C is reported.
+    const r4 = await runAt('r4', T4, { metasploit: { [A]: [msf('exploit/a')], [C]: [msf('exploit/c')] } }, r3.out);
+    expect(r4.file.items.map((i) => i.id)).toEqual([`metasploit_module:${C}`]);
+  });
+
+  it('reports no tier moves or fast lane chips while CISA KEV is down, nor when it comes back', async () => {
+    const kev = [makeKev(B, { dateAdded: dateAgo(2), vendorProject: 'Fortinet', product: 'FortiOS' })];
+    const r1 = await runAt('r1', T1, { kev }, null);
+    expect(r1.file.items.map((i) => i.id)).toEqual([`kev_added:${B}`]);
+    const r2 = await runAt('r2', T2, { down: ['kev'] }, r1.out);
+    const r3 = await runAt('r3', T3, { kev }, r2.out);
+    // B is back in Exploited: the old KEV item is carried, nothing else is emitted.
+    expect(r3.file.items.map((i) => i.id)).toEqual([`kev_added:${B}`]);
+    expect(r3.file.items[0].at).toBe(r1.file.items[0].at);
+  });
+
   it('emits nothing for the diff types on a first run', async () => {
     const r1 = await runAt('r1', T1, { metasploit: { [A]: [msf('exploit/x')] } }, null);
     expect(r1.file.items).toEqual([]);
@@ -207,6 +236,23 @@ describe('buildEvents', () => {
     expect(first.file.items.map((i) => [i.id, i.at, i.backfill])).toEqual([[`metasploit_module:${B}`, daysAgo(2).replace(/\.\d+Z$/, 'Z'), true]]);
     // Seen before (in state): never again.
     expect(buildEvents({ ...base, woke, previous: [], previousState: normal.state }).file.items).toEqual([]);
+  });
+
+  it('holds back woke signals dated before the previous run when a source was down (wokeAfter)', () => {
+    const s = score(makeCve({ id: B, published: '2019-03-01T00:00:00.000Z', inWindow: false }), { nuclei: { [B]: [] } });
+    const row = toRow(s);
+    const old = { kind: 'nuclei' as const, at: daysAgo(4), first_seen: true, label: 'first Nuclei template', source: 'nuclei' as const, url: null };
+    const recent = { ...old, kind: 'exploitdb' as const, at: daysAgo(0.01), source: 'exploitdb' as const, label: 'first Exploit-DB entry (EDB-1)' };
+    const base = input({ byId: new Map([[B, s]]), rows: new Map([[B, row]]) });
+    const woke = { ...base.woke, items: [{ id: B, at: recent.at, signals: [old, recent], row }] };
+    const held = buildEvents({ ...base, woke, previous: [], wokeAfter: daysAgo(0.5) });
+    // Only the signal dated after the previous run counts; the older one is not remembered.
+    expect(held.file.items.map((i) => i.id)).toEqual([`exploitdb_entry:${B}`]);
+    expect(Object.keys(held.state.keys)).toEqual([`exploitdb_entry:${B}`]);
+    expect(held.notes.some((n) => /1 woke signals dated before the previous run held back/.test(n))).toBe(true);
+    // A healthy run later reports the older one, if woke.json still lists it.
+    const later = buildEvents({ ...base, woke, previous: held.file.items, previousState: held.state });
+    expect(later.added.map((i) => i.id)).toEqual([`nuclei_template:${B}`]);
   });
 
   it('keeps every urgent event in a full feed, newest first', () => {

@@ -307,6 +307,14 @@ ones (KEV dateAdded, a catalog's listing date, an old CVE's first Exploit-DB ent
 taken back to their upstream date with `backfill: true`. A missed run loses nothing: the next one
 compares with the last published data (`previous_at` shows the gap).
 
+The comparison types also start from a baseline when the previous run used another score model,
+or when a source the score reads was down in this run or the previous one. A down exploit feed
+turns "no exploit" into "unknown", so scores rise, and its return brings the chips back: neither
+is news. KEV and catalog listings are still reported. The cost: a real move in the hour of an
+outage, or the hour after, is not reported as an event (the CVE page still shows it). In those
+runs, and when `woke.json` skipped a check, an old CVE's first artifact only counts when it is
+dated after the previous run, since `woke.json` may then list CVEs it would normally leave out.
+
 `catalogs.kev` and `catalogs.eu_kev` say which CISA KEV and EU KEV entries the run saw: `count`,
 `ids_sha256` (SHA-256 of the sorted, upper-cased CVE ids, one per line, each ending in a newline)
 and `fetched_at`. The fast check between hourly runs compares them with upstream

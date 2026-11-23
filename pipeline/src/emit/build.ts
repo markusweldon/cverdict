@@ -289,12 +289,14 @@ export function buildOutput({
   const status = (id: SourceId) => ing.sources.find((x) => x.id === id);
   const kevStatus = status('kev');
   const euStatus = status('eu-kev');
+  const health = eventsHealth(previous, unavailable, woke.file, runDiff?.previousAt ?? null);
   const events = buildEvents({
     now,
     byId,
     rows: rowById,
     diff: runDiff,
-    baseline: modelChange(previous),
+    baseline: health.baseline,
+    wokeAfter: health.wokeAfter,
     previous: readPreviousEvents(previous),
     previousState: readSection(previousState, EVENTS_SECTION),
     kev: ing.kev,
@@ -329,6 +331,58 @@ export function buildOutput({
     .slice(0, TOP_SUMMARY)
     .map(toRow);
   return { files, meta, batches, top, scored, woke: woke.file, receipts, packages, events: events.file, notes };
+}
+
+/** The scoring sources that were down in the previous run (from its meta.json), by name. */
+export function previousSourcesDown(previous: string | null): string[] {
+  if (!previous) return [];
+  try {
+    const meta = JSON.parse(readFileSync(join(previous, PATHS.meta), 'utf8')) as { sources?: unknown };
+    if (!Array.isArray(meta.sources)) return [];
+    const valid = meta.sources.filter((s): s is SourceStatus => typeof s === 'object' && s !== null && typeof s.id === 'string' && typeof s.ok === 'boolean');
+    return [...unavailableSources(valid).values()];
+  } catch {
+    return [];
+  }
+}
+
+/** Whether the previous run's woke.json could not check some signals (its `skipped`). */
+function previousWokeSkipped(previous: string | null): boolean {
+  if (!previous) return false;
+  try {
+    const w = JSON.parse(readFileSync(join(previous, PATHS.woke), 'utf8')) as { skipped?: unknown };
+    return Array.isArray(w.skipped) && w.skipped.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * How far this run's events can trust the comparison with the previous run.
+ *
+ * `baseline`: the chip and tier comparison starts from a baseline when the score model changed, or
+ * when a scoring source was down in this run or the previous one. A down exploit feed turns "no
+ * exploit" into "unknown" (scores rise), and its return brings the chips back: neither is news.
+ *
+ * `wokeAfter`: when a source was down or woke.json skipped a check, in either run, woke.json can
+ * list CVEs it would normally leave out (their older evidence could not be seen). Woke events
+ * then only count when the signal is dated after the previous run.
+ */
+export function eventsHealth(
+  previous: string | null,
+  unavailable: ReadonlyMap<SourceId, string>,
+  woke: WokeFile,
+  previousAt: string | null,
+): { baseline: string | null; wokeAfter: string | null } {
+  const model = modelChange(previous);
+  const nowDown = [...unavailable.values()];
+  const prevDown = previousSourcesDown(previous);
+  const parts: string[] = [];
+  if (nowDown.length) parts.push(`down this run: ${nowDown.join(', ')}`);
+  if (prevDown.length) parts.push(`down last run: ${prevDown.join(', ')}`);
+  const baseline = model ?? (parts.length ? `sources ${parts.join('; ')}` : null);
+  const wokeUnsure = parts.length > 0 || woke.skipped.length > 0 || previousWokeSkipped(previous);
+  return { baseline, wokeAfter: wokeUnsure && previousAt ? previousAt : null };
 }
 
 /** "score model v0.3.0 → v0.4.0" when the previous run scored with another model, else null. */

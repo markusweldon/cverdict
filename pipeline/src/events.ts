@@ -23,6 +23,10 @@
  * EVENTS_KEY_DAYS in the `events` section of state.json, so an item dropped by the cap is never
  * emitted again while its dated cause is still in the period. `at` never changes.
  *
+ * Outages: a scoring source down in this run or the previous one makes the chip and tier
+ * comparison start from a baseline (like a score model change), and holds back woke signals dated
+ * before the previous run (see `wokeAfter`). KEV and catalog listings are still reported.
+ *
  * First runs: without a previous tree there is no diff, so the diff types start from a baseline.
  * Without a previous events.json (first run, or the first deploy of this file), the dated types
  * are backfilled with `at` = their upstream date and `backfill: true`, so old news is never stamped
@@ -157,6 +161,12 @@ export interface EventsInput {
    * another score model: its moves are the model's, not new evidence. Null to compare as usual.
    */
   baseline?: string | null;
+  /**
+   * When set (an ISO instant, the previous run's time), woke.json may list CVEs it would normally
+   * leave out, because a source was down or a check was skipped: only woke signals dated after it
+   * count, and the others are not remembered, so a healthy run can still report them.
+   */
+  wokeAfter?: string | null;
   /** Items of the previous events.json, or null when there was none. */
   previous: EventItem[] | null;
   previousState: EventsState | null;
@@ -311,6 +321,8 @@ export function buildEvents(input: EventsInput): EventsOutput {
   }
 
   // Old CVEs whose first exploit artifact arrived in the period (woke.json).
+  const wokeAfterMs = input.wokeAfter ? Date.parse(input.wokeAfter) : null;
+  let wokeHeld = 0;
   for (const it of woke.items) {
     for (const sig of it.signals) {
       const type = WOKE_TYPES[sig.kind];
@@ -322,6 +334,10 @@ export function buildEvents(input: EventsInput): EventsOutput {
         touched.add(key);
         continue;
       }
+      if (wokeAfterMs !== null && !(Date.parse(at) > wokeAfterMs)) {
+        wokeHeld++;
+        continue;
+      }
       const when = dated(sig.at);
       if (!when) {
         touched.add(key);
@@ -330,6 +346,8 @@ export function buildEvents(input: EventsInput): EventsOutput {
       push({ key, type, cve: it.id, ...when, phrase: WOKE_PHRASE[type], via: sig.source, url: sig.url, detail: `Published ${dayLabel(it.row.pub, now)}. ${sentence(sig.label)}` });
     }
   }
+
+  if (wokeHeld) notes.push(`${wokeHeld} woke signals dated before the previous run held back: a source was down or a check skipped`);
 
   // One candidate per key (the first wins), never one already seen.
   const fresh = new Map<string, Candidate>();
