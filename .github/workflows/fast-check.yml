@@ -7,8 +7,11 @@
 name: fast-check
 
 on:
+  # GitHub's cron is best effort (in this repository the hourly one fires a few times a day), so
+  # the reliable trigger is the external timer dispatching this workflow every 15 minutes
+  # (docs/DEPLOY.md). The schedule is the backup. The script times the hour from the runs, not
+  # from the minute it starts at.
   schedule:
-    # The :50 slot is left out: the hourly run starts at :47.
     - cron: '5,20,35 * * * *'
   workflow_dispatch:
 

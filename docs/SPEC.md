@@ -393,15 +393,19 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
 
   Dispatch inputs: `reason` (default `manual`) and `fresh` (`none` or `eu-kev`). The run name carries both, so
   the fast check can find its own runs.
-- **Fast check.** `fast-check.yml` at :05, :20 and :35 (`actions: write`, `contents: read`; sparse checkout of
-  `scripts/fast-check.sh`, which uses bash, curl, jq and gh only). It compares CISA KEV, asked with
-  `If-Modified-Since` = `catalogs.kev.fetched_at` of the published `events.json`, and on the :05 tick ENISA's EU KEV
-  dump, with the published id hashes, and dispatches `refresh.yml` (`reason=fast-check`, `fresh=eu-kev` when EU
-  KEV changed). It skips while a refresh is queued or running, in minutes 40 to 49, within 45 minutes of its own
-  last dispatch (EU KEV: 20 hours), and when a successful refresh started after CISA's `Last-Modified`. Errors are
-  warnings with exit 0. It never writes data.
+- **Fast check.** `fast-check.yml`, dispatched every 15 minutes by the external timer, with a backup schedule at
+  :05, :20 and :35 (`actions: write`, `contents: read`; sparse checkout of `scripts/fast-check.sh`, which uses bash,
+  curl, jq and gh only). It compares CISA KEV, asked with `If-Modified-Since` = `catalogs.kev.fetched_at` of the
+  published `events.json`, and once an hour (10 to 25 minutes after the hourly run started) ENISA's EU KEV dump,
+  with the published id hashes, and dispatches `refresh.yml` (`reason=fast-check`, `fresh=eu-kev` when EU KEV
+  changed). The hour is timed from the newest hourly timer run, else minute 47, never the run's own start minute.
+  It skips while a refresh is queued or running, when the next hourly run is due within 10 minutes, within 45
+  minutes of its own last dispatch (EU KEV: 20 hours), when a successful refresh started after CISA's
+  `Last-Modified`, and, for an answer without `Last-Modified` (the mirror), when a successful refresh started after
+  its own dispatch of the last 3 hours. Upstream text is printed on one line. Errors are warnings with exit 0. It
+  never writes data.
 - **Vercel.** `vercel.json`: build `npm run build`, output `site/dist`; rewrites `/feeds/v/<slug>.xml` to
-  `api/feed.ts` (unless the request sets `v` itself), `/data/:path+` and the feed files
+  `api/feed.ts` (unless the request sets `v` itself) and any other `/feeds/v/` path to the same function (a 404), `/data/:path+` and the feed files
   `/feeds/*.xml|ics` to `https://raw.githubusercontent.com/<repo>/data/...`, then a last catch-all SPA fallback
   `/(.*)` → `/index.html` (rewrites apply after static files, so `/feeds` is the Feeds & API page); security headers
   (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'`).
@@ -415,8 +419,9 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
   `<raw>/v1/events.json` (1.5 s deadline, 1 MB cap, ETag revalidation after 5 minutes, last good copy when raw
   fails): the events whose vendor or product slug matches (`shared/slug.ts`), at most 50 and 64 KB, as Atom with the
   same entries as `events.xml`. CDN cache until shortly after the next hourly publish (120 to 1800 s), ETag and 304,
-  400 for a bad slug (cached a day), 503 with `Retry-After` when there is no data. The `Cache-Control` header rule
-  of `vercel.json` does not match `/feeds/v/*`, so the function's own caching stands.
+  404 for a bad slug (the CDN keeps it a day), 503 with `Retry-After` when there is no data (not cached). Every
+  other path under `/feeds/v/` also goes to the function and gets the 404, never the SPA. The `Cache-Control`
+  header rule of `vercel.json` does not match `/feeds/v/*`, so the function's own caching stands.
 - **CI.** `ci.yml` on push/PR: `npm ci`, `npm run typecheck`, both functions checked and imported as Node
   ESM, `npm test`, `npm run build` and a check of the built share block, `npm run build:mcp` and an MCP smoke test of
   the bundle on mock data (`mcp/test/smoke.ts`), `shellcheck`, the data-branch publisher test and the `vercel.json`

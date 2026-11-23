@@ -12,11 +12,17 @@
 # (If-Modified-Since = catalogs.kev.fetched_at), and every answer is compared by a hash of the
 # sorted CVE ids, the same as pipeline/src/events.ts idsHash().
 #
+# Timing comes from the runs, not from the clock minute this run happens to start at (GitHub's
+# cron is late and irregular): the hour's phase is the time since the newest hourly timer run
+# (a workflow_dispatch that is not ours, in the last 2 hours), else since minute 47.
+#
 # Stops without dispatching when:
-#   - a refresh run is queued or running (it will see the change), or the minute is 40 to 49
-#     (the hourly run starts at :47);
+#   - a refresh run is queued or running (it will see the change), or the next hourly run is due
+#     within 10 minutes;
 #   - a fast-check dispatch is younger than 45 minutes (EU KEV: 20 hours);
-#   - the newest successful refresh started after CISA's Last-Modified (it saw this version).
+#   - the newest successful refresh started after CISA's Last-Modified (it saw this version), or,
+#     for an answer without Last-Modified (the GitHub mirror), after our own dispatch of the last
+#     3 hours (that run saw upstream, and the ids still differ: dispatching again would loop).
 # Any network or API error is a warning and exit 0: the hourly run is the safety net.
 #
 # bash, curl, jq, sha256sum and gh only. Environment (all optional; tests set them):
@@ -25,7 +31,8 @@
 #   EU_KEV_URL      ENISA's dump
 #   GH              gh binary (default gh)
 #   NOW             epoch seconds (default: now)
-#   CHECK_EU        1 to check EU KEV whatever the minute (default: only in minutes 00 to 14)
+#   CHECK_EU        1 to check EU KEV whatever the phase (default: once an hour, 10 to 25 minutes
+#                   after the hourly run started, when it has published)
 #   DRY_RUN         1 to report without dispatching
 set -euo pipefail
 
@@ -43,7 +50,9 @@ readonly now
 work=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/fast-check.XXXXXX")
 trap 'rm -rf -- "$work"' EXIT
 
-note() { printf '%s\n' "$*"; printf -- '- %s\n' "$*" >>"$SUMMARY"; }
+# One line each: newlines and carriage returns become spaces, so no text can start a workflow command.
+one_line() { local s=${1//$'\r'/ }; printf '%s' "${s//$'\n'/ }"; }
+note() { printf '%s\n' "$(one_line "$*")"; printf -- '- %s\n' "$(one_line "$*")" >>"$SUMMARY"; }
 # Workflow commands; % and newlines are escaped so upstream text cannot inject more.
 esc() { local s=${1//%/%25}; s=${s//$'\r'/%0D}; printf '%s' "${s//$'\n'/%0A}"; }
 warn() { printf '::warning title=Fast check::%s\n' "$(esc "$*")"; printf -- '- Warning: %s\n' "$*" >>"$SUMMARY"; }
@@ -63,12 +72,6 @@ eu_ids() { jq -c '[.[]? | objects | select((.sources | type) == "array" and any(
 
 echo "### Fast check" >>"$SUMMARY"
 
-minute=$((10#$(date -u -d "@$now" +%M)))
-if ((minute >= 40 && minute < 50)); then
-  note "Minute $minute: the hourly refresh starts at :47; nothing to do."
-  exit 0
-fi
-
 # 1. Refresh runs: skip while one is pending, and rate-limit our own dispatches.
 if ! runs=$("$GH" run list --workflow "$WORKFLOW" --limit 30 --json status,conclusion,event,createdAt,displayTitle 2>"$work/gh.err"); then
   warn "Could not list $WORKFLOW runs: $(head -n 1 "$work/gh.err")"
@@ -80,7 +83,21 @@ if ((pending > 0)); then
   exit 0
 fi
 since() { jq -r --argjson now "$now" --argjson secs "$1" --arg tag "$2" '[.[] | select(.event == "workflow_dispatch" and (.displayTitle | contains($tag)) and ($now - (.createdAt | sub("\\.[0-9]+"; "") | fromdateiso8601) < $secs))] | length' <<<"$runs"; }
-last_ok=$(jq -r '[.[] | select(.conclusion == "success") | .createdAt | sub("\\.[0-9]+"; "") | fromdateiso8601] | max // 0' <<<"$runs")
+started() { jq -r "[.[] | select($1) | .createdAt | sub(\"\\\\.[0-9]+\"; \"\") | fromdateiso8601] | max // 0" <<<"$runs"; }
+last_ok=$(started '.conclusion == "success"')
+last_ours=$(started '.event == "workflow_dispatch" and (.displayTitle | contains("fast-check"))')
+timer=$(started '.event == "workflow_dispatch" and (.displayTitle | contains("fast-check") | not)')
+if ((timer > 0 && now - timer < 7200)); then
+  phase=$(((now - timer) % 3600))
+  anchor="the last hourly run"
+else
+  phase=$(((now - 47 * 60) % 3600))
+  anchor="minute 47"
+fi
+if ((phase >= 3000)); then
+  note "The next hourly refresh is due in $(((3600 - phase + 59) / 60)) minutes (from $anchor); nothing to do."
+  exit 0
+fi
 
 # 2. What the last published run saw.
 if ! curl -fsS -m 20 -A "$UA" -o "$work/events.json" "$RAW_BASE/v1/events.json" 2>"$work/curl.err"; then
@@ -122,9 +139,12 @@ if jq -e '.catalogs.kev.ids_sha256 | type == "string"' "$work/events.json" >/dev
         if ((lm > 0 && last_ok > lm + 300)); then
           kev_state=same
           note "CISA KEV: ids differ from the snapshot, but a successful refresh started after this version ($modified); not dispatching."
+        elif ((lm == 0 && last_ours > 0 && now - last_ours < 10800 && last_ok > last_ours)); then
+          kev_state=same
+          note "CISA KEV: $url sends no Last-Modified and its ids differ, but a successful refresh started after our dispatch of the last 3 hours; not dispatching."
         else
           kev_state=changed
-          newest=$(jq -r '[.vulnerabilities[]? | objects | select((.dateAdded | type) == "string")] | sort_by(.dateAdded) | reverse | .[:5] | map("\(.cveID) (\(.dateAdded))") | join(", ")' "$work/kev.json")
+          newest=$(jq -r '[.vulnerabilities[]? | objects | select((.cveID | type) == "string" and (.cveID | test("^CVE-[0-9]{4}-[0-9]{4,}$")) and (.dateAdded | type) == "string" and (.dateAdded | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")))] | sort_by(.dateAdded) | reverse | .[:5] | map("\(.cveID) (\(.dateAdded))") | join(", ")' "$work/kev.json")
           note "CISA KEV changed: $n CVEs upstream, $count published. Newest: $newest."
           changed+=(kev)
         fi
@@ -136,8 +156,8 @@ if jq -e '.catalogs.kev.ids_sha256 | type == "string"' "$work/events.json" >/dev
   [[ $kev_state == unknown ]] && warn "CISA KEV: no source answered; the hourly run will catch up."
 fi
 
-# 4. ENISA EU KEV: no validators and a daily refresh, so only once an hour.
-if [[ ${CHECK_EU:-} == 1 ]] || ((minute < 15)); then
+# 4. ENISA EU KEV: no validators and a daily refresh, so only once an hour, after the hourly run.
+if [[ ${CHECK_EU:-} == 1 ]] || ((phase >= 600 && phase < 1500)); then
   if jq -e '.catalogs.eu_kev.ids_sha256 | type == "string"' "$work/events.json" >/dev/null; then
     want=$(jq -r '.catalogs.eu_kev.ids_sha256' "$work/events.json")
     count=$(jq -r '.catalogs.eu_kev.count' "$work/events.json")

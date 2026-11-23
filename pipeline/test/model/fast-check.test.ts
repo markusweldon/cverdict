@@ -173,13 +173,55 @@ describe('scripts/fast-check.sh', () => {
     const pending = await check(AT_20, [{ status: 'in_progress', conclusion: '', event: 'schedule', createdAt: ago(AT_20, 3), displayTitle: 'refresh-data (schedule)' }]);
     expect(pending.stdout).toContain('queued or running');
     expect(hits).toEqual([]);
+    // No hourly run to go by: the timer's minute 47. At 17:45 it is 2 minutes away.
     const late = await check(AT_45);
-    expect(late.stdout).toContain(':47');
+    expect(late.stdout).toContain('The next hourly refresh is due in 2 minutes (from minute 47)');
     routes['/raw/v1/events.json'] = send({ schema_version: 1, items: [] });
     const old = await check(AT_20);
     expect(old.stdout).toContain('no catalog snapshot yet');
     const none = await check(AT_20, [], {});
     expect(none.dispatched).toEqual([]);
+  });
+
+  it('times the hour from the last hourly run, not from the minute it happens to start at', async () => {
+    // The timer ran at 17:30 (late). At 17:45 the next one is 45 minutes away, and EU KEV is due.
+    const timer = { status: 'completed', conclusion: 'success', event: 'workflow_dispatch', createdAt: '2026-11-23T17:30:00Z', displayTitle: 'refresh-data (manual, none)' };
+    const at45 = await check(AT_45, [timer]);
+    expect(at45.stdout).not.toContain('due in');
+    expect(hits).toContain('/eu');
+    // At 18:22 the next timer run is 8 minutes away.
+    const at22 = await check(AT_20 + 3600 + 120, [timer]);
+    expect(at22.stdout).toContain('The next hourly refresh is due in 8 minutes (from the last hourly run)');
+    // A run of ours does not move the hour; neither does an hourly run older than 2 hours.
+    hits = [];
+    const ours = { ...timer, createdAt: '2026-11-23T17:00:00Z', displayTitle: 'refresh-data (fast-check, none)' };
+    const old = { ...timer, createdAt: '2026-11-23T14:00:00Z' };
+    await check(AT_20, [ours, old]);
+    expect(hits).not.toContain('/eu');
+  });
+
+  it('does not loop on a mirror without Last-Modified once our refresh has seen upstream', async () => {
+    routes['/kev'] = down;
+    routes['/mirror'] = send(kevDoc([...KEV_IDS, 'CVE-2026-5555']));
+    const ours = { status: 'completed', conclusion: 'success', event: 'workflow_dispatch', createdAt: ago(AT_20, 60), displayTitle: 'refresh-data (fast-check, none)' };
+    const later = { ...ours, event: 'schedule', createdAt: ago(AT_20, 50), displayTitle: 'refresh-data (schedule)' };
+    const r = await check(AT_20, [ours, later]);
+    expect(r.dispatched).toEqual([]);
+    expect(r.stdout).toContain('sends no Last-Modified');
+    // Our dispatch failed, or nothing has run since it: try again (after the 45 minutes).
+    const failed = await check(AT_20, [{ ...ours, conclusion: 'failure' }]);
+    expect(failed.dispatched).toHaveLength(1);
+  });
+
+  it('keeps upstream text on one line, so it cannot start a workflow command', async () => {
+    const doc = kevDoc([...KEV_IDS, 'CVE-2026-4444']);
+    doc.vulnerabilities.push({ cveID: 'CVE-2026-1\n::error::forged', dateAdded: '2026-11-30', vendorProject: 'x', product: 'y' });
+    doc.vulnerabilities.push({ cveID: 'CVE-2026-6666', dateAdded: '2026-11-29\n::stop-commands::z', vendorProject: 'x', product: 'y' });
+    routes['/kev'] = send(doc, { 'last-modified': 'Mon, 23 Nov 2026 17:01:00 GMT' });
+    const r = await check(AT_20, [], { DRY_RUN: '1' });
+    expect(r.stdout).toContain('Newest: CVE-2026-4444 (2026-11-13)');
+    expect(r.stdout.split('\n').filter((l) => l.startsWith('::') && !l.startsWith('::warning title=Fast check::'))).toEqual([]);
+    expect(r.stdout).not.toContain('forged');
   });
 
   it('rate-limits its own dispatches to one per 45 minutes', async () => {
