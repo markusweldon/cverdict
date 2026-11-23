@@ -117,11 +117,11 @@ export function MonthlyChart({ monthly, generatedAt, surge: surgeProp }: Monthly
   const sel = activeCnas(view, idx);
   const filtersOff = view.count === 'reserved';
   const filterNote = filtersOff
-    ? 'Filters count by publication month, so they are off for Reserved.'
+    ? 'Filters count published CVEs. Switch Count to Published to use them.'
     : surgeProp === null
-      ? 'Loading the filters.'
+      ? 'Loading the filters…'
       : !series.filtersReady
-        ? 'Filters need newer data than this copy has.'
+        ? 'Filters arrive with the next hourly data update.'
         : '';
   const bands = SEVERITY_BANDS.map((b, k) => ({ b, k })).filter(({ b }) => !view.sev.length || view.sev.includes(b));
 
@@ -395,7 +395,7 @@ export function MonthlyChart({ monthly, generatedAt, surge: surgeProp }: Monthly
                   Excluding <strong>{c.label}</strong> ×
                 </button>
               ))}
-            {filterNote && <span class="mc__note">{filterNote}</span>}
+            {filterNote && <span class="mc__note mc__note--why" role="status">{filterNote}</span>}
             {stacked && view.log && <span class="mc__note">Log scale is off while stacked.</span>}
             <span class="mc__hint">Drag across the chart to zoom.</span>
           </div>

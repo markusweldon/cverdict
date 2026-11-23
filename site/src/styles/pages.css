@@ -2982,6 +2982,11 @@ circle.dc__kev {
   font-size: 12px;
 }
 
+/* Why the filters above are greyed out: readable, not hint-grey. */
+.mc__note--why {
+  color: var(--text);
+}
+
 .mc__dot {
   display: inline-block;
   width: 8px;
