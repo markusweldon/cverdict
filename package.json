@@ -22,7 +22,7 @@
     "brand": "tsx tools/brand/build.ts"
   },
   "dependencies": {
-    "preact": "^11.0.2"
+    "preact": "^11.2.0"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",
