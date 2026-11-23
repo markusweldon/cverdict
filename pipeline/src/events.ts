@@ -340,7 +340,8 @@ export function buildEvents(input: EventsInput): EventsOutput {
   const added: EventItem[] = [...fresh.values()].map((c) => {
     const s = byId.get(c.cve)!;
     const row = rows.get(c.cve)!;
-    const product = `${row.v} ${row.p}`.replace(/\s+/g, ' ').trim();
+    // "Gitblit Gitblit" reads as "Gitblit"; "Fortinet FortiOS" stays.
+    const product = (row.p.toLowerCase().startsWith(row.v.toLowerCase()) ? row.p : `${row.v} ${row.p}`).replace(/\s+/g, ' ').trim();
     return {
       id: c.key,
       at: c.at,
