@@ -8,7 +8,8 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 
 1. **Static and forkable.** The site and the data need no server, no accounts and no API keys. An hourly GitHub
    Actions job builds JSON; the site is a static SPA that reads it. Anyone can fork and run their own copy. One
-   optional Vercel Function serves link-preview bots only (`api/share.ts`); people never reach it. The MCP server
+   optional Vercel Function serves link-preview bots only (`api/share.ts`); people never reach it. A second one
+   (`api/feed.ts`) renders per-vendor Atom feeds from the public `events.json`. The MCP server
    (`mcp/`) runs on the user's own machine and reads the same static files; nothing on the site depends on it.
 2. **NVD-independent.** NIST stopped enriching most CVEs in April 2026. We use CVE List V5 (CNA + CISA-ADP
    containers), CISA KEV, EPSS and public exploit feeds.
@@ -24,7 +25,8 @@ weights and chip catalogue are `shared/model.ts`. Read all three first.
 shared/            contract.ts  model.ts  edge.ts  shard.ts  brand.ts  cna.ts   (imported by both sides; no Node/DOM APIs)
                    verdict.ts  share.ts  share-images.ts        (verdict words and link-preview tags; .js imports)
                    versions.ts  packages.ts  mcp.ts             (version ranges and package keys; MCP copy)
-api/               share.ts   (Vercel Function for link-preview bots; tests in api/_test/)
+                   atom.ts  slug.ts                             (Atom rendering and feed slugs; .js imports)
+api/               share.ts  feed.ts  _http.ts   (Vercel Functions: link previews, vendor feeds; tests in api/_test/)
 tools/og/          render.mjs (renders site/public/og/*.png by hand; own package.json and lockfile)
 pipeline/
   src/
@@ -37,7 +39,7 @@ pipeline/
     sources/               cvelist.ts  kev.ts  catalogs.ts  epss.ts  metasploit.ts  nuclei.ts  exploitdb.ts  poc.ts  osv.ts
     normalize.ts           CVE v5 JSON → NormalizedCve (internal type)
     score.ts               NormalizedCve + Enrichment → { score, tier, reasons, unknowns }
-    batches.ts  stats.ts  changes.ts  woke.ts  receipts.ts  packages.ts  backtest.ts  state.ts  rows.ts  types.ts
+    batches.ts  stats.ts  changes.ts  events.ts  woke.ts  receipts.ts  packages.ts  backtest.ts  state.ts  rows.ts  types.ts
     emit/                  build.ts (every output file, in memory)  json.ts  atom.ts  ics.ts
     validate.ts            schema/budget/sanity checks on the emitted tree
   test/                    vitest; fixtures/ with small real-looking records (incl. XSS payloads)
@@ -46,13 +48,13 @@ site/
              written by the pipeline)
   src/       main.tsx  app.tsx  router.ts  data.ts  state.ts  format.ts  drill.ts  woke.ts  receipts.ts
              components/  pages/  styles/  check/ (SBOM and lockfile parsers, matching, session)
-.github/workflows/  ci.yml  refresh.yml  release-mcp.yml
+.github/workflows/  ci.yml  refresh.yml  fast-check.yml  release-mcp.yml
 mcp/                read-only MCP server for AI agents (stdio), reading the published files
   src/                     data.ts (bounded, cached reads)  tools.ts (the six tools)  server.ts (factory)  stdio.ts
   test/                    vitest: fake-fetch unit, protocol and spawn tests; smoke.ts (CI, on mock data)
   package.json  README.md  LICENSE  LICENSE-THIRD-PARTY  server.json (MCP Registry)   the cverdict-mcp package on npm (0.1.0 was published by
                            hand; later versions come from release-mcp.yml)
-scripts/            publish-data-branch.sh  mock-data.ts  validate-data.ts  calibrate.ts  backtest.ts  mcp-measure.ts
+scripts/            publish-data-branch.sh  fast-check.sh  mock-data.ts  validate-data.ts  calibrate.ts  backtest.ts  mcp-measure.ts
 docs/               SPEC.md  SCORING.md  DATA.md  DEPLOY.md
 vercel.json  README.md  ATTRIBUTIONS.md  LICENSE (MIT)  SECURITY.md  CONTRIBUTING.md
 ```
@@ -72,16 +74,18 @@ npm run pipeline -- [--out site/public/data] [--previous <dir with previous v1/ 
                     [--cvelist-dir <existing cvelistV5 git clone>] [--poc-dir <existing PoC-in-GitHub clone>]
                     [--nuclei-dir <existing nuclei-templates clone>]
                     [--osv-dir <dir>] [--now 2026-10-26T19:30:00Z] [--window-days 30] [--knob 50]
-                    [--refresh-backtest] [--offline]
+                    [--refresh-backtest] [--fresh eu-kev|none] [--offline]
 ```
 
 - `--out`: output root. Writes `<out>/v1/...` and `<out>/feeds/...`. Default `site/public/data`.
 - `--previous`: previous output root (the checked-out `data` branch). Used for `changes.json`, the carried
-  `v1/state.json` (Woke Up tracking, the Receipts log) and the carried backtest in `receipts.json`. Missing is fine:
+  `v1/state.json` (Woke Up tracking, the Receipts log, seen event ids), `events.json` and the carried backtest in `receipts.json`. Missing is fine:
   each starts fresh.
 - `--osv-dir`: read the OSV.dev dumps from `<dir>/<ecosystem>.zip` instead of downloading them.
 - `--knob`: default knob for stored tiers (30 to 80, default 50).
 - `--refresh-backtest`: recompute the hindsight backtest now instead of carrying it forward.
+- `--fresh`: download these sources now even when the cached copy is younger than its reuse interval. Only
+  `eu-kev` (`FRESH_SOURCES`); the fast check's dispatches pass it so a new EU KEV listing does not wait 6 hours.
 - `--cache`: cache dir. `<cache>/sources/` holds last-good raw downloads (+ `.meta.json` with etag/fetched_at);
   `<cache>/git/` holds clones.
 - `--cvelist-dir` / `--poc-dir` / `--nuclei-dir`: use an existing clone instead of cloning (local dev). Never modify it.
@@ -223,6 +227,15 @@ included, unknown-polarity chips excluded) for filtering.
 - **Changes:** compare with `<previous>/v1/index.json` (if present): an item when the tier rose, or a new E/X chip
   appeared. Rows outside the window join when CISA added them to KEV in the last 7 days (new if absent from the
   previous `kev.json`), or, when not in CISA KEV, when EU KEV or CIRCL first listed them as exploited in the last 7 days. Merge with previous `changes.json`, drop items older than 7 days, newest first, cap 500 (over the cap, moves into Exploited or Likely next are kept first).
+  The per-run comparison is `diffRuns()`, shared with events.
+- **Events** (`events.ts`): from `diffRuns()` (a chip new in `Row.r`, a tier rise into Likely next or Exploited),
+  CISA KEV entries dated in the last 7 days and absent from the previous `kev.json`, first exploited EU KEV or
+  CIRCL listings dated in those days, and the first exploit artifacts in `woke.json`. One event per stable id
+  (`<type>:<cve>`, `catalog_listed:<catalog>:<cve>`, `tier_up:<cve>:<tier>`), never emitted twice: the previous
+  `events.json` is carried forward and every id seen is kept for 14 days in the `events` state section. A tier move
+  and another event for the same CVE in one run are one item. 7 days, cap 1,000 (least urgent oldest first out).
+  No previous `events.json`: dated types are backfilled with their upstream date (`backfill: true`). Also records
+  `catalogs`: count and SHA-256 of the CISA KEV and EU KEV id sets, for the fast check.
 
 ### Emit (all JSON minified, UTF-8; `schema_version`, `generated_at` on every file)
 
@@ -236,6 +249,7 @@ v1/kev.json         KevFile
 v1/stats.json       StatsFile
 v1/surge.json       SurgeFile: published per month by CVSS band and top 30 CNA, KEV CVEs by publication month (optional; The Surge only)
 v1/changes.json     ChangesFile
+v1/events.json      EventsFile: verdict events of 7 days, stable ids, plus the KEV id snapshots (pipeline/src/events.ts)
 v1/woke.json        WokeFile: CVEs published before the window with new exploitation evidence in 30 days (pipeline/src/woke.ts)
 v1/receipts.json    ReceiptsFile: forward log of KEV catches (pipeline/src/receipts.ts) + hindsight backtest (pipeline/src/backtest.ts)
 v1/packages.json    PackagesFile: package versions the shard CVEs affect, from the OSV mirror (pipeline/src/packages.ts)
@@ -244,10 +258,11 @@ feeds/signal.xml    Atom: newest 100 exploited+likely CVEs (title "CVE-… · <v
 feeds/kev.xml       Atom: KEV additions, last 30 days
 feeds/kev-due.ics   iCalendar: one all-day VEVENT per KEV due date in [today-7d, +60d] (UID stable per CVE)
 feeds/woke.xml      Atom: up to 100 woke-up CVEs (KEV, catalog and Exploit-DB wakes first, PoC-only wakes only when Likely next or Exploited), one entry per CVE
+feeds/events.xml    Atom: up to 200 events (the five most urgent kinds first), entry id tag:…:cverdict/event/<event id>
 ```
 
 Budgets (gzip, checked by `validate.ts`; warn at 80%, fail at 150%): meta ≤ 8 KB, signal ≤ 120 KB, index ≤ 1 MB,
-each shard ≤ 80 KB, stats ≤ 80 KB, woke ≤ 64 KB, receipts ≤ 64 KB, packages ≤ 256 KB, state ≤ 1 MB, total files ≤ 300
+each shard ≤ 80 KB, stats ≤ 80 KB, woke ≤ 64 KB, events ≤ 48 KB, events.xml ≤ 64 KB, receipts ≤ 64 KB, packages ≤ 256 KB, state ≤ 1 MB, total files ≤ 300
 (full list: `BUDGETS` in `pipeline/src/config.ts`). XML/ICS must be escaped properly (no raw CVE text in markup).
 
 ## 3. Site
@@ -364,7 +379,7 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
   (docs/DEPLOY.md, "Reliable hourly refresh"); the schedule gate does not apply to dispatched runs. Jobs:
   - `build` (`contents: read`, `pages: read`): checkout → `npm ci` → detect Pages → restore `.cache/sources`
     (actions/cache, key per run, restore-keys prefix) → fetch the current `data` branch without a token into
-    `published/` (if it exists) → `npm run pipeline -- --out out --previous published --cache .cache` → save
+    `published/` (if it exists) → `npm run pipeline -- --out out --previous published --cache .cache --fresh <input>` → save
     cache → upload `out/` as an artifact.
   - `publish` (`contents: write`, the only job with a write token; runs no npm code): fresh checkout → download
     the artifact → `scripts/publish-data-branch.sh out` (orphan commit, force-push to `data`; skip when the
@@ -375,7 +390,18 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
     `actions/upload-pages-artifact` + `actions/deploy-pages`.
   - `watchdog`: checks the published `meta.json` for staleness and source health after every run that was not
     skipped by the schedule gate.
-- **Vercel.** `vercel.json`: build `npm run build`, output `site/dist`; rewrites `/data/:path+` and the feed files
+
+  Dispatch inputs: `reason` (default `manual`) and `fresh` (`none` or `eu-kev`). The run name carries both, so
+  the fast check can find its own runs.
+- **Fast check.** `fast-check.yml` at :05, :20 and :35 (`actions: write`, `contents: read`; sparse checkout of
+  `scripts/fast-check.sh`, which uses bash, curl, jq and gh only). It compares CISA KEV, asked with
+  `If-Modified-Since` = `catalogs.kev.fetched_at` of the published `events.json`, and on the :05 tick ENISA's EU KEV
+  dump, with the published id hashes, and dispatches `refresh.yml` (`reason=fast-check`, `fresh=eu-kev` when EU
+  KEV changed). It skips while a refresh is queued or running, in minutes 40 to 49, within 45 minutes of its own
+  last dispatch (EU KEV: 20 hours), and when a successful refresh started after CISA's `Last-Modified`. Errors are
+  warnings with exit 0. It never writes data.
+- **Vercel.** `vercel.json`: build `npm run build`, output `site/dist`; rewrites `/feeds/v/<slug>.xml` to
+  `api/feed.ts` (unless the request sets `v` itself), `/data/:path+` and the feed files
   `/feeds/*.xml|ics` to `https://raw.githubusercontent.com/<repo>/data/...`, then a last catch-all SPA fallback
   `/(.*)` → `/index.html` (rewrites apply after static files, so `/feeds` is the Feeds & API page); security headers
   (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'`).
@@ -385,7 +411,13 @@ connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-ur
   `index.html` with that CVE's `<title>`, description, Open Graph and Twitter tags between the share markers,
   built from its detail shard, under one 1.5 s deadline, and the static site card on any failure. The four tier
   images and the site card are static PNGs in `site/public/og/`. Details and costs: docs/DEPLOY.md.
-- **CI.** `ci.yml` on push/PR: `npm ci`, `npm run typecheck`, the link-preview function checked and imported as Node
+- **Vendor feeds.** `api/feed.ts` answers `/feeds/v/<slug>.xml` from the one constant URL
+  `<raw>/v1/events.json` (1.5 s deadline, 1 MB cap, ETag revalidation after 5 minutes, last good copy when raw
+  fails): the events whose vendor or product slug matches (`shared/slug.ts`), at most 50 and 64 KB, as Atom with the
+  same entries as `events.xml`. CDN cache until shortly after the next hourly publish (120 to 1800 s), ETag and 304,
+  400 for a bad slug (cached a day), 503 with `Retry-After` when there is no data. The `Cache-Control` header rule
+  of `vercel.json` does not match `/feeds/v/*`, so the function's own caching stands.
+- **CI.** `ci.yml` on push/PR: `npm ci`, `npm run typecheck`, both functions checked and imported as Node
   ESM, `npm test`, `npm run build` and a check of the built share block, `npm run build:mcp` and an MCP smoke test of
   the bundle on mock data (`mcp/test/smoke.ts`), `shellcheck`, the data-branch publisher test and the `vercel.json`
   JSON check.

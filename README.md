@@ -294,8 +294,14 @@ curl -s $BASE/cve/$shard.json | jq -r --arg id $id '.items[$id].reasons[] | "\(.
 Feeds: [Atom: Exploited + Likely next](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/signal.xml) ·
 [Atom: KEV additions](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev.xml) ·
 [Atom: old CVEs that woke up](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/woke.xml) ·
+[Atom: verdict events](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/events.xml) ·
 [iCalendar: KEV due dates](https://raw.githubusercontent.com/markusweldon/cverdict/data/feeds/kev-due.ics)
-(also served from the site under `/feeds/`). `woke.json` lists the old CVEs that woke up,
+(also served from the site under `/feeds/`). `events.json` says why verdicts moved in the last 7
+days (KEV and catalog listings, vendor reports, moves into Likely next or Exploited, new exploit
+modules), one event per stable id. For one vendor or product, subscribe to
+`https://cverdict.dev/feeds/v/<name>.xml` (for example `fortinet` or `palo-alto-networks`); the
+watchlist copies the URL. A check every 15 minutes starts a run as soon as CISA or ENISA list a new
+CVE. `woke.json` lists the old CVEs that woke up,
 `receipts.json` holds the Receipts figures with every hit and miss, and `packages.json` the package
 versions the tracked CVEs affect, which the Check Deps page compares with your file.
 
@@ -389,6 +395,7 @@ demo GIF from a running build. See [tools/brand/README.md](tools/brand/README.md
 - **CNA noise panel**: each CNA's volume over the years and how much of it reached KEV (The Surge
   already ranks the CNAs of the last 30 days).
 - **EPSS sparklines** on CVE pages and rows.
+- **MCP `changes_since`**: the verdict events since a given time, for agents, from `events.json`.
 - **Open Graph images** per CVE. Shared CVE links already carry the verdict, score, KEV and exploit status in
   their preview text, with an image per tier; an image with each CVE's own score may follow.
 

@@ -12,8 +12,10 @@ CVErdict is a static site plus a JSON data branch. Two pieces run independently:
 The site, the data and the workflows need no databases, accounts, API keys or repository secrets.
 The one exception is optional: the external timer in [Reliable hourly refresh](#reliable-hourly-refresh)
 needs a cron-job.org account and a GitHub token stored there. The only server-side
-code is one optional Vercel Function that link-preview bots reach and people never do (see
-[Link previews](#link-previews)); the site and the data work without it.
+code is two optional Vercel Functions: one that link-preview bots reach and people never do (see
+[Link previews](#link-previews)), and one that renders a feed of verdict events per vendor (see
+[Vendor feeds](#vendor-feeds)). The site and the data work without them. A
+[fast check](#fast-check) between hourly runs starts a run when CISA or ENISA list a new CVE.
 
 ## Vercel (recommended)
 
@@ -120,11 +122,64 @@ and look at the PNGs before committing them. The renderer has its own lockfile; 
 only change when the wording or the colours do. The `?v=` in their URLs is the start of each
 file's SHA-256, so chat apps that cache by URL fetch a changed image; a test checks it.
 
-Every file directly in `api/` becomes a Vercel Function, so the function's tests live in
-`api/_test/` (Vercel skips names that start with `_`).
+Every file directly in `api/` becomes a Vercel Function, so the functions' tests live in
+`api/_test/` and their shared code in `api/_http.ts` (Vercel skips names that start with `_`).
 
 GitHub Pages has no functions: links to a Pages copy show the site card, and its CVE pages are
 served with status 404 (see below).
+
+## Vendor feeds
+
+`/feeds/v/<name>.xml` is an Atom feed of the verdict events (`v1/events.json`) for one vendor or
+product, for apps that need a feed URL: a Slack or Teams feed app, a feed reader. The watchlist on
+Today copies the URL for each watched name. `vercel.json` rewrites it to `api/feed.ts`, before the
+static feed rule, and only when the request does not set `v` itself.
+
+- The function reads one constant URL, `<raw>/v1/events.json`: nothing from the request reaches a
+  URL or a header, redirects are errors, one 1.5 s deadline, 1 MB cap. The text is kept in memory,
+  revalidated with its ETag after 5 minutes, and the last good copy is served while raw fails.
+- The name must match `[a-z0-9]` runs joined by single hyphens, at most 64 characters (`SLUG_RE` in
+  `shared/slug.ts`); anything else gets a 400 cached for a day. At most 50 entries and 64 KB. A
+  name with no events gets a valid empty feed, so readers keep the subscription.
+- Caching: the CDN keeps one copy per name until shortly after the next hourly publish
+  (`generated_at` plus 70 minutes, within 120 to 1,800 s), then serves it stale for up to 10 minutes
+  while it refreshes, and for a day if the function fails. Clients get `max-age=300` and an ETag,
+  so a poll with `If-None-Match` gets a 304. The `Cache-Control` header rule in `vercel.json` covers
+  `/data/*` and `/feeds/<file>` only, so it never overrides the function's own headers.
+
+What it costs on Hobby (monthly allowances: 1,000,000 CDN requests, 1,000,000 function
+invocations, 4 h Active CPU, 360 GB-h memory, 100 GB Fast Data Transfer, 10 GB Fast Origin
+Transfer). Going over pauses the whole project for up to 30 days, so none of these may run close.
+Take 1,000 subscribers, 200 distinct names, a poll every 15 minutes:
+
+| | Per month |
+|---|--:|
+| CDN requests | 2.88 M, 288% of Hobby |
+| Invocations (200 names x 48 a day x 1 or 2 regions; subscribers do not add any) | 288 k to 576 k |
+| Fast Origin Transfer (about 8 KB per response) | 2.3 to 4.6 GB |
+| Active CPU (about 5 ms each) | 0.4 to 0.8 h |
+
+The limit that binds is **CDN requests**, and it binds every file served from the site's domain,
+the static `woke.xml` and `kev.xml` included: at the same 1,000 subscribers polling hourly it is
+720 k a month, 72% of Hobby before any page views. So:
+
+- The Feeds & API page gives the raw.githubusercontent.com URLs of `events.json` and `events.xml`
+  first (they cost the site nothing) and asks pollers to poll hourly.
+- Watch **CDN Requests** on the Usage page. If it passes 60% by mid-month, take the vendor feed
+  rewrite out of `vercel.json` (links then get the Feeds page) and point people at the raw URLs,
+  until the project moves to Pro or a GitHub Pages mirror carries the feeds (`refresh.yml` already
+  deploys Pages).
+
+**Check it** on production:
+
+```sh
+curl -sI https://cverdict.dev/feeds/v/fortinet.xml | grep -i -E '^(http|content-type|etag|x-vercel-cache)'
+curl -s -o /dev/null -w '%{http_code}\n' https://cverdict.dev/feeds/v/Not-A-Slug.xml   # the SPA (200)
+curl -s -o /dev/null -w '%{http_code}\n' 'https://cverdict.dev/api/feed?v=a/b'         # 400
+```
+
+A build for GitHub Pages links the watchlist's feed buttons to `BRAND.siteUrl`, since Pages has no
+functions. The data branch does not carry these feeds.
 
 ## GitHub Pages
 
@@ -327,14 +382,55 @@ serves it from. The workflow reads it from the Pages settings; if you build by h
 previous one unreachable, and GitHub garbage-collects it. A plain `git clone` still downloads that
 one commit (tens of MB); `git clone --single-branch` skips it.
 
+## Fast check
+
+A new CISA KEV or EU KEV listing should not wait for the next hourly run. `fast-check.yml` runs at
+minutes 5, 20 and 35 and starts `refresh.yml` when upstream lists CVEs that the published data does
+not:
+
+1. It stops if a refresh is queued or running, or in minutes 40 to 49 (the timer's run at :47 is
+   about to start).
+2. It reads `catalogs` from the published `v1/events.json`: the CISA KEV and EU KEV id sets the
+   last run saw, as a count and a SHA-256.
+3. CISA KEV: one request with `If-Modified-Since` set to that run's own download time, so it needs
+   no state of its own. A 304 means nothing changed; a 200 is hashed and compared. The GitHub
+   mirror is the fallback.
+4. EU KEV, on the :05 run only: ENISA's dump has no ETag or Last-Modified and changes once a day,
+   so it is fetched once an hour (267 KB) and compared the same way.
+5. On a difference it runs `gh workflow run refresh.yml -f reason=fast-check -f fresh=<none|eu-kev>`.
+   `fresh=eu-kev` makes the pipeline download the dump now instead of reusing its copy for up to
+   6 hours. The step summary says what differed.
+
+It cannot overlap or loop: its own concurrency group, no dispatch while a refresh is pending, at
+most one dispatch per 45 minutes (EU KEV: one per 20 hours), none when a successful refresh started
+after CISA's `Last-Modified`, and none once the published data matches upstream. A refresh never
+starts it. Any network or API error is a warning, not a failure: the hourly run is the safety net.
+The job has `actions: write` and `contents: read` only, so it cannot touch the data branch; a
+`GITHUB_TOKEN` with `actions: write` may start a `workflow_dispatch` run (one of GitHub's
+documented exceptions).
+
+Latency: a CISA listing reaches the data within about 15 minutes plus the run (before: up to an
+hour), an EU KEV listing within about an hour plus the run (before: up to 7 hours).
+
+Cost: 72 runs a day of 15 to 20 s, billed as about 2,200 runner minutes a month, free for a public
+repository. Upstream: about 72 conditional requests a day to CISA, mostly 304s, and 24 downloads a
+day of ENISA's dump. Extra refreshes: one per CISA release (2 or 3 a week) and at most one a day for
+EU KEV. GitHub can delay or drop scheduled runs, and pauses them after 60 days without repository
+activity, so the check is best effort. cron-job.org can dispatch `fast-check.yml` too, with the
+same token as the hourly timer.
+
+The workflow follows `REFRESH_SCHEDULE` like `refresh.yml`, so a copy runs it only when it opts in.
+
 ## Costs
 
-Free. The hourly run takes about 5 minutes of GitHub Actions time, which is free and unlimited for
+Free. The hourly run takes about 5 minutes of GitHub Actions time, and the [fast check](#fast-check)
+about 2,200 minutes a month, which is free and unlimited for
 public repositories; old source-cache entries are evicted automatically to stay within the free
 10 GB. Private repositories have a monthly minutes quota that an hourly run would use up, one
 reason why copies have to opt in to the schedule. GitHub Pages is free for public repositories.
-Vercel's Hobby plan covers a static site of this size, and the link-preview function, for
-personal, non-commercial use (see [Link previews](#link-previews) for what the function uses); for
+Vercel's Hobby plan covers a static site of this size, the link-preview function and the vendor
+feeds, for personal, non-commercial use (see [Link previews](#link-previews) and
+[Vendor feeds](#vendor-feeds) for what the functions use); for
 anything else, check Vercel's plans or use GitHub Pages.
 
 The MCP server (`mcp/`) runs on each user's own machine, not on Vercel: there is no MCP endpoint,

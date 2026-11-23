@@ -28,6 +28,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
 | `v1/surge.json` | `SurgeFile` | Published CVEs per month by CVSS severity band and by top CNA, and CISA KEV CVEs by publication month (The Surge's filters) | ~18 KB |
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
+| `v1/events.json` | `EventsFile` | Verdict events of the last 7 days (why a verdict moved), each with a stable id; newest first | ~15 KB |
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
 | `v1/packages.json` | `PackagesFile` | Package versions affected by the CVEs that have a detail shard (window, KEV, EU KEV or CIRCL exploited, woke up), from OSV.dev advisories, with each CVE's row | ~120 KB |
@@ -36,6 +37,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
 | `feeds/kev-due.ics` | iCalendar | One all-day event per KEV due date from 7 days ago to 60 days ahead | ~2 KB |
 | `feeds/woke.xml` | Atom | Up to 100 CVEs from `woke.json`: every KEV, catalog and Exploit-DB wake first, PoC-only wakes only when Likely next or Exploited | ~10 KB |
+| `feeds/events.xml` | Atom | Up to 200 events from `events.json`, the most urgent kinds first | ~20 KB |
 
 The **window** is the 30 days before `meta.generated_at` (`meta.window`). Sizes are from the
 2026-10-26 run (15,790 window CVEs); `index.json` grows with CVE volume, about 47 bytes gzip per
@@ -268,6 +270,47 @@ appeared, between two hourly runs: `{ id, at, from, to, added }`. `from` is `nul
 the first time; `added` lists the chip ids that appeared. CVEs outside the window are compared too
 when CISA added them to KEV in the last 7 days, or, for those not in CISA KEV, when EU KEV or CIRCL
 first listed them as exploited in the last 7 days (an arrival, `from: null`, reported once).
+
+## `events.json`
+
+`{ schema_version, generated_at, previous_at, days, max_items, catalogs, items: EventItem[] }`: why
+verdicts moved in the last 7 days (`days`), newest first, at most 1,000 (`max_items`). Use it to
+get a verdict change to wherever you work, sooner than a full re-read of the index.
+
+Each item is one event with a stable `id`, emitted once and never changed: readers can dedupe on
+`id`. `at` is when a run first saw it. `vendor` and `product` are the row's (the fields the site's
+watchlist matches), `tier_before` is the tier in the run compared against (`null` when that run did
+not track the CVE), `tier_after` and `score` are this run's at the default evidence bar, `via` is the
+source of the evidence (or `computed`), `url` the upstream record when there is one, `detail` the
+cause in plain words.
+
+| `type` | When | `id` |
+|---|---|---|
+| `kev_added` | A CISA KEV entry dated in the last 7 days, not in the previous `kev.json` | `kev_added:<cve>` |
+| `catalog_listed` | The CVE's first exploited listing in EU KEV, or CIRCL (confirmed), is dated in the last 7 days, and CISA KEV did not list it earlier | `catalog_listed:<eu-kev\|circl-kev>:<cve>` |
+| `vendor_exploited` | The `vendor.exploited` or `vendor.itw` chip is new | `vendor_exploited:<cve>` |
+| `tier_up` | The tier rose into Likely next or Exploited | `tier_up:<cve>:<tier_after>` |
+| `fast_lane` | The `fast.lane` chip is new | `fast_lane:<cve>` |
+| `metasploit_module` | The `x.metasploit` chip is new, or an old CVE woke up with its first module | `metasploit_module:<cve>` |
+| `nuclei_template` | The same for `x.nuclei` or a first Nuclei template | `nuclei_template:<cve>` |
+| `exploitdb_entry` | The same for `x.exploitdb` or a first Exploit-DB entry | `exploitdb_entry:<cve>` |
+
+"New" compares a row's fired chips (`r`) with the previous run's, for window CVEs and the recent KEV
+and catalog arrivals outside it, with the same rules as `changes.json`. When one run produces a
+`tier_up` and another event for the same CVE, the move rides on the other event (its `tier_before`
+and `tier_after`), so a KEV listing is one item, not two. Over the cap the least urgent oldest items
+go first: `kev_added`, `catalog_listed`, `vendor_exploited`, `tier_up` into Exploited,
+`metasploit_module`, `fast_lane`, `nuclei_template`, `exploitdb_entry`, `tier_up` into Likely next.
+
+A first run has nothing to compare, so the comparison types start from a baseline, and the dated
+ones (KEV dateAdded, a catalog's listing date, an old CVE's first Exploit-DB entry or module) are
+taken back to their upstream date with `backfill: true`. A missed run loses nothing: the next one
+compares with the last published data (`previous_at` shows the gap).
+
+`catalogs.kev` and `catalogs.eu_kev` say which CISA KEV and EU KEV entries the run saw: `count`,
+`ids_sha256` (SHA-256 of the sorted, upper-cased CVE ids, one per line, each ending in a newline)
+and `fetched_at`. The fast check between hourly runs compares them with upstream
+([DEPLOY.md](DEPLOY.md#fast-check)). `null` when the run could not load the catalog.
 
 ## `woke.json`
 
@@ -516,7 +559,8 @@ Pipeline state carried between hourly runs (the data branch keeps no history, so
 reads it back through `--previous`). **It is not part of the API**: the format can change in any
 release, and the file only exists so the pipeline can remember what it saw. It carries
 `schema_version`, `generated_at`, `state_version` and `sections`, one per feature, each with its own
-`version` and `data`. Two sections today: `woke` (for Metasploit and Nuclei, the CVE IDs with an
+`version` and `data`. Three sections today: `events` (every event id seen in the last 14 days, so an
+event dropped by the cap never comes back), `woke` (for Metasploit and Nuclei, the CVE IDs with an
 artifact, when tracking started and when a fresh copy was last compared; recent first sightings;
 recent EPSS jumps) and `receipts` (version 2, times in minutes; the
 forward log behind `receipts.json`, columnar: about 2.5 bytes gzip per CVE, so a full 400 days of
@@ -534,6 +578,16 @@ starts that state fresh. Its size is budgeted like every other file.
   `kev`, `catalog` or `exploitdb` signal is kept before the cap; the rest fill it newest first. A CVE whose
   only signal is `poc` is left out unless its tier is Exploited or Likely next. One entry per CVE
   with a stable id; a later signal updates the entry. Titles are `CVE-… · <vendor> <product> · woke up: <newest signal>`.
+- `feeds/events.xml`: Atom, up to 200 items from `events.json`, newest first. When there are more,
+  every `kev_added`, `catalog_listed`, `vendor_exploited`, move into Exploited and
+  `metasploit_module` is kept first. Entry ids are `tag:…:cverdict/event/<event id>`, so a reader
+  never shows one twice. Categories are the event type and the tier after.
+- `/feeds/v/<name>.xml` (on the site only, not on the data branch): the same entries for one vendor
+  or product, at most 50. `<name>` is the name in lower case with every run of characters other
+  than `a-z` and `0-9` turned into one hyphen, at most 64 characters (`shared/slug.ts`): "Palo Alto
+  Networks" is `palo-alto-networks`. An event matches when its vendor or its product has that name,
+  as the watchlist does. A name with no events gets an empty feed. Prefer the raw `events.json` and
+  `events.xml` for scripts: they cost the site nothing.
 
 ## MCP server
 
@@ -580,7 +634,9 @@ nothing either way about the CVE.
 The `refresh-data` workflow is scheduled every hour at minute 17 (UTC) and usually publishes within a
 few minutes of starting. GitHub often starts scheduled runs late or skips them, so runs can be a few
 hours apart; [DEPLOY.md](DEPLOY.md#reliable-hourly-refresh) shows how to start it every hour from an
-external timer. raw.githubusercontent.com caches files for up to 5 minutes, and the site's `/data/` path
+external timer. Between runs, a fast check every 15 minutes starts a run as soon as CISA KEV or
+ENISA's EU KEV lists a new CVE ([DEPLOY.md](DEPLOY.md#fast-check)), so a new listing usually
+reaches `events.json` within about 25 minutes. raw.githubusercontent.com caches files for up to 5 minutes, and the site's `/data/` path
 adds a short CDN cache, so with hourly runs expect data at most about 75 minutes old. When nothing changed since
 the previous run, nothing is published and the files keep the earlier `generated_at`; the Receipts
 log records every run, though, so in practice every successful run publishes. When a run fails,
@@ -637,6 +693,9 @@ curl -s $BASE/cve/$shard.json | jq -r --arg id $id '
 curl -s $BASE/kev.json | jq -r '
   (now | strftime("%Y-%m-%d")) as $today | (now + 7 * 86400 | strftime("%Y-%m-%d")) as $week
   | .entries[] | select(.due_date >= $today and .due_date <= $week) | [.due_date, .id, .vendor, .product] | @tsv'
+
+# Verdict events for one vendor, newest first
+curl -s $BASE/events.json | jq -r '.items[] | select(.vendor == "Fortinet" or .product == "Fortinet") | "\(.at)  \(.title)"'
 
 # What escalated since yesterday
 curl -s $BASE/changes.json | jq -r --arg since "$(date -u -d '-1 day' +%FT%TZ 2>/dev/null || date -u -v-1d +%FT%TZ)" '
