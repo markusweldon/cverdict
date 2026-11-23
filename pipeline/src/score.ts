@@ -130,6 +130,8 @@ function plural(n: number, word: string): string {
 
 /** Where the edge device list and its rules are explained. */
 export const EDGE_DOC_URL = `${REPO_URL}/blob/main/docs/SCORING.md#internet-facing-edge-devices`;
+/** Where the fast lane rule and its numbers are explained. */
+export const FAST_LANE_DOC_URL = `${REPO_URL}/blob/main/docs/SCORING.md#fast-lane`;
 const cveOrgUrl = (id: string) => `https://www.cve.org/CVERecord?id=${id}`;
 export const kevSearchUrl = (q: string) =>
   `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${encodeURIComponent(q)}`;
@@ -490,7 +492,7 @@ function exploitationCandidates(f: Facts): Reason[] {
  * X — exploit artifacts and prediction. `pending` means the absence of an exploit is not
  * settled (an unvetted PoC exists, or an exploit feed is unavailable), so NOISE must not apply.
  */
-function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pending: boolean } {
+function exploitFamily(f: Facts, fast: FastLane | null): { result: FamilyResult; info: Reason[]; pending: boolean } {
   const { cve, now, exploits, epss } = f;
   const cands: Reason[] = [];
   const info: Reason[] = [];
@@ -579,6 +581,9 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
     );
   }
 
+  // The fast lane stands in for an exploit sign during the cold start; a real one that is stronger wins.
+  if (fast) cands.push(reason('fast.lane', fastLaneLabel(fast), { url: FAST_LANE_DOC_URL }));
+
   // EPSS does not score during the cold start, so an EPSS outage cannot leave the question open then.
   const down = X_SOURCES.filter((id) => !(f.cold && id === 'epss')).flatMap((id) => f.unavailable.get(id) ?? []);
   const unvetted = poc.count - poc.vetted;
@@ -601,6 +606,50 @@ function exploitFamily(f: Facts): { result: FamilyResult; info: Reason[]; pendin
   const epssText = epss ? `EPSS ${formatPercent(epss.score)}` : 'no EPSS score';
   const none = reason('x.none', `No public exploit after ${f.day} days · ${epssText}`);
   return { result: { chips: [none], points: none.points }, info, pending };
+}
+
+/** Which fast lane criteria fired: how the impact was judged, and how the product is exposed. */
+export interface FastLane {
+  /** `ssvc`: CISA SSVC automatable and total impact. `cvss`: no SSVC yet, CVSS 9.0 or more. */
+  impact: 'ssvc' | 'cvss';
+  /** `edge`: an internet-facing edge device (shared/edge.ts). `product`: this product is already in CISA KEV. */
+  exposure: 'edge' | 'product';
+  /** The CVSS base score, for the label of the CVSS case. */
+  cvss: number;
+}
+
+/**
+ * The fast lane (docs/SCORING.md#fast-lane): under 14 days old, CVSS v3/v4 attack vector Network
+ * (from the CNA, else CISA-ADP), CISA SSVC automatable and total impact, or CVSS 9.0+ while SSVC is
+ * not in yet, and an edge device or a product already in KEV. Vendor-only KEV history is not enough.
+ */
+export function fastLane(input: {
+  cold: boolean;
+  cvss: NormalizedCve['cvss'];
+  cvssMetrics: NormalizedCve['cvssMetrics'];
+  ssvc: NormalizedCve['ssvc'];
+  edge: boolean;
+  priorProduct: boolean;
+}): FastLane | null {
+  const { cvss, ssvc } = input;
+  if (!input.cold || !cvss || cvss.version === '2.0' || input.cvssMetrics.AV !== 'N') return null;
+  let impact: FastLane['impact'];
+  if (ssvc) {
+    if (ssvc.automatable !== 'yes' || ssvc.technical_impact !== 'total') return null;
+    impact = 'ssvc';
+  } else {
+    if (!(cvss.score >= CVSS_CRITICAL)) return null;
+    impact = 'cvss';
+  }
+  const exposure: FastLane['exposure'] | null = input.edge ? 'edge' : input.priorProduct ? 'product' : null;
+  return exposure ? { impact, exposure, cvss: cvss.score } : null;
+}
+
+/** "Fast lane: network, automatable, total impact, on an edge device". Names exactly the criteria that fired. */
+export function fastLaneLabel(fast: FastLane): string {
+  const impact = fast.impact === 'ssvc' ? 'automatable, total impact' : `CVSS ${fast.cvss.toFixed(1)}, no SSVC yet`;
+  const exposure = fast.exposure === 'edge' ? 'on an edge device' : 'product in KEV';
+  return `Fast lane: network, ${impact}, ${exposure}`;
 }
 
 function severityFamily(f: Facts): { result: FamilyResult; info: Reason[] } {
@@ -812,10 +861,18 @@ export function scoreCve(cve: NormalizedCve, enr: Enrichment, opts: { now: Date;
 
   const eCands = exploitationCandidates(f);
   const exploited = eCands.length > 0;
-  const x = exploitFamily(f);
+  const prior = priorFamily(f, enr.prior);
+  const fast = fastLane({
+    cold: f.cold,
+    cvss: cve.cvss,
+    cvssMetrics: cve.cvssMetrics,
+    ssvc: cve.ssvc,
+    edge: f.edge !== null,
+    priorProduct: prior.result.chips[0]?.id === 'prior.product',
+  });
+  const x = exploitFamily(f, fast);
   const sev = severityFamily(f);
   const ssvc = ssvcFamily(f);
-  const prior = priorFamily(f, enr.prior);
   const noiseCands = noiseCandidates(f);
   const noiseApplies = !exploited && x.result.points <= 0 && !x.pending;
   const noise = noiseApplies ? strongest(noiseCands, 'min') : { chips: noiseCands.map((r) => ({ ...r, points: 0 })), points: 0 };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, WATCH_FLOOR, tierFor, type Family, type Reason } from '../../../shared/contract';
-import { BASE_POINTS, CHIPS, COLD_START_DAYS, EARLY_NO_EXPLOIT, EXPLOITED_FLOOR, chip } from '../../../shared/model';
-import { EDGE_DOC_URL, buildKevPrior, kevVendorKey, orderReasons, vendorTokens } from '../../src/score';
+import { BASE_POINTS, CHIPS, COLD_START_DAYS, EARLY_NO_EXPLOIT, EXPLOITED_FLOOR, FAST_LANE, chip } from '../../../shared/model';
+import { EDGE_DOC_URL, FAST_LANE_DOC_URL, buildKevPrior, fastLane, kevVendorKey, orderReasons, vendorTokens } from '../../src/score';
 import type { NormalizedCve, ScoredCve } from '../../src/types';
 import {
   NOW,
@@ -350,22 +350,131 @@ describe('X family (exploit artifacts and prediction)', () => {
     expect(pointsOf(s, 'noise.wordpress')).toBeLessThan(0);
   });
 
-  it('severity, SSVC and KEV history alone stay under the default bar during the cold start', () => {
-    // The strongest profile without an exploit signal: 15 + 13 + 6 + 8 + 10 = 52, minus 3.
+  it('severity, SSVC and vendor KEV history alone stay under the default bar during the cold start', () => {
+    // Without the fast lane (vendor in KEV, not this product): 15 + 13 + 6 + 8 + 8 = 50, minus 3.
     const cve = makeCve({ published: daysAgo(3), ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') });
-    const kev = [makeKev('CVE-2024-1')];
+    const kev = [makeKev('CVE-2024-1', { product: 'Gadget' })];
     const s = score(cve, { kev });
-    expect(pointsOf(s, 'prior.product')).toBe(10);
-    expect(s.score).toBe(52 + EARLY_NO_EXPLOIT);
+    expect(pointsOf(s, 'prior.vendor')).toBe(8);
+    expect(byId(s, 'fast.lane')).toBeUndefined();
+    expect(s.score).toBe(50 + EARLY_NO_EXPLOIT);
     expect(s.tier).toBe('watch');
     // The same profile with any exploit signal clears it.
     const poc = score(cve, { kev, poc: { [ID]: [repo(daysAgo(10))] } });
     expect(poc.tier).toBe('likely');
   });
 
+  describe('fast lane', () => {
+    const kev = [makeKev('CVE-2024-1')];
+    const fortios = [{ vendor: 'Fortinet', product: 'FortiOS', purl: null }];
+
+    it('fires on network, automatable, total impact in a product already in KEV, in place of x.early', () => {
+      const s = score(makeCve({ published: daysAgo(3), ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') }), { kev });
+      expect(byId(s, 'fast.lane')).toMatchObject({
+        points: FAST_LANE,
+        family: 'X',
+        polarity: 'up',
+        source: 'computed',
+        label: 'Fast lane: network, automatable, total impact, product in KEV',
+        url: FAST_LANE_DOC_URL,
+      });
+      expect(byId(s, 'x.early')).toBeUndefined();
+      expect(s.score).toBe(15 + 12 + 13 + 6 + 8 + 10);
+      expect(s.tier).toBe('likely');
+      expect(total(s)).toBe(s.score);
+    });
+
+    it('fires on CVSS 9.0 or more when SSVC is not in yet (it often arrives days late)', () => {
+      const s = score(makeCve({ published: daysAgo(0), ...cvss(9.0), ssvc: null }), { kev });
+      expect(byId(s, 'fast.lane')!.label).toBe('Fast lane: network, CVSS 9.0, no SSVC yet, product in KEV');
+      // 15 + 12 + 13 + 10: on the bar on day 0.
+      expect(s.score).toBe(50);
+      expect(s.tier).toBe('likely');
+    });
+
+    it('needs CVSS 9.0 when SSVC is missing, and lets SSVC decide once it is in', () => {
+      const high = score(makeCve({ published: daysAgo(1), ...cvss(8.9), ssvc: null }), { kev });
+      expect(byId(high, 'fast.lane')).toBeUndefined();
+      expect(pointsOf(high, 'x.early')).toBe(EARLY_NO_EXPLOIT);
+      // A High score with SSVC automatable and total still qualifies.
+      const highSsvc = score(makeCve({ published: daysAgo(1), ...cvss(8.1), ssvc: ssvc('none', 'yes', 'total') }), { kev });
+      expect(pointsOf(highSsvc, 'fast.lane')).toBe(FAST_LANE);
+      // CVSS 9.8, but CISA says not automatable or partial impact: no fast lane.
+      for (const v of [ssvc('none', 'no', 'total'), ssvc('none', 'yes', 'partial')]) {
+        const s = score(makeCve({ published: daysAgo(1), ...cvss(9.8), ssvc: v }), { kev });
+        expect(byId(s, 'fast.lane')).toBeUndefined();
+        expect(pointsOf(s, 'x.early')).toBe(EARLY_NO_EXPLOIT);
+      }
+    });
+
+    it('needs attack vector Network: not adjacent, local or physical, and not without CVSS or with only v2', () => {
+      for (const av of ['A', 'L', 'P']) {
+        const s = score(makeCve({ published: daysAgo(1), ...cvss(9.8, av), ssvc: ssvc('none', 'yes', 'total') }), { kev });
+        expect(byId(s, 'fast.lane')).toBeUndefined();
+      }
+      const none = score(makeCve({ published: daysAgo(1), cvss: null, cvssMetrics: {}, ssvc: ssvc('none', 'yes', 'total') }), { kev });
+      expect(byId(none, 'fast.lane')).toBeUndefined();
+      const v2 = score(makeCve({ published: daysAgo(1), ...cvss(10, 'N', '2.0'), ssvc: null }), { kev });
+      expect(byId(v2, 'fast.lane')).toBeUndefined();
+      // CVSS v4 from the CNA, or CVSS v3.1 from CISA-ADP, both count.
+      expect(byId(score(makeCve({ published: daysAgo(1), ...cvss(9.3, 'N', '4.0') }), { kev }), 'fast.lane')).toBeDefined();
+      expect(byId(score(makeCve({ published: daysAgo(1), ...cvss(9.8, 'N', '3.1', 'cisa-adp') }), { kev }), 'fast.lane')).toBeDefined();
+    });
+
+    it('fires on an edge device without any KEV history, and says so', () => {
+      const s = score(makeCve({ published: daysAgo(2), affected: fortios, ...cvss(9.8), ssvc: null }));
+      expect(byId(s, 'fast.lane')!.label).toBe('Fast lane: network, CVSS 9.8, no SSVC yet, on an edge device');
+      expect(byId(s, 'x.too_new')).toBeUndefined();
+      expect(byId(s, 'edge.device')).toBeDefined();
+      // 15 + 12 + 13 + prior.none (-6) = 34: the fast lane alone does not reach the bar.
+      expect(s.score).toBe(34);
+      // Edge wins the label when the product is also in KEV.
+      const both = score(makeCve({ published: daysAgo(2), affected: fortios, ...cvss(9.8), ssvc: null }), {
+        kev: [makeKev('CVE-2024-1', { vendorProject: 'Fortinet', product: 'FortiOS' })],
+      });
+      expect(byId(both, 'fast.lane')!.label).toBe('Fast lane: network, CVSS 9.8, no SSVC yet, on an edge device');
+      expect(both.score).toBe(50);
+    });
+
+    it('does not fire on vendor-only KEV history, or with no KEV history at all', () => {
+      const vendor = score(makeCve({ published: daysAgo(1), ...cvss(9.8) }), { kev: [makeKev('CVE-2024-1', { product: 'Gadget' })] });
+      expect(byId(vendor, 'prior.vendor')).toBeDefined();
+      expect(byId(vendor, 'fast.lane')).toBeUndefined();
+      expect(byId(score(makeCve({ published: daysAgo(1), ...cvss(9.8) })), 'fast.lane')).toBeUndefined();
+    });
+
+    it('ends on day 14: after that a CVE without an exploit gets x.none as before', () => {
+      const s = score(makeCve({ published: daysAgo(COLD_START_DAYS), ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') }), { kev });
+      expect(byId(s, 'fast.lane')).toBeUndefined();
+      expect(pointsOf(s, 'x.none')).toBe(-14);
+    });
+
+    it('loses to a stronger exploit chip, which keeps the points', () => {
+      const s = score(makeCve({ published: daysAgo(3), ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') }), { kev, poc: { [ID]: [repo(daysAgo(10))] } });
+      expect(pointsOf(s, 'x.poc')).toBe(20);
+      expect(pointsOf(s, 'fast.lane')).toBe(0);
+    });
+
+    it('still fires when an exploit source is down', () => {
+      const s = score(makeCve({ published: daysAgo(3), ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') }), { kev, down: ['metasploit'] });
+      expect(pointsOf(s, 'fast.lane')).toBe(FAST_LANE);
+    });
+
+    it('the rule as a pure function', () => {
+      const base = { cold: true, ...cvss(9.8), ssvc: null, edge: false, priorProduct: true };
+      expect(fastLane(base)).toEqual({ impact: 'cvss', exposure: 'product', cvss: 9.8 });
+      expect(fastLane({ ...base, cold: false })).toBeNull();
+      expect(fastLane({ ...base, priorProduct: false })).toBeNull();
+      expect(fastLane({ ...base, edge: true })).toEqual({ impact: 'cvss', exposure: 'edge', cvss: 9.8 });
+      expect(fastLane({ ...base, ssvc: ssvc('none', 'yes', 'total') })).toMatchObject({ impact: 'ssvc' });
+      expect(fastLane({ ...base, ...cvss(9.8, 'L') })).toBeNull();
+    });
+  });
+
   describe('internet-facing edge devices', () => {
     const fortios = [{ vendor: 'Fortinet', product: 'FortiOS', purl: null }];
-    const profile = { ...cvss(9.8), ssvc: ssvc('none', 'yes', 'total') } as const;
+    // Not automatable, so the fast lane does not fire and the edge exemption alone is tested.
+    const profile = { ...cvss(9.8), ssvc: ssvc('none', 'no', 'total') } as const;
     const kev = [makeKev('CVE-2024-1', { vendorProject: 'Fortinet', product: 'FortiOS' })];
 
     it('keep x.too_new (unknown, 0) instead of x.early before day 14, with the edge.device chip', () => {
@@ -383,8 +492,8 @@ describe('X family (exploit artifacts and prediction)', () => {
         label: 'Internet-facing edge device: Fortinet FortiOS (firewall, SSL VPN)',
         url: EDGE_DOC_URL,
       });
-      expect(s.score).toBe(52);
-      expect(s.tier).toBe('likely');
+      // 15 + 13 + 8 - 2 + 10.
+      expect(s.score).toBe(44);
       expect(total(s)).toBe(s.score);
     });
 
@@ -392,7 +501,7 @@ describe('X family (exploit artifacts and prediction)', () => {
       const s = score(makeCve({ affected: fortios, ...profile }), { kev });
       expect(pointsOf(s, 'x.none')).toBe(-14);
       expect(byId(s, 'edge.device')).toBeDefined();
-      expect(s.score).toBe(38);
+      expect(s.score).toBe(30);
     });
 
     it('do not change a CVE with an exploit signal', () => {

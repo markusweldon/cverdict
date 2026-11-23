@@ -87,6 +87,11 @@ function artifactPhrase(r: Reason, d: CveDetail): string | null {
       return 'CISA SSVC says a proof of concept exists';
     case 'vendor.poc':
       return 'vendor CVSS says a proof of concept exists';
+    case 'fast.lane': {
+      // "Fast lane: network, automatable, total impact, on an edge device" names the criteria that fired.
+      const criteria = r.label.startsWith('Fast lane: ') ? r.label.slice('Fast lane: '.length) : '';
+      return criteria ? `fast lane, no public exploit yet (${criteria})` : 'fast lane, no public exploit yet';
+    }
     default:
       return null;
   }

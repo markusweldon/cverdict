@@ -212,6 +212,16 @@ describe('verdict helpers', () => {
     expect(one('x.something_new')).toBe('score 50 clears the evidence bar (50)');
   });
 
+  it('says a fast lane CVE has no public exploit yet and names the criteria that fired', () => {
+    const fast = (label: string) =>
+      verdict({ ...F.LIKELY_SCORE, reasons: [{ id: 'fast.lane', label, polarity: 'up', family: 'X', points: 12, source: 'computed' }] }, 'likely', 50, 2026).reason;
+    expect(fast('Fast lane: network, automatable, total impact, on an edge device')).toBe(
+      'fast lane, no public exploit yet (network, automatable, total impact, on an edge device)',
+    );
+    expect(fast('Fast lane: network, CVSS 9.8, no SSVC yet, product in KEV')).toBe('fast lane, no public exploit yet (network, CVSS 9.8, no SSVC yet, product in KEV)');
+    expect(fast('odd label')).toBe('fast lane, no public exploit yet');
+  });
+
   it('names the catalog that confirmed exploitation when CISA KEV has not listed it', () => {
     const by = (id: string, source: 'eu-kev' | 'circl-kev') =>
       verdict({ ...F.EXPLOITED_VENDOR, reasons: [{ id, label: id, polarity: 'up', family: 'E', points: 68, source }] }, 'exploited', 50, 2026).reason;

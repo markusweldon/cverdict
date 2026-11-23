@@ -330,7 +330,7 @@ describe('runBacktest', () => {
   });
 
   it('adds undated evidence only in the upper variant, and reports alert volume over the period', () => {
-    const b = run([kevCve({ cnaUpdated: after(1), ...cvss(9.8) }), makeCve({ id: 'CVE-2026-100050', published: '2026-10-30T00:00:00.000Z', ...cvss(9.8) })], undefined, {
+    const b = run([kevCve({ cnaUpdated: after(1), ...cvss(9.8) }), makeCve({ id: 'CVE-2026-100050', published: '2026-10-30T00:00:00.000Z', affected: [{ vendor: 'Other', product: 'Gadget', purl: null }], ...cvss(9.8) })], undefined, {
       nuclei: { [ID]: [nucleiTemplate(ID)] },
     });
     const it0 = b.items[0];
@@ -338,6 +338,15 @@ describe('runBacktest', () => {
     expect(it0.upper).toEqual({ cverdict: true, cvss7: true, epss10: true });
     expect(it0.left_out).toEqual(['nuclei', 'cna_record']);
     expect(b.volume).toMatchObject({ n: 2, methods: [{ method: 'cverdict', flagged: 1 }, { method: 'cvss7', flagged: 2 }, { method: 'epss10', flagged: 0 }] });
+  });
+
+  it('applies the fast lane at the cutoff: CVSS 9.8 network in a product already in KEV, SSVC left out', () => {
+    // Listed two days after publication; another Acme Widget CVE is in KEV, so prior.product fires.
+    const cve = makeCve({ id: ID, published: before(2), cnaUpdated: before(2), inWindow: false, ...cvss(9.8) });
+    const b = run([cve], [makeKev(ID, { dateAdded: LISTED }), makeKev('CVE-2024-1', { dateAdded: '2025-01-10' })]);
+    expect(b.items[0].chips).toContain('fast.lane');
+    expect(b.items[0].score).toBe(15 + 12 + 13 + 10);
+    expect(b.items[0].strict.cverdict).toBe(true);
   });
 
   it('recounts to the stored CVErdict figure at the default bar on the site (Today\'s track-record line)', () => {

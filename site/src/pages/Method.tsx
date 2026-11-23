@@ -2,7 +2,7 @@
 import type { ComponentChildren } from 'preact';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, SIGNAL_MIN_SCORE, WATCH_FLOOR } from '../../../shared/contract';
 import { BRAND, REPO_URL } from '../../../shared/brand';
-import { BASE_POINTS, BATCH_MIN, CHIP_BY_ID, CHIPS, COLD_START_DAYS, EARLY_NO_EXPLOIT, EXPLOITED_BONUS, EXPLOITED_FLOOR, RANSOMWARE_BONUS, SCORE_MODEL } from '../../../shared/model';
+import { BASE_POINTS, BATCH_MIN, CHIP_BY_ID, CHIPS, COLD_START_DAYS, EARLY_NO_EXPLOIT, EXPLOITED_BONUS, EXPLOITED_FLOOR, FAST_LANE, RANSOMWARE_BONUS, SCORE_MODEL } from '../../../shared/model';
 import { Chip } from '../components/Chip';
 import { ExtLink } from '../components/ExtLink';
 import { IconAlert, IconCheck } from '../components/icons';
@@ -21,6 +21,8 @@ score = exploited ? min(100, max(raw + ${EXPLOITED_BONUS}, ${EXPLOITED_FLOOR}) +
 
 X      strongest exploit signal (Metasploit, Nuclei, Exploit-DB, EPSS, PoC…)
        EPSS only after ${COLD_START_DAYS} days; until then "no exploit yet" is ${EARLY_NO_EXPLOIT} (0 on edge devices)
+       fast lane +${FAST_LANE} until day ${COLD_START_DAYS}: network, automatable and total impact
+       (or CVSS 9+ before SSVC), on an edge device or a product already in KEV
 SSVC   automatable + technical impact (they add)
 NOISE  only when nothing exploits it: hobby code, disputed, WordPress, kernel`;
 
@@ -50,6 +52,14 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
       VPNs, firewalls, gateways and similar internet-facing devices are often attacked before any exploit is public, so they skip the early {-EARLY_NO_EXPLOIT}-point penalty and show the
       “Edge device” chip. The list is picked by hand from CISA KEV, so a product not on it is missed. See the{' '}
       <ExtLink href={`${REPO_URL}/blob/main/docs/SCORING.md#internet-facing-edge-devices`}>list and how to propose an addition</ExtLink>.
+    </>,
+  ],
+  [
+    'The fast lane is a bet on speed',
+    <>
+      For its first {COLD_START_DAYS} days, a network bug that CISA calls automatable with total impact (or CVSS 9 or more before CISA has assessed it), on an edge device or in a product already
+      in KEV, gets +{FAST_LANE} and is Likely next with no public exploit. Attack tools now build exploits for such bugs within hours, so we do not wait for one. It is not evidence of attacks, and most
+      of these CVEs will never be exploited. The criteria follow CISA’s BOD 26-04. See the <ExtLink href={`${REPO_URL}/blob/main/docs/SCORING.md#fast-lane`}>rule and its numbers</ExtLink>.
     </>,
   ],
   ['PoCs are unverified', 'Proof-of-concept repos are counted, never run. Fake PoCs that carry malware are common, so treat every link as hostile.'],

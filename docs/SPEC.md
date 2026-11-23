@@ -172,8 +172,10 @@ E chips    = kev.listed | eukev.listed (ENISA EU KEV) | circl.listed (CIRCL, con
              | vendor.exploited (v4 E:A) | vendor.itw  (any → exploited); catalog listings dated after now are ignored
 INFO       = … | circl.suspected (CIRCL, suspected) | circl.attempts (CIRCL, confirmed on attempts only) | honeypot.siberkapan (SiberKapan attempts), 0 points
 X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24
-                     (v3 E:F/E:H), x.poc 20 (vetted ≥ 1), ssvc.poc 10, vendor.poc 10, epss.mid 8*
+                     (v3 E:F/E:H), x.poc 20 (vetted ≥ 1), fast.lane 12†, ssvc.poc 10, vendor.poc 10, epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
+             † model v0.4.0: age < 14, CVSS v3/v4 AV:N, (SSVC automatable and total, or no SSVC and CVSS ≥ 9.0),
+               and (edge device or prior.product); see SCORING.md#fast-lane
              if none, with every exploit source and EPSS loaded this run and no unvetted PoC repo:
              x.none −14 when age ≥ 14, else x.early −3 (model v0.3.0; x.too_new on an edge device); otherwise x.too_new (unknown, 0)
 SEV        = sev.crit_net 13 (≥9.0 and AV:N) | sev.crit 6 (≥9.0) | sev.high 1 (7–8.9) | sev.low −13 (<7) | sev.none (unknown)

@@ -60,6 +60,7 @@ import {
   EARLY_NO_EXPLOIT,
   EXPLOITED_BONUS,
   EXPLOITED_FLOOR,
+  FAST_LANE,
   RANSOMWARE_BONUS,
   SCORE_MODEL,
 } from '../shared/model';
@@ -1429,12 +1430,19 @@ function score(d: Draft): Scored {
   if (maturity === 'F' || maturity === 'H') x.push(reason('vendor.functional', `${d.cna} CVSS vector: ${maturity === 'H' ? 'autonomous' : 'functional'} exploit code exists (E:${maturity})`, 24, { url: cveUrl(d.id) }));
   if (maturity === 'P') x.push(reason('vendor.poc', `${d.cna} CVSS vector: proof of concept exists (E:P)`, 10, { url: cveUrl(d.id) }));
   if (epssOk && d.epss!.score >= 0.01 && d.epss!.score < 0.1) x.push(reason('epss.mid', epssLabel(d.epss!), 8, { url: epssUrl, at: d.epss!.date }));
-  x.sort((a, b) => b.points - a.points);
-  x.forEach((r, i) => i > 0 && (r.points = 0));
   const edge = edgeDevice({
     affected: d.synth.vendor || d.synth.product ? [{ vendor: d.synth.vendor, product: d.synth.product }] : [],
     attackVector: cvss ? (/AV:([NALP])/.exec(cvss.vector)?.[1] ?? null) : null,
   });
+  // Fast lane (docs/SCORING.md#fast-lane): days 0 to 13, network, SSVC automatable + total (or CVSS 9+ before SSVC), edge or product in KEV.
+  const network = !!cvss && cvss.version !== '2.0' && cvss.vector.includes('AV:N');
+  const impact = d.ssvc ? (d.ssvc.automatable === 'yes' && d.ssvc.technical_impact === 'total' ? 'automatable, total impact' : null) : cvss && cvss.score >= 9 ? `CVSS ${cvss.score.toFixed(1)}, no SSVC yet` : null;
+  const exposure = edge ? 'on an edge device' : d.synth.vendor && d.synth.prior.kind === 'product' ? 'product in KEV' : null;
+  if (age < COLD_START_DAYS && network && impact && exposure) {
+    x.push(reason('fast.lane', `Fast lane: network, ${impact}, ${exposure}`, FAST_LANE, { url: `${REPO_URL}/blob/main/docs/SCORING.md#fast-lane` }));
+  }
+  x.sort((a, b) => b.points - a.points);
+  x.forEach((r, i) => i > 0 && (r.points = 0));
   if (x.length === 0) {
     if (age >= COLD_START_DAYS) x.push(reason('x.none', `No public exploit after ${ageInt} days · EPSS ${d.epss ? pct(d.epss.score) : 'unscored'}`, -14));
     else if (edge) x.push(reason('x.too_new', `Too new: edge devices are often attacked before exploits are public (day ${ageInt} of ${COLD_START_DAYS})`, 0));
