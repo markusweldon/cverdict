@@ -292,7 +292,8 @@ function Backtest({ b }: { b: BacktestReceipts }) {
         <li>
           “Flagged before KEV” uses only evidence dated before the listing day, plus the vendor, product and description as they read today. Evidence without a usable date is left out and
           treated as unknown, never as absent. “With undated evidence” adds what
-          that evidence says today, as if it had all been there already. Most of it is exploits, so this is usually the higher figure. The truth is likely between the two.
+          that evidence says today, as if it had all been there already. Most of it is exploits, so this is usually the higher figure. Not always: a late CISA SSVC assessment can switch the fast lane
+          off, so a CVE can be flagged before KEV and not with undated evidence. The truth is likely between the two.
         </li>
         {ssvcOut > 0 && (
           <li>

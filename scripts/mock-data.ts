@@ -1434,8 +1434,8 @@ function score(d: Draft): Scored {
     affected: d.synth.vendor || d.synth.product ? [{ vendor: d.synth.vendor, product: d.synth.product }] : [],
     attackVector: cvss ? (/AV:([NALP])/.exec(cvss.vector)?.[1] ?? null) : null,
   });
-  // Fast lane (docs/SCORING.md#fast-lane): days 0 to 13, network, SSVC automatable + total (or CVSS 9+ before SSVC), edge or product in KEV.
-  const network = !!cvss && cvss.version !== '2.0' && cvss.vector.includes('AV:N');
+  // Fast lane (docs/SCORING.md#fast-lane): days 0 to 13, network, no user interaction, SSVC automatable + total (or CVSS 9+ before SSVC), edge or product in KEV.
+  const network = !!cvss && cvss.version !== '2.0' && cvss.vector.includes('AV:N') && cvss.vector.includes('UI:N');
   const impact = d.ssvc ? (d.ssvc.automatable === 'yes' && d.ssvc.technical_impact === 'total' ? 'automatable, total impact' : null) : cvss && cvss.score >= 9 ? `CVSS ${cvss.score.toFixed(1)}, no SSVC yet` : null;
   const exposure = edge ? 'on an edge device' : d.synth.vendor && d.synth.prior.kind === 'product' ? 'product in KEV' : null;
   if (age < COLD_START_DAYS && network && impact && exposure) {

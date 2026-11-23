@@ -36,7 +36,7 @@ E chips    = kev.listed | ssvc.active | vendor.exploited (CVSS v4 E:A) | vendor.
 X family   = max of: x.metasploit 34, x.nuclei 30, x.exploitdb 28, epss.high 27*, vendor.functional 24 (CVSS v3 E:F/E:H),
                      x.poc 20 (vetted ≥ 1), fast.lane 12†, ssvc.poc 10, vendor.poc 10 (E:P), epss.mid 8*
              * EPSS chips only when age ≥ 14 days (otherwise add info chip epss.cold if scored)
-             † fast lane: age < 14, AV:N (CVSS v3/v4), (SSVC automatable and total, or no SSVC and CVSS ≥ 9.0),
+             † fast lane: age < 14, AV:N and UI:N (CVSS v3/v4), (SSVC automatable and total, or no SSVC and CVSS ≥ 9.0),
                and (edge device or prior.product)
              if none, with every exploit source and EPSS loaded and no unvetted PoC repo:
                       x.none −14 when age ≥ 14, else x.early −3 (x.too_new, 0, on an edge device)
@@ -138,7 +138,7 @@ Strongest one counts; the rest are shown with 0. `fast.lane` is the one X chip t
 | `vendor.functional` | Vendor: working exploit | +24 | `cvelist` | The CNA’s CVSS v3 vector says functional or autonomous exploit code exists (E:F/E:H). That is weaponization, not proof of attacks: about a quarter of such CVEs reach KEV. VulDB vectors are ignored. |
 | `vendor.poc` | Vendor: PoC | +10 | `cvelist` | The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored. |
 | `epss.mid` | EPSS 1–10% | +8 | `epss` | EPSS between 1% and 10% (only trusted after 14 days). |
-| `fast.lane` | Fast lane | +12 | `computed` | Less than 14 days old, attack vector Network, CISA SSVC automatable with total impact (or CVSS 9.0 or more while SSVC is not in yet), on an internet-facing edge device or a product already in CISA KEV. Attack tools now turn such bugs into exploits within hours or days, before exploit feeds see them, so this stands in for an exploit sign. The strongest X chip counts, so a real exploit replaces it. |
+| `fast.lane` | Fast lane | +12 | `computed` | Less than 14 days old, attack vector Network with no user interaction, CISA SSVC automatable with total impact (or CVSS 9.0 or more while SSVC is not in yet), on an internet-facing edge device or a product already in CISA KEV. Attack tools can now turn a public reproducer into an exploit within hours for some bugs, before exploit feeds see it, so this stands in for an exploit sign. It is not evidence of attacks. The strongest X chip counts, so a real exploit replaces it. |
 | `x.none` | No exploit yet | −14 | `computed` | Two weeks after publication there is still no public exploit and EPSS is below 1%. |
 | `x.early` | No exploit yet (early) | −3 | `computed` | Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone stay under the default evidence bar. Not applied to internet-facing edge devices, and replaced by the fast lane when that fires. |
 | `x.too_new` | Too new | unknown | `computed` | No exploit chip, but absence is not settled: a PoC repo is too new to vet, an exploit source could not be loaded this run, or the CVE is an internet-facing edge device under 14 days old. |
@@ -322,13 +322,14 @@ publication (`COLD_START_DAYS`):
 
 Everything else, including exploitation, exploit artifacts, severity, SSVC and prior, counts from
 day 0. A critical network bug from a vendor with KEV history scores at most 47 before any exploit
-signal (49 when this exact product is in KEV but SSVC does not say automatable and total), just
-under the default bar: it is at the top of Watch, and any exploit signal (a vetted
+signal, just under the default bar: it is at the top of Watch, and any exploit signal (a vetted
 PoC, Exploit-DB, CISA or the vendor saying a PoC exists) lifts it to Likely next. See
-CVE-2026-105016 in the [examples below](#worked-examples). On an edge device the same profile
-scores 50 or 52 and is Likely next from day 0. A network-reachable, automatable, total-impact CVE
-on an edge device or in a product already in KEV is in the [fast lane](#fast-lane) instead: +12
-until day 14, Likely next from day 0.
+CVE-2026-105016 in the [examples below](#worked-examples). On an edge device x.early does not
+apply, so the same profile scores 50 or 52. A network-reachable, automatable, total-impact CVE with
+no user interaction, on an edge device or in a product already in KEV, is in the
+[fast lane](#fast-lane) instead: +12 until day 14 (62 or 64 on an edge device). In a product already
+in KEV that is enough for Likely next from day 0. On an edge device with no KEV history for the
+product it can still fall short: CVSS 9.8 with no SSVC yet scores 34, or 48 with vendor KEV history.
 
 **Why −3 (v0.3.0).** Up to v0.2.0 silence in the first two weeks was worth 0, and that profile
 scored 50 or 52: Likely next on severity, SSVC and KEV history alone. In the 2026-11-20 16:47 UTC
@@ -419,7 +420,9 @@ it is a new score model.
 **The rule (v0.4.0).** A CVE gets the `fast.lane` chip (+12, X family) when all of these hold:
 
 1. It is less than 14 days old (the cold start).
-2. Its CVSS v3 or v4 score (from the CNA, else CISA-ADP) has attack vector **Network**.
+2. Its CVSS v3 or v4 score (from the CNA, else CISA-ADP) has attack vector **Network** and
+   **no user interaction** (UI:N). A bug that needs a click or a page visit spreads more slowly.
+   Attack complexity is not checked: an AC:H bug can still be in the fast lane.
 3. CISA SSVC says **automatable** and **total** technical impact. While SSVC is not in yet (it often
    arrives days after publication), a CVSS base score of **9.0 or more** stands in for it. Once SSVC
    is in, it decides: "not automatable" or "partial" turns the fast lane off.
@@ -428,7 +431,10 @@ it is a new score model.
 
 The label names exactly which criteria fired, for example "Fast lane: network, automatable, total
 impact, on an edge device" or "Fast lane: network, CVSS 9.8, no SSVC yet, product in KEV", and the
-CVE page verdict says "fast lane, no public exploit yet". The chip takes the place of `x.early`
+CVE page verdict says "fast lane, no public exploit yet". When a weaker exploit sign is also there
+(CISA SSVC or the vendor saying a PoC exists, or a mid EPSS score), the fast lane counts and the
+verdict names that sign instead, for example "CISA SSVC says a proof of concept exists, fast lane
+(...)". The chip takes the place of `x.early`
 and of `x.too_new` on an edge device. The strongest X chip counts, so a vetted PoC (+20) or any
 stronger artifact replaces it, and a positive X chip switches noise penalties off as usual. On day
 14 it ends: with no exploit sign by then the CVE gets `x.none` (−14) like any other.
@@ -438,34 +444,38 @@ stronger artifact replaces it, and a positive X chip switches noise penalties of
 patch within days when there is evidence of exploitation, automatability, high technical impact
 or public exposure. We took those terms from a summary of the directive (cisa.gov did not let us
 fetch it), so read the directive itself before relying on the wording. The reason to act on them
-before an exploit is public is speed: attack tools that use AI agents now turn a public reproducer
-or a patch into a working exploit within hours for a meaningful share of bugs, and those exploits
-often never reach Exploit-DB or GitHub. To be candid, the fast lane targets that automation speed.
+before an exploit is public is speed: attack tools that use AI agents can now turn a public
+reproducer into a working exploit within hours for some bugs (in a lab test, about one in six
+within two hours, with the source code and mitigations off), and those exploits often never reach
+Exploit-DB or GitHub. Building one from a patch alone has not been measured yet. To be candid, the fast lane targets that automation speed.
 It is not evidence that anyone is attacking the CVE, and most fast-lane CVEs will never be.
 
 **What it changes** (2026-11-23 16:47 UTC window, 16,337 CVEs, 30 days; same recount method as
-for [x.early](#cold-start), from the live rows and receipts). 90 window CVEs fit the profile, 57
+for [x.early](#cold-start), from the live rows and receipts). 89 window CVEs fit the profile, 56
 of them under 14 days old:
 
 | | v0.3.0 | v0.4.0 |
 |---|--:|--:|
-| Likely next at 50 | 252 | 272 |
+| Likely next at 50 | 252 | 271 |
 | Exploited or Likely next, share of new CVEs | 1.70% | 1.82% |
 | Per day at 40 / 50 / 60 | 21.6 / 9.3 / 4.7 | 21.7 / 9.9 / 5.9 |
-| Passed in the last 7 days | 34 | 51 |
+| Passed in the last 7 days | 34 | 50 |
 | Backtest, strict, recent KEV additions caught (of 137) | 59 (43%) | 65 (47%) |
 | Backtest, with undated evidence (of 137) | 99 | 100 (estimate) |
 | Backtest, old CVEs (of 15), strict / undated | 10 / 12 | 10 / 12 |
 
-The 20 new Likely next CVEs in the window are Oracle WebLogic Server (6) and PeopleSoft
+The 19 new Likely next CVEs in the window are Oracle WebLogic Server (6) and PeopleSoft
 PeopleTools, Apache Tomcat (3) and Roller, N-able N-central (2), JetBrains TeamCity, PHP, Splunk
-Enterprise, Fortinet FortiMail, Mozilla Firefox, Mitel MiCollab and Synology DSM. The 6 new strict
+Enterprise, Fortinet FortiMail, Mitel MiCollab and Synology DSM. The 6 new strict
 backtest catches were all critical network bugs with no SSVC yet at the cutoff, flagged on profile
 alone: IBM Aspera Faspex, Arista VeloCloud Orchestrator and ConnectWise ScreenConnect (edge
 devices), N-able N-central, JFrog Artifactory and Metabase (product in KEV). No catch is lost. For
 two of them (VeloCloud, ScreenConnect) CISA's SSVC now says "not automatable", dated within a day
 of the listing, so the backtest cannot tell whether it was in before. If it was, the fast lane was
-off and those two are not caught: 63 to 65 of 137.
+off and those two are not caught: 63 to 65 of 137. This also means that with the fast lane, undated
+evidence can remove a catch, not only add one: today's SSVC switches the fast lane off for those two,
+so they are flagged before KEV (strict) but not with undated evidence. The strict figure is no
+longer a subset of the undated one.
 
 **What we tried and did not ship.** Exempting the profile from `x.early` with no points, or adding
 +6, catches nothing new in the backtest: the CVEs that matter are the ones without SSVC yet, which
@@ -474,7 +484,8 @@ product) adds 118 more Likely next CVEs in the window (share 2.55%, +0.85 points
 backtest catch, mostly bulk releases from big vendors (Apache TomEE, SAP, Microsoft). Requiring a
 public fix (a reference tagged `patch` or `vendor-advisory`) loses the ScreenConnect catch for 7
 fewer CVEs in the window, so it is not required. Keeping the +12 after day 14 adds 23 more Likely
-next CVEs with no catch.
+next CVEs with no catch. Allowing user interaction (UI:R, or UI:P and UI:A in v4) adds one more,
+a Mozilla Firefox bug, for no catch.
 
 ## PoC vetting
 

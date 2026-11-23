@@ -620,7 +620,7 @@ export interface FastLane {
 
 /**
  * The fast lane (docs/SCORING.md#fast-lane): under 14 days old, CVSS v3/v4 attack vector Network
- * (from the CNA, else CISA-ADP), CISA SSVC automatable and total impact, or CVSS 9.0+ while SSVC is
+ * and no user interaction (from the CNA, else CISA-ADP; attack complexity is not checked), CISA SSVC automatable and total impact, or CVSS 9.0+ while SSVC is
  * not in yet, and an edge device or a product already in KEV. Vendor-only KEV history is not enough.
  */
 export function fastLane(input: {
@@ -632,7 +632,8 @@ export function fastLane(input: {
   priorProduct: boolean;
 }): FastLane | null {
   const { cvss, ssvc } = input;
-  if (!input.cold || !cvss || cvss.version === '2.0' || input.cvssMetrics.AV !== 'N') return null;
+  // User interaction (a click, a page visit) slows mass exploitation, so the fast lane needs UI:N.
+  if (!input.cold || !cvss || cvss.version === '2.0' || input.cvssMetrics.AV !== 'N' || input.cvssMetrics.UI !== 'N') return null;
   let impact: FastLane['impact'];
   if (ssvc) {
     if (ssvc.automatable !== 'yes' || ssvc.technical_impact !== 'total') return null;

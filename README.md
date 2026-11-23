@@ -129,10 +129,11 @@ look-ahead bias: +20 points ≈ 10× the odds. For the first 14 days the feeds h
 so EPSS is ignored and "no exploit yet" costs 3 points instead of 14. On an internet-facing edge
 device (VPN, firewall, gateway and the like, a [curated list](docs/SCORING.md#internet-facing-edge-devices))
 it costs nothing, since those are often attacked before any exploit is public. In the same 14
-days, a network bug that CISA calls automatable with total impact (or CVSS 9 or more before CISA
-has assessed it), on an edge device or in a product already in KEV, gets the
-[fast lane](docs/SCORING.md#fast-lane), +12, and is Likely next from day 0: attack tools now build
-exploits for such bugs in hours. A feed that could not be loaded counts as unknown, never as "no
+days, a network bug with no user interaction that CISA calls automatable with total impact (or
+CVSS 9 or more before CISA has assessed it), on an edge device or in a product already in KEV, gets
+the [fast lane](docs/SCORING.md#fast-lane), +12. In a product already in KEV that is enough for
+Likely next from day 0: attack tools can now turn a public reproducer into an exploit within hours
+for some bugs. A feed that could not be loaded counts as unknown, never as "no
 exploit".
 
 Every CVE published in the last 30 days, every CVE in KEV (CISA's, or listed as exploited by ENISA

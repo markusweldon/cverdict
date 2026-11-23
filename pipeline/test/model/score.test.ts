@@ -421,6 +421,19 @@ describe('X family (exploit artifacts and prediction)', () => {
       expect(byId(score(makeCve({ published: daysAgo(1), ...cvss(9.8, 'N', '3.1', 'cisa-adp') }), { kev }), 'fast.lane')).toBeDefined();
     });
 
+    it('needs no user interaction: UI:R (v3) or UI:P and UI:A (v4) stay out, on both paths', () => {
+      const withUi = (c: ReturnType<typeof cvss>, ui: string) => ({ ...c, cvssMetrics: { ...c.cvssMetrics, UI: ui } });
+      for (const [c, ui] of [[cvss(9.6), 'R'], [cvss(9.3, 'N', '4.0'), 'P'], [cvss(9.3, 'N', '4.0'), 'A']] as const) {
+        const viaSsvc = score(makeCve({ published: daysAgo(1), ...withUi(c, ui), ssvc: ssvc('none', 'yes', 'total') }), { kev });
+        expect(byId(viaSsvc, 'fast.lane')).toBeUndefined();
+        expect(pointsOf(viaSsvc, 'x.early')).toBe(EARLY_NO_EXPLOIT);
+        expect(byId(score(makeCve({ published: daysAgo(1), ...withUi(c, ui), ssvc: null }), { kev }), 'fast.lane')).toBeUndefined();
+      }
+      // A vector without UI is not trusted either.
+      const { UI: _ui, ...noUi } = cvss(9.8).cvssMetrics;
+      expect(fastLane({ cold: true, ...cvss(9.8), cvssMetrics: noUi, ssvc: null, edge: true, priorProduct: false })).toBeNull();
+    });
+
     it('fires on an edge device without any KEV history, and says so', () => {
       const s = score(makeCve({ published: daysAgo(2), affected: fortios, ...cvss(9.8), ssvc: null }));
       expect(byId(s, 'fast.lane')!.label).toBe('Fast lane: network, CVSS 9.8, no SSVC yet, on an edge device');

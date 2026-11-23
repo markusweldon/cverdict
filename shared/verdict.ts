@@ -90,6 +90,13 @@ function artifactPhrase(r: Reason, d: CveDetail): string | null {
     case 'fast.lane': {
       // "Fast lane: network, automatable, total impact, on an edge device" names the criteria that fired.
       const criteria = r.label.startsWith('Fast lane: ') ? r.label.slice('Fast lane: '.length) : '';
+      const lane = criteria ? `fast lane (${criteria})` : 'fast lane';
+      // A weaker exploit sign (SSVC or vendor PoC, mid EPSS) is shown with 0 points; say it, never "no exploit yet".
+      const weaker = d.reasons.find((o) => o.family === 'X' && o.polarity === 'up' && o.id !== 'fast.lane');
+      if (weaker) {
+        const sign = artifactPhrase(weaker, d);
+        return sign ? `${sign}, ${lane}` : lane;
+      }
       return criteria ? `fast lane, no public exploit yet (${criteria})` : 'fast lane, no public exploit yet';
     }
     default:

@@ -28,8 +28,9 @@ export const EARLY_NO_EXPLOIT = -3;
 /**
  * Points for the fast lane (fast.lane, X family): during the cold start, a network-reachable CVE that
  * CISA SSVC calls automatable with total impact (or CVSS 9.0+ before SSVC is in), on an edge device or
- * in a product already in KEV. Large enough that the CVSS-only case (15 + 13 + 10 + 12) reaches the
- * default evidence bar of 50 on day 0. See docs/SCORING.md#fast-lane.
+ * in a product already in KEV. Large enough that the CVSS-only case in a product already in KEV
+ * (15 + 13 + 10 + 12) reaches the default evidence bar of 50 on day 0. On an edge device with no
+ * KEV history for the product it does not (34 or 48). See docs/SCORING.md#fast-lane.
  */
 export const FAST_LANE = 12;
 /** A (cna, publish date) group at least this large is a patch-day batch. */
@@ -77,7 +78,7 @@ export const CHIPS: readonly ChipDef[] = [
   c('vendor.functional', 'X', 'up', 24, 'cvelist', 'Vendor: working exploit', 'The CNA’s CVSS v3 vector says functional or autonomous exploit code exists (E:F/E:H). That is weaponization, not proof of attacks: about a quarter of such CVEs reach KEV. VulDB vectors are ignored.'),
   c('vendor.poc', 'X', 'up', 10, 'cvelist', 'Vendor: PoC', 'The CNA’s CVSS vector says a proof of concept exists (E:P). VulDB vectors are ignored.'),
   c('epss.mid', 'X', 'up', 8, 'epss', 'EPSS 1–10%', 'EPSS between 1% and 10% (only trusted after 14 days).'),
-  c('fast.lane', 'X', 'up', FAST_LANE, 'computed', 'Fast lane', 'Less than 14 days old, attack vector Network, CISA SSVC automatable with total impact (or CVSS 9.0 or more while SSVC is not in yet), on an internet-facing edge device or a product already in CISA KEV. Attack tools now turn such bugs into exploits within hours or days, before exploit feeds see them, so this stands in for an exploit sign. The strongest X chip counts, so a real exploit replaces it.'),
+  c('fast.lane', 'X', 'up', FAST_LANE, 'computed', 'Fast lane', 'Less than 14 days old, attack vector Network with no user interaction, CISA SSVC automatable with total impact (or CVSS 9.0 or more while SSVC is not in yet), on an internet-facing edge device or a product already in CISA KEV. Attack tools can now turn a public reproducer into an exploit within hours for some bugs, before exploit feeds see it, so this stands in for an exploit sign. It is not evidence of attacks. The strongest X chip counts, so a real exploit replaces it.'),
   c('x.none', 'X', 'down', -14, 'computed', 'No exploit yet', 'Two weeks after publication there is still no public exploit and EPSS is below 1%.'),
   c('x.early', 'X', 'down', EARLY_NO_EXPLOIT, 'computed', 'No exploit yet (early)', 'Less than 14 days old and no exploit signal yet. Weak evidence, so a small penalty: severity, SSVC and KEV history alone stay under the default evidence bar. Not applied to internet-facing edge devices, and replaced by the fast lane when that fires.'),
   c('x.too_new', 'X', 'unknown', 0, 'computed', 'Too new', 'No exploit chip, but absence is not settled: a PoC repo is too new to vet, an exploit source could not be loaded this run, or the CVE is an internet-facing edge device under 14 days old.'),

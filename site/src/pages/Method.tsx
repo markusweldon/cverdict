@@ -21,7 +21,7 @@ score = exploited ? min(100, max(raw + ${EXPLOITED_BONUS}, ${EXPLOITED_FLOOR}) +
 
 X      strongest exploit signal (Metasploit, Nuclei, Exploit-DB, EPSS, PoC…)
        EPSS only after ${COLD_START_DAYS} days; until then "no exploit yet" is ${EARLY_NO_EXPLOIT} (0 on edge devices)
-       fast lane +${FAST_LANE} until day ${COLD_START_DAYS}: network, automatable and total impact
+       fast lane +${FAST_LANE} until day ${COLD_START_DAYS}: network, no user interaction, automatable and total impact
        (or CVSS 9+ before SSVC), on an edge device or a product already in KEV
 SSVC   automatable + technical impact (they add)
 NOISE  only when nothing exploits it: hobby code, disputed, WordPress, kernel`;
@@ -57,8 +57,9 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
   [
     'The fast lane is a bet on speed',
     <>
-      For its first {COLD_START_DAYS} days, a network bug that CISA calls automatable with total impact (or CVSS 9 or more before CISA has assessed it), on an edge device or in a product already
-      in KEV, gets +{FAST_LANE} and is Likely next with no public exploit. Attack tools now build exploits for such bugs within hours, so we do not wait for one. It is not evidence of attacks, and most
+      For its first {COLD_START_DAYS} days, a network bug with no user interaction that CISA calls automatable with total impact (or CVSS 9 or more before CISA has assessed it), on an edge device or
+      in a product already in KEV, gets +{FAST_LANE}. In a product already in KEV that is enough for Likely next with no public exploit. Attack tools can now turn a public reproducer into an exploit
+      within hours for some bugs, so we do not wait for one. It is not evidence of attacks, and most
       of these CVEs will never be exploited. The criteria follow CISA’s BOD 26-04. See the <ExtLink href={`${REPO_URL}/blob/main/docs/SCORING.md#fast-lane`}>rule and its numbers</ExtLink>.
     </>,
   ],

@@ -212,6 +212,17 @@ describe('verdict helpers', () => {
     expect(one('x.something_new')).toBe('score 50 clears the evidence bar (50)');
   });
 
+  it('names a weaker exploit sign next to the fast lane instead of saying there is no exploit', () => {
+    const lane = { id: 'fast.lane', label: 'Fast lane: network, automatable, total impact, product in KEV', polarity: 'up', family: 'X', points: 12, source: 'computed' } as const;
+    const withSign = (id: string, label: string) =>
+      verdict({ ...F.LIKELY_SCORE, reasons: [lane, { id, label, polarity: 'up', family: 'X', points: 0, source: 'cvelist' }] }, 'likely', 50, 2026).reason;
+    expect(withSign('ssvc.poc', 'CISA SSVC: public PoC')).toBe('CISA SSVC says a proof of concept exists, fast lane (network, automatable, total impact, product in KEV)');
+    expect(withSign('vendor.poc', 'Vendor CVSS: proof of concept exists (E:P)')).toBe(
+      'vendor CVSS says a proof of concept exists, fast lane (network, automatable, total impact, product in KEV)',
+    );
+    for (const id of ['ssvc.poc', 'vendor.poc', 'epss.mid']) expect(withSign(id, 'x')).not.toContain('no public exploit');
+  });
+
   it('says a fast lane CVE has no public exploit yet and names the criteria that fired', () => {
     const fast = (label: string) =>
       verdict({ ...F.LIKELY_SCORE, reasons: [{ id: 'fast.lane', label, polarity: 'up', family: 'X', points: 12, source: 'computed' }] }, 'likely', 50, 2026).reason;
