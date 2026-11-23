@@ -8,7 +8,8 @@ import { useSearchTarget } from '../hooks';
 import { href } from '../router';
 import { toggleWatch, useStore, watchlist } from '../state';
 import { chipDef, TIER_META } from '../tiers';
-import { IconEye, IconLink, IconSearch, IconX } from './icons';
+import { vendorFeedUrl } from '../vendorfeed';
+import { IconEye, IconLink, IconRss, IconSearch, IconX } from './icons';
 import { TierIcon } from './Tier';
 
 const TOGGLABLE: readonly Tier[] = ['exploited', 'likely', 'watch'];
@@ -122,7 +123,7 @@ function Watchlist({ watchOnly, onWatchOnly }: { watchOnly: boolean; onWatchOnly
       </button>
       {open && (
         <div class="watch__panel" id="watch-panel">
-          <p class="watch__hint">Watched vendors and products always show, whatever the evidence bar. Stored only in this browser.</p>
+          <p class="watch__hint">Watched vendors and products always show, whatever the evidence bar. Stored only in this browser. Each name has its own feed of verdict events: copy its URL into a feed reader or Slack.</p>
           <form class="watch__add" onSubmit={add}>
             <input type="text" value={draft} onInput={(e) => setDraft(e.currentTarget.value)} placeholder="Add a vendor or product" aria-label="Vendor or product to watch" />
             <button type="submit" class="btn btn--sm">
@@ -131,14 +132,24 @@ function Watchlist({ watchOnly, onWatchOnly }: { watchOnly: boolean; onWatchOnly
           </form>
           {list.length > 0 ? (
             <ul class="watch__list">
-              {list.map((n) => (
-                <li key={n}>
-                  <span>{n}</span>
-                  <button type="button" class="iconbtn iconbtn--sm" onClick={() => toggleWatch(n)} aria-label={`Stop watching ${n}`}>
-                    <IconX size={12} />
-                  </button>
-                </li>
-              ))}
+              {list.map((n) => {
+                const feed = vendorFeedUrl(n);
+                return (
+                  <li key={n}>
+                    <span>{n}</span>
+                    <span class="watch__actions">
+                      {feed && (
+                        <button type="button" class="iconbtn iconbtn--sm" onClick={() => void copyLink(feed, 'Feed URL')} aria-label={`Copy the feed URL for ${n}`} data-tip="Copy feed URL">
+                          <IconRss size={12} />
+                        </button>
+                      )}
+                      <button type="button" class="iconbtn iconbtn--sm" onClick={() => toggleWatch(n)} aria-label={`Stop watching ${n}`}>
+                        <IconX size={12} />
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p class="watch__empty">Nothing yet. Press w on a selected row to watch its vendor.</p>

@@ -2108,6 +2108,12 @@ a.chip:hover {
   background: var(--raised);
 }
 
+.watch__actions {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+
 .watch__only {
   display: flex;
   align-items: center;

@@ -9,6 +9,7 @@ import { Snippet } from '../components/Snippet';
 import { DATA_BASE, FEEDS_BASE } from '../data';
 import { useTitle } from '../hooks';
 import { href } from '../router';
+import { vendorFeedOrigin } from '../vendorfeed';
 
 const abs = (path: string) => new URL(path, window.location.origin).href;
 
@@ -22,6 +23,7 @@ const JSON_FILES: readonly [string, string][] = [
   ['stats.json', 'Monthly volume since 1999, daily window counts, hourly waterfall buckets, top CNAs.'],
   ['surge.json', 'Published CVEs per month by CVSS severity and top 30 CNA, and CISA KEV CVEs by publication month. About 18 KB gzip.'],
   ['changes.json', 'Escalations from the runs of the last 7 days.'],
+  ['events.json', 'Verdict events from the last 7 days: KEV and catalog listings, vendor reports, moves into Likely next or Exploited, fast lane, new exploit modules and templates. Newest first, each with a stable id.'],
   ['woke.json', 'Old CVEs (published before the window) that gained exploitation evidence in the last 30 days, with the dated signals.'],
   ['receipts.json', 'Receipts: which CVEs CISA added to KEV that each method had flagged before the listing, from the live log and the hindsight backtest.'],
   ['packages.json', 'Package versions the tracked CVEs affect, from OSV.dev advisories, for the Check Deps page. About 120 KB gzip.'],
@@ -36,6 +38,17 @@ function shardOf(id) {
   }
   return ((h >>> 0) % ${SHARD_COUNT}).toString(16).padStart(2, '0');
 }`;
+
+/** Posts each new events.json item for one vendor once; works with ntfy, Slack or Teams workflow webhooks. */
+const WEBHOOK_SH = `#!/bin/sh
+# Remembers what it posted in ./seen. For Slack, post {"text": ...} JSON to your webhook instead.
+v=fortinet
+curl -fsS ${RAW_DATA_URL}/v1/events.json \\
+  | jq -r --arg v "$v" '.items[] | select((.vendor | ascii_downcase) == $v or (.product | ascii_downcase) == $v)
+           | "\\(.id)\\t\\(.title) https://cverdict.dev/cve/\\(.cve)"' \\
+  | while IFS="$(printf '\\t')" read -r id msg; do
+      grep -qxF "$id" seen 2>/dev/null || { curl -fsS -d "$msg" https://ntfy.sh/your-topic && echo "$id" >>seen; }
+    done`;
 
 function UrlRow({ url, label, note, icon, open = url }: { url: string; label: string; note: string; icon: ComponentChildren; open?: string }) {
   return (
@@ -62,6 +75,7 @@ export default function Feeds() {
   useTitle('Feeds & API');
   const base = abs(DATA_BASE);
   const feeds = abs(FEEDS_BASE);
+  const vendor = vendorFeedOrigin();
   return (
     <div class="page page--feeds">
       <header class="page__head">
@@ -83,8 +97,34 @@ export default function Feeds() {
           <UrlRow url={`${feeds}signal.xml`} label="Signal (Atom)" note="The newest 100 Exploited and Likely-next CVEs." icon={<IconRss size={16} />} />
           <UrlRow url={`${feeds}kev.xml`} label="KEV additions (Atom)" note="CISA KEV entries added in the last 30 days." icon={<IconRss size={16} />} />
           <UrlRow url={`${feeds}woke.xml`} label="Woke Up (Atom)" note="Up to 100 old CVEs that gained exploitation evidence in the last 30 days, newest first. CISA KEV, EU KEV and CIRCL listings and Exploit-DB entries always make it in. A PoC repo alone counts only when the CVE is Likely next or Exploited." icon={<IconRss size={16} />} />
+          <UrlRow
+            url={`${RAW_DATA_URL}/feeds/events.xml`}
+            label="Verdict events (Atom)"
+            note="Up to 200 events from the last 7 days: why a verdict moved, newest first. KEV and catalog listings, vendor reports and moves into Exploited always make it in. Served straight from GitHub, so polling it costs this site nothing."
+            icon={<IconRss size={16} />}
+          />
           <UrlRow url={`${feeds}kev-due.ics`} label="KEV due dates (iCalendar)" note="One all-day event per deadline, from a week ago to 60 days out. Subscribe from any calendar app." icon={<IconCalendar size={16} />} />
         </ul>
+      </section>
+
+      <section class="prose-section" id="vendors" aria-labelledby="vendors-h">
+        <h2 id="vendors-h" class="section__title">
+          Feeds for your vendors
+        </h2>
+        <p class="muted">
+          Every vendor or product name has its own Atom feed of verdict events: <code>{vendor}/feeds/v/&lt;name&gt;.xml</code>. The name is lower case, with every run of other characters turned into one hyphen, so
+          “Palo Alto Networks” is <code>palo-alto-networks</code>. An event matches when its vendor or its product has that name, the same rule as the watchlist. The watchlist on Today copies the URL for each name.
+        </p>
+        <p class="muted">Poll hourly. The data changes once an hour, sooner when CISA or ENISA list something. No account needed, and we send nothing: every feed is a file you fetch.</p>
+        <ul class="endpoints">
+          <UrlRow url={`${vendor}/feeds/v/fortinet.xml`} label="Example: Fortinet (Atom)" note="Up to 50 events from the last 7 days. A name with no events gets an empty feed, not an error." icon={<IconRss size={16} />} />
+        </ul>
+        <div class="snippets">
+          <Snippet title="Slack (the RSS app)" code={`/feed subscribe ${vendor}/feeds/v/fortinet.xml`} />
+          <Snippet title="Microsoft Teams" code={'Power Automate: "When a feed item is published" (RSS connector),\nthen "Post message in a chat or channel".'} />
+          <Snippet title="One vendor's events with curl and jq" code={`curl -s ${RAW_DATA_URL}/v1/events.json \\\n  | jq -r '.items[] | select((.vendor | ascii_downcase) == "fortinet" or (.product | ascii_downcase) == "fortinet") | "\\(.at)  \\(.title)"'`} />
+          <Snippet title="Post new events to a webhook (cron, every 15 min)" code={WEBHOOK_SH} />
+        </div>
       </section>
 
       <section class="prose-section" aria-labelledby="json-h">
