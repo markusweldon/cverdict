@@ -13,7 +13,7 @@
 # script's step only, through GIT_CONFIG_* in the environment.
 #
 # Nothing is pushed when the content fingerprint (row index, KEV file, headline counts, woke.json,
-# receipts.json, packages.json and state.json, ignoring generation times) matches the branch. The push is a lease on the commit we compared
+# events.json, receipts.json, packages.json and state.json, ignoring generation times) matches the branch. The push is a lease on the commit we compared
 # against, so a concurrent publisher can never be silently overwritten, and data older than the
 # branch's (a re-run of an old run's publish job) is refused, so the carried state never goes
 # back in time. Works on the very first run, when the branch does not exist yet.
@@ -92,6 +92,7 @@ fingerprint() {
       jq -cS 'del(.generated_at)' "$dir/v1/kev.json" &&
       jq -cS '.counts' "$dir/v1/meta.json" &&
       if [[ -f $dir/v1/woke.json ]]; then jq -cS 'del(.generated_at, .since, .published_before)' "$dir/v1/woke.json"; fi &&
+      if [[ -f $dir/v1/events.json ]]; then jq -cS 'del(.generated_at, .previous_at) | .catalogs |= map_values(if type == "object" then del(.fetched_at) else . end)' "$dir/v1/events.json"; fi &&
       if [[ -f $dir/v1/receipts.json ]]; then jq -cS 'del(.generated_at)' "$dir/v1/receipts.json"; fi &&
       if [[ -f $dir/v1/packages.json ]]; then jq -cS 'del(.generated_at) | .sources |= map(del(.fetched_at))' "$dir/v1/packages.json"; fi &&
       if [[ -f $dir/v1/state.json ]]; then jq -cS 'del(.generated_at)' "$dir/v1/state.json"; fi
@@ -99,12 +100,12 @@ fingerprint() {
 }
 
 # Fingerprint of a published commit; fails when it lacks any of the fingerprinted files, so a
-# branch from before woke.json, receipts.json, state.json and packages.json existed is always
-# republished.
+# branch from before woke.json, events.json, receipts.json, state.json and packages.json existed is
+# always republished.
 commit_fingerprint() {
   local dir="$work/published"
   mkdir -p "$dir"
-  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json v1/woke.json v1/receipts.json v1/state.json v1/packages.json | tar -x -C "$dir" || return 1
+  git archive "$1" -- v1/index.json v1/kev.json v1/meta.json v1/woke.json v1/events.json v1/receipts.json v1/state.json v1/packages.json | tar -x -C "$dir" || return 1
   fingerprint "$dir"
 }
 
@@ -138,6 +139,7 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 | \`v1/surge.json\` | Published CVEs per month by CVSS severity and top 30 CNA, and CISA KEV CVEs by publication month |
 | \`v1/changes.json\` | Escalations (tier went up, or new exploit evidence) in the last 7 days |
 | \`v1/woke.json\` | Old CVEs (published before the window) that gained exploitation evidence in the last 30 days |
+| \`v1/events.json\` | Verdict events of the last 7 days (KEV and catalog listings, vendor reports, moves into Likely next or Exploited, fast lane, new exploit modules and templates), newest first |
 | \`v1/receipts.json\` | Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV (forward log and hindsight backtest) |
 | \`v1/packages.json\` | Package versions the CVEs with a detail shard affect, from OSV.dev advisories, with each CVE's row (for the site's Check Deps page) |
 | \`v1/state.json\` | Internal state carried between runs; unstable, do not build on it |
@@ -145,6 +147,7 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 | \`feeds/kev.xml\` | Atom: KEV additions |
 | \`feeds/kev-due.ics\` | iCalendar: KEV remediation due dates |
 | \`feeds/woke.xml\` | Atom: old CVEs that woke up |
+| \`feeds/events.xml\` | Atom: verdict events |
 
 Every JSON file carries \`schema_version\` and \`generated_at\`. Fields, sharding and the
 versioning policy are documented in

@@ -1,19 +1,22 @@
 /**
- * Atom 1.0 feeds (RFC 4287). CVE text is attacker-controlled: everything goes through
- * escapeXml(), and only `type="text"` constructs are used, so no markup ever comes from data.
+ * Atom 1.0 feeds (RFC 4287). Rendering lives in shared/atom.ts (also used by api/feed.ts); CVE
+ * text is attacker-controlled, so everything goes through escapeXml() and only `type="text"`
+ * constructs are used.
  */
-import { BRAND, REPO_URL } from '../../../shared/brand';
-import type { CveDetail, KevEntry, Reason, Tier, WokeFile } from '../../../shared/contract';
+import { BRAND } from '../../../shared/brand';
+import { cveUrl, eventsFeed as renderEventsFeed, latestUpdated as latest, oneLine, renderFeed, selectFeedEvents, tagUri, TIER_LABEL, type AtomEntry } from '../../../shared/atom';
+import type { CveDetail, EventsFile, KevEntry, Reason, WokeFile } from '../../../shared/contract';
 import { topChipIds } from '../rows';
 import { dayLabel } from '../score';
 import { KEV_RECENT_DAYS, PATHS, daysAgo } from './json';
 import { parseIsoDate } from '../util/dates';
 
+export { cveUrl, escapeXml } from '../../../shared/atom';
+
 const SIGNAL_FEED_MAX = 100;
 const WOKE_FEED_MAX = 100;
-/** Fixed date for tag: URIs (RFC 4151), so entry ids never change. */
-const TAG_DATE = '2026';
-const TIER_LABEL: Record<Tier, string> = { exploited: 'Exploited', likely: 'Likely next', watch: 'Watch', quiet: 'Quiet' };
+/** feeds/events.xml carries at most this many events. */
+export const EVENTS_FEED_MAX = 200;
 
 export interface FeedOptions {
   /** Public site origin (+ base path), no trailing slash. */
@@ -21,23 +24,6 @@ export interface FeedOptions {
   /** Origin for the feed and entry IDs (BRAND.feedIdBase), so they survive a move of siteUrl. Default: siteUrl. */
   idBase?: string;
   now: Date;
-}
-
-/** Characters not allowed in XML 1.0 documents (incl. lone surrogates). */
-const XML_INVALID = /[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/gu;
-const XML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
-
-/** Escape text for XML element content and attribute values; drops characters XML cannot carry. */
-export function escapeXml(text: string): string {
-  return text
-    .replace(/\r\n?/g, '\n')
-    .replace(XML_INVALID, '')
-    .replace(/[&<>"']/g, (ch) => XML_ESCAPES[ch]);
-}
-
-/** Single-line text (titles): whitespace runs, including newlines, become one space. */
-function oneLine(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
 }
 
 /** Epoch ms of YYYY-MM-DD (UTC midnight) or an ISO date-time; NaN when unparseable. */
@@ -49,74 +35,6 @@ function toTime(date: string): number {
 function rfc3339(date: string, fallback: Date): string {
   const t = toTime(date);
   return new Date(Number.isNaN(t) ? fallback.getTime() : t).toISOString();
-}
-
-export const cveUrl = (siteUrl: string, id: string) => `${siteUrl}/cve/${encodeURIComponent(id)}`;
-
-function tagUri(siteUrl: string, specific: string): string {
-  return `tag:${new URL(siteUrl).host},${TAG_DATE}:${BRAND.slug}/${specific}`;
-}
-
-interface AtomEntry {
-  id: string;
-  title: string;
-  link: string;
-  related?: string;
-  updated: string;
-  published: string;
-  summary: string;
-  content?: string;
-  categories: string[];
-}
-
-interface AtomFeed {
-  id: string;
-  title: string;
-  subtitle: string;
-  self: string;
-  alternate: string;
-  updated: string;
-  entries: AtomEntry[];
-}
-
-function renderEntry(e: AtomEntry): string {
-  const lines = [
-    '<entry>',
-    `<id>${escapeXml(e.id)}</id>`,
-    `<title type="text">${escapeXml(oneLine(e.title))}</title>`,
-    `<link rel="alternate" type="text/html" href="${escapeXml(e.link)}"/>`,
-    ...(e.related ? [`<link rel="related" href="${escapeXml(e.related)}"/>`] : []),
-    `<updated>${e.updated}</updated>`,
-    `<published>${e.published}</published>`,
-    ...e.categories.map((c) => `<category term="${escapeXml(oneLine(c))}"/>`),
-    `<summary type="text">${escapeXml(e.summary)}</summary>`,
-    ...(e.content ? [`<content type="text">${escapeXml(e.content)}</content>`] : []),
-    '</entry>',
-  ];
-  return lines.join('\n');
-}
-
-function renderFeed(f: AtomFeed): string {
-  return [
-    '<?xml version="1.0" encoding="utf-8"?>',
-    '<feed xmlns="http://www.w3.org/2005/Atom">',
-    `<id>${escapeXml(f.id)}</id>`,
-    `<title type="text">${escapeXml(f.title)}</title>`,
-    `<subtitle type="text">${escapeXml(f.subtitle)}</subtitle>`,
-    `<link rel="self" type="application/atom+xml" href="${escapeXml(f.self)}"/>`,
-    `<link rel="alternate" type="text/html" href="${escapeXml(f.alternate)}"/>`,
-    `<updated>${f.updated}</updated>`,
-    `<author><name>${escapeXml(BRAND.name)}</name><uri>${escapeXml(REPO_URL)}</uri></author>`,
-    `<generator uri="${escapeXml(REPO_URL)}">${escapeXml(`${BRAND.slug}-pipeline`)}</generator>`,
-    ...f.entries.map(renderEntry),
-    '</feed>',
-    '',
-  ].join('\n');
-}
-
-/** Latest entry time, so the feed's <updated> only moves when its content does. */
-function latest(entries: AtomEntry[], fallback: string): string {
-  return entries.reduce((max, e) => (e.updated > max ? e.updated : max), entries.length ? '' : fallback);
 }
 
 /**
@@ -263,5 +181,25 @@ export function wokeFeed(woke: WokeFile, opts: FeedOptions): string {
     alternate: `${siteUrl}/woke`,
     updated: latest(entries, now.toISOString()),
     entries,
+  });
+}
+
+/**
+ * feeds/events.xml: up to EVENTS_FEED_MAX verdict events from events.json, newest first. When
+ * there are more, every KEV and catalog listing, vendor report, move into Exploited and Metasploit
+ * module is kept first (shared/atom.ts selectFeedEvents).
+ */
+export function eventsFeed(events: EventsFile, opts: FeedOptions): string {
+  const { siteUrl, now } = opts;
+  const items = selectFeedEvents(events.items, EVENTS_FEED_MAX);
+  return renderEventsFeed({
+    siteUrl,
+    idBase: opts.idBase ?? siteUrl,
+    path: PATHS.eventsFeed,
+    title: `${BRAND.name} · verdict events`,
+    subtitle: `Why verdicts moved in the last ${events.days} days: CISA KEV and catalog listings, vendor reports, moves into Likely next or Exploited, the fast lane, and new exploit modules and templates. Up to ${EVENTS_FEED_MAX}, newest first.`,
+    alternate: '',
+    fallbackUpdated: now.toISOString(),
+    items,
   });
 }

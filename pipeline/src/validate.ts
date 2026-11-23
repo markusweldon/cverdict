@@ -32,7 +32,9 @@ import {
 import { ADVISORY_ID_RE, ATTRIBUTION, advisoryDatabase, packageKey } from '../../shared/packages';
 import { CVE_ID_RE, shardOf } from '../../shared/shard';
 import { COMPARATORS, parseEvent } from '../../shared/versions';
+import { compareEvents } from '../../shared/atom';
 import { backtestProblems } from './backtest';
+import { parseItem } from './events';
 import { PATHS, SHARD_NAMES } from './emit/json';
 import { BUDGETS } from './config';
 import type { Logger } from './types';
@@ -49,6 +51,7 @@ const REQUIRED = [
   PATHS.kev,
   PATHS.stats,
   PATHS.changes,
+  PATHS.events,
   PATHS.woke,
   PATHS.state,
   PATHS.receipts,
@@ -57,6 +60,7 @@ const REQUIRED = [
   PATHS.kevFeed,
   PATHS.kevDueIcs,
   PATHS.wokeFeed,
+  PATHS.eventsFeed,
   ...SHARD_NAMES.map(PATHS.shard),
 ];
 
@@ -424,12 +428,53 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
   checkNewExploited(json, index, errors);
   checkSurge(json.get(PATHS.surge), json.get(PATHS.stats), errors);
   checkReceipts(json, errors);
+  checkEvents(json, errors);
   checkPackages(json, details, index, errors, warnings);
 
   const kev = json.get(PATHS.kev) as KevFile | undefined;
   if (kev && Array.isArray(kev.entries)) {
     const noDetail = kev.entries.filter((e) => !details.has(e.id));
     if (noDetail.length > 0) warnings.push(`${noDetail.length} kev.json entries have no CVE record in the shards (first: ${noDetail[0].id})`);
+  }
+}
+
+const HEX64 = /^[0-9a-f]{64}$/;
+
+/**
+ * events.json: every item well-formed with the id its fields imply (parseItem), ids unique, newest
+ * first in the file's order, every `at` inside [generated_at - days, generated_at], no more than
+ * max_items, and catalog snapshots with a 64-hex-digit hash.
+ */
+export function checkEvents(json: Map<string, JsonObject>, errors: string[]): void {
+  const doc = json.get(PATHS.events);
+  if (!doc) return;
+  const err = (msg: string): void => void errors.push(`${PATHS.events}: ${msg}`);
+  if (!Array.isArray(doc.items)) return err('items is not an array');
+  if (!Number.isInteger(doc.days) || (doc.days as number) < 1) err('days is not a positive integer');
+  if (!Number.isInteger(doc.max_items) || doc.items.length > (doc.max_items as number)) err(`${doc.items.length} items, max_items is ${String(doc.max_items)}`);
+  if (!(doc.previous_at === null || (typeof doc.previous_at === 'string' && Number.isFinite(Date.parse(doc.previous_at))))) err('previous_at is not a date or null');
+  const catalogs = asObject(doc.catalogs);
+  if (!catalogs) err('catalogs is not an object');
+  for (const name of ['kev', 'eu_kev']) {
+    const c = catalogs?.[name];
+    if (c === null) continue;
+    const o = asObject(c);
+    if (!o || typeof o.ids_sha256 !== 'string' || !HEX64.test(o.ids_sha256) || !Number.isInteger(o.count) || (o.count as number) < 1) err(`catalogs.${name} is not a snapshot`);
+  }
+  const end = Date.parse(String(doc.generated_at));
+  const start = end - (Number(doc.days) || 0) * 86_400_000;
+  const items = doc.items.map(parseItem);
+  const bad = doc.items.filter((_, i) => items[i] === null);
+  if (bad.length) err(`${bad.length} bad items (first: ${JSON.stringify(bad[0]).slice(0, 200)})`);
+  const ok = items.filter((i) => i !== null);
+  if (new Set(ok.map((i) => i.id)).size !== ok.length) err('duplicate ids');
+  const outside = ok.filter((i) => !(Date.parse(i.at) >= start && Date.parse(i.at) <= end));
+  if (outside.length) err(`${outside.length} items dated outside the last ${String(doc.days)} days (first: ${outside[0].id} at ${outside[0].at})`);
+  for (let i = 1; i < ok.length; i++) {
+    if (compareEvents(ok[i - 1], ok[i]) > 0) {
+      err(`items are not newest first (${ok[i - 1].id} before ${ok[i].id})`);
+      break;
+    }
   }
 }
 
@@ -616,7 +661,7 @@ function checkMeta(meta: Meta, index: Row[], json: Map<string, JsonObject>, erro
 }
 
 function checkFeeds(root: string, present: Set<string>, errors: string[]): void {
-  for (const feed of [PATHS.signalFeed, PATHS.kevFeed, PATHS.wokeFeed]) {
+  for (const feed of [PATHS.signalFeed, PATHS.kevFeed, PATHS.wokeFeed, PATHS.eventsFeed]) {
     if (!present.has(feed)) continue;
     const xml = readFileSync(join(root, feed), 'utf8');
     if (!xml.startsWith('<?xml') || !/<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/.test(xml) || !xml.trimEnd().endsWith('</feed>')) {

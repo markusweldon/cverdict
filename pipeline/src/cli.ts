@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { BRAND } from '../../shared/brand';
 import { KNOB_MAX, KNOB_MIN, TIERS, WAKE_KINDS } from '../../shared/contract';
-import { DEFAULT_WINDOW_DAYS } from './config';
+import { DEFAULT_WINDOW_DAYS, FRESH_SOURCES } from './config';
 import { packagesSummary } from './packages';
 import { formatSizeTable } from './validate';
 import { ValidationFailedError, run, type RunOptions, type RunSummary } from './run';
@@ -33,6 +33,8 @@ Options:
   --window-days <n>     Window size in days (default: ${DEFAULT_WINDOW_DAYS})
   --knob <n>            Default knob for tiers, ${KNOB_MIN}–${KNOB_MAX} (default: 50)
   --refresh-backtest    Recompute the hindsight backtest now (normally it is carried forward for 7 days)
+  --fresh <ids>         Download these sources now even if the cached copy is recent, comma-separated:
+                        ${FRESH_SOURCES.join(', ')}, or none (default: none)
   --offline             Never use the network; read the cache only
   -h, --help            Show this help
 
@@ -68,6 +70,7 @@ export function parseCli(argv: string[]): RunOptions | null {
         knob: { type: 'string' },
         offline: { type: 'boolean', default: false },
         'refresh-backtest': { type: 'boolean', default: false },
+        fresh: { type: 'string', default: 'none' },
         help: { type: 'boolean', short: 'h', default: false },
       },
     }));
@@ -87,6 +90,13 @@ export function parseCli(argv: string[]): RunOptions | null {
   const knob = values.knob === undefined ? undefined : int('knob', values.knob);
   if (knob !== undefined && (knob < KNOB_MIN || knob > KNOB_MAX)) throw new UsageError(`--knob must be within ${KNOB_MIN}–${KNOB_MAX}`);
 
+  const fresh = values.fresh
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s !== '' && s !== 'none');
+  const unknown = fresh.filter((s) => !FRESH_SOURCES.includes(s));
+  if (unknown.length) throw new UsageError(`--fresh accepts ${FRESH_SOURCES.join(', ')} or none, got "${unknown.join(',')}"`);
+
   return {
     out: values.out,
     previous: values.previous ?? null,
@@ -100,6 +110,7 @@ export function parseCli(argv: string[]): RunOptions | null {
     offline: values.offline,
     knob,
     refreshBacktest: values['refresh-backtest'],
+    fresh: [...new Set(fresh)],
   };
 }
 

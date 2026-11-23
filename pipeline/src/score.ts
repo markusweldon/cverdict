@@ -132,7 +132,7 @@ function plural(n: number, word: string): string {
 export const EDGE_DOC_URL = `${REPO_URL}/blob/main/docs/SCORING.md#internet-facing-edge-devices`;
 /** Where the fast lane rule and its numbers are explained. */
 export const FAST_LANE_DOC_URL = `${REPO_URL}/blob/main/docs/SCORING.md#fast-lane`;
-const cveOrgUrl = (id: string) => `https://www.cve.org/CVERecord?id=${id}`;
+export const cveOrgUrl = (id: string) => `https://www.cve.org/CVERecord?id=${id}`;
 export const kevSearchUrl = (q: string) =>
   `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${encodeURIComponent(q)}`;
 export const epssUrl = (id: string) => `https://api.first.org/data/v1/epss?cve=${id}`;

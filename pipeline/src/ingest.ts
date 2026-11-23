@@ -28,7 +28,7 @@ export interface IngestDeps {
 }
 
 export async function ingest(ctx: RunContext, opts: IngestOptions): Promise<IngestResult> {
-  const http = new HttpClient({ cacheDir: ctx.cacheDir, offline: ctx.offline, log: ctx.log });
+  const http = new HttpClient({ cacheDir: ctx.cacheDir, offline: ctx.offline, log: ctx.log, fresh: ctx.fresh });
   return ingestWith(ctx, opts, { http, limits: SANITY });
 }
 
@@ -201,6 +201,7 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
     cvelistCommit: repo.commit,
     wake,
     osv: osv.data,
+    euKevIds: euKev.data ? [...euKev.data.keys()] : null,
     ...(plan && epssAsOf
       ? {
           backtest: {

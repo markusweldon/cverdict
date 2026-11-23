@@ -76,6 +76,8 @@ export interface HttpClientOptions {
   clock?: () => number;
   timeoutMs?: number;
   retryDelaysMs?: readonly number[];
+  /** Cache keys whose minIntervalMs is ignored this run (`--fresh`): the copy is revalidated now. */
+  fresh?: ReadonlySet<string>;
 }
 
 class HttpStatusError extends Error {
@@ -185,7 +187,8 @@ export class HttpClient {
 
     if (this.options.offline) return this.fromCache(req, cached, null);
 
-    if (cached?.meta && req.minIntervalMs !== undefined) {
+    if (this.options.fresh?.has(req.key) && req.minIntervalMs !== undefined) log.info(`${req.key}: downloading now (--fresh)`);
+    else if (cached?.meta && req.minIntervalMs !== undefined) {
       const age = this.clock() - Date.parse(cached.meta.fetched_at);
       if (age >= 0 && age < req.minIntervalMs) {
         const reused = this.tryParse(req, cached);

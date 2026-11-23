@@ -34,6 +34,8 @@ export interface RunOptions {
   knob?: number;
   /** Recompute the backtest even when the carried-forward copy is recent. */
   refreshBacktest?: boolean;
+  /** Sources (FRESH_SOURCES cache keys) to download now even when their cached copy is recent. */
+  fresh?: readonly string[];
 }
 
 export interface RunSummary {
@@ -88,7 +90,7 @@ export async function run(opts: RunOptions): Promise<RunSummary> {
   if (!Number.isFinite(knob) || knob < KNOB_MIN || knob > KNOB_MAX) throw new Error(`knob must be within ${KNOB_MIN}–${KNOB_MAX}, got ${knob}`);
   const log = createLogger();
   const windowStart = new Date(now.getTime() - opts.windowDays * DAY_MS);
-  const ctx: RunContext = { now, windowDays: opts.windowDays, windowStart, cacheDir: resolve(opts.cache), offline: opts.offline, log };
+  const ctx: RunContext = { now, windowDays: opts.windowDays, windowStart, cacheDir: resolve(opts.cache), offline: opts.offline, log, fresh: new Set(opts.fresh ?? []) };
   const base = siteUrl();
 
   log.info(`${BRAND.slug} pipeline · model ${SCORE_MODEL} · now ${now.toISOString()} · window ${opts.windowDays}d · knob ${knob}`);

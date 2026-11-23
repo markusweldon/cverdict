@@ -137,6 +137,13 @@ export const EU_KEV = {
 } as const;
 
 /**
+ * Sources whose reuse interval `--fresh` may skip (by cache key). Only EU KEV: the fast check
+ * (scripts/fast-check.sh) dispatches a run when ENISA's dump changed, and that run must not reuse a
+ * copy up to 6 h old. CIRCL's 12 h interval is its API's own policy and stays.
+ */
+export const FRESH_SOURCES: readonly string[] = ['eu-kev'];
+
+/**
  * CIRCL Vulnerability-Lookup KEV catalogs (GCVE BCP-07 entries), one catalog per request through
  * the `vulnerability_lookup_origin` filter. Anonymous use is limited to 20 requests a minute and
  * the API policy asks not to mirror the dataset: two requests every 12 hours stay far below that.
@@ -315,6 +322,8 @@ export const BUDGETS = {
     'v1/batches.json': 96 * 1024,
     'v1/kev.json': 32 * 1024,
     'v1/changes.json': 32 * 1024,
+    /** Verdict events of 7 days (events.ts): an estimated 200 to 350 a week, 10 to 20 KB gzip. */
+    'v1/events.json': 48 * 1024,
     'v1/woke.json': 64 * 1024,
     'v1/receipts.json': 64 * 1024,
     /** Measured 122 KB gzip on 2026-11-03 (1,365 CVEs, 807 packages). Raise it before splitting the file. */
@@ -329,6 +338,7 @@ export const BUDGETS = {
     'feeds/kev.xml': 32 * 1024,
     'feeds/kev-due.ics': 32 * 1024,
     'feeds/woke.xml': 64 * 1024,
+    'feeds/events.xml': 64 * 1024,
   },
   /** Each `v1/cve/<xx>.json` shard. */
   shardGzipBytes: 80 * 1024,

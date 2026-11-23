@@ -428,6 +428,73 @@ export interface ChangesFile {
   items: Change[];
 }
 
+/**
+ * Kind of verdict event in v1/events.json (docs/DATA.md "events.json"). Each says why a CVE's
+ * verdict moved, or which new evidence arrived for it, in one run.
+ */
+export type EventType =
+  | 'kev_added'
+  | 'catalog_listed'
+  | 'vendor_exploited'
+  | 'tier_up'
+  | 'fast_lane'
+  | 'metasploit_module'
+  | 'nuclei_template'
+  | 'exploitdb_entry';
+export const EVENT_TYPES: readonly EventType[] = ['kev_added', 'catalog_listed', 'vendor_exploited', 'tier_up', 'fast_lane', 'metasploit_module', 'nuclei_template', 'exploitdb_entry'];
+
+/** One verdict event. `id` is stable across runs, so readers can dedupe on it. */
+export interface EventItem {
+  /** `<type>:<cve>`; `catalog_listed:<catalog>:<cve>`; `tier_up:<cve>:<tier_after>`. */
+  id: string;
+  /** When a run first saw it (run time), or the upstream date for a `backfill` item. ISO 8601 UTC. */
+  at: string;
+  type: EventType;
+  cve: string;
+  /** The row's vendor and product (Row.v / Row.p), the fields the site's watchlist matches. */
+  vendor: string;
+  product: string;
+  /** Tier in the run we compared against; null when that run did not track the CVE. */
+  tier_before: Tier | null;
+  /** Tier in this run, at the run's default evidence bar. */
+  tier_after: Tier;
+  score: number;
+  /** Plain text, e.g. "CVE-2026-1234 · Fortinet FortiOS · added to CISA KEV". */
+  title: string;
+  /** The source of the evidence, or `computed`. */
+  via: SourceId;
+  /** The upstream record, when there is one. */
+  url: string | null;
+  /** The cause in plain words. */
+  detail: string;
+  /** True only for items a first run dated from their upstream date. */
+  backfill: boolean;
+}
+
+/** Snapshot of one exploited catalog as a run saw it (read by the fast check between runs). */
+export interface CatalogSnapshot {
+  /** Upstream version marker (CISA catalogVersion), or null. */
+  version: string | null;
+  count: number;
+  /** SHA-256 (hex) of the sorted, unique, upper-cased CVE ids, one per line, each ending in "\n". */
+  ids_sha256: string;
+  /** When the run's copy was downloaded or last revalidated. */
+  fetched_at: string | null;
+}
+
+/** v1/events.json: verdict events from the last `days` days, newest first. */
+export interface EventsFile {
+  schema_version: number;
+  generated_at: string;
+  /** generated_at of the run this one was compared against, or null (first run). */
+  previous_at: string | null;
+  days: number;
+  max_items: number;
+  /** Null for a catalog the run could not load. */
+  catalogs: { kev: CatalogSnapshot | null; eu_kev: CatalogSnapshot | null };
+  items: EventItem[];
+}
+
 /** Kind of new exploitation evidence that "woke up" an old CVE (see WokeFile). */
 export type WakeKind = 'kev' | 'catalog' | 'exploitdb' | 'metasploit' | 'nuclei' | 'poc' | 'epss';
 /** `catalog`: a first exploited listing in ENISA EU KEV or the CIRCL catalog (the eukev/circl E chips). */

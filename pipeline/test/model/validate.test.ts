@@ -76,7 +76,7 @@ describe('validateOutput', () => {
     expect(result.warnings).toEqual([]);
     expect(result.ok).toBe(true);
     // 11 JSON files (incl. woke.json, receipts.json, state.json, packages.json), the shards, 4 feeds.
-    expect(result.files).toBe(11 + SHARD_NAMES.length + 4);
+    expect(result.files).toBe(12 + SHARD_NAMES.length + 5);
     expect(lines[0]).toMatch(/^file\s+bytes\s+gzip\s+budget\s+status$/);
     expect(lines.some((l) => l.startsWith('v1/index.json'))).toBe(true);
     expect(lines.some((l) => l.startsWith('v1/cve/*.json (256'))).toBe(true);
@@ -306,7 +306,7 @@ describe('validateOutput', () => {
 
   it('enforces the file count limit', () => {
     for (let i = 0; i < 40; i++) write(`v1/extra-${i}.txt`, 'x');
-    expect(validateOutput(dir).errors).toContain(`${271 + 40} files emitted; the limit is 300`);
+    expect(validateOutput(dir).errors).toContain(`${273 + 40} files emitted; the limit is 300`);
   });
 
   it('builds packages.json from the OSV mirror with the index rows of the CVEs it names', () => {

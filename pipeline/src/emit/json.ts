@@ -33,6 +33,7 @@ export const PATHS = {
   stats: 'v1/stats.json',
   surge: 'v1/surge.json',
   changes: 'v1/changes.json',
+  events: 'v1/events.json',
   woke: 'v1/woke.json',
   state: 'v1/state.json',
   receipts: 'v1/receipts.json',
@@ -42,6 +43,7 @@ export const PATHS = {
   kevFeed: 'feeds/kev.xml',
   kevDueIcs: 'feeds/kev-due.ics',
   wokeFeed: 'feeds/woke.xml',
+  eventsFeed: 'feeds/events.xml',
 } as const;
 
 /** kev.json keeps entries added in the last KEV_RECENT_DAYS, or due from KEV_DUE_LOOKBACK_DAYS ago onward. */

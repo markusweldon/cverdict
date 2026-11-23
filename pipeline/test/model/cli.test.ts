@@ -18,13 +18,14 @@ describe('parseCli', () => {
       offline: false,
       knob: undefined,
       refreshBacktest: false,
+      fresh: [],
     });
   });
 
   it('parses every flag, in both --flag value and --flag=value forms', () => {
     const opts = parseCli([
       '--out', 'out', '--previous=published', '--cache', '.c', '--cvelist-dir', '/a', '--poc-dir=/b',
-      '--now', '2026-10-26T19:30:00Z', '--window-days', '14', '--knob=60', '--offline', '--refresh-backtest',
+      '--now', '2026-10-26T19:30:00Z', '--window-days', '14', '--knob=60', '--offline', '--refresh-backtest', '--fresh=eu-kev',
     ]);
     expect(opts).toEqual({
       out: 'out',
@@ -37,7 +38,10 @@ describe('parseCli', () => {
       offline: true,
       knob: 60,
       refreshBacktest: true,
+      fresh: ['eu-kev'],
     });
+    expect(parseCli(['--fresh', 'none'])!.fresh).toEqual([]);
+    expect(parseCli(['--fresh', 'eu-kev,eu-kev'])!.fresh).toEqual(['eu-kev']);
   });
 
   it('reads --now without an offset as UTC, whatever the host time zone', () => {
@@ -70,6 +74,8 @@ describe('parseCli', () => {
     [['--window-days', '3.5'], /whole number/],
     [['--knob', '20'], /--knob/],
     [['--knob', '-5'], /./],
+    [['--fresh', 'circl-kev'], /--fresh/],
+    [['--fresh', 'kev'], /--fresh/],
   ])('rejects %j', (argv, message) => {
     expect(() => parseCli(argv)).toThrow(UsageError);
     expect(() => parseCli(argv)).toThrow(message);

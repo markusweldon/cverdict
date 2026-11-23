@@ -11,6 +11,7 @@ import {
   TIERS,
   type Batch,
   type BacktestReceipts,
+  type EventsFile,
   type Meta,
   type ReceiptsFile,
   type PackagesFile,
@@ -24,7 +25,8 @@ import { BRAND } from '../../../shared/brand';
 import { BATCH_MIN, SCORE_MODEL } from '../../../shared/model';
 import { backtestProblems, runBacktest } from '../backtest';
 import { assignBatches, byScoreThenNewest } from '../batches';
-import { CHANGES_RETENTION_DAYS, buildChanges } from '../changes';
+import { CHANGES_RETENTION_DAYS, buildChanges, diffRuns } from '../changes';
+import { buildEvents, catalogSnapshot, EVENTS_SECTION, readPreviousEvents } from '../events';
 import { buildPackagesFile } from '../packages';
 import { toDetail, toRow } from '../rows';
 import { buildKevPrior, scoreCve } from '../score';
@@ -35,7 +37,7 @@ import { firstExploitedListing, isExploitedListing } from '../sources/catalogs';
 import type { CatalogListing, Enrichment, IngestResult, ScoredCve } from '../types';
 import { DAY_MS, monthKey, ymd } from '../util/dates';
 import { buildWoke, WOKE_SECTION } from '../woke';
-import { kevFeed, signalFeed, wokeFeed } from './atom';
+import { eventsFeed, kevFeed, signalFeed, wokeFeed } from './atom';
 import { kevDueCalendar } from './ics';
 import { KEV_RECENT_DAYS, PATHS, buildKevFile, buildShards, daysAgo, rowTable, serializeData } from './json';
 
@@ -181,6 +183,7 @@ export interface BuiltOutput {
   woke: WokeFile;
   receipts: ReceiptsFile;
   packages: PackagesFile;
+  events: EventsFile;
   /** Log lines (receipts and backtest). */
   notes: string[];
 }
@@ -233,12 +236,10 @@ export function buildOutput({
   const recentCatalogElsewhere = scored
     .filter((s) => !s.cve.inWindow && !s.kev && !s.cve.adpKev && (firstExploitedListing(ing.exploits.catalogs?.get(s.cve.id), ymd(now))?.added ?? '') >= recentDay)
     .map(toRow);
-  const changes = buildChanges(
-    [...indexRows, ...recentKevElsewhere, ...recentCatalogElsewhere],
-    previous,
-    now,
-    new Set(recentCatalogElsewhere.map((r) => r.id)),
-  );
+  const compared = [...indexRows, ...recentKevElsewhere, ...recentCatalogElsewhere];
+  const freshElsewhere = new Set(recentCatalogElsewhere.map((r) => r.id));
+  const runDiff = diffRuns(compared, previous, freshElsewhere);
+  const changes = buildChanges(compared, previous, now, freshElsewhere, runDiff);
 
   const files = serializeData({
     meta,
@@ -282,7 +283,31 @@ export function buildOutput({
   const packages = buildPackagesFile(ing.osv, rowById, generatedAt, windowDays);
   files.set(PATHS.packages, JSON.stringify(packages));
   notes.push(`packages: ${packages.cves.rows.length} CVEs named by OSV.dev advisories, built in ${Math.round(performance.now() - p0)} ms`);
-  const writes: SectionWrite[] = [{ key: WOKE_SECTION.key, version: WOKE_SECTION.version, data: ing.wake.state }];
+  // Verdict events: this run against the previous tree, plus dated causes, deduped by key.
+  const status = (id: SourceId) => ing.sources.find((x) => x.id === id);
+  const kevStatus = status('kev');
+  const euStatus = status('eu-kev');
+  const events = buildEvents({
+    now,
+    byId,
+    rows: rowById,
+    diff: runDiff,
+    previous: readPreviousEvents(previous),
+    previousState: readSection(previousState, EVENTS_SECTION),
+    kev: ing.kev,
+    catalogs: ing.exploits.catalogs,
+    woke: woke.file,
+    snapshots: {
+      kev: kevStatus?.ok ? catalogSnapshot(ing.kev.entries.keys(), ing.kev.version, kevStatus.fetched_at) : null,
+      eu_kev: euStatus?.ok ? catalogSnapshot(ing.euKevIds ?? null, null, euStatus.fetched_at) : null,
+    },
+  });
+  files.set(PATHS.events, JSON.stringify(events.file));
+  notes.push(...events.notes.map((n) => `events: ${n}`));
+  const writes: SectionWrite[] = [
+    { key: WOKE_SECTION.key, version: WOKE_SECTION.version, data: ing.wake.state },
+    { key: EVENTS_SECTION.key, version: EVENTS_SECTION.version, data: events.state },
+  ];
   // A log carried over unchanged is left to serializeState, which copies the previous section verbatim.
   if (logUpdate.updated) writes.push({ key: RECEIPTS_SECTION.key, version: RECEIPTS_SECTION.version, data: encodeLog(logUpdate.log) });
   files.set(STATE_PATH, serializeState(now, writes, previousState));
@@ -293,13 +318,14 @@ export function buildOutput({
   files.set(PATHS.kevFeed, kevFeed(kev.entries, feedOpts));
   files.set(PATHS.kevDueIcs, kevDueCalendar(kev.entries, feedOpts));
   files.set(PATHS.wokeFeed, wokeFeed(woke.file, feedOpts));
+  files.set(PATHS.eventsFeed, eventsFeed(events.file, feedOpts));
 
   const top = window
     .filter((s) => isPassed(s.tier))
     .sort((a, b) => TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier) || byScoreThenNewest(a, b))
     .slice(0, TOP_SUMMARY)
     .map(toRow);
-  return { files, meta, batches, top, scored, woke: woke.file, receipts, packages, notes };
+  return { files, meta, batches, top, scored, woke: woke.file, receipts, packages, events: events.file, notes };
 }
 
 /** receipts.json `definitions`: what each method and figure means, in plain words. */

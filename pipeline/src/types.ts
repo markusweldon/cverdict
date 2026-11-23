@@ -37,6 +37,8 @@ export interface RunContext {
   cacheDir: string;
   offline: boolean;
   log: Logger;
+  /** Cache keys of sources to download now even when their cached copy is recent (`--fresh`, FRESH_SOURCES). */
+  fresh?: ReadonlySet<string>;
 }
 
 export interface IngestOptions {
@@ -229,6 +231,8 @@ export interface IngestResult {
   osv: OsvData;
   /** Backtest inputs, present when the run refreshes the backtest (backtest.ts). */
   backtest?: BacktestInputs;
+  /** Every CVE id ENISA's dump lists in EU KEV (not only ingested ones), for the events.json snapshot. Null when not loaded. */
+  euKevIds?: string[] | null;
 }
 
 /** KEV CVE ids sharing one canonical vendor (or vendor + product), and how CISA spells it. */

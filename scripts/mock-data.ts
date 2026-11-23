@@ -74,6 +74,9 @@ import { serializeState, STATE_PATH } from '../pipeline/src/state';
 import { buildPackagesFile } from '../pipeline/src/packages';
 import { emptyOsvData, osvStatus, type OsvLite } from '../pipeline/src/sources/osv';
 import { PATHS } from '../pipeline/src/emit/json';
+import { eventsFeed } from '../pipeline/src/emit/atom';
+import { compareEvents } from '../shared/atom';
+import type { EventItem, EventsFile } from '../shared/contract';
 
 // ───────────────────────────── clock & randomness ─────────────────────────────
 
@@ -1825,6 +1828,40 @@ function buildChanges(window: readonly Scored[]): Change[] {
   return out.sort((a, b) => b.at.localeCompare(a.at) || a.id.localeCompare(b.id)).slice(0, 500);
 }
 
+/** events.json: KEV additions of the last 7 days and the changes into Likely next or Exploited (a KEV move rides on its listing). */
+function mockEvents(changes: readonly Change[], kevEntries: readonly KevEntry[], rows: ReadonlyMap<string, Row>): EventsFile {
+  const since = NOW - 7 * DAY;
+  const items: EventItem[] = [];
+  const title = (r: Row, phrase: string) => [r.id, `${r.v} ${r.p}`.trim(), phrase].filter(Boolean).join(' · ');
+  const kevIds = new Set<string>();
+  for (const e of kevEntries) {
+    const at = Math.min(NOW, Date.parse(`${e.date_added}T15:47:00Z`));
+    const r = rows.get(e.id);
+    if (at < since || !r) continue;
+    kevIds.add(e.id);
+    const at8601 = new Date(at).toISOString().replace(/\.\d+Z$/, 'Z');
+    items.push({ id: `kev_added:${e.id}`, at: at8601, type: 'kev_added', cve: e.id, vendor: r.v, product: r.p, tier_before: 'likely', tier_after: r.tier, score: r.s, title: title(r, 'added to CISA KEV'), via: 'kev', url: `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${e.id}`, detail: `Added ${e.date_added}, due ${e.due_date}. Known ransomware use: ${e.ransomware}.`, backfill: false });
+  }
+  for (const c of changes) {
+    const r = rows.get(c.id);
+    if (!r || kevIds.has(c.id) || (c.to !== 'exploited' && c.to !== 'likely') || (c.from !== null && TIER_RANK[c.from] >= TIER_RANK[c.to])) continue;
+    items.push({ id: `tier_up:${c.id}:${c.to}`, at: c.at.replace(/\.\d+Z$/, 'Z'), type: 'tier_up', cve: c.id, vendor: r.v, product: r.p, tier_before: c.from, tier_after: c.to, score: r.s, title: title(r, `now ${c.to === 'exploited' ? 'Exploited' : 'Likely next'}`), via: 'computed', url: null, detail: `New evidence: ${c.added.join(', ') || 'score rose'}.`, backfill: false });
+  }
+  items.sort(compareEvents);
+  return {
+    schema_version: SCHEMA_VERSION,
+    generated_at: GENERATED_AT,
+    previous_at: new Date(NOW - HOUR).toISOString(),
+    days: 7,
+    max_items: 1000,
+    catalogs: {
+      kev: { version: '2026.10.24', count: 1_758, ids_sha256: hex(64), fetched_at: new Date(NOW - 3 * 60_000).toISOString() },
+      eu_kev: { version: null, count: 82, ids_sha256: hex(64), fetched_at: new Date(NOW - 3 * 60_000).toISOString() },
+    },
+    items: items.slice(0, 1000),
+  };
+}
+
 function sources(cvelistRecords: number): SourceStatus[] {
   const fetched = (minAgo: number) => new Date(NOW - (minAgo + 1) * 60_000).toISOString();
   return [
@@ -2047,6 +2084,8 @@ function main(): void {
   writeJson(tmp, 'v1/kev.json', { schema_version: SCHEMA_VERSION, generated_at: GENERATED_AT, catalog_version: '2026.10.24', entries: kevEntries });
   writeJson(tmp, 'v1/stats.json', stats);
   writeJson(tmp, 'v1/changes.json', { schema_version: SCHEMA_VERSION, generated_at: GENERATED_AT, items: changes });
+  const events = mockEvents(changes, kevEntries, new Map([...rowsById, ...older.map((s) => [s.d.id, toRow(s)] as const)]));
+  writeJson(tmp, PATHS.events, events);
   const wokeItems: WokeItem[] = older
     .map((s) => ({ s, info: wokeInfo(s) }))
     .filter((x): x is { s: Scored; info: WokeInfo } => x.info !== null)
@@ -2098,6 +2137,7 @@ function main(): void {
     }))),
   );
   writeFileSync(join(feeds, 'kev-due.ics'), ics(kevEntries));
+  writeFileSync(join(tmp, PATHS.eventsFeed), eventsFeed(events, { siteUrl, idBase: BRAND.feedIdBase, now: new Date(NOW) }));
   writeFileSync(
     join(feeds, 'woke.xml'),
     atom(`urn:${BRAND.slug}:woke`, `${BRAND.name} · old CVEs that woke up`, wokeItems.map((i) => ({
@@ -2120,7 +2160,7 @@ function main(): void {
   const share = (t: Tier) => `${t} ${fmtInt(byTier[t])} (${((byTier[t] / indexRows.length) * 100).toFixed(2)}%)`;
   console.log(`mock data → ${out}`);
   console.log(`  window ${fmtInt(indexRows.length)} CVEs · ${TIERS.map(share).join(' · ')}`);
-  console.log(`  signal ${fmtInt(signalRows.length)} rows (${gz('v1/signal.json')}) · index ${gz('v1/index.json')} · ${batches.length} batches · ${kevEntries.length} KEV entries (${kevAdds30d} added in 30d) · ${changes.length} changes`);
+  console.log(`  signal ${fmtInt(signalRows.length)} rows (${gz('v1/signal.json')}) · index ${gz('v1/index.json')} · ${batches.length} batches · ${kevEntries.length} KEV entries (${kevAdds30d} added in 30d) · ${changes.length} changes · ${events.items.length} events`);
 }
 
 main();

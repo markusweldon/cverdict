@@ -87,42 +87,74 @@ function diff(prev: Row | undefined, cur: Row, at: string): Change | null {
   return null;
 }
 
+/** One row of this run with its row in the previous index (none for a genuinely new row). */
+export interface RunPair {
+  prev: Row | undefined;
+  cur: Row;
+  /** No previous row because the CVE was published after the previous index's oldest row. */
+  published: boolean;
+}
+
+export interface RunDiff {
+  /** Rows to compare: every current row the previous index had, plus the genuinely new ones. */
+  pairs: RunPair[];
+  /** generated_at of the previous index. */
+  previousAt: string | null;
+  /** CVE ids of the previous kev.json, or null when there is none. */
+  previousKev: Set<string> | null;
+}
+
 /**
+ * The raw per-run diff that changes.json and events.json both start from, so the two never
+ * disagree on what counts as a move. Null without a usable previous index (a first run).
+ *
  * @param current rows to compare: the window index plus KEV-listed rows outside the window
  *   that were added to KEV within the last CHANGES_RETENTION_DAYS, and rows outside the window
  *   that only EU KEV or CIRCL list, first listed as exploited within those days.
- * @param previousRoot previous output root (v1/index.json, v1/kev.json, v1/changes.json), if any.
+ * @param previousRoot previous output root (v1/index.json, v1/kev.json), if any.
  * @param freshElsewhere ids of those catalog-only rows: no previous file lists them, so a recent
- *   listing date is what makes them new. A row already reported stays one item (merged below).
+ *   listing date is what makes them new.
  */
-export function buildChanges(current: Row[], previousRoot: string | null, now: Date, freshElsewhere: ReadonlySet<string> = new Set()): ChangesFile {
-  const at = now.toISOString();
+export function diffRuns(current: readonly Row[], previousRoot: string | null, freshElsewhere: ReadonlySet<string> = new Set()): RunDiff | null {
   const prevRows = previousRoot ? previousRows(previousRoot) : null;
+  if (!prevRows || !previousRoot) return null;
+  const prevKev = previousKevIds(previousRoot);
+  let oldestPrev = Infinity;
+  for (const r of prevRows.values()) oldestPrev = Math.min(oldestPrev, Date.parse(r.pub));
+  /** A row the previous index could not contain: new only if it is a fresh KEV or catalog listing. */
+  const knownBefore = (r: Row) => Date.parse(r.pub) <= oldestPrev && !(r.k && prevKev && !prevKev.has(r.id)) && !freshElsewhere.has(r.id);
+  const pairs: RunPair[] = [];
+  for (const cur of current) {
+    const prev = prevRows.get(cur.id);
+    if (!prev && knownBefore(cur)) continue;
+    pairs.push({ prev, cur, published: !prev && Date.parse(cur.pub) > oldestPrev });
+  }
+  const generated = asObject(readJson(join(previousRoot, 'v1', 'index.json')))?.generated_at;
+  return { pairs, previousAt: typeof generated === 'string' && Number.isFinite(Date.parse(generated)) ? generated : null, previousKev: prevKev };
+}
+
+/**
+ * changes.json: escalations of this run (diffRuns) merged with the previous changes.json.
+ * A row already reported stays one item (merged below).
+ */
+export function buildChanges(current: Row[], previousRoot: string | null, now: Date, freshElsewhere: ReadonlySet<string> = new Set(), runDiff?: RunDiff | null): ChangesFile {
+  const at = now.toISOString();
   const merged = new Map<string, Change>();
   // Previous items are newest first; keep one per CVE.
   for (const item of previousRoot ? previousItems(previousRoot) : []) if (!merged.has(item.id)) merged.set(item.id, item);
 
-  if (prevRows && previousRoot) {
-    const prevKev = previousKevIds(previousRoot);
-    let oldestPrev = Infinity;
-    for (const r of prevRows.values()) oldestPrev = Math.min(oldestPrev, Date.parse(r.pub));
-    /** A row the previous index could not contain: new only if it is a fresh KEV or catalog listing. */
-    const knownBefore = (r: Row) => Date.parse(r.pub) <= oldestPrev && !(r.k && prevKev && !prevKev.has(r.id)) && !freshElsewhere.has(r.id);
-
-    for (const cur of current) {
-      const prev = prevRows.get(cur.id);
-      if (!prev && knownBefore(cur)) continue;
-      const fresh = diff(prev, cur, at);
-      if (!fresh) continue;
-      const old = merged.get(cur.id);
-      if (!old) {
-        merged.set(cur.id, fresh);
-        continue;
-      }
-      const newChips = fresh.added.filter((id) => !old.added.includes(id));
-      if (rank(fresh.to) >= rank(old.to) && newChips.length === 0) continue; // already reported
-      merged.set(cur.id, { id: cur.id, at, from: old.from, to: fresh.to, added: [...newChips, ...old.added] });
+  const d = runDiff === undefined ? diffRuns(current, previousRoot, freshElsewhere) : runDiff;
+  for (const { prev, cur } of d?.pairs ?? []) {
+    const fresh = diff(prev, cur, at);
+    if (!fresh) continue;
+    const old = merged.get(cur.id);
+    if (!old) {
+      merged.set(cur.id, fresh);
+      continue;
     }
+    const newChips = fresh.added.filter((id) => !old.added.includes(id));
+    if (rank(fresh.to) >= rank(old.to) && newChips.length === 0) continue; // already reported
+    merged.set(cur.id, { id: cur.id, at, from: old.from, to: fresh.to, added: [...newChips, ...old.added] });
   }
 
   const cutoff = now.getTime() - CHANGES_RETENTION_DAYS * DAY_MS;

@@ -38,7 +38,7 @@ function stubFetch(routes: Record<string, Route>) {
 const json = (value: unknown, headers: Record<string, string> = {}) => new Response(JSON.stringify(value), { status: 200, headers });
 const status = (code: number) => new Response('nope', { status: code });
 
-function client(opts: { fetch: FetchLike; offline?: boolean; clock?: () => number; cacheDir?: string }) {
+function client(opts: { fetch: FetchLike; offline?: boolean; clock?: () => number; cacheDir?: string; fresh?: ReadonlySet<string> }) {
   const sleeps: number[] = [];
   const log = captureLogger();
   const cacheDir = opts.cacheDir ?? tempDir();
@@ -49,6 +49,7 @@ function client(opts: { fetch: FetchLike; offline?: boolean; clock?: () => numbe
     fetch: opts.fetch,
     sleep: async (ms) => void sleeps.push(ms),
     clock: opts.clock,
+    fresh: opts.fresh,
   });
   return { http, sleeps, log, cacheDir };
 }
@@ -152,6 +153,19 @@ describe('HttpClient.getSource', () => {
 
     const old = await client({ fetch, cacheDir, clock: () => t0 + 7 * 3_600_000 }).http.getSource(request({ minIntervalMs: 6 * 3_600_000 }));
     expect(old).toMatchObject({ value: [1, 2], stale: false });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('downloads a source named in fresh (--fresh) even when its cached copy is young', async () => {
+    const cacheDir = tempDir();
+    const t0 = Date.parse('2026-10-26T12:00:00Z');
+    await client({ fetch: stubFetch({ [PRIMARY]: () => json([1]) }).fetch, cacheDir, clock: () => t0 }).http.getSource(request());
+    const { fetch, calls } = stubFetch({ [PRIMARY]: () => json([1, 2]) });
+    const other = await client({ fetch, cacheDir, clock: () => t0 + 60_000, fresh: new Set(['eu-kev']) }).http.getSource(request({ minIntervalMs: 6 * 3_600_000 }));
+    expect(other).toMatchObject({ value: [1] });
+    expect(calls).toHaveLength(0);
+    const named = await client({ fetch, cacheDir, clock: () => t0 + 60_000, fresh: new Set(['feed']) }).http.getSource(request({ minIntervalMs: 6 * 3_600_000 }));
+    expect(named).toMatchObject({ value: [1, 2], stale: false });
     expect(calls).toHaveLength(1);
   });
 
