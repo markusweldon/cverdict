@@ -1,0 +1,42 @@
+# Fast check (docs/DEPLOY.md "Fast check"): every 15 minutes between the hourly refreshes, compare
+# CISA KEV (and once an hour ENISA's EU KEV) with what the last published run saw, and start
+# refresh.yml when upstream lists different CVEs. It reads public files and never writes data.
+#
+# Scheduled runs only do work in the canonical repository, or in a copy whose repository variable
+# REFRESH_SCHEDULE is `on`, like refresh.yml.
+name: fast-check
+
+on:
+  schedule:
+    # The :50 slot is left out: the hourly run starts at :47.
+    - cron: '5,20,35 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: fast-check
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  check:
+    name: Check KEV catalogs
+    if: github.event_name != 'schedule' || github.repository == 'markusweldon/cverdict' || vars.REFRESH_SCHEDULE == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      actions: write # list refresh-data runs and dispatch one (no contents: write: it cannot touch data)
+      contents: read # check out the one script
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/fast-check.sh
+          sparse-checkout-cone-mode: false
+
+      # A GITHUB_TOKEN dispatch is one of the documented exceptions that does start a workflow.
+      - name: Compare upstream with the published snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash scripts/fast-check.sh

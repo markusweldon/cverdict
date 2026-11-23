@@ -5,12 +5,25 @@
 # Scheduled runs only do work in the canonical repository, or in a copy whose repository variable
 # REFRESH_SCHEDULE is `on` (docs/DEPLOY.md). Run workflow (workflow_dispatch) works everywhere.
 name: refresh-data
+# The fast check (fast-check.yml) finds its own dispatches by this title.
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('refresh-data ({0}, {1})', inputs.reason || 'manual', inputs.fresh || 'none') || 'refresh-data (schedule)' }}
 
 on:
   schedule:
     # Minute 17 avoids the top-of-the-hour scheduling rush.
     - cron: '17 * * * *'
+  # The external timer (docs/DEPLOY.md) dispatches without inputs and gets the defaults.
   workflow_dispatch:
+    inputs:
+      reason:
+        description: Why this run was started (the fast check sends fast-check)
+        type: string
+        default: manual
+      fresh:
+        description: Download this source now even if its cached copy is recent
+        type: choice
+        options: [none, eu-kev]
+        default: none
 
 # Runs queue instead of overlapping, and an in-flight publish is never cancelled.
 concurrency:
@@ -108,7 +121,9 @@ jobs:
           # Public site URL for links inside the feeds: the repository variable, else the Pages URL,
           # else the pipeline's default.
           SITE_URL: ${{ vars.SITE_URL || steps.pages.outputs.url }}
-        run: npm run pipeline -- --out out --previous published --cache .cache
+          # A choice input; the CLI accepts only its own list (FRESH_SOURCES) anyway.
+          FRESH: ${{ inputs.fresh || 'none' }}
+        run: npm run pipeline -- --out out --previous published --cache .cache --fresh "$FRESH"
 
       - name: Save source cache
         if: always()
