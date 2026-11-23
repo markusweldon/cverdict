@@ -191,7 +191,7 @@ The full methodology, every chip with its points, the calibration and the known 
   <img alt="Receipts, a hindsight backtest: flagged before CISA listed it in KEV. 137 CVEs CISA added to KEV from May 24 to Nov 20, 2026, scored with only the evidence dated before each listing, next to two common rules. KEV CVEs caught before the listing, of 137: CVErdict 59 (43%), CVSS 7 or more 80 (58%), EPSS 10% or more 18 (13%). Alert volume, the share of all 76,097 CVEs scored: CVErdict 1,777 (2.3%), CVSS 7 or more 39,982 (52.5%), EPSS 10% or more 133 (0.17%). Below, the live record since Nov 3, 2026, 547 runs: of 18 KEV listings, CVErdict flagged 8 before CISA, a median of 4.5 days early; CVSS 7 flagged 14 and EPSS 10% flagged 0. From receipts.json: backtest of Nov 20, 2026 (score model v0.3.0), live record to Nov 23, 2026 16:47 UTC." src="docs/assets/receipts-light.svg" width="100%">
 </picture>
 
-**In the hindsight backtest, CVErdict catches three quarters of what CVSS 7 catches, with less than a twentieth of the alerts:** 59 of 137 against 80, while flagging 2.3% of new CVEs against 52.5%. The live record is still small: 8 of 18 listings flagged early so far, against 14 for CVSS 7.
+**In the hindsight backtest, CVErdict catches three quarters of what CVSS 7 catches, with less than a twentieth of the alerts:** 59 of 137 against 80, while flagging 2.3% of new CVEs against 52.5%. The live record is still small: of 18 KEV listings, CVErdict flagged 8 before CISA listed them, against 14 for CVSS 7 (13 earlier and 1 on the listing day itself).
 
 The [Receipts page](https://cverdict.dev/receipts) holds the stricter tests. A live record notes,
 to the minute, when each method first flags a CVE and whether that came before CISA listed it; the
