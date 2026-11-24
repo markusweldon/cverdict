@@ -93,7 +93,7 @@ export const MCP_TOOLS: readonly { name: McpToolName; title: string; description
     name: 'check_inventory',
     title: 'Check a list of vendors and products',
     description:
-      "Which tracked CVEs hit a list of vendors or products (1 to 200 names, e.g. from an asset inventory): per name, the matching CVEs most urgent first (tier, then soonest CISA KEV due date, then score) with verdict, score and KEV due date, plus the Atom feed for the name's slug (it may also carry other spellings). A name must equal a CVE's vendor or product, ignoring case, as the site's watchlist matches; no_match: true flags a name with no tracked CVE (check the spelling, or try search_cves). omitted counts what per_name left out." +
+      "Which tracked CVEs hit a list of vendors or products (1 to 200 names, e.g. from an asset inventory): per name, the matching CVEs most urgent first (tier, then soonest CISA KEV due date, then score) with verdict, score and KEV due date, plus the Atom feed for the name's slug (it may also carry other spellings). A name must equal a CVE's vendor or product, ignoring case, as the site's watchlist matches; no_match: true flags a name with no tracked CVE (check the spelling, or try search_cves). omitted counts what was left out (per_name, or the size budget)." +
       UNTRUSTED,
   },
   {
