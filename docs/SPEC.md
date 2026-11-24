@@ -50,7 +50,7 @@ site/
              components/  pages/  styles/  check/ (SBOM and lockfile parsers, matching, session)
 .github/workflows/  ci.yml  refresh.yml  fast-check.yml  release-mcp.yml
 mcp/                read-only MCP server for AI agents (stdio), reading the published files
-  src/                     data.ts (bounded, cached reads)  tools.ts (the six tools)  server.ts (factory)  stdio.ts
+  src/                     data.ts (bounded, cached reads)  tools.ts (the tools)  server.ts (factory)  stdio.ts
   test/                    vitest: fake-fetch unit, protocol and spawn tests; smoke.ts (CI, on mock data)
   package.json  README.md  LICENSE  LICENSE-THIRD-PARTY  server.json (MCP Registry)   the cverdict-mcp package on npm (0.1.0 was published by
                            hand; later versions come from release-mcp.yml)
@@ -340,7 +340,7 @@ Unknown → 404 view. Update `document.title` per route.
 - **Feeds & API (`/feeds`)**: JSON API, Atom, ICS links with copy buttons and example `curl`/`jq`; section `#mcp` (kept
   for old links) points to the MCP Server page.
 - **MCP Server (`/mcp`)**: how to add the MCP server to an agent from npm (`npx -y cverdict-mcp`), with a clone as the
-  last option; the six tools with their descriptions; where it reads from; its limits (snippets and tool copy from
+  last option; the tools with their descriptions; where it reads from; its limits (snippets and tool copy from
   `shared/mcp.ts`).
 
 **Interactions**: keyboard: `j`/`k` move selection, `Enter`/`o` open, `/` focus search, `w` watch vendor,

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { McpNotFound, McpVerdict } from '../../shared/contract';
+import { ROW_COLS, type McpNotFound, type McpVerdict } from '../../shared/contract';
 import { MCP_MSG, VERDICT } from '../../shared/mcp';
 import { BASE_POINTS } from '../../shared/model';
 import { shardOf } from '../../shared/shard';
-import { DataClient, type DataCall } from '../src/data';
-import { InputError, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from '../src/tools';
-import { CVE, GEN, NOW, fakeFetch, files } from './fixture';
+import { slugify } from '../../shared/slug';
+import { isWatched } from '../../shared/watch';
+import { DataClient, parse, type DataCall } from '../src/data';
+import { INVENTORY_BUDGET, InputError, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from '../src/tools';
+import { CVE, GEN, NOW, detail, fakeFetch, files, row } from './fixture';
 
 const BASE = 'https://data.test/v1/';
 
@@ -280,5 +282,121 @@ describe('search_cves', () => {
     const t = setup();
     await expect(t.run((c) => searchCves(c, { query: 'a b c d e f g h' }, NOW))).resolves.toBeTruthy();
     await expect(t.run((c) => searchCves(c, { query: 'a b c d e f g h i' }, NOW))).rejects.toThrow('query takes at most 8 words.');
+  });
+});
+
+describe('check_inventory', () => {
+  it('lists each name\'s CVEs most urgent first, with verdicts and the feed, and flags names with no match', async () => {
+    const t = setup();
+    const r = await t.run((c) => checkInventory(c, { names: ['  ACME  ', 'fortigate', 'notarealvendor', 'acme'] }, NOW));
+    expect(r.names.map((n) => [n.name, n.matched, n.total, n.omitted, n.no_match, n.feed])).toEqual([
+      ['acme', 10, 10, 0, false, 'https://cverdict.dev/feeds/v/acme.xml'],
+      ['fortigate', 1, 1, 0, false, 'https://cverdict.dev/feeds/v/fortigate.xml'],
+      ['notarealvendor', 0, 0, 0, true, 'https://cverdict.dev/feeds/v/notarealvendor.xml'],
+    ]);
+    // Window CVEs and old CVEs that woke up: tier, then the soonest KEV due date, then score.
+    expect(r.names[0].items.map((i) => [i.id, i.tier, i.kev_due])).toEqual([
+      ['CVE-2021-44228', 'exploited', '2026-11-07'],
+      ['CVE-2026-10001', 'exploited', '2026-11-07'],
+      ['CVE-2020-0005', 'exploited', null],
+      ['CVE-2026-10002', 'likely', null],
+      ['CVE-2020-0004', 'likely', null],
+      ['CVE-2026-10005', 'likely', null],
+      ['CVE-2020-0002', 'watch', null],
+      ['CVE-2026-10003', 'watch', null],
+      ['CVE-2020-0003', 'quiet', null],
+      ['CVE-2026-10004', 'quiet', null],
+    ]);
+    expect(r.names[0].items[1]).toEqual({
+      id: 'CVE-2026-10001',
+      tier: 'exploited',
+      verdict: VERDICT.exploited,
+      score: 95,
+      kev_due: '2026-11-07',
+      in_kev: true,
+      exploited: true,
+      weaponized: false,
+      published: CVE.exploited.published,
+      vendor: 'Acme',
+      product: 'Widget',
+      title: 'Title of CVE-2026-10001',
+    });
+    expect(r.names[1].items[0]).toMatchObject({ id: 'CVE-2026-10006', title: 'Fortinet FortiGate heap overflow (a.b+c)', verdict: VERDICT.quiet });
+    expect([r.knob, r.tiers, r.per_name, r.note]).toEqual([50, ['exploited', 'likely', 'watch', 'quiet'], 10, null]);
+    expect(r.data.files.map((f) => f.path)).toEqual(['v1/meta.json', 'v1/index.json', 'v1/woke.json']);
+  });
+
+  it('filters tiers at the knob and counts what the per-name cap leaves out', async () => {
+    const t = setup();
+    const ex = await t.run((c) => checkInventory(c, { names: ['acme', 'fortigate'], tiers: ['exploited'] }, NOW));
+    expect(ex.names.map((n) => [n.matched, n.total, n.omitted, n.no_match, n.items.length])).toEqual([
+      [10, 3, 0, false, 3],
+      [1, 0, 0, false, 0],
+    ]);
+    const capped = await t.run((c) => checkInventory(c, { names: ['acme'], per_name: 2 }, NOW));
+    expect([capped.per_name, capped.names[0].total, capped.names[0].omitted, capped.names[0].items.map((i) => i.id)]).toEqual([2, 10, 8, ['CVE-2021-44228', 'CVE-2026-10001']]);
+    const low = await t.run((c) => checkInventory(c, { names: ['acme'], tiers: ['likely'], knob: 30 }, NOW));
+    expect(low.names[0].items.map((i) => i.id)).toEqual(['CVE-2026-10002', 'CVE-2020-0004', 'CVE-2020-0002', 'CVE-2026-10003', 'CVE-2026-10005']);
+  });
+
+  it('matches exactly as the site watchlist does, and names the feed by the feed function\'s slug', async () => {
+    const t = setup();
+    const names = ['acme', 'widget', 'fortinet', 'fortigate', 'forti', 'acme widget', 'Palo  Alto Networks', 'Ünïcode GmbH', '日本'];
+    const r = await t.run((c) => checkInventory(c, { names }, NOW));
+    const index = (await t.run((c) => c.file('index.json', parse.rows))).rows;
+    const woke = (await t.run((c) => c.file('woke.json', parse.woke))).items.map((i) => i.row);
+    for (const n of r.names) {
+      expect(n.matched, n.name).toBe([...index, ...woke].filter((row) => isWatched([n.name], row)).length);
+      const slug = slugify(n.name);
+      expect(n.feed).toBe(slug ? `https://cverdict.dev/feeds/v/${slug}.xml` : null);
+    }
+    expect(r.names.map((n) => n.matched)).toEqual([10, 10, 1, 1, 0, 0, 0, 0, 0]);
+    expect(r.names.find((n) => n.name === 'palo alto networks')?.feed).toBe('https://cverdict.dev/feeds/v/palo-alto-networks.xml');
+    expect(r.names.find((n) => n.name === 'ünïcode gmbh')?.feed).toBe('https://cverdict.dev/feeds/v/unicode-gmbh.xml');
+    expect(r.names.at(-1)).toMatchObject({ name: '日本', feed: null, no_match: true });
+  });
+
+  it('rejects empty, overlong and too many names', async () => {
+    const t = setup();
+    await expect(t.run((c) => checkInventory(c, { names: ['acme', '   '] }, NOW))).rejects.toThrow(MCP_MSG.badName(80));
+    await expect(t.run((c) => checkInventory(c, { names: ['x'.repeat(81)] }, NOW))).rejects.toThrow(InputError);
+    await expect(t.run((c) => checkInventory(c, { names: [` ${'x'.repeat(80)} `] }, NOW))).resolves.toBeTruthy();
+    await expect(t.run((c) => checkInventory(c, { names: Array.from({ length: 201 }, (_, i) => `v${i}`) }, NOW))).rejects.toThrow('names takes at most 200 names.');
+    // Duplicates fold before the count.
+    await expect(t.run((c) => checkInventory(c, { names: [...Array.from({ length: 200 }, (_, i) => `v${i}`), 'V0'] }, NOW))).resolves.toBeTruthy();
+  });
+
+  it('lowers per_name to stay within its budget at 200 names, and says so', async () => {
+    const tree = files();
+    const index = tree.get('index.json') as { cols: string[]; rows: unknown[][] };
+    const rows = Array.from({ length: 200 * 25 }, (_, i) => {
+      const d = detail(`CVE-2026-${40000 + i}`, { score: 60 + (i % 40), tier: 'likely', title: `Vendor ${i % 200} product ${'x'.repeat(140)}` });
+      return row(d, { v: `Vendor Number ${i % 200}`, p: `Product Line ${i % 200}` });
+    });
+    tree.set('index.json', { ...index, rows: rows.map((r) => ROW_COLS.map((c) => r[c])) });
+    const many = async (n: number) => {
+      const r = await setup(tree).run((c) => checkInventory(c, { names: Array.from({ length: n }, (_, i) => `vendor number ${i}`), per_name: 25 }, NOW));
+      expect(Buffer.byteLength(JSON.stringify(r))).toBeLessThanOrEqual(INVENTORY_BUDGET);
+      expect(r.per_name).toBeLessThan(25);
+      expect(r.note).toBe(MCP_MSG.perNameLowered(25, r.per_name));
+      for (const x of r.names) {
+        expect([x.matched, x.total, x.items.length, x.omitted]).toEqual([25, 25, r.per_name, 25 - r.per_name]);
+        expect(x.items.map((i) => i.score)).toEqual([...x.items.map((i) => i.score)].sort((a, b) => b - a));
+      }
+      // The largest cap that fits: one more does not.
+      const more = await setup(tree).run((c) => checkInventory(c, { names: r.names.map((x) => x.name), per_name: r.per_name + 1 }, NOW));
+      expect(more.per_name).toBe(r.per_name);
+      return r.per_name;
+    };
+    expect(await many(50)).toBeGreaterThan(1);
+    expect(await many(200)).toBeGreaterThanOrEqual(0);
+    const few = await setup(tree).run((c) => checkInventory(c, { names: ['vendor number 1'], per_name: 25 }, NOW));
+    expect([few.per_name, few.note, few.names[0].items.length]).toEqual([25, null, 25]);
+    // Long names and no matches at all: the cap can reach 0, and every count is still there.
+    const long = Array.from({ length: 200 }, (_, i) => `${'n'.repeat(76)}${String(i).padStart(4, '0')}`);
+    const none = await setup(tree).run((c) => checkInventory(c, { names: long }, NOW));
+    expect(Buffer.byteLength(JSON.stringify(none))).toBeLessThanOrEqual(INVENTORY_BUDGET);
+    expect(none.names.every((n) => n.no_match && n.feed !== null)).toBe(true);
+    expect([none.per_name, none.note]).toEqual([10, null]);
   });
 });

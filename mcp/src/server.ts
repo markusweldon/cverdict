@@ -1,5 +1,5 @@
 /**
- * The MCP server factory: one McpServer with the six read-only tools over a DataClient. It knows
+ * The MCP server factory: one McpServer with the read-only tools over a DataClient. It knows
  * nothing about transports, so the same factory serves stdio (mcp/src/stdio.ts) and would serve a
  * web-standard handler (createMcpHandler) unchanged. Inputs are bounded by zod schemas; every
  * failure comes back as a tool result with isError: true, never as a thrown protocol error.
@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, TIERS, WAKE_KINDS, type Tier, type WakeKind } from '../../shared/contract';
 import { MCP_INSTRUCTIONS, MCP_SERVER, MCP_TOOLS, type McpToolName } from '../../shared/mcp';
 import { DataError, type DataCall, type DataClient } from './data';
-import { DATE_RE, InputError, LIMITS, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from './tools';
+import { DATE_RE, InputError, LIMITS, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from './tools';
 
 /** Every tool reads one published dataset and changes nothing. */
 export const ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
@@ -34,6 +34,11 @@ const date = (what: string) =>
     .optional()
     .describe(what);
 const cveId = z.string().min(1).max(32);
+// Trimmed and checked again in the tool (1 to LIMITS.nameChars characters once whitespace is folded).
+const names = z
+  .array(z.string().min(1).max(LIMITS.nameChars * 2))
+  .min(1)
+  .max(LIMITS.names);
 
 const SCHEMAS = {
   get_verdict: z.object({
@@ -80,6 +85,12 @@ const SCHEMAS = {
     limit: limit(20),
     offset,
   }),
+  check_inventory: z.object({
+    names: names.describe(`Vendor or product names, each up to ${LIMITS.nameChars} characters, e.g. ["fortinet","vmware"].`),
+    tiers: tiers.optional().describe('Default: all four.'),
+    knob: knob.describe(`The evidence bar, ${KNOB_MIN} to ${KNOB_MAX} (default ${KNOB_DEFAULT}), as in get_verdict.`),
+    per_name: z.number().int().min(1).max(LIMITS.perName).optional().describe(`CVEs per name, 1 to ${LIMITS.perName} (default 10). Lowered, with a note, when the answer would be too large.`),
+  }),
 } satisfies Record<McpToolName, z.ZodType>;
 
 type Args<N extends McpToolName> = z.infer<(typeof SCHEMAS)[N]>;
@@ -92,6 +103,7 @@ const HANDLERS: { [N in McpToolName]: Handler<N> } = {
   woke_up: wokeUp,
   receipts,
   search_cves: searchCves,
+  check_inventory: checkInventory,
 };
 
 /** structuredContent plus the same JSON as one text block (spec: SHOULD), or an isError text. */

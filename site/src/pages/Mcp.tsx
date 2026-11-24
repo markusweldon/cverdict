@@ -43,7 +43,7 @@ export default function Mcp() {
         <h2 id="tools-h" class="section__title">
           Tools
         </h2>
-        <p class="muted">Six read-only tools. An agent picks one from the question you ask, for example "Should I patch CVE-2026-12345?" or "Which KEV deadlines are due this week?".</p>
+        <p class="muted">Seven read-only tools. An agent picks one from the question you ask, for example "Should I patch CVE-2026-12345?", "Which KEV deadlines are due this week?" or "Does anything hit Fortinet, VMware or Citrix?".</p>
         <ul class="endpoints" aria-label="MCP tools">
           {MCP_TOOLS.map((t) => (
             <li class="endpoint" key={t.name}>

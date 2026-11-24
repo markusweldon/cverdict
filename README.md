@@ -327,8 +327,8 @@ cd cverdict && npm ci
 claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp
 ```
 
-Tools: `get_verdict` (1 to 15 CVE IDs), `list_signal`, `kev_due`, `woke_up`, `receipts` and
-`search_cves`. Setup for other clients, options and limits: [mcp/README.md](mcp/README.md); what
+Tools: `get_verdict` (1 to 15 CVE IDs), `list_signal`, `kev_due`, `woke_up`, `receipts`,
+`search_cves` and `check_inventory` (1 to 200 vendor or product names). Setup for other clients, options and limits: [mcp/README.md](mcp/README.md); what
 each answer contains: [docs/DATA.md](docs/DATA.md#mcp-server); copyable commands on the site:
 [MCP Server](https://cverdict.dev/mcp).
 

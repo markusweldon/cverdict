@@ -29,6 +29,7 @@ try {
     ['woke_up', { since: '2000-01-01', limit: 5 }],
     ['receipts', {}],
     ['search_cves', { query: 'microsoft', limit: 5 }],
+    ['check_inventory', { names: ['microsoft', 'fortinet', 'notarealvendor'] }],
   ];
   console.log(`list_signal: total ${signal.value.total}, ${signal.result.content[0].text.length} B`);
   for (const [name, args] of calls) {

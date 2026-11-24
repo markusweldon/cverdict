@@ -1,5 +1,5 @@
 /**
- * The six MCP tools as plain functions over the published files: (call, args, now) -> result.
+ * The MCP tools as plain functions over the published files: (call, args, now) -> result.
  * No SDK imports, so they are unit-tested with a fake fetch. Every result starts with `data`, which
  * names the run and every file the answer came from (McpData in shared/contract.ts).
  */
@@ -7,10 +7,14 @@ import {
   KNOB_DEFAULT,
   NON_SCORING_SOURCES,
   SIGNAL_MIN_SCORE,
+  TIERS,
   tierFor,
   type BacktestItem,
   type CveDetail,
   type McpData,
+  type McpInventoryItem,
+  type McpInventoryName,
+  type McpInventoryResult,
   type McpKevDueResult,
   type McpNotFound,
   type McpReceiptsResult,
@@ -30,12 +34,17 @@ import { BRAND } from '../../shared/brand';
 import { MCP_MSG, VERDICT } from '../../shared/mcp';
 import { BASE_POINTS } from '../../shared/model';
 import { CVE_ID_RE, shardOf } from '../../shared/shard';
+import { slugify } from '../../shared/slug';
+import { WATCH_NAME_MAX, matchesName, normalizeName } from '../../shared/watch';
 import { parse, type DataCall } from './data';
 
 /** A request the tool cannot answer as asked (isError: true). A filter is never silently dropped. */
 export class InputError extends Error {}
 
-export const LIMITS = { ids: 15, detailIds: 5, page: 50, offset: 100_000, queryWords: 8, withinDays: 60, overdueDays: 14 } as const;
+export const LIMITS = { ids: 15, detailIds: 5, page: 50, offset: 100_000, queryWords: 8, withinDays: 60, overdueDays: 14, names: 200, nameChars: WATCH_NAME_MAX, perName: 25 } as const;
+
+/** Bytes of JSON check_inventory answers with at most (about 17,000 tokens); per_name is lowered to fit. */
+export const INVENTORY_BUDGET = 60 * 1024;
 
 const DAY_MS = 86_400_000;
 const TITLE_MAX = 160;
@@ -343,4 +352,95 @@ export async function searchCves(call: DataCall, a: SearchArgs, now: number): Pr
     ...p,
     items: p.items.map((r) => mcpRow(r, knob)),
   };
+}
+
+// ── check_inventory ─────────────────────────────────────────────────────────────────────────
+
+export interface InventoryArgs {
+  names: string[];
+  tiers?: Tier[];
+  knob?: number;
+  per_name?: number;
+}
+
+/** Names as the watchlist keeps them (shared/watch.ts): normalized, deduped, 1 to WATCH_NAME_MAX characters. */
+export function watchNames(raw: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const s of raw) {
+    const n = normalizeName(s);
+    if (!n || n.length > LIMITS.nameChars) throw new InputError(MCP_MSG.badName(LIMITS.nameChars));
+    if (!out.includes(n)) out.push(n);
+  }
+  if (out.length > LIMITS.names) throw new InputError(`names takes at most ${LIMITS.names} names.`);
+  return out;
+}
+
+const TIER_RANK: Readonly<Record<Tier, number>> = { exploited: 0, likely: 1, watch: 2, quiet: 3 };
+
+/** Soonest KEV due date first, none last. */
+const byDue = (a: string | null, b: string | null) => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b));
+
+/** Most urgent first: tier, then the soonest KEV due date, then score, newest, id. */
+const byUrgency = (a: McpInventoryItem, b: McpInventoryItem) =>
+  TIER_RANK[a.tier] - TIER_RANK[b.tier] || byDue(a.kev_due, b.kev_due) || b.score - a.score || b.published.localeCompare(a.published) || a.id.localeCompare(b.id);
+
+export async function checkInventory(call: DataCall, a: InventoryArgs, now: number): Promise<McpInventoryResult> {
+  const knob = a.knob ?? KNOB_DEFAULT;
+  const names = watchNames(a.names);
+  const tiers: Tier[] = a.tiers?.length ? [...new Set(a.tiers)] : [...TIERS];
+  const want = new Set(tiers);
+  const { rows } = await call.file('index.json', parse.rows);
+  const woke = await call.file('woke.json', parse.woke);
+  // Window CVEs, then old CVEs that woke up (not in the window, so never twice).
+  const seen = new Set(rows.map((r) => r.id));
+  const tracked = [...rows, ...woke.items.map((i) => i.row).filter((r) => !seen.has(r.id))];
+  const matched = new Map<string, Row[]>(names.map((n) => [n, []]));
+  for (const r of tracked) {
+    if (!matchesName(names, r.v, r.p)) continue;
+    for (const n of names) if (matchesName([n], r.v, r.p)) matched.get(n)!.push(r);
+  }
+  const all = names.map((name) => {
+    const rs = matched.get(name)!;
+    const items = rs
+      .map((r): McpInventoryItem => {
+        const m = mcpRow(r, knob);
+        return { id: m.id, tier: m.tier, verdict: VERDICT[m.tier], score: m.score, kev_due: m.kev_due, in_kev: m.in_kev, exploited: m.exploited, weaponized: m.weaponized, published: m.published, vendor: m.vendor, product: m.product, title: m.title };
+      })
+      .filter((i) => want.has(i.tier))
+      .sort(byUrgency);
+    const slug = slugify(name);
+    return { name, feed: slug ? `${BRAND.siteUrl}/feeds/v/${slug}.xml` : null, matched: rs.length, items };
+  });
+  const meta = await call.meta();
+  const data = await dataBlock(call, now);
+  const scope = `CVEs published in the ${meta.window.days}-day window (index.json) and old CVEs that woke up (woke.json). A name matches a CVE whose vendor or product equals it, ignoring case and extra spaces. Older CISA KEV CVEs are not listed here: use kev_due or get_verdict.`;
+  const asked = a.per_name ?? 10;
+  const build = (cap: number): McpInventoryResult => ({
+    data,
+    knob,
+    tiers,
+    per_name: cap,
+    note: cap < asked ? MCP_MSG.perNameLowered(asked, cap) : null,
+    scope,
+    names: all.map(({ name, feed, matched, items }): McpInventoryName => {
+      const shown = items.slice(0, cap);
+      return { name, feed, matched, total: items.length, omitted: items.length - shown.length, no_match: matched === 0, items: shown };
+    }),
+  });
+  // Never cut silently: a lower cap shows in per_name, and each name's omitted counts the rest.
+  // The largest cap that fits, by bisection: the size grows with the cap, never linearly.
+  const fits = (r: McpInventoryResult) => Buffer.byteLength(JSON.stringify(r)) <= INVENTORY_BUDGET;
+  let out = build(asked);
+  if (!fits(out)) {
+    let lo = 0;
+    let hi = asked - 1;
+    out = build(0);
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      const r = build(mid);
+      if (fits(r)) [lo, out] = [mid, r];
+      else hi = mid - 1;
+    }
+  }
+  return out;
 }

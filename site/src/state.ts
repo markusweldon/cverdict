@@ -4,7 +4,8 @@
  * storage must never break the page.
  */
 import { useEffect, useState } from 'preact/hooks';
-import { KNOB_DEFAULT, type Row } from '../../shared/contract';
+import { KNOB_DEFAULT } from '../../shared/contract';
+import { isWatched, normalizeName, WATCH_NAME_MAX } from '../../shared/watch';
 
 export interface Store<T> {
   get(): T;
@@ -99,14 +100,15 @@ export const knob = createStore(parseKnob(initialParams().get('knob')));
 
 // ── watchlist (vendors and products) ──
 
-export const normalizeName = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ');
+// The match rule lives in shared/watch.ts, shared with the MCP server.
+export { isWatched, normalizeName };
 
 export function parseWatch(raw: string | null): string[] {
   if (!raw) return [];
   const out: string[] = [];
   for (const part of raw.split(',')) {
     const n = normalizeName(part);
-    if (n && n.length <= 80 && !out.includes(n)) out.push(n);
+    if (n && n.length <= WATCH_NAME_MAX && !out.includes(n)) out.push(n);
   }
   return out.slice(0, 50);
 }
@@ -130,11 +132,6 @@ if (browser && initialParams().has('watch')) {
   const url = new URL(window.location.href);
   url.searchParams.delete('watch');
   history.replaceState(history.state, '', url.pathname + url.search + url.hash);
-}
-
-export function isWatched(list: readonly string[], row: Pick<Row, 'v' | 'p'>): boolean {
-  if (list.length === 0) return false;
-  return (row.v !== '' && list.includes(normalizeName(row.v))) || (row.p !== '' && list.includes(normalizeName(row.p)));
 }
 
 /** Toggle a vendor/product; returns whether it is now watched. */

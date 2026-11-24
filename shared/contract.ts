@@ -1036,3 +1036,40 @@ export interface McpReceiptsResult {
     backtest: (Omit<BacktestItem, 'row'> & { row: McpRow | null }) | null;
   };
 }
+
+/** One matching CVE in check_inventory: an McpRow cut to what triage needs, with its verdict. */
+export interface McpInventoryItem extends Pick<McpRow, 'id' | 'tier' | 'score' | 'published' | 'vendor' | 'product' | 'title' | 'exploited' | 'weaponized' | 'in_kev' | 'kev_due'> {
+  /** Plain-language verdict for the tier (shared/mcp.ts). */
+  verdict: string;
+}
+
+/** check_inventory's answer for one name. */
+export interface McpInventoryName {
+  /** The name as matched: trimmed, lower case, runs of whitespace as one space (shared/watch.ts). */
+  name: string;
+  /** The name's Atom feed (`/feeds/v/<slug>.xml`), or null when it has no ASCII letter or digit. */
+  feed: string | null;
+  /** Tracked CVEs whose vendor or product is this name, in any tier. 0: nothing has this name. */
+  matched: number;
+  /** Of those, the ones in the chosen tiers. */
+  total: number;
+  /** In the chosen tiers but left out by the per-name cap: total minus items.length. */
+  omitted: number;
+  /** True when matched is 0: no tracked CVE has this exact vendor or product name (a typo, or nothing recent). */
+  no_match: boolean;
+  /** Most urgent first: tier, then the soonest KEV due date, then score, then newest. */
+  items: McpInventoryItem[];
+}
+
+export interface McpInventoryResult {
+  data: McpData;
+  knob: number;
+  tiers: Tier[];
+  /** The per-name cap applied: per_name as asked, or lower to keep the answer within its size budget. */
+  per_name: number;
+  /** Set when per_name was lowered, saying so. */
+  note: string | null;
+  /** What was searched and how names match, in words. */
+  scope: string;
+  names: McpInventoryName[];
+}

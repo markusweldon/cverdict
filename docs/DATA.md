@@ -615,6 +615,7 @@ revisions for older clients.
 | `woke_up` | `woke.json` | `McpWokeResult`: old CVEs that woke up since a date, with their dated signals |
 | `receipts` | `receipts.json` | `McpReceiptsResult`: the forward log and backtest figures without the per-CVE lists, or one CVE's entries |
 | `search_cves` | `index.json` | `McpSearchResult`: window CVEs whose ID, CNA, vendor, product or title contain every word of the query |
+| `check_inventory` | `index.json`, `woke.json` | `McpInventoryResult`: for 1 to 200 vendor or product names, the window and woke-up CVEs whose vendor or product equals each name (the watchlist's rule, `shared/watch.ts`), most urgent first, with counts of what was left out, `no_match`, and the name's vendor feed |
 
 The result types are in `shared/contract.ts` (section "MCP tool results"). Pages hold at most 50
 items. What the server computes itself, all from the files and the time of the request:

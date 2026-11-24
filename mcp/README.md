@@ -89,7 +89,7 @@ proxy and the data bases. Nothing but JSON-RPC goes to stdout.
 
 ## Tools
 
-All six are read-only (`readOnlyHint: true`) and return `structuredContent` plus the same JSON as
+All are read-only (`readOnlyHint: true`) and return `structuredContent` plus the same JSON as
 one text block. The result types are in [`shared/contract.ts`](../shared/contract.ts), section
 "MCP tool results".
 
@@ -101,6 +101,7 @@ one text block. The result types are in [`shared/contract.ts`](../shared/contrac
 | `woke_up` | `woke.json` | Old CVEs that gained exploitation evidence since `since` (default 7 days before the data was generated), with their dated signals. Filter by `kinds`: `kev` (CISA KEV), `catalog` (ENISA EU KEV or CIRCL as exploited), `exploitdb`, `metasploit`, `nuclei`, `poc`, `epss`. A `kev` or `catalog` listing in the period counts even when it came while the CVE was still in the window | `limit` 1 to 50 (default 25), `offset` |
 | `receipts` | `receipts.json` | How often CVErdict, CVSS 7 or more and EPSS 10% or more flagged a CVE before CISA listed it: the forward log and the hindsight backtest, without the per-CVE lists. `id` adds one CVE's entries | |
 | `search_cves` | `index.json` | Window CVEs whose ID, CNA, vendor, product or title contain every word of `query`, highest score first | `query` 2 to 100 characters, at most 8 words; `limit` 1 to 50 (default 20), `offset` |
+| `check_inventory` | `index.json`, `woke.json` | Per name: the window CVEs and old CVEs that woke up whose vendor or product equals the name (ignoring case and extra spaces, as the site's watchlist matches), most urgent first (tier, then soonest KEV due date, then score), each with tier, verdict, score and KEV due date; `matched` and `total` (in the chosen `tiers`), `omitted`, `no_match`, and the name's feed `https://cverdict.dev/feeds/v/<slug>.xml` | `names` 1 to 200, each 1 to 80 characters after trimming; `per_name` 1 to 25 (default 10), lowered with a `note` to keep the answer under about 17,000 tokens; `tiers`, `knob` |
 
 Dates (`published_since`, `since`) are UTC: `2026-10-01`, `2026-10-01T06:00Z` or
 `2026-10-01T06:00:00.000Z`. A date that does not exist is an error. A filter the server cannot

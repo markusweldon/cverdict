@@ -22,7 +22,8 @@ import { SHARD_COUNT } from '../shared/shard';
 import type { CveDetail, McpRow } from '../shared/contract';
 import { DataClient, parse } from '../mcp/src/data';
 import { createServer } from '../mcp/src/server';
-import { getVerdict, kevDue, listSignal, mcpRow, receipts, searchCves, verdictOf, wokeUp } from '../mcp/src/tools';
+import { checkInventory, getVerdict, kevDue, listSignal, mcpRow, receipts, searchCves, verdictOf, wokeUp } from '../mcp/src/tools';
+import { normalizeName } from '../shared/watch';
 
 const BUDGET_TOKENS = 20_000;
 const BYTES_PER_TOKEN = 3.5;
@@ -52,6 +53,7 @@ record('kev_due, defaults (7 + 7 days)', await dc.run((c) => kevDue(c, {}, now))
 record('woke_up, defaults', await dc.run((c) => wokeUp(c, {}, now)));
 record('receipts, summary', await dc.run((c) => receipts(c, {}, now)));
 record('search_cves "fortinet"', await dc.run((c) => searchCves(c, { query: 'fortinet' }, now)));
+record('check_inventory, 5 vendors', await dc.run((c) => checkInventory(c, { names: ['fortinet', 'vmware', 'apache software foundation', 'microsoft', 'notarealvendor'] }, now)));
 
 // Every shard: the largest verdicts, and the score math of every CVE.
 const names = Array.from({ length: SHARD_COUNT }, (_, i) => i.toString(16).padStart(2, '0'));
@@ -79,6 +81,11 @@ const index = await dc.run((c) => c.file('index.json', parse.rows));
 const biggestRows = index.rows.map((r) => mcpRow(r, 50)).sort((a, b) => size(b) - size(a));
 const page = await dc.run((c) => listSignal(c, { tiers: ['exploited', 'likely', 'watch', 'quiet'], knob: 30, limit: 50 }, now));
 record('list_signal / search_cves page of the 50 largest rows', { ...page, items: biggestRows.slice(0, 50) as McpRow[] }, true);
+// check_inventory: the 200 vendor names with the most CVEs, 25 each; per_name drops to fit its budget.
+const vendorCounts = new Map<string, number>();
+for (const r of index.rows) if (r.v) vendorCounts.set(normalizeName(r.v), (vendorCounts.get(normalizeName(r.v)) ?? 0) + 1);
+const topVendors = [...vendorCounts].sort((a, b) => b[1] - a[1]).slice(0, 200).map(([n]) => n);
+record('check_inventory, the 200 largest vendors, per_name 25', await dc.run((c) => checkInventory(c, { names: topVendors, per_name: 25 }, now)), true);
 record('search_cves "cve", every tier, limit 50', await dc.run((c) => searchCves(c, { query: 'cve', limit: 50, tiers: ['exploited', 'likely', 'watch', 'quiet'], knob: 30 }, now)));
 const wokeCount = (await dc.run((c) => c.file('woke.json', parse.woke))).items.length;
 const wokePages = [];
