@@ -46,7 +46,7 @@ export class InputError extends Error {}
 
 export const LIMITS = { ids: 15, detailIds: 5, page: 50, offset: 100_000, queryWords: 8, withinDays: 60, overdueDays: 14, names: 200, nameChars: WATCH_NAME_MAX, perName: 25 } as const;
 
-/** Bytes of JSON check_inventory answers with at most (about 17,000 tokens); per_name is lowered to fit. */
+/** Bytes of JSON check_inventory answers with at most (about 17,000 tokens); the least urgent CVEs are left out to fit. */
 export const INVENTORY_BUDGET = 60 * 1024;
 
 const DAY_MS = 86_400_000;
@@ -368,15 +368,23 @@ export interface InventoryArgs {
   per_name?: number;
 }
 
+/** Bytes of JSON all names may take together: 200 names of 80 ASCII characters fit. */
+export const NAMES_BUDGET = 20 * 1024;
+
+/** Control, format and lone surrogate characters: no vendor name has them, and JSON escapes each in 6 bytes. */
+const ODD_CHAR_RE = /[\p{Cc}\p{Cf}\p{Cs}]/u;
+
 /** Names as the watchlist keeps them (shared/watch.ts): normalized, deduped, 1 to WATCH_NAME_MAX characters. */
 export function watchNames(raw: readonly string[]): string[] {
   const out: string[] = [];
   for (const s of raw) {
     const n = normalizeName(s);
     if (!n || n.length > LIMITS.nameChars) throw new InputError(MCP_MSG.badName(LIMITS.nameChars));
+    if (ODD_CHAR_RE.test(n)) throw new InputError(MCP_MSG.oddName);
     if (!out.includes(n)) out.push(n);
   }
   if (out.length > LIMITS.names) throw new InputError(`names takes at most ${LIMITS.names} names.`);
+  if (Buffer.byteLength(JSON.stringify(out)) > NAMES_BUDGET) throw new InputError(MCP_MSG.namesTooLong);
   return out;
 }
 
@@ -420,26 +428,36 @@ export async function checkInventory(call: DataCall, a: InventoryArgs, now: numb
   const data = await dataBlock(call, now);
   const scope = `CVEs published in the ${meta.window.days}-day window (index.json) and old CVEs that woke up (woke.json). A name matches a CVE whose vendor or product equals it, ignoring case and extra spaces. Older CISA KEV CVEs are not listed here: use kev_due or get_verdict.`;
   const asked = a.per_name ?? 10;
-  const build = (cap: number): McpInventoryResult => ({
-    data,
-    knob,
-    tiers,
-    per_name: cap,
-    note: cap < asked ? MCP_MSG.perNameLowered(asked, cap) : null,
-    scope,
-    names: all.map(({ name, feed, matched, items }): McpInventoryName => {
-      const shown = items.slice(0, cap);
-      return { name, feed, matched, total: items.length, omitted: items.length - shown.length, no_match: matched === 0, items: shown };
-    }),
-  });
-  // Never cut silently: a lower cap shows in per_name, and each name's omitted counts the rest.
-  // The largest cap that fits, by bisection: the size grows with the cap, never linearly.
+  // Every name's first `asked` CVEs, most urgent first across all names: when the answer must be
+  // cut, the least urgent go first, so an exploited CVE is never left out for a quiet one.
+  const queue = all
+    .flatMap(({ items }, n) => items.slice(0, asked).map((item, k) => ({ item, k, n })))
+    .sort((x, y) => byUrgency(x.item, y.item) || x.k - y.k || x.n - y.n);
+  const build = (shown: number): McpInventoryResult => {
+    const count = new Array<number>(all.length).fill(0);
+    for (const { n } of queue.slice(0, shown)) count[n]++;
+    return {
+      data,
+      knob,
+      tiers,
+      per_name: asked,
+      note: shown < queue.length ? MCP_MSG.inventoryCut(shown, queue.length) : null,
+      scope,
+      names: all.map(({ name, feed, matched, items }, n): McpInventoryName => {
+        const kept = items.slice(0, count[n]);
+        return { name, feed, matched, total: items.length, omitted: items.length - kept.length, no_match: matched === 0, items: kept };
+      }),
+    };
+  };
+  // Never cut silently: the note says how many were shown, and each name's omitted counts the rest.
+  // The most CVEs that fit, by bisection: the size grows with every CVE shown.
   const fits = (r: McpInventoryResult) => Buffer.byteLength(JSON.stringify(r)) <= INVENTORY_BUDGET;
-  let out = build(asked);
+  let out = build(queue.length);
   if (!fits(out)) {
     let lo = 0;
-    let hi = asked - 1;
+    let hi = queue.length - 1;
     out = build(0);
+    if (!fits(out)) throw new InputError(MCP_MSG.namesTooLong);
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
       const r = build(mid);

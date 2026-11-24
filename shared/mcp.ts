@@ -120,9 +120,11 @@ export const MCP_MSG = {
   notCveId: 'Not a CVE ID. Expected CVE-YYYY-NNNN.',
   detailTooMany: (max: number) => `detail: true takes at most ${max} IDs; ask again in groups of ${max}.`,
   tooManyWords: (max: number) => `query takes at most ${max} words.`,
-  perNameLowered: (asked: number, used: number) =>
-    `per_name was lowered from ${asked} to ${used} to keep this answer under about 17,000 tokens; omitted counts what each name left out. For more CVEs per name, ask again with fewer names.`,
+  inventoryCut: (shown: number, of: number) =>
+    `To keep this answer under about 17,000 tokens it shows the ${shown} most urgent of ${of} CVEs across all names; omitted counts what each name left out. For the rest, ask again with fewer names or with tiers.`,
   badName: (max: number) => `names: each name needs 1 to ${max} characters after trimming.`,
+  oddName: 'names: a name may not contain control or invisible characters.',
+  namesTooLong: 'names: these names are too long together for one answer; ask again with fewer names.',
   beforeLog: (from: string, to: string, days: number) =>
     `since is older than the event log: events.json holds the ${days} days from ${from} to ${to}. Ask again with since on or after ${from}; for older changes use woke_up or get_verdict.`,
   badDate: (field: string) => `${field} must be a UTC date (2026-10-01) or date-time (2026-10-01T06:00Z).`,

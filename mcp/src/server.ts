@@ -87,7 +87,7 @@ const SCHEMAS = {
     names: names.describe(`Vendor or product names, each up to ${LIMITS.nameChars} characters, e.g. ["fortinet","vmware"].`),
     tiers: tiers.optional().describe('Default: all four.'),
     knob: knob.describe(`The evidence bar, ${KNOB_MIN} to ${KNOB_MAX} (default ${KNOB_DEFAULT}), as in get_verdict.`),
-    per_name: z.number().int().min(1).max(LIMITS.perName).optional().describe(`CVEs per name, 1 to ${LIMITS.perName} (default 10). Lowered, with a note, when the answer would be too large.`),
+    per_name: z.number().int().min(1).max(LIMITS.perName).optional().describe(`CVEs per name, 1 to ${LIMITS.perName} (default 10). If the answer would be too large, the least urgent across all names are left out, with a note.`),
   }),
   changes_since: z.object({
     since: utc.describe('Events after this UTC date-time (next_since of an earlier answer), or from 00:00Z of this date, within the log\'s 7 days.'),

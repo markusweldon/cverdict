@@ -1065,9 +1065,9 @@ export interface McpInventoryResult {
   data: McpData;
   knob: number;
   tiers: Tier[];
-  /** The per-name cap applied: per_name as asked, or lower to keep the answer within its size budget. */
+  /** The most CVEs shown per name, as asked. */
   per_name: number;
-  /** Set when per_name was lowered, saying so. */
+  /** Set when the least urgent CVEs, across all names, were left out to keep the answer within its size budget, saying how many were shown. */
   note: string | null;
   /** What was searched and how names match, in words. */
   scope: string;

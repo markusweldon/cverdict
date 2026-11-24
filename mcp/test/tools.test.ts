@@ -6,7 +6,7 @@ import { shardOf } from '../../shared/shard';
 import { slugify } from '../../shared/slug';
 import { isWatched } from '../../shared/watch';
 import { DataClient, parse, type DataCall } from '../src/data';
-import { INVENTORY_BUDGET, InputError, changesSince, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from '../src/tools';
+import { INVENTORY_BUDGET, InputError, NAMES_BUDGET, changesSince, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from '../src/tools';
 import { CVE, GEN, NOW, detail, fakeFetch, files, row } from './fixture';
 
 const BASE = 'https://data.test/v1/';
@@ -362,37 +362,64 @@ describe('check_inventory', () => {
     await expect(t.run((c) => checkInventory(c, { names: ['x'.repeat(81)] }, NOW))).rejects.toThrow(InputError);
     await expect(t.run((c) => checkInventory(c, { names: [` ${'x'.repeat(80)} `] }, NOW))).resolves.toBeTruthy();
     await expect(t.run((c) => checkInventory(c, { names: Array.from({ length: 201 }, (_, i) => `v${i}`) }, NOW))).rejects.toThrow('names takes at most 200 names.');
-    // Duplicates fold before the count.
-    await expect(t.run((c) => checkInventory(c, { names: [...Array.from({ length: 200 }, (_, i) => `v${i}`), 'V0'] }, NOW))).resolves.toBeTruthy();
   });
 
-  it('lowers per_name to stay within its budget at 200 names, and says so', async () => {
+  it('refuses control, invisible and lone surrogate characters, and names too long together', async () => {
+    const t = setup();
+    for (const odd of ['acme\u0001', 'ac\u200bme', '\ud800acme', 'acme\u007f', 'ac\u00adme']) {
+      await expect(t.run((c) => checkInventory(c, { names: [odd] }, NOW)), JSON.stringify(odd)).rejects.toThrow(MCP_MSG.oddName);
+      await expect(t.run((c) => changesSince(c, { since: '2026-11-01', names: [odd] }, NOW))).rejects.toThrow(MCP_MSG.oddName);
+    }
+    // Tabs and newlines fold to one space, as on the site.
+    expect((await t.run((c) => checkInventory(c, { names: ['acme\twidget\n'] }, NOW))).names[0].name).toBe('acme widget');
+    // 200 names of 80 ASCII characters fit; 200 of 77 CJK characters (3 bytes each) do not.
+    const ascii = Array.from({ length: 200 }, (_, i) => `${'n'.repeat(77)}${String(i).padStart(3, '0')}`);
+    expect(Buffer.byteLength(JSON.stringify(ascii))).toBeLessThanOrEqual(NAMES_BUDGET);
+    await expect(t.run((c) => checkInventory(c, { names: ascii }, NOW))).resolves.toBeTruthy();
+    const cjk = Array.from({ length: 200 }, (_, i) => `${'一'.repeat(77)}${String(i).padStart(3, '0')}`);
+    await expect(t.run((c) => checkInventory(c, { names: cjk }, NOW))).rejects.toThrow(MCP_MSG.namesTooLong);
+    await expect(t.run((c) => changesSince(c, { since: '2026-11-01', names: cjk }, NOW))).rejects.toThrow(MCP_MSG.namesTooLong);
+    await expect(t.run((c) => checkInventory(c, { names: cjk.slice(0, 50) }, NOW))).resolves.toBeTruthy();
+  });
+
+  it('leaves out the least urgent CVEs across all names to stay within its budget, and says so', async () => {
     const tree = files();
     const index = tree.get('index.json') as { cols: string[]; rows: unknown[][] };
     const rows = Array.from({ length: 200 * 25 }, (_, i) => {
       const d = detail(`CVE-2026-${40000 + i}`, { score: 60 + (i % 40), tier: 'likely', title: `Vendor ${i % 200} product ${'x'.repeat(140)}` });
       return row(d, { v: `Vendor Number ${i % 200}`, p: `Product Line ${i % 200}` });
     });
-    tree.set('index.json', { ...index, rows: rows.map((r) => ROW_COLS.map((c) => r[c])) });
+    // One exploited CVE, for the last name only.
+    const ex = row(detail('CVE-2026-49999', { score: 99, tier: 'exploited', title: 'x'.repeat(150) }), { v: 'Vendor Number 199', p: 'Product Line 199' });
+    tree.set('index.json', { ...index, rows: [...rows, ex].map((r) => ROW_COLS.map((c) => r[c])) });
     const many = async (n: number) => {
-      const r = await setup(tree).run((c) => checkInventory(c, { names: Array.from({ length: n }, (_, i) => `vendor number ${i}`), per_name: 25 }, NOW));
+      const r = await setup(tree).run((c) => checkInventory(c, { names: Array.from({ length: n }, (_, i) => `vendor number ${199 - i}`), per_name: 25 }, NOW));
       expect(Buffer.byteLength(JSON.stringify(r))).toBeLessThanOrEqual(INVENTORY_BUDGET);
-      expect(r.per_name).toBeLessThan(25);
-      expect(r.note).toBe(MCP_MSG.perNameLowered(25, r.per_name));
+      const shown = r.names.flatMap((x) => x.items);
+      const left = r.names.reduce((s, x) => s + x.omitted, 0);
+      expect(r.per_name).toBe(25);
+      // Of the first per_name CVEs of each name.
+      expect(r.note).toBe(MCP_MSG.inventoryCut(shown.length, r.names.reduce((s, x) => s + Math.min(x.total, 25), 0)));
+      expect(left).toBeGreaterThan(0);
+      expect(shown.length).toBeGreaterThan(0);
+      // The exploited CVE first, and every CVE shown at least as urgent as every one left out.
+      expect(r.names[0].items[0]).toMatchObject({ id: 'CVE-2026-49999', tier: 'exploited' });
+      const cut = Math.min(...shown.filter((i) => i.tier === 'likely').map((i) => i.score));
       for (const x of r.names) {
-        expect([x.matched, x.total, x.items.length, x.omitted]).toEqual([25, 25, r.per_name, 25 - r.per_name]);
+        expect(x.total).toBe(x.name === 'vendor number 199' ? 26 : 25);
+        expect(x.items.length + x.omitted).toBe(x.total);
         expect(x.items.map((i) => i.score)).toEqual([...x.items.map((i) => i.score)].sort((a, b) => b - a));
+        const all = rows.filter((rw) => rw.v.toLowerCase() === x.name).map((rw) => rw.s).sort((a, b) => b - a);
+        expect(all.slice(x.items.length).every((sc) => sc <= cut)).toBe(true);
       }
-      // The largest cap that fits: one more does not.
-      const more = await setup(tree).run((c) => checkInventory(c, { names: r.names.map((x) => x.name), per_name: r.per_name + 1 }, NOW));
-      expect(more.per_name).toBe(r.per_name);
-      return r.per_name;
+      return shown.length;
     };
-    expect(await many(50)).toBeGreaterThan(1);
-    expect(await many(200)).toBeGreaterThanOrEqual(0);
+    expect(await many(50)).toBeGreaterThan(50);
+    // 200 names: before, every name was cut to 0 and nothing was shown.
+    expect(await many(200)).toBeGreaterThan(20);
     const few = await setup(tree).run((c) => checkInventory(c, { names: ['vendor number 1'], per_name: 25 }, NOW));
     expect([few.per_name, few.note, few.names[0].items.length]).toEqual([25, null, 25]);
-    // Long names and no matches at all: the cap can reach 0, and every count is still there.
+    // Long names and no matches at all: nothing to cut, and every count is there.
     const long = Array.from({ length: 200 }, (_, i) => `${'n'.repeat(76)}${String(i).padStart(4, '0')}`);
     const none = await setup(tree).run((c) => checkInventory(c, { names: long }, NOW));
     expect(Buffer.byteLength(JSON.stringify(none))).toBeLessThanOrEqual(INVENTORY_BUDGET);
