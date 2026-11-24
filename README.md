@@ -414,8 +414,9 @@ demo GIF from a running build. See [tools/brand/README.md](tools/brand/README.md
 - **Exposure is yours.** We do not know what you run, where it is reachable or what it protects.
   A Watch CVE on your internet-facing VPN can matter more than an Exploited one in software you
   do not have.
-- **Many attacks need no CVE.** Stolen, default or weak credentials, misconfiguration, exposed
-  management interfaces and bugs in your own applications never reach this data. The FBI FLASH on
+- **Many attacks need no CVE.** Stolen or weak passwords, a default password left unchanged,
+  misconfiguration, exposed management interfaces and bugs in your own applications have no CVE of
+  their own and never reach this data. The FBI FLASH on
   ARTEX ([FLASH-20261113-001](https://www.ic3.gov/CSA/2026/261113.pdf), 13 November 2026) describes AI agents that got in
   that way at machine speed. A verdict tells you what to patch first, not whether you are exposed;
   MFA and an inventory of your exposed interfaces do more for that.

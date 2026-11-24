@@ -751,12 +751,13 @@ as the pipeline reports it); the extra work is one set union and 19 more records
   umbrella vendor's KEV history covers all of its products.
 - **Text heuristics are English.** The "in the wild" pattern and the noise patterns read the English
   description only.
-- **Attacks that need no CVE.** Stolen, default or weak credentials, misconfigured cloud accounts,
-  exposed management interfaces and bugs in your own applications have no CVE, so no chip can see
-  them. Automated campaigns try them at machine speed: the FBI FLASH on ARTEX
-  ([FLASH-20261113-001](https://www.ic3.gov/CSA/2026/261113.pdf), 13 November 2026) describes AI agents that got in through
-  weak administrator passwords, leaked VPN credentials and missing authentication, alongside
-  injection flaws in custom web applications. A verdict tells you what to patch first, not whether you are exposed. For
+- **Attacks that need no CVE.** Stolen or weak passwords, a default password left unchanged,
+  misconfigured cloud accounts, exposed management interfaces and bugs in your own applications have
+  no CVE of their own, so no chip can see them. Automated campaigns try them at machine speed: the
+  FBI FLASH on ARTEX ([FLASH-20261113-001](https://www.ic3.gov/CSA/2026/261113.pdf), 13 November
+  2026) describes AI agents that got in through weak administrative credentials, stolen VPN
+  configurations and leaked credentials, and missing authentication on web APIs, alongside injection
+  flaws in peripheral and in-house web applications. A verdict tells you what to patch first, not whether you are exposed. For
   that, MFA and an inventory of the interfaces you expose to the internet do more than any CVE list.
 
 ## Proposing a weight change
