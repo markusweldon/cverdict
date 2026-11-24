@@ -45,6 +45,15 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
   ['Not in KEV ≠ not exploited', 'KEV lists only exploitation CISA can confirm, often weeks late. Plenty of exploited bugs never appear.'],
   ['Quiet ≠ safe', 'Quiet means no public evidence yet. A brand-new CVE in an internet-facing product you run can matter before anyone writes an exploit.'],
   ['Exposure is yours', 'We can’t see your assets. A Likely CVE in software you don’t run is noise; a Watch CVE on your perimeter may not be.'],
+  [
+    'Many attacks need no CVE',
+    <>
+      Stolen, default or weak credentials, misconfigured cloud accounts, exposed management interfaces and bugs in your own applications have no CVE, so they never reach this data. Automated campaigns
+      try them at machine speed: the FBI FLASH on ARTEX (<ExtLink href="https://www.ic3.gov/CSA/2026/261113.pdf">FLASH-20261113-001</ExtLink>, 13 November 2026) describes AI agents that got in through weak administrator passwords,
+      leaked VPN credentials and missing authentication, alongside injection flaws in custom web applications. A verdict tells you what to patch first, not whether you are exposed. For that, MFA and an inventory of
+      the interfaces you expose to the internet do more than any CVE list.
+    </>,
+  ],
   ['Feeds lag', `Exploit feeds and EPSS need about ${COLD_START_DAYS} days to catch up, so until then no exploit signal costs ${-EARLY_NO_EXPLOIT} points, not ${-CHIP_BY_ID['x.none'].points}.`],
   [
     'Edge devices are a curated list',
