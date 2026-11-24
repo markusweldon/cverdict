@@ -25,7 +25,12 @@ export function slugify(name: string): string {
   return s.slice(0, SLUG_MAX).replace(/-+$/, '');
 }
 
-/** An event (or row) belongs to a slug's feed when its vendor or its product has that slug, as the watchlist matches. */
+/**
+ * An event (or row) belongs to a slug's feed when its vendor or its product has that slug. Looser
+ * than the watchlist's exact match (shared/watch.ts): case, accents and punctuation fold, so a feed
+ * can carry spellings a watched name does not match ("Umbraco CMS" and "Umbraco-CMS"), and two
+ * names can share one feed.
+ */
 export function matchesSlug(slug: string, item: { vendor: string; product: string }): boolean {
   return slug !== '' && (slugify(item.vendor) === slug || slugify(item.product) === slug);
 }

@@ -3,7 +3,7 @@ import { ROW_COLS, type EventsFile, type McpNotFound, type McpVerdict } from '..
 import { MCP_MSG, VERDICT } from '../../shared/mcp';
 import { BASE_POINTS } from '../../shared/model';
 import { shardOf } from '../../shared/shard';
-import { slugify } from '../../shared/slug';
+import { matchesSlug, slugify } from '../../shared/slug';
 import { isWatched } from '../../shared/watch';
 import { DataClient, parse, type DataCall } from '../src/data';
 import { INVENTORY_BUDGET, InputError, NAMES_BUDGET, changesSince, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from '../src/tools';
@@ -354,6 +354,27 @@ describe('check_inventory', () => {
     expect(r.names.find((n) => n.name === 'palo alto networks')?.feed).toBe('https://cverdict.dev/feeds/v/palo-alto-networks.xml');
     expect(r.names.find((n) => n.name === 'ünïcode gmbh')?.feed).toBe('https://cverdict.dev/feeds/v/unicode-gmbh.xml');
     expect(r.names.at(-1)).toMatchObject({ name: '日本', feed: null, no_match: true });
+  });
+
+  it('names the feed by slug, which folds what the exact match does not, as documented', async () => {
+    const tree = files();
+    const index = tree.get('index.json') as { cols: string[]; rows: unknown[][] };
+    const rows = [
+      row(detail('CVE-2026-50001', { score: 40, tier: 'watch' }), { v: 'Umbraco', p: 'Umbraco CMS' }),
+      row(detail('CVE-2026-50002', { score: 40, tier: 'watch' }), { v: 'Umbraco', p: 'Umbraco-CMS' }),
+      row(detail('CVE-2026-50003', { score: 40, tier: 'watch' }), { v: 'Schneider Electric', p: 'EcoStruxure' }),
+    ];
+    tree.set('index.json', { ...index, rows: [...index.rows, ...rows.map((r) => ROW_COLS.map((c) => r[c]))] });
+    const r = await setup(tree).run((c) => checkInventory(c, { names: ['umbraco cms', 'umbraco-cms', 'schneider électric', '__proto__'] }, NOW));
+    expect(r.names.map((n) => [n.name, n.matched, n.no_match, n.feed])).toEqual([
+      ['umbraco cms', 1, false, 'https://cverdict.dev/feeds/v/umbraco-cms.xml'],
+      ['umbraco-cms', 1, false, 'https://cverdict.dev/feeds/v/umbraco-cms.xml'],
+      ['schneider électric', 0, true, 'https://cverdict.dev/feeds/v/schneider-electric.xml'],
+      ['__proto__', 0, true, 'https://cverdict.dev/feeds/v/proto.xml'],
+    ]);
+    // The feed function keeps both spellings and the unaccented vendor.
+    expect(rows.filter((x) => matchesSlug('umbraco-cms', { vendor: x.v, product: x.p })).map((x) => x.id)).toEqual(['CVE-2026-50001', 'CVE-2026-50002']);
+    expect(matchesSlug('schneider-electric', { vendor: 'Schneider Electric', product: '' })).toBe(true);
   });
 
   it('rejects empty, overlong and too many names', async () => {

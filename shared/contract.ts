@@ -1047,7 +1047,11 @@ export interface McpInventoryItem extends Pick<McpRow, 'id' | 'tier' | 'score' |
 export interface McpInventoryName {
   /** The name as matched: trimmed, lower case, runs of whitespace as one space (shared/watch.ts). */
   name: string;
-  /** The name's Atom feed (`/feeds/v/<slug>.xml`), or null when it has no ASCII letter or digit. */
+  /**
+   * The Atom feed for the name's slug (`/feeds/v/<slug>.xml`), or null when it has no ASCII letter
+   * or digit. The feed matches by slug, so it can also carry spellings this name does not match
+   * (accents, punctuation) and can be shared with another name.
+   */
   feed: string | null;
   /** Tracked CVEs whose vendor or product is this name, in any tier. 0: nothing has this name. */
   matched: number;
