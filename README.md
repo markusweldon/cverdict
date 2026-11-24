@@ -37,16 +37,16 @@ gives you your own copy.
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/signal-narrow-dark.svg">
   <source media="(max-width: 600px)" srcset="docs/assets/signal-narrow-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/signal-dark.svg">
-  <img alt="The last 30 days, Oct 24 to Nov 23, 2026: 16,337 new CVEs published, 278 worth your time. That is 1.7% of the flood, 1 in 59, Exploited or Likely next at the default evidence bar of 50. By tier: 26 Exploited, 252 Likely next, 2,853 Watch and 13,206 Quiet. Below, the signal waterfall as the site draws it: every CVE of the window in 2-hour slots, one column of small ticks per slot, taller for busier slots. Quiet ticks are grey and Watch ticks amber at the bottom of each column; the lit red and orange ticks on top are the Exploited and Likely next CVEs that cleared the bar. A red ring marks the 1 CVE newly exploited in the last 72 hours, near Nov 20, and the legend reads 1 newly exploited. Patch days stand out as spikes, labelled Microsoft 1,094 on Nov 10, VulnCheck 389 on Nov 13, Oracle 578 on Nov 17 and Linux kernel 246 on Nov 19." src="docs/assets/signal-light.svg" width="100%">
+  <img alt="The last 30 days, Oct 25 to Nov 24, 2026: 17,087 new CVEs published, 329 worth your time. That is 1.9% of the flood, 1 in 52, Exploited or Likely next at the default evidence bar of 50. By tier: 30 Exploited, 299 Likely next, 2,217 Watch and 14,541 Quiet. Below, the signal waterfall as the site draws it: every CVE of the window in 2-hour slots, one column of small ticks per slot, taller for busier slots. Quiet ticks are grey and Watch ticks amber at the bottom of each column; the lit red and orange ticks on top are the Exploited and Likely next CVEs that cleared the bar. Red rings mark the 6 CVEs newly exploited in the last 72 hours, on CVEs published from Nov 18 to Nov 24, and the legend reads 6 newly exploited. Patch days stand out as spikes, labelled Microsoft 1,094 on Nov 10, VulnCheck 389 on Nov 13, Oracle 578 on Nov 17 and Linux kernel 246 on Nov 19." src="docs/assets/signal-light.svg" width="100%">
 </picture>
 
 **Thousands in, a few hundred out.** The rest is not hidden: every CVE keeps its score, its tier and its reasons.
 
 <br>
 
-<img alt="Demo of the Today page in the dark theme. The noise meter shows 16,337 new CVEs and 278 worth your time at the Balanced evidence bar of 50, about 9 a day, and the waterfall legend shows 1 newly exploited. Choosing Broad lowers the bar to 40: the count rises to 647, about 22 a day, and more ticks light up in the signal waterfall. Choosing Strict raises it to 60: 142, about 5 a day. Choosing Balanced brings it back to 278. Exploited CVEs and those with a Metasploit module or Nuclei template show at every setting." src="docs/assets/demo-dark.gif" width="100%">
+<img alt="Demo of the Today page in the dark theme. The noise meter shows 17,087 new CVEs and 329 worth your time at the Balanced evidence bar of 50, about 11 a day, and the waterfall legend shows 6 newly exploited. Choosing Broad lowers the bar to 40: the count rises to 680, about 23 a day, and more ticks light up in the signal waterfall. Choosing Strict raises it to 60: 188, about 6 a day. Choosing Balanced brings it back to 329. Exploited CVEs and those with a Metasploit module or Nuclei template show at every setting." src="docs/assets/demo-dark.gif" width="100%">
 
-<sub>The Today page with the data of Nov 23, 2026 16:47 UTC, recorded from the production build with
+<sub>The Today page with the data of Nov 24, 2026 18:47 UTC, recorded from the production build with
 <a href="tools/brand/screens.mjs"><code>tools/brand/screens.mjs</code></a>. The evidence bar re-tiers the page live and the URL remembers it.</sub>
 
 ## Use it
@@ -62,11 +62,11 @@ gives you your own copy.
 
 | Number | What it means |
 |--:|:--|
-| **102.7k** | CVEs published in 2026 through Nov 23: more than all of 2025 (48.2k) twice over[^ours] |
+| **103.6k** | CVEs published in 2026 through Nov 24: more than all of 2025 (48.2k) twice over[^ours] |
 | **4,302 → 17,050** | CVEs per month, January → October 2026[^ours] |
-| **16,337** | new CVEs in the last 30 days. **278** of them (1 in 59) are Exploited or Likely next[^ours] |
-| **34** | CVEs added to [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) in the last 30 days: one KEV addition for every ~480 new CVEs[^ours] |
-| **1,094** | Microsoft CVE records on Patch Tuesday, Nov 10. **1** exploited ([CVE-2026-124194](https://www.cve.org/CVERecord?id=CVE-2026-124194)), **6** Likely next[^ours] |
+| **17,087** | new CVEs in the last 30 days. **329** of them (1 in 52) are Exploited or Likely next[^ours] |
+| **39** | CVEs added to [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) in the last 30 days: one KEV addition for every ~440 new CVEs[^ours] |
+| **1,094** | Microsoft CVE records on Patch Tuesday, Nov 10. **1** exploited ([CVE-2026-124194](https://www.cve.org/CVERecord?id=CVE-2026-124194)), **12** Likely next[^ours] |
 | **Apr 15** | NIST's NVD [stopped enriching most CVEs](https://www.helpnetsecurity.com/2026/04/16/nist-national-vulnerability-database-nvd-enrichment/): only KEV-listed, federal and critical software is still analysed |
 | **15 → 274** | CVE records crediting AI tools, October 2025 → October 2026[^ours] |
 
@@ -77,7 +77,7 @@ gives you your own copy.
 The needles are still there. CVErdict shows you the few that matter today, and exactly why.
 
 [^ours]: Our counts from [CVEProject/cvelistV5](https://github.com/CVEProject/cvelistV5), CISA KEV and
-    EPSS data, from the run of Nov 23, 2026 16:47 UTC (`meta.json`, `stats.json` and `batches.json`
+    EPSS data, from the run of Nov 24, 2026 18:47 UTC (`meta.json`, `stats.json` and `batches.json`
     on the data branch). CVE totals count records in PUBLISHED state by `datePublished`, as the
     site's charts do.
 
@@ -85,7 +85,7 @@ The needles are still there. CVErdict shows you the few that matter today, and e
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-it-works-dark.svg">
-  <img alt="How CVErdict works, top to bottom. Public sources: CVE records from CVE List V5 (430,789 records) and CISA Vulnrichment (225,948), with SSVC and CVSS from CISA and nothing from NVD; confirmed exploitation from CISA KEV (1,790), ENISA EU KEV (82), the CIRCL catalog (30) and SiberKapan (information only); exploits and odds from Metasploit (7,274), Nuclei templates (4,745), Exploit-DB (47,182), PoC-in-GitHub (12,020) and EPSS (411,399); package versions from OSV.dev (47,415), for Check Deps only and never part of a score. They feed the pipeline, a GitHub Actions run every hour at minute 17 that never stops for one failing feed, in five steps: 01 Ingest (fetch, cache, keep the last good copy), 02 Score (reason chips, a plain sum from 15), 03 Tier (four tiers at the evidence bar of 50), 04 Emit (JSON, 256 CVE shards, Atom, iCal) and 05 Validate (every file checked, or nothing ships). The output goes to the data branch, one orphan commit replaced every run, holding v1/meta.json, signal.json, index.json, cve/00 to ff.json, receipts.json, packages.json, the Atom feeds and kev-due.ics. Four readers use that branch: cverdict.dev, a static site on Vercel that rewrites /data/* to the branch so it needs no redeploy; the Atom and iCalendar feeds; the open JSON API on raw.githubusercontent.com with no key and CC0 scores; and the read-only MCP server, npx -y cverdict-mcp. Record counts are from the run of Nov 23, 2026 16:47 UTC." src="docs/assets/how-it-works-light.svg" width="100%">
+  <img alt="How CVErdict works, top to bottom. Public sources: CVE records from CVE List V5 (431,684 records) and CISA Vulnrichment (226,706), with SSVC and CVSS from CISA and nothing from NVD; confirmed exploitation from CISA KEV (1,795), ENISA EU KEV (82), the CIRCL catalog (30) and SiberKapan (information only); exploits and odds from Metasploit (7,274), Nuclei templates (4,771), Exploit-DB (47,182), PoC-in-GitHub (12,181) and EPSS (411,908); package versions from OSV.dev (47,496), for Check Deps only and never part of a score. They feed the pipeline, a GitHub Actions run every hour at minute 17 that never stops for one failing feed, in five steps: 01 Ingest (fetch, cache, keep the last good copy), 02 Score (reason chips, a plain sum from 15), 03 Tier (four tiers at the evidence bar of 50), 04 Emit (JSON, 256 CVE shards, Atom, iCal) and 05 Validate (every file checked, or nothing ships). The output goes to the data branch, one orphan commit replaced every run, holding v1/meta.json, signal.json, index.json, cve/00 to ff.json, receipts.json, packages.json, the Atom feeds and kev-due.ics. Four readers use that branch: cverdict.dev, a static site on Vercel that rewrites /data/* to the branch so it needs no redeploy; the Atom and iCalendar feeds; the open JSON API on raw.githubusercontent.com with no key and CC0 scores; and the read-only MCP server, npx -y cverdict-mcp. Record counts are from the run of Nov 24, 2026 18:47 UTC." src="docs/assets/how-it-works-light.svg" width="100%">
 </picture>
 
 **One writer, many readers.** The hourly run is the only thing that writes. The site, the feeds, the API and the MCP server all read the same files, so they always agree.
@@ -113,7 +113,7 @@ in, so a bad run publishes nothing.
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/scoring-narrow-dark.svg">
   <source media="(max-width: 600px)" srcset="docs/assets/scoring-narrow-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/scoring-dark.svg">
-  <img alt="How a CVErdict score adds up. The score is a base of 15 plus five families: Exploits (exploit code, templates and EPSS) from minus 14 to plus 34, Severity (CVSS from the CNA or CISA) from minus 13 to plus 13, CISA SSVC (automatable, technical impact) from minus 8 to plus 14, KEV history (vendor or product exploited before) from minus 6 to plus 10, and Noise (tutorial code, disputed, WordPress) from minus 20 to 0. Confirmed exploitation adds 75 and floors the score at 90: CISA KEV, EU KEV, CIRCL, SSVC active or the vendor. On the 0 to 100 scale, at the default evidence bar of 50: Quiet below 25, Watch from 25 to 50, Likely next from 50, and Exploited from 90. The bar can be moved from 35 to 65 on the site and from 30 to 80 in the API and MCP server. Worked example, CVE-2026-119958, a Windows LDAP remote code execution vulnerability: base 15, plus 20 for one PoC repo (vetted), plus 13 for Critical 9.8 network, plus 8 for CISA SSVC total technical impact, plus 6 for automatable, plus 8 for Vendor in KEV (Microsoft, 391 times) equals 70, Likely next. Its patch-day membership and its EPSS of 1.6% on day 12 count 0 points. The tier rules: Exploited means patch now, on any confirmed exploitation chip; Likely next means patch within days, for a score at or above the bar, or a Metasploit module or Nuclei template, which always passes; Watch means keep an eye on it, for a score from 25 up to the bar; Quiet means no evidence yet, below 25, and Quiet is not safe." src="docs/assets/scoring-light.svg" width="100%">
+  <img alt="How a CVErdict score adds up. The score is a base of 15 plus five families: Exploits (exploit code, templates and EPSS) from minus 14 to plus 34, Severity (CVSS from the CNA or CISA) from minus 13 to plus 13, CISA SSVC (automatable, technical impact) from minus 8 to plus 14, KEV history (vendor or product exploited before) from minus 6 to plus 10, and Noise (tutorial code, disputed, WordPress) from minus 20 to 0. Confirmed exploitation adds 75 and floors the score at 90: CISA KEV, EU KEV, CIRCL, SSVC active or the vendor. On the 0 to 100 scale, at the default evidence bar of 50: Quiet below 25, Watch from 25 to 50, Likely next from 50, and Exploited from 90. The bar can be moved from 35 to 65 on the site and from 30 to 80 in the API and MCP server. Worked example, CVE-2026-119958, a Windows LDAP remote code execution vulnerability: base 15, plus 20 for 2 PoC repos (1 vetted), plus 13 for Critical 9.8 network, plus 8 for CISA SSVC total technical impact, plus 6 for automatable, plus 8 for Vendor in KEV (Microsoft, 391 times) equals 70, Likely next. Its patch-day membership and its EPSS of 1.6% (76th percentile) count 0 points. The tier rules: Exploited means patch now, on any confirmed exploitation chip; Likely next means patch within days, for a score at or above the bar, or a Metasploit module or Nuclei template, which always passes; Watch means keep an eye on it, for a score from 25 up to the bar; Quiet means no evidence yet, below 25, and Quiet is not safe." src="docs/assets/scoring-light.svg" width="100%">
 </picture>
 
 **Evidence over severity.** Half of all new CVEs are High or Critical, so CVSS is a small modifier here. What moves a score is evidence that someone can, or does, exploit the bug.
@@ -155,7 +155,7 @@ evidence behind each; the page re-tiers live and the URL remembers your setting.
 
 Every score is explained by reason chips, each linked to its source. These are the chips of
 [CVE-2026-88771](https://www.cve.org/CVERecord?id=CVE-2026-88771), a NetScaler ADC remote code
-execution bug, in the run of Nov 23:
+execution bug, in the run of Nov 24:
 
 ```text
 CISA KEV · added Sep 27 · due Sep 30
@@ -169,7 +169,7 @@ Critical 9.5 · network (v4.0)
 CISA SSVC: total technical impact
 CISA SSVC: automatable
 Product in KEV (×5): Citrix NetScaler
-KEV due Sep 30 · 54 days ago
+KEV due Sep 30 · 55 days ago
 CISA asks for forensic triage (BOD 26-04)
 Internet-facing edge device: Citrix NetScaler ADC and Gateway (load balancer, gateway)
 ```
@@ -181,11 +181,11 @@ or `AI-credited: “Claude Security”` or `Internet-facing edge device: F5 BIG-
 such as `Not settled: 1 PoC repo too new to vet (day 9 of 14)`.
 
 Does it find exploited CVEs before KEV does? Hide the answer key (each CVE's own KEV listing, CISA's
-SSVC *active* and any EPSS score from the listing day on) and re-score the 137 recent CVEs CISA
-added to KEV from May 24 to Nov 20, 2026: **99 (72%)** still land in Exploited or Likely next,
-while CVErdict flagged only **2.3%** of the 76,097 new CVEs of that period. Treat that as an upper
+SSVC *active* and any EPSS score from the listing day on) and re-score the 138 recent CVEs CISA
+added to KEV from May 27 to Nov 23, 2026: **101 (73%)** still land in Exploited or Likely next,
+while CVErdict flagged only **2.4%** of the 75,810 new CVEs of that period. Treat that as an upper
 bound, since it counts evidence that has no date. With only evidence dated before each listing it is
-59 (43%). From the backtest of Nov 20, 2026 (score model v0.3.0); `npm run backtest` reproduces it.
+65 (47%). From the backtest of Nov 23, 2026 (score model v0.4.0); `npm run backtest` reproduces it.
 
 The full methodology, every chip with its points, the calibration and the known blind spots are in
 [docs/SCORING.md](docs/SCORING.md).
@@ -194,18 +194,18 @@ The full methodology, every chip with its points, the calibration and the known 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/receipts-dark.svg">
-  <img alt="Receipts, a hindsight backtest: flagged before CISA listed it in KEV. 137 CVEs CISA added to KEV from May 24 to Nov 20, 2026, scored with only the evidence dated before each listing, next to two common rules. KEV CVEs caught before the listing, of 137: CVErdict 59 (43%), CVSS 7 or more 80 (58%), EPSS 10% or more 18 (13%). Alert volume, the share of all 76,097 CVEs scored: CVErdict 1,777 (2.3%), CVSS 7 or more 39,982 (52.5%), EPSS 10% or more 133 (0.17%). Below, the live record since Nov 3, 2026, 547 runs: of 18 KEV listings, CVErdict flagged 8 before CISA, a median of 4.5 days early; CVSS 7 flagged 14 and EPSS 10% flagged 0. From receipts.json: backtest of Nov 20, 2026 (score model v0.3.0), live record to Nov 23, 2026 16:47 UTC." src="docs/assets/receipts-light.svg" width="100%">
+  <img alt="Receipts, a hindsight backtest: flagged before CISA listed it in KEV. 138 CVEs CISA added to KEV from May 27 to Nov 23, 2026, scored with only the evidence dated before each listing, next to two common rules. KEV CVEs caught before the listing, of 138: CVErdict 65 (47%), CVSS 7 or more 81 (59%), EPSS 10% or more 18 (13%). Alert volume, the share of all 75,810 CVEs scored: CVErdict 1,824 (2.4%), CVSS 7 or more 39,926 (52.7%), EPSS 10% or more 135 (0.18%). Below, the live record since Nov 3, 2026, 576 runs: of 22 KEV listings, CVErdict flagged 10 before CISA, a median of 4.5 days early; CVSS 7 flagged 18 and EPSS 10% flagged 0. From receipts.json: backtest of Nov 23, 2026 (score model v0.4.0), live record to Nov 24, 2026 18:47 UTC." src="docs/assets/receipts-light.svg" width="100%">
 </picture>
 
-**In the hindsight backtest, CVErdict catches three quarters of what CVSS 7 catches, with less than a twentieth of the alerts:** 59 of 137 against 80, while flagging 2.3% of new CVEs against 52.5%. The live record is still small: of 18 KEV listings, CVErdict flagged 8 before CISA listed them, against 14 for CVSS 7 (13 earlier and 1 on the listing day itself).
+**In the hindsight backtest, CVErdict catches four fifths of what CVSS 7 catches, with less than a twentieth of the alerts:** 65 of 138 against 81, while flagging 2.4% of new CVEs against 52.7%. The live record is still small: of 22 KEV listings, CVErdict flagged 10 before CISA listed them, against 18 for CVSS 7 (17 earlier and 1 on the listing day itself).
 
 The [Receipts page](https://cverdict.dev/receipts) holds the stricter tests. A live record notes,
 to the minute, when each method first flags a CVE and whether that came before CISA listed it; the
 page shows how many listings it has judged so far. A backtest, marked as hindsight, uses only
-evidence dated before each listing. On the inputs of Nov 20, 2026 (score model v0.3.0), for the
-137 recent CVEs CISA added to KEV in the previous 180 days, it gave: CVErdict 59 flagged before the
-listing, "CVSS 7 or more" 80, "EPSS 10% or more" 18. CVSS 7 or more catches more, but flags 52.5% of
-all new CVEs against CVErdict's 2.3%. The Receipts page always shows the latest run.
+evidence dated before each listing. On the inputs of Nov 23, 2026 (score model v0.4.0), for the
+138 recent CVEs CISA added to KEV in the previous 180 days, it gave: CVErdict 65 flagged before the
+listing, "CVSS 7 or more" 81, "EPSS 10% or more" 18. CVSS 7 or more catches more, but flags 52.7% of
+all new CVEs against CVErdict's 2.4%. The Receipts page always shows the latest run.
 `npm run backtest` reproduces it.
 
 ## On the site
@@ -217,20 +217,20 @@ all new CVEs against CVErdict's 2.3%. The Receipts page always shows the latest 
 
 <table>
 <tr>
-<td width="50%" valign="top"><a href="https://cverdict.dev/cve/CVE-2026-119958"><img alt="The page of CVE-2026-119958, a Windows LDAP remote code execution bug in Microsoft Windows 10 Version 1607, part of the Nov 10 patch day. Tier Likely next, with the verdict: public proof of concept (1 vetted repo). Buttons for Copy as ticket, Copy link, JSON and cve.org. The evidence by family: exploit artifacts plus 20 for 1 PoC repo, severity plus 13 for Critical 9.8 network, CISA SSVC plus 14. The score dial reads 70 out of 100, and the arithmetic adds base 15, plus 20, 13, 8, 6 and 8." src="docs/assets/screens/cve.webp"></a><br><sub><b>CVE page.</b> The verdict, every chip and its points, and the sum.</sub></td>
+<td width="50%" valign="top"><a href="https://cverdict.dev/cve/CVE-2026-119958"><img alt="The page of CVE-2026-119958, a Windows LDAP remote code execution bug in Microsoft Windows 10 Version 1607, part of the Nov 10 patch day. Tier Likely next, with the verdict: public proof of concept (1 vetted repo). Buttons for Copy as ticket, Copy link, JSON and cve.org. The evidence by family: exploit artifacts plus 20 for 2 PoC repos (1 vetted), severity plus 13 for Critical 9.8 network, CISA SSVC plus 14. The score dial reads 70 out of 100, and the arithmetic adds base 15, plus 20, 13, 8, 6 and 8." src="docs/assets/screens/cve.webp"></a><br><sub><b>CVE page.</b> The verdict, every chip and its points, and the sum.</sub></td>
 <td width="50%" valign="top"><a href="https://cverdict.dev/check"><img alt="Check Deps results for a sample package-lock.json with 7 packages: 5 tracked CVEs affect 4 of them, 4 Exploited and 1 Likely next. The Exploited group lists CVE-2023-5217 and CVE-2023-4863 in electron 22.3.0, CVE-2023-22894 in @strapi/strapi 4.5.0 and CVE-2025-54313 in eslint-config-prettier 8.10.1, each with its GitHub advisory, the affected ranges and the fixed version." src="docs/assets/screens/check.webp"></a><br><sub><b>Check Deps.</b> Your SBOM or lockfile, matched in the browser. Nothing is uploaded.</sub></td>
 </tr>
 <tr>
-<td valign="top"><a href="https://cverdict.dev/receipts"><img alt="The Receipts page: the live record since Nov 3, 2026. CISA added 18 CVEs CVErdict had already seen to KEV; CVErdict flagged 8 of them before CISA listed them, a median of 4.5 days earlier. A table compares CVErdict, CVSS 7 or more and EPSS 10% or more on flagged before KEV, same day, median lead and alert volume." src="docs/assets/screens/receipts.webp"></a><br><sub><b>Receipts.</b> Every hit and every miss, against CVSS 7 and EPSS 10%.</sub></td>
-<td valign="top"><a href="https://cverdict.dev/woke"><img alt="The Woke Up page: CVEs published more than 30 days ago that gained exploitation evidence in the last 30 days, 252 of them, filterable by CISA KEV, EU KEV or CIRCL, Exploit-DB, Metasploit, Nuclei, PoC repo and EPSS jump. The first entries are CVE-2026-112947 in Vite and CVE-2026-35413 in Directus, each with a first Nuclei template seen on Nov 23." src="docs/assets/screens/woke.webp"></a><br><sub><b>Woke Up.</b> Old CVEs with new exploitation evidence, each with its dated proof.</sub></td>
+<td valign="top"><a href="https://cverdict.dev/receipts"><img alt="The Receipts page: the live record since Nov 3, 2026. CISA added 22 CVEs CVErdict had already seen to KEV; CVErdict flagged 10 of them before CISA listed them, a median of 4.5 days earlier. A table compares CVErdict, CVSS 7 or more and EPSS 10% or more on flagged before KEV, same day, median lead and alert volume." src="docs/assets/screens/receipts.webp"></a><br><sub><b>Receipts.</b> Every hit and every miss, against CVSS 7 and EPSS 10%.</sub></td>
+<td valign="top"><a href="https://cverdict.dev/woke"><img alt="The Woke Up page: CVEs published more than 30 days ago that gained exploitation evidence in the last 30 days, 426 of them, filterable by CISA KEV, EU KEV or CIRCL, Exploit-DB, Metasploit, Nuclei, PoC repo and EPSS jump. The first entries are CVE-2026-25123 in homarr and CVE-2026-35672 in phpMyFAQ, each with a first Nuclei template seen on Nov 24." src="docs/assets/screens/woke.webp"></a><br><sub><b>Woke Up.</b> Old CVEs with new exploitation evidence, each with its dated proof.</sub></td>
 </tr>
 <tr>
-<td valign="top"><a href="https://cverdict.dev/kev"><img alt="The KEV Clock page. The next deadline counts down in large red digits: CVE-2025-42884, SAP NetWeaver, due Nov 23. Beside it: 8 due within 72 hours, 7 overdue in the last 7 days, 34 added in 30 days, 1 of them with known ransomware use. Below, the list of CVEs due within 72 hours with the date added, the due date and the score." src="docs/assets/screens/kev.webp"></a><br><sub><b>KEV Clock.</b> Federal due dates, counting down.</sub></td>
-<td valign="top"><a href="https://cverdict.dev/surge"><img alt="The Surge page. 2026 so far: 102,712 CVEs, plus 145% on the same days of 2025. Busiest month ever: 17,050 in October 2026. 25% of all CVEs since 1999 were published in 2026 alone. 306 added to KEV this year, about 0.3% of the volume. Below, the chart of CVEs per month since 1999 climbs steeply through 2025 and 2026, with KEV additions and AI-credited CVEs near the floor." src="docs/assets/screens/surge.webp"></a><br><sub><b>The Surge.</b> Monthly volume since 1999, KEV additions and AI credits.</sub></td>
+<td valign="top"><a href="https://cverdict.dev/kev"><img alt="The KEV Clock page. The next deadline counts down in large red digits: CVE-2026-111793, Openwave Messaging Limited Webtop Media Transcoder, due Nov 24. Beside it: 6 due within 72 hours, 9 overdue in the last 7 days, 39 added in 30 days, 1 of them with known ransomware use. Below, the list of CVEs due within 72 hours with the date added, the due date and the score." src="docs/assets/screens/kev.webp"></a><br><sub><b>KEV Clock.</b> Federal due dates, counting down.</sub></td>
+<td valign="top"><a href="https://cverdict.dev/surge"><img alt="The Surge page. 2026 so far: 103,596 CVEs, plus 146% on the same days of 2025. Busiest month ever: 17,050 in October 2026. 25% of all CVEs since 1999 were published in 2026 alone. 311 added to KEV this year, about 0.3% of the volume. Below, the chart of CVEs per month since 1999 climbs steeply through 2025 and 2026, with KEV additions and AI-credited CVEs near the floor." src="docs/assets/screens/surge.webp"></a><br><sub><b>The Surge.</b> Monthly volume since 1999, KEV additions and AI credits.</sub></td>
 </tr>
 </table>
 
-<sub>Screenshots of the production build with the data of Nov 23, 2026 16:47 UTC, dark theme. The site also has a light theme.</sub>
+<sub>Screenshots of the production build with the data of Nov 24, 2026 18:47 UTC, dark theme. The site also has a light theme.</sub>
 
 What the card leaves out:
 
