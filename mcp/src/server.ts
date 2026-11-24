@@ -90,7 +90,8 @@ const SCHEMAS = {
     per_name: z.number().int().min(1).max(LIMITS.perName).optional().describe(`CVEs per name, 1 to ${LIMITS.perName} (default 10). Lowered, with a note, when the answer would be too large.`),
   }),
   changes_since: z.object({
-    since: utc.describe('Events after this UTC date or date-time, at most 7 days before the log was generated: next_since of an earlier answer.'),
+    since: utc.describe('Events after this UTC date-time (next_since of an earlier answer), or from 00:00Z of this date, within the log\'s 7 days.'),
+    until: date('Only events at or before this time. On later pages, pass next_since of the first page.'),
     names: names.optional().describe('Only events whose vendor or product is one of these names.'),
     types: z
       .array(z.enum(EVENT_TYPES as [EventType, ...EventType[]]))

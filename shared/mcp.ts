@@ -100,7 +100,7 @@ export const MCP_TOOLS: readonly { name: McpToolName; title: string; description
     name: 'changes_since',
     title: 'What changed since a time',
     description:
-      'Verdict events after since, newest first: CISA KEV and exploited-catalog listings, vendor exploitation notes, tier rises, fast-lane flags, first Metasploit, Nuclei or Exploit-DB entries. To catch up later, pass next_since from the answer as since (after reading every page). The log keeps 7 days; an older since is an error that says where it starts. Filter by names (as check_inventory matches) and types.' +
+      'Verdict events after since, newest first: CISA KEV and exploited-catalog listings, vendor exploitation notes, tier rises, fast-lane flags, first Metasploit, Nuclei or Exploit-DB entries. Tiers are at the default evidence bar. To page, pass the first page\'s next_since as until; to catch up later, pass it as since. The log keeps 7 days; an older since is an error that says where it starts. Filter by names (as check_inventory matches) and types.' +
       UNTRUSTED,
   },
 ];

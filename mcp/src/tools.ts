@@ -11,6 +11,7 @@ import {
   tierFor,
   type BacktestItem,
   type CveDetail,
+  type EventItem,
   type EventType,
   type McpChangesResult,
   type McpData,
@@ -50,6 +51,8 @@ export const INVENTORY_BUDGET = 60 * 1024;
 
 const DAY_MS = 86_400_000;
 const TITLE_MAX = 160;
+/** Pipeline event details run to about 120 characters; a mirror may send more. */
+const DETAIL_MAX = 300;
 
 /** UTC date or date-time: anchored, no nested quantifiers; applied after a length cap of 30. */
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z)?$/;
@@ -451,34 +454,64 @@ export async function checkInventory(call: DataCall, a: InventoryArgs, now: numb
 
 export interface ChangesArgs {
   since: string;
+  until?: string;
   names?: string[];
   types?: EventType[];
   limit?: number;
   offset?: number;
 }
 
+/** An event as the agent gets it: only EventItem's fields, upstream text on one line and capped. */
+function eventOut(e: EventItem): EventItem {
+  return {
+    id: e.id,
+    at: e.at,
+    type: e.type,
+    cve: e.cve,
+    vendor: cut(oneLine(e.vendor), TITLE_MAX),
+    product: cut(oneLine(e.product), TITLE_MAX),
+    tier_before: e.tier_before,
+    tier_after: e.tier_after,
+    score: e.score,
+    title: cut(oneLine(e.title), TITLE_MAX),
+    via: e.via,
+    url: e.url,
+    detail: cut(oneLine(e.detail), DETAIL_MAX),
+    backfill: e.backfill,
+  };
+}
+
 export async function changesSince(call: DataCall, a: ChangesArgs, now: number): Promise<McpChangesResult> {
   const sinceMs = dateArg('since', a.since);
+  // A date-time is exclusive, so next_since repeats nothing; a date takes the whole day, from 00:00:00Z.
+  const after = a.since.length === 10 ? (ms: number) => ms >= sinceMs : (ms: number) => ms > sinceMs;
+  const untilMs = a.until === undefined ? null : dateArg('until', a.until);
   const names = a.names?.length ? watchNames(a.names) : null;
   const types = a.types?.length ? [...new Set(a.types)] : null;
   const ev = await call.file('events.json', parse.events);
-  const to = new Date(Date.parse(ev.generated_at)).toISOString();
-  const from = new Date(Date.parse(ev.generated_at) - ev.days * DAY_MS).toISOString();
+  const genMs = Date.parse(ev.generated_at);
+  const to = new Date(genMs).toISOString();
+  const from = new Date(genMs - ev.days * DAY_MS).toISOString();
   if (sinceMs < Date.parse(from)) throw new InputError(MCP_MSG.beforeLog(from, to, ev.days));
   const want = types && new Set(types);
   const all = ev.items
-    .filter((e) => Date.parse(e.at) > sinceMs && (!want || want.has(e.type)) && (!names || matchesName(names, e.vendor, e.product)))
+    .filter((e) => {
+      const at = Date.parse(e.at);
+      return after(at) && (untilMs === null || at <= untilMs) && (!want || want.has(e.type)) && (!names || matchesName(names, e.vendor, e.product));
+    })
     // Newest first, as the file is; a stable sort keeps the file's order within one run.
     .sort((x, y) => Date.parse(y.at) - Date.parse(x.at));
   const p = page(all, a.offset, a.limit ?? 25);
   return {
     data: await dataBlock(call, now),
     since: new Date(sinceMs).toISOString(),
-    log: { from, to, days: ev.days, previous_at: ev.previous_at ?? null },
-    next_since: ev.generated_at,
+    until: untilMs === null ? null : new Date(untilMs).toISOString(),
+    log: { from, to, days: ev.days, previous_at: ev.previous_at ?? null, max_items: ev.max_items, capped: ev.items.length >= ev.max_items },
+    // With until, every page names the same next_since, even when the log is republished between pages.
+    next_since: untilMs !== null && untilMs < genMs ? new Date(untilMs).toISOString() : ev.generated_at,
     names,
     types,
     ...p,
-    items: p.items.map((e) => ({ ...e, title: oneLine(e.title), detail: oneLine(e.detail) })),
+    items: p.items.map(eventOut),
   };
 }

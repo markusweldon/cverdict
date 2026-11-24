@@ -616,7 +616,7 @@ revisions for older clients.
 | `receipts` | `receipts.json` | `McpReceiptsResult`: the forward log and backtest figures without the per-CVE lists, or one CVE's entries |
 | `search_cves` | `index.json` | `McpSearchResult`: window CVEs whose ID, CNA, vendor, product or title contain every word of the query |
 | `check_inventory` | `index.json`, `woke.json` | `McpInventoryResult`: for 1 to 200 vendor or product names, the window and woke-up CVEs whose vendor or product equals each name (the watchlist's rule, `shared/watch.ts`), most urgent first, with counts of what was left out, `no_match`, and the name's vendor feed |
-| `changes_since` | `events.json` | `McpChangesResult`: verdict events after `since` (within the 7-day log, else an error saying where it starts), newest first, filtered by names (the watchlist's rule) and event types, paged, with `next_since` to pass back next time |
+| `changes_since` | `events.json` | `McpChangesResult`: verdict events after `since` (within the 7-day log, else an error saying where it starts; a date takes that whole day) and at or before `until` if given, newest first, filtered by names (the watchlist's rule) and event types, paged, with `next_since` to pass back next time |
 
 The result types are in `shared/contract.ts` (section "MCP tool results"). Pages hold at most 50
 items. What the server computes itself, all from the files and the time of the request:

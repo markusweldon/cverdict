@@ -15,7 +15,7 @@
  *   and the answer's data.warning says so.
  * - Nothing runs between calls: no polling, and every timer is cleared when its call ends.
  */
-import { ROW_COLS, SCHEMA_VERSION, rowsFromTable, type CveShard, type EventsFile, type KevFile, type Meta, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
+import { ROW_COLS, SCHEMA_VERSION, TIERS, rowsFromTable, type CveShard, type EventsFile, type KevFile, type Meta, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
 import { MCP_DATA_BASES, MCP_MSG } from '../../shared/mcp';
 
 /** A failure the tools report to the agent as is (isError: true). */
@@ -86,6 +86,27 @@ type Parser<T> = (json: Record<string, unknown>) => T;
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
+const TIER_SET: ReadonlySet<unknown> = new Set(TIERS);
+/** A short string: ids, types and sources are tens of characters. */
+const short = (v: unknown) => typeof v === 'string' && v.length <= 200;
+
+/** Every EventItem field with its type, so the tool never trips over a mirror's file. */
+function isEvent(i: Record<string, unknown>): boolean {
+  return (
+    short(i.id) &&
+    short(i.type) &&
+    short(i.cve) &&
+    short(i.via) &&
+    typeof i.title === 'string' &&
+    typeof i.detail === 'string' &&
+    (i.url === null || typeof i.url === 'string') &&
+    TIER_SET.has(i.tier_after) &&
+    (i.tier_before === null || TIER_SET.has(i.tier_before)) &&
+    Number.isFinite(i.score) &&
+    typeof i.backfill === 'boolean'
+  );
+}
+
 function need(ok: unknown, why: string): asserts ok {
   if (!ok) throw new BadData(why);
 }
@@ -115,8 +136,9 @@ export const parse = {
     return j as unknown as WokeFile;
   },
   events: (j: Record<string, unknown>): EventsFile => {
-    need(Array.isArray(j.items) && Number.isInteger(j.days) && Number.isFinite(Date.parse(j.generated_at as string)), 'items, days or generated_at missing');
+    need(Array.isArray(j.items) && Number.isInteger(j.days) && Number.isInteger(j.max_items) && Number.isFinite(Date.parse(j.generated_at as string)), 'items, days, max_items or generated_at missing');
     need(j.items.every((i) => isObject(i) && typeof i.at === 'string' && Number.isFinite(Date.parse(i.at)) && typeof i.vendor === 'string' && typeof i.product === 'string'), 'an item has no valid at, vendor or product');
+    need(j.items.every(isEvent), 'an item has a field of the wrong type');
     return j as unknown as EventsFile;
   },
   receipts: (j: Record<string, unknown>): ReceiptsFile => {

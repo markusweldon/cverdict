@@ -1074,13 +1074,20 @@ export interface McpInventoryResult {
   names: McpInventoryName[];
 }
 
-
 export interface McpChangesResult extends McpPage<EventItem> {
-  /** `since` as asked, as a full ISO date-time. */
+  /** `since` as asked, as a full ISO date-time. A date-time is exclusive; a date takes that whole day. */
   since: string;
-  /** The span events.json covers: `days` days up to its generated_at. */
-  log: { from: string; to: string; days: number; previous_at: string | null };
-  /** events.json's generated_at: pass it as `since` next time, once every page is read. */
+  /** `until` as asked (events at or before it only), or null. */
+  until: string | null;
+  /**
+   * The span events.json covers: `days` days up to its generated_at. `capped`: the log holds
+   * max_items events, so the pipeline dropped its lower-ranked ones and some changes in the span are missing.
+   */
+  log: { from: string; to: string; days: number; previous_at: string | null; max_items: number; capped: boolean };
+  /**
+   * Pass it as `since` next time: events.json's generated_at, or `until` when that is earlier. The
+   * same on every page when `until` is the first page's next_since.
+   */
   next_since: string;
   names: string[] | null;
   types: EventType[] | null;
