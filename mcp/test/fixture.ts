@@ -178,7 +178,8 @@ const event = (o: Pick<EventItem, 'at' | 'type' | 'cve'> & Partial<EventItem>): 
 /** Seven days of events up to GEN, newest first; the log starts at 2026-10-27T06:50:00.000Z. */
 const eventsFile: EventsFile = {
   schema_version: 1,
-  generated_at: GEN,
+  // As the pipeline writes it: no milliseconds, unlike meta.json.
+  generated_at: GEN.replace('.000Z', 'Z'),
   previous_at: '2026-11-03T05:50:00.000Z',
   days: 7,
   max_items: 1000,

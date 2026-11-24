@@ -508,7 +508,7 @@ export async function changesSince(call: DataCall, a: ChangesArgs, now: number):
     until: untilMs === null ? null : new Date(untilMs).toISOString(),
     log: { from, to, days: ev.days, previous_at: ev.previous_at ?? null, max_items: ev.max_items, capped: ev.items.length >= ev.max_items },
     // With until, every page names the same next_since, even when the log is republished between pages.
-    next_since: untilMs !== null && untilMs < genMs ? new Date(untilMs).toISOString() : ev.generated_at,
+    next_since: new Date(untilMs === null ? genMs : Math.min(untilMs, genMs)).toISOString(),
     names,
     types,
     ...p,

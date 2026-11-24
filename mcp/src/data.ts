@@ -10,7 +10,7 @@
  * - Files are checked before use: schema_version, generated_at, and the exact ROW_COLS of row
  *   tables, so no `__proto__` column can reach rowFromColumns.
  * - Parsed files are cached per pipeline run. meta.json is refetched after 300 s (raw and the site
- *   cache for 300 s anyway); any other file is reused while its generated_at matches meta's, and
+ *   cache for 300 s anyway); any other file is reused while its generated_at names meta's instant, and
  *   otherwise refetched at most once per 300 s. When a refresh fails, the last good copy answers
  *   and the answer's data.warning says so.
  * - Nothing runs between calls: no polling, and every timer is cleared when its call ends.
@@ -324,7 +324,8 @@ export class DataClient {
     const cache = path.startsWith('cve/') ? this.shardCache : this.files;
     const hit = cache.get(path) as Entry<T> | undefined;
     const now = this.o.now();
-    if (hit && ((gen !== null && hit.gen === gen) || now - hit.checkedAt < this.o.metaTtlMs)) return hit;
+    // The same instant, not the same string: events.json writes generated_at without milliseconds.
+    if (hit && ((gen !== null && Date.parse(hit.gen) === Date.parse(gen)) || now - hit.checkedAt < this.o.metaTtlMs)) return hit;
     let f = this.inflight.get(path) as { p: Promise<Entry<T>>; signal: AbortSignal } | undefined;
     if (!f) {
       const mine = { p: this.fetchFile(path, parser, signal), signal };

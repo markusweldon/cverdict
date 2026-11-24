@@ -526,10 +526,15 @@ describe('changes_since', () => {
     await expect(setup(tree).run((c) => changesSince(c, { since: '2026-11-01' }, NOW))).rejects.toThrow('items, days, max_items or generated_at missing');
   });
 
-  it('reuses the cached events.json while meta names the same run', async () => {
-    const t = setup();
-    await t.run((c) => changesSince(c, { since: '2026-11-01' }, NOW));
-    await t.run((c) => changesSince(c, { since: '2026-11-02' }, NOW));
-    expect(t.log.filter((l) => l.path === 'events.json')).toHaveLength(1);
+  it('reuses the cached events.json while meta names the same run, though it writes no milliseconds', async () => {
+    const tree = files();
+    expect([(tree.get('events.json') as EventsFile).generated_at, GEN]).toEqual(['2026-11-03T06:50:00Z', '2026-11-03T06:50:00.000Z']);
+    let now = NOW;
+    const f = fakeFetch(tree, [BASE]);
+    const dc = new DataClient({ bases: [BASE], fetch: f.fetch, now: () => now });
+    await dc.run((c) => changesSince(c, { since: '2026-11-01' }, now));
+    now += 301_000;
+    await dc.run((c) => changesSince(c, { since: '2026-11-02' }, now));
+    expect(f.log.map((l) => l.path)).toEqual(['meta.json', 'events.json', 'meta.json']);
   });
 });
