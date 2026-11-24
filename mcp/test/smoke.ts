@@ -22,6 +22,7 @@ try {
   console.log(`connected (${s.client.getNegotiatedProtocolVersion()}), tools: ${tools.join(', ')}`);
   const signal = await call(s.client, 'list_signal', { limit: 3 });
   const ids = (signal.value.items as { id: string }[]).map((i) => i.id);
+  const twoDaysBack = new Date(Date.parse((signal.value.data as { generated_at: string }).generated_at) - 2 * 86_400_000).toISOString();
   const calls: [string, Record<string, unknown>][] = [
     ['get_verdict', { ids: [...ids, 'CVE-1999-0001'] }],
     ['get_verdict', { ids: ids.slice(0, 1), detail: true }],
@@ -30,6 +31,7 @@ try {
     ['receipts', {}],
     ['search_cves', { query: 'microsoft', limit: 5 }],
     ['check_inventory', { names: ['microsoft', 'fortinet', 'notarealvendor'] }],
+    ['changes_since', { since: twoDaysBack }],
   ];
   console.log(`list_signal: total ${signal.value.total}, ${signal.result.content[0].text.length} B`);
   for (const [name, args] of calls) {

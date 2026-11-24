@@ -47,7 +47,7 @@ describe.each(Object.keys(MODES) as Mode[])('SDK client, %s negotiation', (mode)
     const client = await connect(mode);
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name)).toEqual(MCP_TOOLS.map((t) => t.name));
-    expect(tools.map((t) => t.name)).toEqual(['get_verdict', 'list_signal', 'kev_due', 'woke_up', 'receipts', 'search_cves', 'check_inventory']);
+    expect(tools.map((t) => t.name)).toEqual(['get_verdict', 'list_signal', 'kev_due', 'woke_up', 'receipts', 'search_cves', 'check_inventory', 'changes_since']);
     for (const t of tools) {
       expect(t.annotations).toEqual(ANNOTATIONS);
       expect(t.annotations?.readOnlyHint).toBe(true);
@@ -79,6 +79,7 @@ describe.each(Object.keys(MODES) as Mode[])('SDK client, %s negotiation', (mode)
       ['receipts', {}],
       ['search_cves', { query: 'acme' }],
       ['check_inventory', { names: ['Acme', 'fortigate', 'notarealvendor'] }],
+      ['changes_since', { since: '2026-11-01', names: ['acme'] }],
     ];
     for (const [name, args] of calls) {
       const r = await client.callTool({ name, arguments: args });
@@ -114,6 +115,13 @@ describe.each(Object.keys(MODES) as Mode[])('SDK client, %s negotiation', (mode)
     expect(await bad('check_inventory', { names: ['acme'], per_name: 26 })).toContain('per_name');
     expect(await bad('check_inventory', { names: ['   '] })).toBe('names: each name needs 1 to 80 characters after trimming.');
     expect(await bad('check_inventory', { names: ['acme'], tiers: ['safe'] })).toContain('tiers');
+    expect(await bad('changes_since', {})).toContain('since');
+    expect(await bad('changes_since', { since: '2026-02-30' })).toContain('not a real date');
+    expect(await bad('changes_since', { since: '2026-11-01', types: ['kev'] })).toContain('types');
+    expect(await bad('changes_since', { since: '2026-11-01', limit: 51 })).toContain('limit');
+    expect(await bad('changes_since', { since: '2026-10-01' })).toBe(
+      'since is older than the event log: events.json holds the 7 days from 2026-10-27T06:50:00.000Z to 2026-11-03T06:50:00.000Z. Ask again with since on or after 2026-10-27T06:50:00.000Z; for older changes use woke_up or get_verdict.',
+    );
     await expect(client.callTool({ name: 'delete_everything', arguments: {} })).rejects.toThrow();
   });
 });

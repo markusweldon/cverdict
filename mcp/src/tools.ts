@@ -11,6 +11,8 @@ import {
   tierFor,
   type BacktestItem,
   type CveDetail,
+  type EventType,
+  type McpChangesResult,
   type McpData,
   type McpInventoryItem,
   type McpInventoryName,
@@ -443,4 +445,40 @@ export async function checkInventory(call: DataCall, a: InventoryArgs, now: numb
     }
   }
   return out;
+}
+
+// ── changes_since ───────────────────────────────────────────────────────────────────────────
+
+export interface ChangesArgs {
+  since: string;
+  names?: string[];
+  types?: EventType[];
+  limit?: number;
+  offset?: number;
+}
+
+export async function changesSince(call: DataCall, a: ChangesArgs, now: number): Promise<McpChangesResult> {
+  const sinceMs = dateArg('since', a.since);
+  const names = a.names?.length ? watchNames(a.names) : null;
+  const types = a.types?.length ? [...new Set(a.types)] : null;
+  const ev = await call.file('events.json', parse.events);
+  const to = new Date(Date.parse(ev.generated_at)).toISOString();
+  const from = new Date(Date.parse(ev.generated_at) - ev.days * DAY_MS).toISOString();
+  if (sinceMs < Date.parse(from)) throw new InputError(MCP_MSG.beforeLog(from, to, ev.days));
+  const want = types && new Set(types);
+  const all = ev.items
+    .filter((e) => Date.parse(e.at) > sinceMs && (!want || want.has(e.type)) && (!names || matchesName(names, e.vendor, e.product)))
+    // Newest first, as the file is; a stable sort keeps the file's order within one run.
+    .sort((x, y) => Date.parse(y.at) - Date.parse(x.at));
+  const p = page(all, a.offset, a.limit ?? 25);
+  return {
+    data: await dataBlock(call, now),
+    since: new Date(sinceMs).toISOString(),
+    log: { from, to, days: ev.days, previous_at: ev.previous_at ?? null },
+    next_since: ev.generated_at,
+    names,
+    types,
+    ...p,
+    items: p.items.map((e) => ({ ...e, title: oneLine(e.title), detail: oneLine(e.detail) })),
+  };
 }

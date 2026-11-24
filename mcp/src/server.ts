@@ -6,10 +6,10 @@
  */
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, TIERS, WAKE_KINDS, type Tier, type WakeKind } from '../../shared/contract';
+import { EVENT_TYPES, KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, TIERS, WAKE_KINDS, type EventType, type Tier, type WakeKind } from '../../shared/contract';
 import { MCP_INSTRUCTIONS, MCP_SERVER, MCP_TOOLS, type McpToolName } from '../../shared/mcp';
 import { DataError, type DataCall, type DataClient } from './data';
-import { DATE_RE, InputError, LIMITS, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from './tools';
+import { DATE_RE, InputError, LIMITS, changesSince, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from './tools';
 
 /** Every tool reads one published dataset and changes nothing. */
 export const ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
@@ -25,14 +25,12 @@ const knob = z
   .describe(`The evidence bar: the minimum score (out of 100) to flag a CVE as likely exploited next (the Likely next tier), ${KNOB_MIN} to ${KNOB_MAX}. Default ${KNOB_DEFAULT}, as on the site. Exploited CVEs and those with a Metasploit module or Nuclei template pass at any value.`);
 const limit = (def: number) => z.number().int().min(1).max(LIMITS.page).optional().describe(`Items per page, 1 to ${LIMITS.page}. Default ${def}.`);
 const offset = z.number().int().min(0).max(LIMITS.offset).optional().describe('Items to skip: next_offset of the previous page.');
-const date = (what: string) =>
-  z
-    .string()
-    .max(30)
-    .regex(DATE_RE, 'expected a UTC date (2026-10-01) or date-time (2026-10-01T06:00Z)')
-    .refine((s) => !Number.isNaN(parseUtc(s)), 'not a real date')
-    .optional()
-    .describe(what);
+const utc = z
+  .string()
+  .max(30)
+  .regex(DATE_RE, 'expected a UTC date (2026-10-01) or date-time (2026-10-01T06:00Z)')
+  .refine((s) => !Number.isNaN(parseUtc(s)), 'not a real date');
+const date = (what: string) => utc.optional().describe(what);
 const cveId = z.string().min(1).max(32);
 // Trimmed and checked again in the tool (1 to LIMITS.nameChars characters once whitespace is folded).
 const names = z
@@ -91,6 +89,18 @@ const SCHEMAS = {
     knob: knob.describe(`The evidence bar, ${KNOB_MIN} to ${KNOB_MAX} (default ${KNOB_DEFAULT}), as in get_verdict.`),
     per_name: z.number().int().min(1).max(LIMITS.perName).optional().describe(`CVEs per name, 1 to ${LIMITS.perName} (default 10). Lowered, with a note, when the answer would be too large.`),
   }),
+  changes_since: z.object({
+    since: utc.describe('Events after this UTC date or date-time, at most 7 days before the log was generated: next_since of an earlier answer.'),
+    names: names.optional().describe('Only events whose vendor or product is one of these names.'),
+    types: z
+      .array(z.enum(EVENT_TYPES as [EventType, ...EventType[]]))
+      .min(1)
+      .max(EVENT_TYPES.length)
+      .optional()
+      .describe(`Only these event types: ${EVENT_TYPES.join(', ')}.`),
+    limit: limit(25),
+    offset,
+  }),
 } satisfies Record<McpToolName, z.ZodType>;
 
 type Args<N extends McpToolName> = z.infer<(typeof SCHEMAS)[N]>;
@@ -104,6 +114,7 @@ const HANDLERS: { [N in McpToolName]: Handler<N> } = {
   receipts,
   search_cves: searchCves,
   check_inventory: checkInventory,
+  changes_since: changesSince,
 };
 
 /** structuredContent plus the same JSON as one text block (spec: SHOULD), or an isError text. */

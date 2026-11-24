@@ -5,6 +5,8 @@
 import {
   ROW_COLS,
   type CveDetail,
+  type EventItem,
+  type EventsFile,
   type KevEntry,
   type Meta,
   type ReceiptsFile,
@@ -158,6 +160,37 @@ const woke: WokeFile = {
   ],
 };
 
+const event = (o: Pick<EventItem, 'at' | 'type' | 'cve'> & Partial<EventItem>): EventItem => ({
+  id: `${o.type}:${o.cve}`,
+  vendor: 'Acme',
+  product: 'Widget',
+  tier_before: 'likely',
+  tier_after: 'exploited',
+  score: 95,
+  title: `${o.cve} · Acme Widget · ${o.type}`,
+  via: 'kev',
+  url: null,
+  detail: 'Added to CISA KEV.',
+  backfill: false,
+  ...o,
+});
+
+/** Seven days of events up to GEN, newest first; the log starts at 2026-10-27T06:50:00.000Z. */
+const eventsFile: EventsFile = {
+  schema_version: 1,
+  generated_at: GEN,
+  previous_at: '2026-11-03T05:50:00.000Z',
+  days: 7,
+  max_items: 1000,
+  catalogs: { kev: null, eu_kev: null },
+  items: [
+    event({ at: '2026-11-03T06:50:00Z', type: 'kev_added', cve: 'CVE-2026-10001', url: 'https://example.test/kev' }),
+    event({ at: '2026-11-03T06:50:00Z', type: 'tier_up', id: 'tier_up:CVE-2026-10002:likely', cve: 'CVE-2026-10002', tier_before: 'watch', tier_after: 'likely', score: 60, via: 'computed', detail: 'Now Likely next.' }),
+    event({ at: '2026-11-02T06:50:00Z', type: 'metasploit_module', cve: 'CVE-2026-10006', vendor: 'Fortinet', product: 'FortiGate', title: 'CVE-2026-10006 · Fortinet\n  FortiGate · Metasploit module', via: 'metasploit', detail: 'A Metasploit\nmodule appeared.' }),
+    event({ at: '2026-10-28T00:00:00Z', type: 'catalog_listed', id: 'catalog_listed:eu-kev:CVE-2021-44228', cve: 'CVE-2021-44228', vendor: 'Apache Software Foundation', product: 'Log4j', via: 'eu-kev', backfill: true }),
+  ],
+};
+
 const flag = (outcome: 'earlier' | 'same_day' | 'after' | 'never') => ({ at: outcome === 'never' ? null : `${day(-5)}T10:00:00Z`, outcome, lead: outcome === 'earlier' ? 2 : outcome === 'same_day' ? 0 : null });
 const receiptsFile: ReceiptsFile = {
   schema_version: 1,
@@ -211,6 +244,7 @@ export function files(): Map<string, unknown> {
     ['kev.json', { schema_version: 1, generated_at: GEN, catalog_version: '2026.11.01', entries: [kevEntry('CVE-2026-0010', day(0)), kevEntry('CVE-2026-0011', day(-1)), kevEntry('CVE-2026-0012', day(7)), kevEntry('CVE-2026-0013', day(8)), kevEntry('CVE-2026-0014', day(-7)), kevEntry('CVE-2026-0015', day(-8)), kevEntry('CVE-2026-0016', day(60))] }],
     ['woke.json', woke],
     ['receipts.json', receiptsFile],
+    ['events.json', eventsFile],
   ]);
   const shards = new Map<string, Record<string, CveDetail>>();
   for (const d of [...window, CVE.old]) {

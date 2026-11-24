@@ -6,7 +6,7 @@ import { shardOf } from '../../shared/shard';
 import { slugify } from '../../shared/slug';
 import { isWatched } from '../../shared/watch';
 import { DataClient, parse, type DataCall } from '../src/data';
-import { INVENTORY_BUDGET, InputError, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from '../src/tools';
+import { INVENTORY_BUDGET, InputError, changesSince, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from '../src/tools';
 import { CVE, GEN, NOW, detail, fakeFetch, files, row } from './fixture';
 
 const BASE = 'https://data.test/v1/';
@@ -398,5 +398,87 @@ describe('check_inventory', () => {
     expect(Buffer.byteLength(JSON.stringify(none))).toBeLessThanOrEqual(INVENTORY_BUDGET);
     expect(none.names.every((n) => n.no_match && n.feed !== null)).toBe(true);
     expect([none.per_name, none.note]).toEqual([10, null]);
+  });
+});
+
+describe('changes_since', () => {
+  it('returns events after since, newest first, with next_since to pass back', async () => {
+    const t = setup();
+    const r = await t.run((c) => changesSince(c, { since: '2026-11-01' }, NOW));
+    expect(r.items.map((e) => e.id)).toEqual(['kev_added:CVE-2026-10001', 'tier_up:CVE-2026-10002:likely', 'metasploit_module:CVE-2026-10006']);
+    expect([r.since, r.next_since, r.total, r.next_offset, r.names, r.types]).toEqual(['2026-11-01T00:00:00.000Z', GEN, 3, null, null, null]);
+    expect(r.log).toEqual({ from: '2026-10-27T06:50:00.000Z', to: GEN, days: 7, previous_at: '2026-11-03T05:50:00.000Z' });
+    expect(r.items[0]).toEqual({
+      id: 'kev_added:CVE-2026-10001',
+      at: '2026-11-03T06:50:00Z',
+      type: 'kev_added',
+      cve: 'CVE-2026-10001',
+      vendor: 'Acme',
+      product: 'Widget',
+      tier_before: 'likely',
+      tier_after: 'exploited',
+      score: 95,
+      title: 'CVE-2026-10001 · Acme Widget · kev_added',
+      via: 'kev',
+      url: 'https://example.test/kev',
+      detail: 'Added to CISA KEV.',
+      backfill: false,
+    });
+    // Upstream text on one line.
+    expect([r.items[2].title, r.items[2].detail]).toEqual(['CVE-2026-10006 · Fortinet FortiGate · Metasploit module', 'A Metasploit module appeared.']);
+    expect(r.data.files.map((f) => f.path)).toEqual(['v1/meta.json', 'v1/events.json']);
+    // since is exclusive: next_since as since returns nothing new.
+    expect((await t.run((c) => changesSince(c, { since: r.next_since }, NOW))).total).toBe(0);
+    expect((await t.run((c) => changesSince(c, { since: '2026-11-02T06:49:59Z' }, NOW))).total).toBe(3);
+    expect((await t.run((c) => changesSince(c, { since: '2026-11-02T06:50:00Z' }, NOW))).total).toBe(2);
+  });
+
+  it('filters by names, as the watchlist matches, and by types, and pages', async () => {
+    const t = setup();
+    const ids = async (a: Omit<Parameters<typeof changesSince>[1], 'since'>) => (await t.run((c) => changesSince(c, { since: '2026-10-27T06:50Z', ...a }, NOW))).items.map((e) => e.cve);
+    expect(await ids({})).toEqual(['CVE-2026-10001', 'CVE-2026-10002', 'CVE-2026-10006', 'CVE-2021-44228']);
+    expect(await ids({ names: ['  APACHE   software foundation'] })).toEqual(['CVE-2021-44228']);
+    expect(await ids({ names: ['fortigate', 'log4j'] })).toEqual(['CVE-2026-10006', 'CVE-2021-44228']);
+    expect(await ids({ names: ['forti'] })).toEqual([]);
+    expect(await ids({ types: ['tier_up', 'catalog_listed'] })).toEqual(['CVE-2026-10002', 'CVE-2021-44228']);
+    expect(await ids({ names: ['acme'], types: ['kev_added'] })).toEqual(['CVE-2026-10001']);
+    const p = await t.run((c) => changesSince(c, { since: '2026-10-27T06:50Z', limit: 3 }, NOW));
+    expect([p.total, p.next_offset, p.items.length]).toEqual([4, 3, 3]);
+    const named = await t.run((c) => changesSince(c, { since: '2026-11-01', names: ['Acme', 'acme'], types: ['kev_added', 'kev_added'] }, NOW));
+    expect([named.names, named.types]).toEqual([['acme'], ['kev_added']]);
+    await expect(t.run((c) => changesSince(c, { since: '2026-11-01', names: [' '] }, NOW))).rejects.toThrow(MCP_MSG.badName(80));
+  });
+
+  it('says how far back the log goes when since is older', async () => {
+    const t = setup();
+    await expect(t.run((c) => changesSince(c, { since: '2026-10-27T06:50Z' }, NOW))).resolves.toBeTruthy();
+    const msg = MCP_MSG.beforeLog('2026-10-27T06:50:00.000Z', GEN, 7);
+    expect(msg).toBe(
+      'since is older than the event log: events.json holds the 7 days from 2026-10-27T06:50:00.000Z to 2026-11-03T06:50:00.000Z. Ask again with since on or after 2026-10-27T06:50:00.000Z; for older changes use woke_up or get_verdict.',
+    );
+    await expect(t.run((c) => changesSince(c, { since: '2026-10-27T06:49Z' }, NOW))).rejects.toThrow(msg);
+    await expect(t.run((c) => changesSince(c, { since: '2026-10-01' }, NOW))).rejects.toThrow(InputError);
+    await expect(t.run((c) => changesSince(c, { since: 'yesterday' }, NOW))).rejects.toThrow('since must be a UTC date');
+  });
+
+  it('says so when events.json is not published (data from before the event log)', async () => {
+    const tree = files();
+    tree.delete('events.json');
+    await expect(setup(tree).run((c) => changesSince(c, { since: '2026-11-01' }, NOW))).rejects.toThrow(MCP_MSG.notPublished('events.json'));
+    expect(MCP_MSG.notPublished('events.json')).toBe('events.json is not on the data branch yet, so this tool has nothing to read. The other tools still work.');
+  });
+
+  it('refuses a malformed events.json instead of guessing', async () => {
+    const tree = files();
+    const ev = tree.get('events.json') as { items: unknown[] };
+    tree.set('events.json', { ...ev, items: [...ev.items, { at: 'soon', vendor: 'x', product: 'y' }] });
+    await expect(setup(tree).run((c) => changesSince(c, { since: '2026-11-01' }, NOW))).rejects.toThrow('not valid data: an item has no valid at, vendor or product for events.json');
+  });
+
+  it('reuses the cached events.json while meta names the same run', async () => {
+    const t = setup();
+    await t.run((c) => changesSince(c, { since: '2026-11-01' }, NOW));
+    await t.run((c) => changesSince(c, { since: '2026-11-02' }, NOW));
+    expect(t.log.filter((l) => l.path === 'events.json')).toHaveLength(1);
   });
 });

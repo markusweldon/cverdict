@@ -1073,3 +1073,15 @@ export interface McpInventoryResult {
   scope: string;
   names: McpInventoryName[];
 }
+
+
+export interface McpChangesResult extends McpPage<EventItem> {
+  /** `since` as asked, as a full ISO date-time. */
+  since: string;
+  /** The span events.json covers: `days` days up to its generated_at. */
+  log: { from: string; to: string; days: number; previous_at: string | null };
+  /** events.json's generated_at: pass it as `since` next time, once every page is read. */
+  next_since: string;
+  names: string[] | null;
+  types: EventType[] | null;
+}

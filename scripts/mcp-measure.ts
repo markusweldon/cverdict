@@ -22,7 +22,7 @@ import { SHARD_COUNT } from '../shared/shard';
 import type { CveDetail, McpRow } from '../shared/contract';
 import { DataClient, parse } from '../mcp/src/data';
 import { createServer } from '../mcp/src/server';
-import { checkInventory, getVerdict, kevDue, listSignal, mcpRow, receipts, searchCves, verdictOf, wokeUp } from '../mcp/src/tools';
+import { changesSince, checkInventory, getVerdict, kevDue, listSignal, mcpRow, receipts, searchCves, verdictOf, wokeUp } from '../mcp/src/tools';
 import { normalizeName } from '../shared/watch';
 
 const BUDGET_TOKENS = 20_000;
@@ -53,6 +53,9 @@ record('kev_due, defaults (7 + 7 days)', await dc.run((c) => kevDue(c, {}, now))
 record('woke_up, defaults', await dc.run((c) => wokeUp(c, {}, now)));
 record('receipts, summary', await dc.run((c) => receipts(c, {}, now)));
 record('search_cves "fortinet"', await dc.run((c) => searchCves(c, { query: 'fortinet' }, now)));
+const events = await dc.run((c) => c.file('events.json', parse.events));
+const logStart = new Date(Date.parse(events.generated_at) - events.days * 86_400_000).toISOString();
+record('changes_since, the whole log', await dc.run((c) => changesSince(c, { since: logStart }, now)));
 record('check_inventory, 5 vendors', await dc.run((c) => checkInventory(c, { names: ['fortinet', 'vmware', 'apache software foundation', 'microsoft', 'notarealvendor'] }, now)));
 
 // Every shard: the largest verdicts, and the score math of every CVE.
@@ -86,6 +89,11 @@ const vendorCounts = new Map<string, number>();
 for (const r of index.rows) if (r.v) vendorCounts.set(normalizeName(r.v), (vendorCounts.get(normalizeName(r.v)) ?? 0) + 1);
 const topVendors = [...vendorCounts].sort((a, b) => b[1] - a[1]).slice(0, 200).map(([n]) => n);
 record('check_inventory, the 200 largest vendors, per_name 25', await dc.run((c) => checkInventory(c, { names: topVendors, per_name: 25 }, now)), true);
+// changes_since: a page of the 50 largest events in the log.
+const allEvents = [];
+for (let offset = 0; offset < Math.max(1, events.items.length); offset += 50) allEvents.push(...(await dc.run((c) => changesSince(c, { since: logStart, limit: 50, offset }, now))).items);
+const eventsPage = await dc.run((c) => changesSince(c, { since: logStart, limit: 50 }, now));
+record('changes_since page of the 50 largest events', { ...eventsPage, items: allEvents.sort((a, b) => size(b) - size(a)).slice(0, 50) }, true);
 record('search_cves "cve", every tier, limit 50', await dc.run((c) => searchCves(c, { query: 'cve', limit: 50, tiers: ['exploited', 'likely', 'watch', 'quiet'], knob: 30 }, now)));
 const wokeCount = (await dc.run((c) => c.file('woke.json', parse.woke))).items.length;
 const wokePages = [];

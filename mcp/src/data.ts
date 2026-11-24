@@ -15,7 +15,7 @@
  *   and the answer's data.warning says so.
  * - Nothing runs between calls: no polling, and every timer is cleared when its call ends.
  */
-import { ROW_COLS, SCHEMA_VERSION, rowsFromTable, type CveShard, type KevFile, type Meta, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
+import { ROW_COLS, SCHEMA_VERSION, rowsFromTable, type CveShard, type EventsFile, type KevFile, type Meta, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
 import { MCP_DATA_BASES, MCP_MSG } from '../../shared/mcp';
 
 /** A failure the tools report to the agent as is (isError: true). */
@@ -113,6 +113,11 @@ export const parse = {
   woke: (j: Record<string, unknown>): WokeFile => {
     need(Array.isArray(j.items) && isObject(j.tracking), 'items or tracking missing');
     return j as unknown as WokeFile;
+  },
+  events: (j: Record<string, unknown>): EventsFile => {
+    need(Array.isArray(j.items) && Number.isInteger(j.days) && Number.isFinite(Date.parse(j.generated_at as string)), 'items, days or generated_at missing');
+    need(j.items.every((i) => isObject(i) && typeof i.at === 'string' && Number.isFinite(Date.parse(i.at)) && typeof i.vendor === 'string' && typeof i.product === 'string'), 'an item has no valid at, vendor or product');
+    return j as unknown as EventsFile;
   },
   receipts: (j: Record<string, unknown>): ReceiptsFile => {
     need(isObject(j.forward) && Array.isArray((j.forward as Record<string, unknown>).items), 'forward log missing');
