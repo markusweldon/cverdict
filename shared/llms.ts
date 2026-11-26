@@ -65,5 +65,6 @@ ${MCP_TOOLS.map((t) => `- \`${t.name}\`: ${t.title}`).join('\n')}
 
 - [Source code](${REPO_URL}): fork it to run your own copy
 - [Check Deps](${site}/check): match an SBOM or lockfile against the tracked CVEs in the browser (nothing is uploaded)
+- [cverdict-check](${REPO_URL}/blob/main/cli/README.md): the same check from a terminal or CI (\`npx -y cverdict-check\`, or the GitHub Action \`${BRAND.repo}/action\`), with SARIF output
 `;
 }

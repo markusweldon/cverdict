@@ -8,7 +8,7 @@
  */
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { BRAND } from '../../../shared/brand';
+import { BRAND, REPO_URL } from '../../../shared/brand';
 import { PACKAGE_ECOSYSTEMS, type PackagesFile, type Tier } from '../../../shared/contract';
 import { advisoryUrl, ATTRIBUTION, rangesText } from '../../../shared/packages';
 import { copyTicket, watchVendorOf } from '../actions';
@@ -227,6 +227,10 @@ function Coverage({ index, state, days }: { index: PackagesFile | undefined; sta
       <p>
         Not checked: CVEs outside that set (most older CVEs), advisories without a CVE ID, and packages outside those eight ecosystems, such as deb, rpm or apk. For a full audit, also run a scanner such as
         osv-scanner, npm audit or pip-audit.
+      </p>
+      <p>
+        The same check runs in CI: <code>npx -y {BRAND.slug}-check</code>, or the GitHub Action, with a job summary, SARIF for code scanning, and a failing step when a dependency is Exploited.{' '}
+        <ExtLink href={`${REPO_URL}/blob/main/cli/README.md`}>How to set it up</ExtLink>
       </p>
       {index?.sources.map((s) =>
         !s.ok ? (

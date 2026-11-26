@@ -786,6 +786,11 @@ const TEXT_PARSERS: ReadonlyMap<FormatId, (text: string, notes: string[]) => Com
   ['gradle', gradleLock],
 ]);
 
+/** The format a file name alone says (lockfiles; SBOMs are told by content), or null. Also used by the CLI. */
+export function formatOfFilename(filename: string): FormatId | null {
+  return byFilename(filename);
+}
+
 function byFilename(filename: string): FormatId | null {
   const base = filename.split(/[\\/]/).pop()?.toLowerCase().slice(0, 255) ?? '';
   for (const [re, f] of BY_FILENAME) if (re.test(base)) return f;

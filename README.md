@@ -57,6 +57,7 @@ gives you your own copy.
 | **From an AI agent** | `claude mcp add cverdict -- npx -y cverdict-mcp` ([other clients](mcp/README.md)) |
 | **From any AI agent, without MCP** | [`/llms.txt`](https://cverdict.dev/llms.txt) lists every file, feed and tool |
 | **As JSON** | `curl -s https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/meta.json` ([every file](#open-data-api)) |
+| **In CI, on your repos** | `npx -y cverdict-check`, or the GitHub Action `markusweldon/cverdict/action` ([how](cli/README.md)) |
 | **Your own copy** | Fork it and deploy to Vercel or GitHub Pages ([how](#deploy-your-own)) |
 
 ## Why
@@ -252,7 +253,9 @@ What the card leaves out:
   or a GitHub PoC repo at least 3 days old or with 2 stars (the code is not checked).
 - **Check Deps** reads CycloneDX, SPDX, package URL lists and npm, yarn, pnpm, pip, Poetry, uv,
   Pipenv, Go, Cargo, Bundler, Composer, NuGet and Gradle lockfiles. It knows only the tracked CVEs,
-  so it is not a full audit.
+  so it is not a full audit. The same check runs in CI as [`cverdict-check`](cli/README.md), from npm
+  or as a GitHub Action: job summary, annotations on the lockfile lines, SARIF for code scanning, and a
+  failing step when a dependency is Exploited. Run it on a schedule too: verdicts change after you merge.
 - **Keys**: `j`/`k`, `/`, `Ctrl K`, `?`.
 
 ## Data sources
