@@ -2,11 +2,13 @@
 import { useMemo } from 'preact/hooks';
 import type { StatsFile } from '../../../shared/contract';
 import { DailyChart } from '../components/DailyChart';
+import { KevLagChart } from '../components/KevLagChart';
 import { MonthlyChart } from '../components/MonthlyChart';
 import { ErrorState, Loading } from '../components/States';
 import { data } from '../data';
 import { dailyAt, dailyTakeaway, kevByDay, lastDayPartial, type DayRow } from '../daily';
 import { cnaName, fmtInt, fmtMonth, fmtPct } from '../format';
+import { chartYears } from '../kevlag';
 import { useData, useTitle } from '../hooks';
 import { href } from '../router';
 import { knob, useStore } from '../state';
@@ -108,6 +110,7 @@ export default function Surge() {
   const kevDays = useMemo(() => (kev.status === 'ready' ? kevByDay(kev.data.entries) : new Map<string, number>()), [kev]);
   const partialDay = stats.status === 'ready' && lastDayPartial(stats.data.daily, stats.data.generated_at);
   const takeaway = useMemo(() => dailyTakeaway(daily, partialDay), [daily, partialDay]);
+  const lagYears = useMemo(() => (stats.status === 'ready' ? chartYears(stats.data.kev_lag) : []), [stats]);
   return (
     <div class="page page--surge">
       <header class="page__head">
@@ -150,6 +153,23 @@ export default function Surge() {
               <DailyTable days={daily} kev={kevDays} kevReady={kev.status === 'ready'} partialLast={partialDay} />
             </figure>
           </section>
+          {lagYears.length > 0 && (
+            <section class="panel" aria-labelledby="lag-h">
+              <header class="panel__head">
+                <div>
+                  <h2 id="lag-h" class="panel__title">
+                    Time to KEV
+                  </h2>
+                  <p class="panel__sub">
+                    Days from a CVE’s publication to its CISA KEV listing, by the year CISA listed it. Grouped by year listed, so every year is complete: grouped by year published, recent
+                    years look faster only because their late listings have not happened yet. KEV lists exploitation CISA can confirm, often after it starts. It opened in late 2021 with a
+                    backlog of old CVEs, so 2021 and 2022 are left out here; <a href={href('feeds')}>stats.json</a> has them.
+                  </p>
+                </div>
+              </header>
+              <KevLagChart years={lagYears} />
+            </section>
+          )}
           <div class="surge__grid">
             <section class="panel" aria-labelledby="cna-h">
               <header class="panel__head">

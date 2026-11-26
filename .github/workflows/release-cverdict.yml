@@ -1,0 +1,103 @@
+# Publishes the cverdict command (dispatcher/) to npm when a tag cverdict-v<version> is pushed.
+# It depends on cverdict-check and cverdict-mcp: publish those first (release-check.yml and
+# release-mcp.yml), or npm cannot install it. Trusted publishing as for the other two: npmjs.com,
+# package cverdict → Settings → Trusted publishing → GitHub Actions, this repository, workflow
+# release-cverdict.yml (after the first, manual publish).
+name: release-cverdict
+
+on:
+  push:
+    tags: ['cverdict-v*']
+
+concurrency:
+  group: release-cverdict
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  build:
+    name: Check and pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The tag names the version: cverdict-v0.1.0 publishes 0.1.0, and only if package.json says so.
+      - name: Check the tag against the package version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(jq -r .version dispatcher/package.json)
+          if [ "$TAG" != "cverdict-v$version" ]; then
+            echo "::error::tag $TAG does not match dispatcher/package.json version $version (expected cverdict-v$version)"
+            exit 1
+          fi
+
+      - run: npm run typecheck
+
+      - name: Dispatcher tests
+        run: npx vitest run dispatcher
+
+      # The ranges must name versions that are on npm, or every install of this one fails.
+      - name: Check the tools it depends on are published
+        run: |
+          for dep in cverdict-check cverdict-mcp; do
+            range=$(jq -r --arg d "$dep" '.dependencies[$d]' dispatcher/package.json)
+            npm view "$dep@$range" version | grep -q . || { echo "::error::$dep@$range is not on npm yet"; exit 1; }
+          done
+
+      - name: Pack
+        id: pack
+        working-directory: dispatcher
+        run: |
+          mkdir -p "$RUNNER_TEMP/pkg"
+          tarball=$(npm pack --silent --pack-destination "$RUNNER_TEMP/pkg")
+          tar -tzf "$RUNNER_TEMP/pkg/$tarball"
+          echo "tarball=$tarball" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cverdict-package
+          path: ${{ runner.temp }}/pkg/${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cverdict-package
+          path: pkg
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@11.21.1
+
+      - name: Publish
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: npm publish "./pkg/$TARBALL" --access public

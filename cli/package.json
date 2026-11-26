@@ -1,0 +1,14 @@
+{
+  "name": "cverdict-check",
+  "version": "0.1.0",
+  "description": "Check lockfiles and SBOMs against CVErdict: which of your dependencies' CVEs are exploited or likely next, from open CISA KEV, EPSS and exploit data. Runs locally; only the public index is downloaded.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "cverdict-check": "dist/cverdict-check.mjs" },
+  "files": ["dist", "LICENSE", "README.md"],
+  "engines": { "node": ">=22.12" },
+  "repository": { "type": "git", "url": "git+https://github.com/markusweldon/cverdict.git", "directory": "cli" },
+  "homepage": "https://github.com/markusweldon/cverdict/blob/main/cli/README.md",
+  "bugs": "https://github.com/markusweldon/cverdict/issues",
+  "keywords": ["cve", "vulnerability", "sbom", "lockfile", "cyclonedx", "spdx", "kev", "cisa-kev", "epss", "sarif", "github-action", "security"]
+}

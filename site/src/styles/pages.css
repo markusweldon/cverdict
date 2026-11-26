@@ -16,6 +16,7 @@
   grid-template-areas:
     'hero knob knob'
     'wf wf wf'
+    'heat heat heat'
     'feed feed side'
     'batches batches batches';
   gap: 16px 20px;
@@ -35,6 +36,129 @@
 
 .today__wf {
   grid-area: wf;
+}
+
+.today__heat {
+  grid-area: heat;
+}
+
+/* Heating up: four cards in a row, two on tablets, one per row on phones. */
+.heat__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.heat__card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--b-likely);
+  border-radius: var(--r);
+  background: var(--raised);
+}
+
+.heat__card--exploited {
+  border-left-color: var(--exploited);
+}
+
+.heat__card--likely {
+  border-left-color: var(--likely);
+}
+
+.heat__link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.heat__link:hover .heat__who {
+  text-decoration: underline;
+}
+
+.heat__rank {
+  grid-row: span 2;
+  color: var(--faint);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.heat__who {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heat__id {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.heat__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.heat__what {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.heat__tag {
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.heat__tag--kev_added,
+.heat__tag--catalog_listed,
+.heat__tag--vendor_exploited {
+  border-color: var(--b-exploited);
+  background: var(--t-exploited);
+  color: var(--ink-exploited);
+}
+
+.heat__tag--metasploit_module,
+.heat__tag--exploitdb_entry,
+.heat__tag--nuclei_template {
+  border-color: var(--b-likely);
+  background: var(--t-likely);
+  color: var(--ink-likely);
+}
+
+@media (max-width: 1180px) {
+  .heat__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Phones: the top two, so the feed stays near the top. */
+@media (max-width: 639px) {
+  .heat__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heat__card:nth-child(n + 3) {
+    display: none;
+  }
 }
 
 .today__feed {
@@ -1468,6 +1592,92 @@ circle.dc__kev {
   border-radius: var(--r);
 }
 
+/* Time to KEV (The Surge): one stacked bar per year, hottest bucket first. */
+.lag__legend {
+  margin-bottom: 12px;
+}
+
+.lag__key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.lag__rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lag__row {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.lag__bar {
+  display: flex;
+  gap: 1px;
+  height: 18px;
+  overflow: hidden;
+  border-radius: var(--r-xs);
+  background: var(--raised);
+}
+
+.lag__seg {
+  flex-basis: 0;
+  min-width: 2px;
+}
+
+.lag__stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 11.5em;
+  white-space: nowrap;
+}
+
+.lag__seg--before {
+  background: var(--ai);
+}
+
+.lag__seg--day {
+  background: var(--exploited);
+}
+
+.lag__seg--week {
+  background: var(--likely);
+}
+
+.lag__seg--month {
+  background: var(--watch);
+}
+
+.lag__seg--year {
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+
+.lag__seg--later {
+  background: color-mix(in srgb, var(--muted) 24%, transparent);
+}
+
+@media (max-width: 639px) {
+  .lag__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+  }
+
+  .lag__bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
 .surge__grid {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
@@ -1891,6 +2101,7 @@ circle.dc__kev {
       'hero'
       'knob'
       'wf'
+      'heat'
       'feed'
       'side'
       'batches';

@@ -15,6 +15,8 @@ import {
   type EventType,
   type McpChangesResult,
   type McpData,
+  type McpDependenciesResult,
+  type McpDependencyFinding,
   type McpInventoryItem,
   type McpInventoryName,
   type McpInventoryResult,
@@ -28,8 +30,10 @@ import {
   type McpVerdictResult,
   type McpWokeResult,
   type Meta,
+  type PackagesFile,
   type ReceiptItem,
   type Row,
+  rowsFromTable,
   type Tier,
   type WakeKind,
 } from '../../shared/contract';
@@ -39,7 +43,14 @@ import { BASE_POINTS } from '../../shared/model';
 import { CVE_ID_RE, shardOf } from '../../shared/shard';
 import { slugify } from '../../shared/slug';
 import { WATCH_NAME_MAX, matchesName, normalizeName } from '../../shared/watch';
-import { parse, type DataCall } from './data';
+import { realpathSync, statSync } from 'node:fs';
+import { basename, isAbsolute, relative, resolve } from 'node:path';
+import { mergePackageFiles } from '../../shared/packages';
+import type { Group } from '../../site/src/check/match';
+import { checkFiles, countByGroup } from '../../cli/src/check';
+import { discover, isCheckable } from '../../cli/src/discover';
+import { findingUrl } from '../../cli/src/report';
+import { DataError, DataUnavailable, parse, type DataCall } from './data';
 
 /** A request the tool cannot answer as asked (isError: true). A filter is never silently dropped. */
 export class InputError extends Error {}
@@ -532,4 +543,124 @@ export async function changesSince(call: DataCall, a: ChangesArgs, now: number):
     ...p,
     items: p.items.map(eventOut),
   };
+}
+
+// ── check_dependencies ──────────────────────────────────────────────────────────────────────
+
+export interface DependenciesArgs {
+  paths?: string[];
+  knob?: number;
+  include_quiet?: boolean;
+}
+
+/** Bytes of JSON check_dependencies answers with at most (about 17,000 tokens); the least urgent findings are left out to fit. */
+export const DEPENDENCIES_BUDGET = 60 * 1024;
+export const DEPENDENCY_LIMITS = { paths: 20, pathChars: 1024 } as const;
+/** check_dependencies reads up to two larger files (packages-older.json is about 2 MB gzip): a longer deadline than other tools. */
+export const DEPENDENCIES_TIMEOUT_MS = 30_000;
+
+/**
+ * Paths inside `root` to hand to discover(): each must resolve, through any symbolic link, to a place
+ * inside root, and a file must have a lockfile or SBOM name. That keeps an agent that was talked into
+ * it from reading other files: nothing else is opened, and file errors never quote file content.
+ */
+export function dependencyPaths(raw: readonly string[], root: string): string[] {
+  const realRoot = realpathSync(root);
+  const inside = (p: string) => {
+    const r = relative(realRoot, p);
+    return r === '' || (!r.startsWith('..') && !isAbsolute(r));
+  };
+  return raw.map((p) => {
+    const abs = resolve(root, p);
+    let real: string;
+    try {
+      real = realpathSync(abs);
+    } catch {
+      return p; // missing: discover() reports it
+    }
+    if (!inside(real)) throw new InputError(MCP_MSG.outsideRoot(p));
+    if (statSync(real).isFile() && !isCheckable(basename(real))) throw new InputError(MCP_MSG.notCheckable(p));
+    return relative(root, abs) || '.';
+  });
+}
+
+/** A file error as the agent sees it: the parser's fixed messages, and never a quote from the file. */
+function fileError(e: string | null): string | null {
+  if (e === null) return null;
+  if (e.startsWith('This looks like JSON')) return 'This looks like JSON, but it could not be read.';
+  return e.startsWith('could not be read') ? 'could not be read' : e;
+}
+
+const groupRank: Readonly<Record<Group, number>> = { exploited: 0, likely: 1, watch: 2, quiet: 3, possible: 4 };
+
+export async function checkDependencies(call: DataCall, a: DependenciesArgs, now: number, root = process.cwd()): Promise<McpDependenciesResult> {
+  const knob = a.knob ?? KNOB_DEFAULT;
+  const paths = dependencyPaths(a.paths?.length ? a.paths : ['.'], root);
+  const found = discover(paths, root);
+  if (!found.files.length) throw new InputError(MCP_MSG.noDependencyFiles((a.paths?.length ? a.paths : ['.']).join(', ')));
+  const tracked = await call.file('packages.json', parse.packages);
+  let older: PackagesFile | null = null;
+  let olderMissing: string | null = null;
+  try {
+    older = await call.file('packages-older.json', parse.packages);
+  } catch (e) {
+    if (!(e instanceof DataError)) throw e;
+    olderMissing = e instanceof DataUnavailable ? 'packages-older.json is not published in this data' : e.message;
+  }
+  const trackedIds = new Set(rowsFromTable(tracked.cves).map((r) => r.id));
+  const olderIds = new Set(older ? rowsFromTable(older.cves).map((r) => r.id).filter((id) => !trackedIds.has(id)) : []);
+  const report = checkFiles(found.files, root, mergePackageFiles(tracked, older), knob, { olderIds, olderError: olderMissing });
+  const counts = countByGroup(report.findings);
+  const shown = report.findings.filter((f) => a.include_quiet || f.group !== 'quiet').sort((x, y) => groupRank[x.group] - groupRank[y.group]);
+  const items = shown.map((f): McpDependencyFinding => ({
+    cve: f.row.id,
+    group: f.group,
+    verdict: f.group === 'possible' ? 'Possibly affected: the version in the file could not be compared with the advisory.' : VERDICT[f.group],
+    score: f.row.s,
+    in_kev: f.row.k === 1,
+    kev_due: f.row.kd,
+    exploited: f.row.x === 1,
+    weaponized: f.row.w === 1,
+    ecosystem: f.pkg.eco,
+    package: cut(oneLine(f.pkg.name), TITLE_MAX),
+    named: f.pkg.named ? cut(oneLine(f.pkg.named), TITLE_MAX) : null,
+    version: f.pkg.version === null ? null : cut(oneLine(f.pkg.version), 64),
+    fixed_in: f.fixedIn,
+    advisories: f.pkg.advisories.map((x) => x.id),
+    file: f.file,
+    line: f.line,
+    tracked: f.tracked,
+    url: findingUrl(f),
+    title: cut(oneLine(f.row.t), TITLE_MAX),
+  }));
+  const data = await dataBlock(call, now);
+  const scope = `${olderMissing === null ? `Every CVE that one of ${report.coverage.advisories.toLocaleString('en-US')} OSV.dev advisories ties to a package version, in npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist and NuGet` : 'Tracked CVEs only'}. Not checked: advisories without a CVE ID (malware reports among them), other ecosystems (deb, rpm, apk, containers), and bugs no advisory names yet. Tracked CVEs (tracked: true) have a page and get_verdict knows them; older ones link to cve.org.`;
+  const build = (n: number): McpDependenciesResult => ({
+    data,
+    knob,
+    scope,
+    note: [n < items.length ? MCP_MSG.dependenciesCut(n, items.length) : null, olderMissing === null ? null : MCP_MSG.olderMissing(olderMissing)].filter(Boolean).join(' ') || null,
+    files: report.files.map((f) => ({ path: f.path, format: f.format, packages: f.result?.distinct ?? 0, error: fileError(f.error) })),
+    counts,
+    packages_checked: report.checked,
+    coverage: { tracked_cves: report.coverage.tracked, older_cves: report.coverage.older, advisories: report.coverage.advisories, older_missing: olderMissing },
+    total: items.length,
+    omitted: items.length - n,
+    items: items.slice(0, n),
+  });
+  // The most findings that fit, by bisection (most urgent first, so an exploited CVE is never cut for a quiet one).
+  const fits = (r: McpDependenciesResult) => Buffer.byteLength(JSON.stringify(r)) <= DEPENDENCIES_BUDGET;
+  let out = build(items.length);
+  if (!fits(out)) {
+    let lo = 0;
+    let hi = items.length - 1;
+    out = build(0);
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      const r = build(mid);
+      if (fits(r)) [lo, out] = [mid, r];
+      else hi = mid - 1;
+    }
+  }
+  return out;
 }

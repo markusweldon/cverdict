@@ -29,7 +29,7 @@ import { backtestProblems, runBacktest } from '../backtest';
 import { assignBatches, byScoreThenNewest } from '../batches';
 import { CHANGES_RETENTION_DAYS, buildChanges, diffRuns } from '../changes';
 import { buildEvents, catalogSnapshot, EVENTS_SECTION, readPreviousEvents } from '../events';
-import { buildPackagesFile } from '../packages';
+import { buildPackagesFile, olderPackagesScope, osvCveIds, slimRow } from '../packages';
 import { toDetail, toRow } from '../rows';
 import { buildKevPrior, scoreCve } from '../score';
 import { encodeLog, forwardReceipts, RECEIPTS_SECTION, updateLog } from '../receipts';
@@ -185,6 +185,7 @@ export interface BuiltOutput {
   woke: WokeFile;
   receipts: ReceiptsFile;
   packages: PackagesFile;
+  packagesOlder: PackagesFile;
   events: EventsFile;
   /** Log lines (receipts and backtest). */
   notes: string[];
@@ -284,7 +285,12 @@ export function buildOutput({
   const p0 = performance.now();
   const packages = buildPackagesFile(ing.osv, rowById, generatedAt, windowDays);
   files.set(PATHS.packages, JSON.stringify(packages));
-  notes.push(`packages: ${packages.cves.rows.length} CVEs named by OSV.dev advisories, built in ${Math.round(performance.now() - p0)} ms`);
+  // Every other CVE an advisory names: scored like the rest, kept only for the dependency check.
+  const named = osvCveIds(ing.osv);
+  const olderRows = new Map(all.filter((s) => named.has(s.cve.id) && !rowById.has(s.cve.id) && !s.cve.inWindow).map((s) => [s.cve.id, slimRow(toRow(s))]));
+  const packagesOlder = buildPackagesFile(ing.osv, olderRows, generatedAt, windowDays, olderPackagesScope(windowDays));
+  files.set(PATHS.packagesOlder, JSON.stringify(packagesOlder));
+  notes.push(`packages: ${packages.cves.rows.length} tracked and ${packagesOlder.cves.rows.length} older CVEs named by OSV.dev advisories, built in ${Math.round(performance.now() - p0)} ms`);
   // Verdict events: this run against the previous tree, plus dated causes, deduped by key.
   const status = (id: SourceId) => ing.sources.find((x) => x.id === id);
   const kevStatus = status('kev');
@@ -330,7 +336,7 @@ export function buildOutput({
     .sort((a, b) => TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier) || byScoreThenNewest(a, b))
     .slice(0, TOP_SUMMARY)
     .map(toRow);
-  return { files, meta, batches, top, scored, woke: woke.file, receipts, packages, events: events.file, notes };
+  return { files, meta, batches, top, scored, woke: woke.file, receipts, packages, packagesOlder, events: events.file, notes };
 }
 
 /** The scoring sources that were down in the previous run (from its meta.json), by name. */

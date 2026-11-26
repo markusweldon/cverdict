@@ -7,6 +7,7 @@ import { BatchCard } from '../components/BatchCard';
 import { Changes } from '../components/Changes';
 import { freshness } from '../components/Chrome';
 import { FilterBar } from '../components/FilterBar';
+import { HeatStrip } from '../components/HeatStrip';
 import { IconArrowRight, IconLayers } from '../components/icons';
 import { kevUrgency, KevStrip } from '../components/Kev';
 import { Knob } from '../components/Knob';
@@ -18,6 +19,7 @@ import { Waterfall, type Annotation } from '../components/Waterfall';
 import { WokeCard } from '../components/WokeCard';
 import { data } from '../data';
 import { exploreDayHref } from '../drill';
+import { heatingUp } from '../heat';
 import {
   batchCounts,
   byScore,
@@ -363,6 +365,9 @@ export default function Today() {
   // The track-record line: receipts.json (about 150 kB, 23 kB gzipped) loads once the signal is in,
   // so it never competes with the rest of Today. Missing or without a backtest: the line hides.
   const receipts = useData(signal.status === 'ready' ? data.receipts : null);
+  // events.json (about 9 KB gzip) only feeds the Heating up strip, so it waits for the feed.
+  const events = useData(signal.status === 'ready' ? data.events : null);
+  const heat = useMemo(() => heatingUp(events.status === 'ready' ? events.data : null), [events]);
   const track = useMemo(
     () => {
       if (receipts.status === 'error') return null;
@@ -513,6 +518,8 @@ export default function Today() {
             <Loading label="Drawing the waterfall" lines={1} height="176px" />
           )}
         </section>
+
+        <HeatStrip cards={heat} />
 
         <section class="today__feed" id="feed" aria-labelledby="feed-h">
           <header class="section__head">

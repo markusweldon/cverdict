@@ -25,13 +25,14 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/cve/<xx>.json` | `CveShard` | Full detail for window CVEs, every KEV CVE, every CVE that ENISA EU KEV or CIRCL lists as exploited (the `eukev.listed` and `circl.listed` chips) and every CVE in `woke.json`; 256 shards | ~25–50 KB each |
 | `v1/batches.json` | `BatchesFile` | Batches (patch days and bulk releases) in the window; newest first | ~30 KB |
 | `v1/kev.json` | `KevFile` | KEV entries added in the last 30 days or due from 14 days ago on; newest first | ~4 KB |
-| `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits | ~6 KB |
+| `v1/stats.json` | `StatsFile` | Monthly history since 1999, daily and hourly window counts, top CNAs, AI credits, time to KEV | ~6 KB |
 | `v1/surge.json` | `SurgeFile` | Published CVEs per month by CVSS severity band and by top CNA, and CISA KEV CVEs by publication month (The Surge's filters) | ~18 KB |
 | `v1/changes.json` | `ChangesFile` | Escalations in the last 7 days; newest first | ~1 KB |
 | `v1/events.json` | `EventsFile` | Verdict events of the last 7 days (why a verdict moved), each with a stable id; newest first | ~15 KB |
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
 | `v1/packages.json` | `PackagesFile` | Package versions affected by the CVEs that have a detail shard (window, KEV, EU KEV or CIRCL exploited, woke up), from OSV.dev advisories, with each CVE's row | ~120 KB |
+| `v1/packages-older.json` | `PackagesFile` | The same for every other CVE an OSV.dev advisory names: older, no detail shard, slim rows | ~2 MB (estimate) |
 | `v1/state.json` | none | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
@@ -237,6 +238,7 @@ description, required_action`, plus `in_window` (the CVE was published in the wi
 | `hourly` | `{ start, hours, counts, new_exploited, new_exploited_cves, new_exploited_total }`: `counts[h]` is `[exploited, likely, watch, quiet]` for hour `h` after `start`. **Newly exploited** means an Exploited CVE whose first exploited signal is within 72 hours of `generated_at`, or that a CISA KEV, ENISA EU KEV or confirmed CIRCL listing dated within those 72 hours names. The first-signal rule uses the signals that set the Exploited tier: a CISA KEV, EU KEV or CIRCL listing, CISA SSVC "exploitation active", and the CNA's own exploited flag. A signal with no date rules that path out, unless it is an EU KEV row known to come after the CISA KEV date. The listing rule makes a new catalog listing news even when the CVE was Exploited before (through SSVC, the CNA flag or another catalog), and whatever the CVE's age. Listings are dated by day, so a day counts from 00:00 UTC; SSVC counts from its timestamp and the CNA flag from publication. A signal qualifies when it is at or after `generated_at` minus 72 hours (inclusive). `new_exploited` is `[h, n]` pairs, oldest hour first, for the hours holding `n` newly exploited CVEs of the window (by publication). Hours with none are left out, and `[]` means none. Older files have no `new_exploited`: read that as none. The waterfall pulses only these ticks. `new_exploited_cves` names the newly exploited CVEs, newest signal first, at most 50 (`NEW_EXPLOITED_LIST_MAX`): `{ id, title, via, at, hour }` for a CVE in the window, `{ id, title, via, at, published }` for one published before it. `title` is the short name the site shows ("Vendor · Product", else the CNA's name, else the CVE ID, at most 80 characters). `via` is the newest signal that makes it new: `CISA KEV`, `EU KEV`, `CIRCL`, `CISA SSVC` or `Vendor` (the CNA's own flag); for a CVE before the window it is always a listing. `at` is when it came: `YYYY-MM-DD` for a catalog listing, an ISO 8601 UTC time for SSVC and the CNA flag. `hour` is the CVE's column in `counts`; a CVE published before the window has no `hour` (it is not on the chart) and has `published` (`YYYY-MM-DD`) instead. `new_exploited_total` is how many there are before the cap, both kinds; the site's legend shows it. All three come from one list, so below the cap the list's hours tally to `new_exploited` exactly and the total is the list's length; at the cap the older ones are left out of the list but still counted. Older files have no `new_exploited_cves` or `new_exploited_total`: the legend then counts the chart and stays a plain label. |
 | `cnas[]` | Top 25 CNAs in the window: `{ cna, count, passed, no_cvss, ssvc_missing }` |
 | `ai_credits[]` | Top 20 AI credit excerpts (≤ 80 characters, as in `ai_credit`): `{ text, count }` |
+| `kev_lag[]` | Time to CISA KEV, one row per year CISA added CVEs, oldest first, through the current year (the only one with `partial: true`): `{ year, count, buckets, median_days, partial }`. `count` is that year's KEV additions whose CVE record is published; `buckets` splits it by days from the CVE's UTC publication day to `dateAdded`, in `KEV_LAG_BUCKETS` order: `before` (listed before the record was published), `day` (same day), `week` (1–7), `month` (8–30), `year` (31–365), `later`. `median_days` is the median over all of them, `null` for an empty year. Rows are grouped by the year **added**, so each is complete; grouping by publication year would make recent years look faster, because their late listings have not happened yet. The site charts from 2023 (`KEV_LAG_FIRST_YEAR`): KEV opened in November 2021 with a backlog of old CVEs. Older files leave it out |
 
 ## `surge.json`
 
@@ -551,7 +553,7 @@ curl -s $BASE/packages.json | jq -r '.packages.npm.lodash[]? | [.[0], .[1], (.[2
 curl -s $BASE/packages.json | jq -r '.sources[] | [.ecosystem, (if .ok | not then "not checked" elif .stale then "stale" else "ok" end), .matched] | @tsv'
 ```
 
-Not covered: CVEs without a detail shard, advisories without a CVE ID, other ecosystems (deb, rpm,
+Not covered here: CVEs without a detail shard (they are in `packages-older.json`), advisories without a CVE ID, other ecosystems (deb, rpm,
 apk, containers) and other advisory databases.
 
 How it is kept up to date: the pipeline keeps a compact copy of the OSV records of the eight
@@ -560,6 +562,27 @@ ecosystems that name a CVE in its cache. Every run reads the newest lines of eac
 reads the full `all.zip` dump instead. A dump that cannot be downloaded or fails its checks is tried
 again a day later, and the copy keeps getting the changed records meanwhile. When OSV.dev cannot be reached, each
 ecosystem keeps its last copy and is marked `stale`.
+
+## `packages-older.json`
+
+Every other CVE that an OSV.dev advisory ties to a package version, so that a dependency check sees
+all of them, not only the tracked ones. Same shape as `packages.json` (`PackagesFile`), with three
+differences:
+
+- **Which CVEs**: those an advisory names that are not in `packages.json`. So every one was published
+  before the window, is not in CISA KEV, is not listed as exploited by EU KEV or CIRCL, and did not
+  wake up. They are scored by the same model as every other CVE: most are Quiet; a Metasploit module or
+  a Nuclei template makes one Likely next at any age, and an exploited flag from the vendor or CISA SSVC
+  makes one Exploited.
+- **No detail shard**: there is no CVE page for them, and the MCP server's `get_verdict` does not know
+  them. Link to [cve.org](https://www.cve.org/) or the advisory instead.
+- **Slim rows**: the same columns as `index.json`, but `c` and `r` (the chip lists) are empty and `t`
+  is cut to 80 characters.
+
+The two files never share a CVE, and `sources[]` is the same in both; `distinct.matched` and each
+`sources[].matched` count this file's advisories. A client that wants every CVE loads both and merges
+`cves.rows` and, per ecosystem and package key, the `packages` entries. A client that reads only
+`packages.json` keeps working, and checks the tracked CVEs only.
 
 ## `state.json` (internal)
 
@@ -616,6 +639,7 @@ revisions for older clients.
 | `receipts` | `receipts.json` | `McpReceiptsResult`: the forward log and backtest figures without the per-CVE lists, or one CVE's entries |
 | `search_cves` | `index.json` | `McpSearchResult`: window CVEs whose ID, CNA, vendor, product or title contain every word of the query |
 | `check_inventory` | `index.json`, `woke.json` | `McpInventoryResult`: for 1 to 200 vendor or product names, the window and woke-up CVEs whose vendor or product equals each name (the watchlist's rule, `shared/watch.ts`), most urgent first, with counts of what was left out, `no_match`, and the vendor feed for the name's slug (looser than the match: it folds accents and punctuation) |
+| `check_dependencies` | `packages.json`, `packages-older.json` | `McpDependenciesResult`: the lockfiles and SBOMs under 1 to 20 paths inside the server's working directory, matched like Check Deps against both package files. Per finding: CVE, tier at the evidence bar (or `possible`), verdict, score, KEV, ecosystem, package, version, `fixed_in`, advisories, file and line, `tracked` (false for an older CVE, linked to cve.org). With `counts` per tier, the files read, and `coverage` (`older_missing` says why older CVEs were left out). Quiet findings only with `include_quiet`; the least urgent are cut to keep under about 17,000 tokens, with a `note` |
 | `changes_since` | `events.json` | `McpChangesResult`: verdict events after `since` (within the 7-day log, else an error saying where it starts; a date takes that whole day) and at or before `until` if given, newest first, filtered by names (the watchlist's rule) and event types, paged, with `next_since` to pass back next time |
 
 The result types are in `shared/contract.ts` (section "MCP tool results"). Pages hold at most 50
@@ -713,4 +737,7 @@ curl -s $BASE/changes.json | jq -r --arg since "$(date -u -d '-1 day' +%FT%TZ 2>
 
 # This year's monthly volume
 curl -s $BASE/stats.json | jq -r '.monthly[] | select(.month >= "2026-01") | [.month, .published, .kev_added, .ai] | @tsv'
+
+# Time to KEV: per year added, the count, the median days and the share listed within a week
+curl -s $BASE/stats.json | jq -r '.kev_lag[] | select(.count > 0) | [.year, .count, .median_days, ((.buckets[1] + .buckets[2]) / .count * 100 | floor | tostring + "%")] | @tsv'
 ```

@@ -1,0 +1,18 @@
+{
+  "name": "cverdict",
+  "version": "0.1.0",
+  "description": "CVErdict on the command line: `cverdict check` for your lockfiles and SBOMs, `cverdict mcp` for AI agents. CVE verdicts with receipts, from open CISA KEV, EPSS and exploit data.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "cverdict": "bin/cverdict.mjs" },
+  "files": ["bin", "lib.mjs", "LICENSE", "README.md"],
+  "engines": { "node": ">=22.12" },
+  "dependencies": {
+    "cverdict-check": "^0.1.0",
+    "cverdict-mcp": "^0.2.0"
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/markusweldon/cverdict.git", "directory": "dispatcher" },
+  "homepage": "https://cverdict.dev",
+  "bugs": "https://github.com/markusweldon/cverdict/issues",
+  "keywords": ["cve", "vulnerability", "kev", "cisa-kev", "epss", "sbom", "lockfile", "mcp", "mcp-server", "security"]
+}

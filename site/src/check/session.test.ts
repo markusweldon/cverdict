@@ -1,7 +1,7 @@
 /**
  * The privacy promises of the Check page, tested on the session logic (vitest runs in node, with
- * no DOM): no request before the first touch, exactly one after it (for packages.json), none from
- * a check, and no write to storage, history or cookies.
+ * no DOM): no request before the first touch, exactly two after it (packages.json and
+ * packages-older.json, fixed URLs), none from a check, and no write to storage, history or cookies.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,11 +34,23 @@ const base = '/data/v1/';
 type Reply = () => Response | Promise<Response>;
 const ok: Reply = () => new Response(JSON.stringify(testIndex()), { status: 200, headers: { 'content-type': 'application/json' } });
 
+const notFound: Reply = () => new Response('not found', { status: 404 });
+const BOTH = [`${base}packages.json`, `${base}packages-older.json`];
+
+/** `replies` answer the packages.json requests in turn; packages-older.json gets `older` (default: a 404, as from older data). */
 function spyClient(...replies: Reply[]) {
+  return spyClientWith(notFound, ...replies);
+}
+
+function spyClientWith(older: Reply, ...replies: Reply[]) {
   const calls: string[] = [];
+  let tracked = 0;
   const impl = (async (input: RequestInfo | URL) => {
-    calls.push(String(input));
-    return (replies[calls.length - 1] ?? replies[replies.length - 1] ?? ok)();
+    const url = String(input);
+    calls.push(url);
+    if (url.endsWith('packages-older.json')) return older();
+    tracked++;
+    return (replies[tracked - 1] ?? replies[replies.length - 1] ?? ok)();
   }) as typeof fetch;
   return { calls, client: createDataClient(base, impl) };
 }
@@ -71,16 +83,16 @@ describe('check session', () => {
     expect(calls).toEqual([]);
   });
 
-  it('makes exactly one request on the first touch, for packages.json, and reuses it', async () => {
+  it('makes exactly two requests on the first touch, for the two package files, and reuses them', async () => {
     const { calls, client } = spyClient();
     const s = createSession(client);
     expect(calls).toEqual([]);
     const a = s.touch();
     s.touch();
     s.touch();
-    expect(calls).toEqual([`${base}packages.json`]);
+    expect(calls).toEqual(BOTH);
     expect(await a).toBe(await s.touch());
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
     expectNoWrites();
   });
 
@@ -95,7 +107,7 @@ describe('check session', () => {
     }
     const pasted = await s.run('pkg:npm/%C5%81%C3%B3d%C5%BA@1.0.0\npkg:pypi/%D0%B6%D1%83%D0%BA@0.1\n', null);
     expect(pasted.ok && pasted.held.result.clean.map((c) => c.name)).toEqual(['Łódź', 'жук']);
-    expect(calls).toEqual([`${base}packages.json`]);
+    expect(calls).toEqual(BOTH);
     expectNoWrites();
   });
 
@@ -129,7 +141,7 @@ describe('check session', () => {
     expect((await s.run(big, 'purls.txt')).ok).toBe(true);
     expect(fileTooLarge(FILE_MAX)).toBeNull();
     expect(fileTooLarge(80 * 1024 * 1024)).toEqual({ kind: 'file-too-large', size: 80 * 1024 * 1024 });
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
   });
 
   it('reports a failed index load, and only Retry asks again', async () => {
@@ -139,11 +151,11 @@ describe('check session', () => {
     const out = await s.run(fixture('purls.txt'), 'purls.txt');
     expect(out.ok === false && out.failure.kind === 'index' && !out.failure.notPublished).toBe(true);
     s.touch();
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
     await s.retry();
-    expect(calls).toHaveLength(2);
+    expect(calls).toEqual([...BOTH, ...BOTH]);
     expect((await s.run(fixture('purls.txt'), 'purls.txt')).ok).toBe(true);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(4);
   });
 
   it('lists the index characters that need web font subsets, from the index alone', () => {
@@ -168,9 +180,9 @@ describe('check session', () => {
     const s = createSession(client);
     s.touch();
     s.touch();
-    expect(calls).toHaveLength(1);
-    await s.retry();
     expect(calls).toHaveLength(2);
+    await s.retry();
+    expect(calls).toHaveLength(4);
     expect(s.index()?.cves.rows.length).toBe(testIndex().cves.rows.length);
   });
 
@@ -204,6 +216,28 @@ describe('check session', () => {
     await s.touch();
     const out = await s.run('just some words\nthat are not a lockfile', null);
     expect(out.ok === false && out.failure.kind === 'parse' && out.failure.error.kind).toBe('unknown');
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('merges packages-older.json into the index, and checks the tracked CVEs alone without it', async () => {
+    const tracked = testIndex();
+    const extra = testIndex();
+    const id = 'CVE-2019-9001';
+    const cols = extra.cves.cols;
+    const r = [...extra.cves.rows[0]];
+    r[cols.indexOf('id')] = id;
+    extra.cves.rows = [r];
+    extra.packages = { npm: { 'left-pad': [[id, 'GHSA-9999-9999-9999', [['>=0', '<9.0.0']]]] } };
+    const { client } = spyClientWith(() => new Response(JSON.stringify(extra), { status: 200 }));
+    const s = createSession(client);
+    await s.touch();
+    expect(s.index()?.cves.rows).toHaveLength(tracked.cves.rows.length + 1);
+    expect(s.older()).toEqual({ loaded: true, ids: new Set([id]) });
+    const out = await s.run('pkg:npm/left-pad@1.0.0', null);
+    expect(out.ok && out.held.result.cves.map((c) => c.row.id)).toContain(id);
+    const without = createSession(spyClient().client);
+    await without.touch();
+    expect(without.older()).toEqual({ loaded: false, ids: new Set() });
+    expect(without.index()?.cves.rows).toHaveLength(tracked.cves.rows.length);
   });
 });

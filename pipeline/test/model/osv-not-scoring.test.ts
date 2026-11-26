@@ -46,12 +46,12 @@ describe('OSV never feeds a score', () => {
     expect([...NON_SCORING_SOURCES]).toEqual(['osv']);
   });
 
-  it('leaves every file but packages.json and meta.json byte-identical when OSV is down', () => {
+  it('leaves every file but the two package files and meta.json byte-identical when OSV is down', () => {
     const up = build(true);
     const down = build(false);
     expect([...up.files.keys()].sort()).toEqual([...down.files.keys()].sort());
     const differ = [...up.files.keys()].filter((p) => up.files.get(p) !== down.files.get(p)).sort();
-    expect(differ).toEqual([PATHS.meta, PATHS.packages]);
+    expect(differ).toEqual([PATHS.meta, PATHS.packagesOlder, PATHS.packages]);
     // The shards, receipts (with the refreshed backtest) and state really were compared.
     expect(up.files.has(PATHS.shard('00'))).toBe(true);
     expect(up.receipts.backtest?.sources_down).toEqual([]);

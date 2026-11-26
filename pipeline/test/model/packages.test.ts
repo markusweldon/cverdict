@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROW_COLS, rowsFromTable, type Row } from '../../../shared/contract';
 import { ATTRIBUTION } from '../../../shared/packages';
-import { buildPackagesFile, packagesSummary } from '../../src/packages';
+import { buildPackagesFile, osvCveIds, packagesSummary, slimRow } from '../../src/packages';
 import { toRow } from '../../src/rows';
 import { emptyOsvData, type OsvData, type OsvLite } from '../../src/sources/osv';
 import { NOW, makeCve, makeEnrichment } from '../fixtures/model/builders';
@@ -80,5 +80,21 @@ describe('buildPackagesFile', () => {
     expect(Object.keys(f.packages)).toEqual(['npm']);
     expect(f.sources.find((s) => s.ecosystem === 'PyPI')).toMatchObject({ ok: false, matched: 0 });
     expect(packagesSummary(f)).toEqual({ packages: 3, cves: 3, byEcosystem: [{ ecosystem: 'npm', packages: 3, cves: 3 }] });
+  });
+});
+
+describe('osvCveIds and slimRow', () => {
+  it('names every CVE of the ecosystems with a usable copy', () => {
+    expect([...osvCveIds(osv({ npm, PyPI: pypi }))].sort()).toEqual(['CVE-2015-0001', 'CVE-2015-0002', 'CVE-2026-1001', 'CVE-2026-1002', 'CVE-2026-1003']);
+    expect([...osvCveIds(osv({ npm, PyPI: pypi }, ['npm']))]).toEqual(['CVE-2026-1001']);
+  });
+
+  it('drops the chip lists and cuts the title', () => {
+    const r = { ...rowOf('CVE-2026-1001'), t: 'x'.repeat(200), c: ['kev.listed'], r: ['kev.listed', 'sev.high'] };
+    const s = slimRow(r);
+    expect(s).toMatchObject({ id: 'CVE-2026-1001', c: [], r: [], s: r.s, tier: r.tier });
+    expect(s.t).toHaveLength(80);
+    expect(s.t.endsWith('…')).toBe(true);
+    expect(slimRow({ ...r, t: 'short' }).t).toBe('short');
   });
 });

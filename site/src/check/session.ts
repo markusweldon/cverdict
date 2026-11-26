@@ -1,15 +1,17 @@
 /**
  * The Check page without the DOM, so its privacy rules can be tested in node.
  *
- * - `touch()` starts the one request the feature makes, for packages.json, on the first
- *   interaction with the input card: before any file is read, so neither its timing nor its URL
- *   depends on the file. Later calls reuse it; only `retry()` asks again.
+ * - `touch()` starts the two requests the feature makes, for packages.json and packages-older.json,
+ *   on the first interaction with the input card: before any file is read, so neither their timing
+ *   nor their URLs depend on the file. Later calls reuse them; only `retry()` asks again. Without
+ *   packages-older.json (older data, or a failed load) the check covers the tracked CVEs only.
  * - `run()` parses and matches in memory. It makes no request and writes no storage, history or
  *   URL. A failed index load is reported, not retried behind the user's back.
  * - The last result is kept in this module (memory only) until `clear()` or a reload, so opening a
  *   CVE from the results and going Back shows them again.
  */
-import type { PackagesFile } from '../../../shared/contract';
+import { rowsFromTable, type PackagesFile } from '../../../shared/contract';
+import { mergePackageFiles } from '../../../shared/packages';
 import { data, DataError, type DataClient } from '../data';
 import { checkComponents, type CheckResult } from './match';
 import { parse, ParseError, type FormatId } from './parse';
@@ -55,8 +57,10 @@ export interface CheckSession {
   touch(): Promise<PackagesFile>;
   /** Forget a failed load and request the index again (the Retry button). */
   retry(): Promise<PackagesFile>;
-  /** The index once it has loaded. */
+  /** The index once it has loaded: packages.json merged with packages-older.json. */
   index(): PackagesFile | undefined;
+  /** Once loaded: whether packages-older.json was in it, and the CVEs it added (no CVE page). */
+  older(): { loaded: boolean; ids: ReadonlySet<string> } | null;
   /** Whether touch() has started the load. */
   started(): boolean;
   run(text: string, file: string | null, opts?: RunOptions): Promise<Outcome>;
@@ -82,12 +86,24 @@ export function indexGlyphs(file: Pick<PackagesFile, 'cves' | 'packages'>): stri
   return [...seen].sort().join('');
 }
 
-export function createSession(client: Pick<DataClient, 'packages'>): CheckSession {
+export function createSession(client: Pick<DataClient, 'packages'> & Partial<Pick<DataClient, 'packagesOlder'>>): CheckSession {
   let loading: Promise<PackagesFile> | null = null;
+  let merged: PackagesFile | undefined;
+  let olderIds: ReadonlySet<string> = new Set();
+  let olderLoaded = false;
   let held: Held | null = null;
   const touch = (): Promise<PackagesFile> => {
     if (!loading) {
-      loading = client.packages.load();
+      // Both requests start together; a missing or failed older file only narrows the check.
+      const tracked = client.packages.load();
+      const older = client.packagesOlder ? client.packagesOlder.load().catch(() => null) : Promise.resolve(null);
+      loading = Promise.all([tracked, older]).then(([tracked, o]) => {
+        const ids = new Set(rowsFromTable(tracked.cves).map((r) => r.id));
+        olderIds = new Set(o ? rowsFromTable(o.cves).map((r) => r.id).filter((id) => !ids.has(id)) : []);
+        olderLoaded = o !== null;
+        merged = mergePackageFiles(tracked, o);
+        return merged;
+      });
       // The page reads the outcome when it needs it; an unobserved failure is not an error here.
       loading.catch(() => undefined);
     }
@@ -98,10 +114,13 @@ export function createSession(client: Pick<DataClient, 'packages'>): CheckSessio
     retry() {
       // A request that is still hanging is dropped too, so Retry really asks again.
       client.packages.forget?.();
+      client.packagesOlder?.forget?.();
       loading = null;
+      merged = undefined;
       return touch();
     },
-    index: () => client.packages.peek(),
+    index: () => merged,
+    older: () => (merged ? { loaded: olderLoaded, ids: olderIds } : null),
     started: () => loading !== null,
     async run(text, file, opts = {}) {
       const big = file === null ? pasteTooLarge(text.length) : null;
@@ -115,7 +134,7 @@ export function createSession(client: Pick<DataClient, 'packages'>): CheckSessio
         throw e;
       }
       const packages = parsed.components.length;
-      opts.onStage?.({ stage: client.packages.peek() ? 'parsed' : 'waiting', packages });
+      opts.onStage?.({ stage: merged ? 'parsed' : 'waiting', packages });
       let pkgs: PackagesFile;
       try {
         // Let the page show "Checking n packages..." before the synchronous matching starts.

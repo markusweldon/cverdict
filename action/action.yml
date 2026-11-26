@@ -1,0 +1,51 @@
+name: CVErdict check
+description: Which of your dependencies' CVEs are exploited or likely next. Checks lockfiles and SBOMs in the runner; only the public index is downloaded.
+author: CVErdict
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  path:
+    description: Lockfiles, SBOMs or folders to check, one per line, relative to the workspace. Folders are searched (node_modules, vendor and build output are skipped).
+    default: .
+  fail-on:
+    description: Fail the step when a confirmed CVE is at this tier or above. exploited, likely, watch, quiet, or never.
+    default: exploited
+  evidence-bar:
+    description: Score (0 to 100) a CVE needs to count as Likely next. The site's default is 50.
+    default: '50'
+  sarif-file:
+    description: Also write SARIF 2.1.0 here, for github/codeql-action/upload-sarif. Empty to skip.
+    default: ''
+  summary:
+    description: Write the report to the job summary.
+    default: 'true'
+  annotations:
+    description: Annotate the lockfile lines (errors for Exploited, warnings for Likely next, notices for Watch).
+    default: 'true'
+  data-url:
+    description: Where to read packages.json from, a base URL or a path in the workspace. Empty for the published data.
+    default: ''
+
+outputs:
+  exploited:
+    description: Distinct confirmed CVEs at Exploited.
+  likely:
+    description: Distinct confirmed CVEs at Likely next.
+  watch:
+    description: Distinct confirmed CVEs at Watch.
+  quiet:
+    description: Distinct confirmed CVEs at Quiet.
+  possible:
+    description: Distinct CVEs that possibly affect a package (the version could not be compared).
+  failing-cves:
+    description: Distinct CVEs at or above fail-on.
+  failed:
+    description: true when the step failed (a CVE at or above fail-on, or the check could not run).
+  sarif-file:
+    description: The SARIF file written, if any.
+
+runs:
+  using: node24
+  main: dist/index.mjs

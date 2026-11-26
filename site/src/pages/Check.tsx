@@ -8,7 +8,7 @@
  */
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { BRAND } from '../../../shared/brand';
+import { BRAND, REPO_URL } from '../../../shared/brand';
 import { PACKAGE_ECOSYSTEMS, type PackagesFile, type Tier } from '../../../shared/contract';
 import { advisoryUrl, ATTRIBUTION, rangesText } from '../../../shared/packages';
 import { copyTicket, watchVendorOf } from '../actions';
@@ -190,22 +190,26 @@ function More({ title, count, children }: { title: string; count: number; childr
   );
 }
 
-function summaryText(r: CheckResult, days: number | null): string {
+function summaryText(r: CheckResult, days: number | null, older = session.older()?.loaded ?? false): string {
   const read = `Read ${FORMAT_LABEL.get(r.format)}: ${plural(r.total, 'package')} (${fmtInt(r.distinct)} distinct).`;
   const affecting = r.cves.filter((c) => c.affected).length;
   const skipped = r.distinct - r.checked;
   if (r.checked === 0) return `${read} None of them could be checked (listed below).`;
   if (affecting === 0 && r.possiblePackages === 0) {
-    const older = days === null ? 'most older CVEs are not in the index' : `most CVEs older than ${days} days are not in the index`;
-    return `${read} None of the ${fmtInt(r.indexCves)} CVEs in the index affect the ${plural(r.checked, 'package')} we could check. That does not mean they have no vulnerabilities: ${older}${skipped ? `, and ${plural(skipped, 'package')} could not be checked (listed below)` : ''}.`;
+    const gap = older
+      ? 'advisories without a CVE ID, such as malware reports, are not in the index'
+      : days === null
+        ? 'most older CVEs are not in the index'
+        : `most CVEs older than ${days} days are not in the index`;
+    return `${read} None of the ${fmtInt(r.indexCves)} CVEs in the index affect the ${plural(r.checked, 'package')} we could check. That does not mean they have no vulnerabilities: ${gap}${skipped ? `, and ${plural(skipped, 'package')} could not be checked (listed below)` : ''}.`;
   }
   const parts = [read];
-  if (affecting > 0) parts.push(`${plural(affecting, 'tracked CVE')} ${affecting === 1 ? 'affects' : 'affect'} ${fmtInt(r.affectedPackages)} of them.`);
+  if (affecting > 0) parts.push(`${plural(affecting, older ? 'CVE' : 'tracked CVE')} ${affecting === 1 ? 'affects' : 'affect'} ${fmtInt(r.affectedPackages)} of them.`);
   if (r.possiblePackages > 0) parts.push(`${fmtInt(r.possiblePackages)} ${affecting > 0 ? 'more ' : ''}${r.possiblePackages === 1 ? 'is' : 'are'} possibly affected, not confirmed.`);
   return parts.join(' ');
 }
 
-function Coverage({ index, state, days }: { index: PackagesFile | undefined; state: IndexState; days: number | null }) {
+function Coverage({ index, state, days, older = session.older() }: { index: PackagesFile | undefined; state: IndexState; days: number | null; older?: ReturnType<typeof session.older> }) {
   const window = days === null ? 'in the window' : `in the last ${days} days`;
   return (
     <section class="panel check__coverage" aria-labelledby="check-cov">
@@ -214,9 +218,13 @@ function Coverage({ index, state, days }: { index: PackagesFile | undefined; sta
       </h2>
       {index ? (
         <p>
-          The index covers <strong>{fmtInt(index.cves.rows.length)}</strong> CVEs that name a package in {ECOSYSTEM_LIST}: CVEs published {window}, CVEs in CISA KEV, CVEs that EU KEV or CIRCL list as exploited, and older CVEs that woke up. It was built{' '}
+          The index covers <strong>{fmtInt(index.cves.rows.length)}</strong> CVEs that name a package in {ECOSYSTEM_LIST}:{' '}
+          {older?.loaded
+            ? `every CVE an OSV.dev advisory ties to a package version, ranked by the same evidence. ${fmtInt(index.cves.rows.length - older.ids.size)} are tracked (published ${window}, in CISA KEV, listed as exploited, or woken up) and have a full page here; the other ${fmtInt(older.ids.size)} are older, with a score but no page of their own (their record is on cve.org).`
+            : `CVEs published ${window}, CVEs in CISA KEV, CVEs that EU KEV or CIRCL list as exploited, and older CVEs that woke up.`}{' '}
+          It was built{' '}
           {fmtDateTime(index.generated_at)}
-          {index.distinct ? ` from ${fmtInt(index.distinct.advisories)} advisories that name a CVE, ${fmtInt(index.distinct.matched)} of which name a tracked CVE` : ''}.
+          {index.distinct ? ` from ${fmtInt(index.distinct.advisories)} advisories that name a CVE, ${fmtInt(index.distinct.matched)} of which name a CVE in the index` : ''}.
         </p>
       ) : (
         <p>
@@ -225,8 +233,12 @@ function Coverage({ index, state, days }: { index: PackagesFile | undefined; sta
         </p>
       )}
       <p>
-        Not checked: CVEs outside that set (most older CVEs), advisories without a CVE ID, and packages outside those eight ecosystems, such as deb, rpm or apk. For a full audit, also run a scanner such as
+        Not checked: {older?.loaded ? '' : 'CVEs outside that set (most older CVEs), '}advisories without a CVE ID, and packages outside those eight ecosystems, such as deb, rpm or apk. For a full audit, also run a scanner such as
         osv-scanner, npm audit or pip-audit.
+      </p>
+      <p>
+        The same check runs in CI: <code>npx -y {BRAND.slug}-check</code>, or the GitHub Action, with a job summary, SARIF for code scanning, and a failing step when a dependency is Exploited.{' '}
+        <ExtLink href={`${REPO_URL}/blob/main/cli/README.md`}>How to set it up</ExtLink>
       </p>
       {index?.sources.map((s) =>
         !s.ok ? (
@@ -674,7 +686,7 @@ export default function Check() {
                   </h3>
                   <span class="batchday__sum">{plural(list.length, 'CVE')}</span>
                 </header>
-                {g === 'possible' && <p class="check__groupnote">A tracked CVE may affect these packages, but we could not confirm it: the reason is under each package. Check them against the advisory.</p>}
+                {g === 'possible' && <p class="check__groupnote">A CVE in the index may affect these packages, but we could not confirm it: the reason is under each package. Check them against the advisory.</p>}
                 <div class="rows">{list.map(renderRow)}</div>
               </section>
             );
@@ -689,10 +701,10 @@ export default function Check() {
               ))
             }
           </More>
-          <More title="Not affected by a tracked CVE" count={result.clean.length}>
+          <More title="Not affected by a CVE in the index" count={result.clean.length}>
             {() => (
               <>
-                <p class="check__skipwhy">A tracked CVE may name some of these packages, but not the versions you use.</p>
+                <p class="check__skipwhy">A CVE in the index may name some of these packages, but not the versions you use.</p>
                 <NameList items={result.clean} />
               </>
             )}

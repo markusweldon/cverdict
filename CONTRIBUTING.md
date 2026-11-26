@@ -31,6 +31,8 @@ npm run dev                    # http://localhost:5173
 | `npm run typecheck` | `tsc --noEmit` over shared, pipeline, site, mcp, api and scripts |
 | `npm run -s mcp` | The MCP server over stdio, from source ([mcp/README.md](mcp/README.md)); `-s` keeps npm's banner off stdout |
 | `npm run build:mcp` | The MCP server as one file, `mcp/dist/cverdict-mcp.mjs` |
+| `npm run check -- [paths]` | The dependency check from source ([cli/README.md](cli/README.md)) |
+| `npm run build:cli` | The check as one file, `cli/dist/cverdict-check.mjs`, and the GitHub Action's `action/dist/index.mjs` (committed: rebuild and commit it after changing `cli/src`, `shared` or `site/src/check`) |
 
 Pipeline flags that make iteration fast:
 
@@ -50,6 +52,9 @@ api/        share.ts: the Vercel Function for link-preview bots (tests in api/_t
 pipeline/   src/ (sources → normalize → score → batches/stats/changes → emit → validate), test/
 site/       the Vite + Preact single-page app
 mcp/        the read-only MCP server for AI agents: src/, test/, the cverdict-mcp package files
+cli/        cverdict-check, the dependency check for terminals and CI (the Check Deps parser and matcher): src/, test/
+action/     the GitHub Action: action.yml and the committed bundle dist/index.mjs, built from cli/
+dispatcher/ the cverdict npm package: `cverdict check` and `cverdict mcp` run the two tools above (plain JS, no build)
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md
 .github/    ci.yml, refresh.yml (hourly data), release-mcp.yml (npm releases of mcp/), issue templates
 scripts/    publish-data-branch.sh, mock-data.ts, validate-data.ts, calibrate.ts, backtest.ts, mcp-measure.ts

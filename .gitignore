@@ -8,3 +8,4 @@ published/
 .DS_Store
 .vercel
 mcp/dist/
+cli/dist/

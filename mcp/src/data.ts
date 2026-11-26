@@ -15,8 +15,9 @@
  *   and the answer's data.warning says so.
  * - Nothing runs between calls: no polling, and every timer is cleared when its call ends.
  */
-import { ROW_COLS, SCHEMA_VERSION, TIERS, rowsFromTable, type CveShard, type EventsFile, type KevFile, type Meta, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
+import { ROW_COLS, SCHEMA_VERSION, TIERS, rowsFromTable, type CveShard, type EventsFile, type KevFile, type Meta, type PackagesFile, type ReceiptsFile, type Row, type WokeFile } from '../../shared/contract';
 import { MCP_DATA_BASES, MCP_MSG } from '../../shared/mcp';
+import { checkPackagesFile } from '../../cli/src/data';
 
 /** A failure the tools report to the agent as is (isError: true). */
 export class DataError extends Error {
@@ -141,6 +142,12 @@ export const parse = {
     need(j.items.every(isEvent), 'an item has a field of the wrong type');
     return j as unknown as EventsFile;
   },
+  /** packages.json and packages-older.json: the shape the matcher needs, with the exact row columns. */
+  packages: (j: Record<string, unknown>): PackagesFile => {
+    const checked = checkPackagesFile(j);
+    need(typeof checked !== 'string', typeof checked === 'string' ? checked : '');
+    return checked as PackagesFile;
+  },
   receipts: (j: Record<string, unknown>): ReceiptsFile => {
     need(isObject(j.forward) && Array.isArray((j.forward as Record<string, unknown>).items), 'forward log missing');
     return j as unknown as ReceiptsFile;
@@ -206,6 +213,11 @@ export class DataClient {
   /** Fetches in progress, shared by concurrent calls, with the signal of the call that started each. */
   private readonly inflight = new Map<string, { p: Promise<Entry<unknown>>; signal: AbortSignal }>();
   private readonly skipUntil = new Map<string, number>();
+  /** Each running call's deadline, for the messages that name it. */
+  private readonly deadlines = new WeakMap<AbortSignal, number>();
+  private deadlineOf(signal: AbortSignal): number {
+    return this.deadlines.get(signal) ?? this.o.callTimeoutMs;
+  }
   /** Requests sent, for tests and measurements. */
   requests = 0;
 
@@ -230,9 +242,11 @@ export class DataClient {
    * Runs one tool call under its deadline. When the call ends, anything it left in flight (a
    * shard fetch after another one failed) is aborted, so nothing keeps running between calls.
    */
-  async run<T>(fn: (call: DataCall) => Promise<T>): Promise<T> {
+  /** Run one tool call under a deadline: callTimeoutMs, or `timeoutMs` for a tool that reads larger files. */
+  async run<T>(fn: (call: DataCall) => Promise<T>, timeoutMs = this.o.callTimeoutMs): Promise<T> {
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(new Deadline()), this.o.callTimeoutMs);
+    this.deadlines.set(ac.signal, timeoutMs);
+    const timer = setTimeout(() => ac.abort(new Deadline()), timeoutMs);
     try {
       return await fn(new DataCall(this, ac.signal));
     } finally {
@@ -306,7 +320,7 @@ export class DataClient {
         return { value: parser(json), gen: json.generated_at as string, url, loadedAt: now, checkedAt: now, warning: null };
       } catch (e) {
         if (e instanceof DataError) throw e;
-        if (signal.aborted) throw new DataError(MCP_MSG.deadline([...reasons, `${host(url)}: no answer within ${this.o.callTimeoutMs / 1000} s for ${path}`]), reasons);
+        if (signal.aborted) throw new DataError(MCP_MSG.deadline([...reasons, `${host(url)}: no answer within ${this.deadlineOf(signal) / 1000} s for ${path}`]), reasons);
         // A base that does not answer costs 4 s per file; without this, a call over many shards ran
         // out of time on a base that accepts connections and never answers, every time.
         if (e instanceof AttemptTimeout) this.skipUntil.set(base, this.o.now() + this.o.skipMs);
@@ -350,7 +364,7 @@ export class DataClient {
       // That fetch ended with the call that started it (its deadline, or another of its files
       // failed) while this call still has time: fetch again under this call's own deadline.
       if (joined && f.signal.aborted && !signal.aborted && !(err instanceof DataUnavailable) && !(err instanceof SchemaMismatch)) return this.load(path, parser, gen, signal);
-      const e = joined && signal.aborted && !(err instanceof DataError) ? new DataError(MCP_MSG.deadline([`no answer within ${this.o.callTimeoutMs / 1000} s for ${path}`])) : err;
+      const e = joined && signal.aborted && !(err instanceof DataError) ? new DataError(MCP_MSG.deadline([`no answer within ${this.deadlineOf(signal) / 1000} s for ${path}`])) : err;
       if (!hit || e instanceof DataUnavailable || e instanceof SchemaMismatch || !(e instanceof DataError)) throw e;
       hit.checkedAt = this.o.now();
       hit.warning = MCP_MSG.refreshFailed(e.reasons.length ? e.reasons : ['no answer in time'], new Date(hit.loadedAt).toISOString());

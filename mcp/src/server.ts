@@ -9,9 +9,9 @@ import { z } from 'zod';
 import { EVENT_TYPES, KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, TIERS, WAKE_KINDS, type EventType, type Tier, type WakeKind } from '../../shared/contract';
 import { MCP_INSTRUCTIONS, MCP_SERVER, MCP_TOOLS, type McpToolName } from '../../shared/mcp';
 import { DataError, type DataCall, type DataClient } from './data';
-import { DATE_RE, InputError, LIMITS, changesSince, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from './tools';
+import { DATE_RE, DEPENDENCIES_TIMEOUT_MS, DEPENDENCY_LIMITS, InputError, LIMITS, changesSince, checkDependencies, checkInventory, getVerdict, kevDue, listSignal, parseUtc, receipts, searchCves, wokeUp } from './tools';
 
-/** Every tool reads one published dataset and changes nothing. */
+/** Every tool reads published data (check_dependencies also the project's lockfiles) and changes nothing. */
 export const ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 
 const tier = z.enum(TIERS as [Tier, ...Tier[]]);
@@ -89,6 +89,16 @@ const SCHEMAS = {
     knob: knob.describe(`The evidence bar, ${KNOB_MIN} to ${KNOB_MAX} (default ${KNOB_DEFAULT}), as in get_verdict.`),
     per_name: z.number().int().min(1).max(LIMITS.perName).optional().describe(`CVEs per name, 1 to ${LIMITS.perName} (default 10). If the answer would be too large, the least urgent across all names are left out, with a note.`),
   }),
+  check_dependencies: z.object({
+    paths: z
+      .array(z.string().min(1).max(DEPENDENCY_LIMITS.pathChars))
+      .min(1)
+      .max(DEPENDENCY_LIMITS.paths)
+      .optional()
+      .describe(`Files or folders inside the working directory, 1 to ${DEPENDENCY_LIMITS.paths}. Default ["."].`),
+    knob: knob.describe(`The evidence bar, ${KNOB_MIN} to ${KNOB_MAX} (default ${KNOB_DEFAULT}), as in get_verdict.`),
+    include_quiet: z.boolean().optional().describe('Also list Quiet findings (always counted). Default false.'),
+  }),
   changes_since: z.object({
     since: utc.describe('Events after this UTC date-time (next_since of an earlier answer), or from 00:00Z of this date, within the log\'s 7 days.'),
     until: date('Only events at or before this time. On later pages, pass next_since of the first page.'),
@@ -115,6 +125,7 @@ const HANDLERS: { [N in McpToolName]: Handler<N> } = {
   receipts,
   search_cves: searchCves,
   check_inventory: checkInventory,
+  check_dependencies: checkDependencies,
   changes_since: changesSince,
 };
 
@@ -139,7 +150,7 @@ export function createServer(dc: DataClient): McpServer {
     const handler = HANDLERS[name] as Handler<McpToolName>;
     server.registerTool(name, { title, description, inputSchema: SCHEMAS[name], annotations: ANNOTATIONS }, async (args: unknown) => {
       try {
-        return answer(await dc.run((call) => handler(call, args as Args<McpToolName>, dc.now())));
+        return answer(await dc.run((call) => handler(call, args as Args<McpToolName>, dc.now()), name === 'check_dependencies' ? DEPENDENCIES_TIMEOUT_MS : undefined));
       } catch (e) {
         if (e instanceof DataError || e instanceof InputError) return failure(e.message);
         return failure(`${MCP_SERVER.title} could not answer: ${e instanceof Error ? e.message : String(e)}`);

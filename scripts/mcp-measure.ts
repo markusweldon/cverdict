@@ -22,7 +22,7 @@ import { SHARD_COUNT } from '../shared/shard';
 import type { CveDetail, McpRow } from '../shared/contract';
 import { DataClient, parse } from '../mcp/src/data';
 import { createServer } from '../mcp/src/server';
-import { changesSince, checkInventory, getVerdict, kevDue, listSignal, mcpRow, receipts, searchCves, verdictOf, wokeUp } from '../mcp/src/tools';
+import { DEPENDENCIES_TIMEOUT_MS, changesSince, checkDependencies, checkInventory, getVerdict, kevDue, listSignal, mcpRow, receipts, searchCves, verdictOf, wokeUp } from '../mcp/src/tools';
 import { normalizeName } from '../shared/watch';
 
 const BUDGET_TOKENS = 20_000;
@@ -57,6 +57,8 @@ const events = await dc.run((c) => c.file('events.json', parse.events));
 const logStart = new Date(Date.parse(events.generated_at) - events.days * 86_400_000).toISOString();
 record('changes_since, the whole log', await dc.run((c) => changesSince(c, { since: logStart }, now)));
 record('check_inventory, 5 vendors', await dc.run((c) => checkInventory(c, { names: ['fortinet', 'vmware', 'apache software foundation', 'microsoft', 'notarealvendor'] }, now)));
+// check_dependencies: every Check Deps fixture with Quiet findings listed (about 200 packages); the budget cuts the least urgent.
+record('check_dependencies, the Check Deps fixtures with Quiet', await dc.run((c) => checkDependencies(c, { paths: ['site/src/check/fixtures'], include_quiet: true }, now), DEPENDENCIES_TIMEOUT_MS), true);
 
 // Every shard: the largest verdicts, and the score math of every CVE.
 const names = Array.from({ length: SHARD_COUNT }, (_, i) => i.toString(16).padStart(2, '0'));

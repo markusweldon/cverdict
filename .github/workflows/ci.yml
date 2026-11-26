@@ -68,6 +68,69 @@ jobs:
           npx tsx scripts/mock-data.ts "$RUNNER_TEMP/mcp-data"
           npx tsx mcp/test/smoke.ts mcp/dist/cverdict-mcp.mjs "$RUNNER_TEMP/mcp-data"
 
+      # action/dist/index.mjs is committed (a JavaScript action runs it as is): it must be the build
+      # of cli/src at this commit. After changing cli/src, shared or site/src/check, run
+      # npm run build:cli and commit action/dist.
+      - name: Check the Action bundle is built from the source
+        run: |
+          CHECK_ENTRY=action CHECK_OUT_DIR="$RUNNER_TEMP/action-dist" npx vite build --config cli/vite.config.ts
+          if ! cmp -s action/dist/index.mjs "$RUNNER_TEMP/action-dist/index.mjs"; then
+            echo "::error file=action/dist/index.mjs::action/dist/index.mjs is out of date. Run npm run build:cli and commit it."
+            exit 1
+          fi
+
+      # The CLI bundle against mock data: exit 1 with an Exploited CVE at the default fail-on, 0 with
+      # --fail-on never, 2 with nothing to check.
+      - name: CLI smoke test
+        run: |
+          npm run build:cli
+          set +e
+          node cli/dist/cverdict-check.mjs site/src/check/fixtures --data "$RUNNER_TEMP/mcp-data" >/dev/null; a=$?
+          node cli/dist/cverdict-check.mjs site/src/check/fixtures --data "$RUNNER_TEMP/mcp-data" --fail-on never --format sarif -o "$RUNNER_TEMP/cli.sarif"; b=$?
+          node cli/dist/cverdict-check.mjs docs --data "$RUNNER_TEMP/mcp-data" 2>/dev/null; c=$?
+          set -e
+          echo "exit codes: $a $b $c"
+          test "$a $b $c" = "1 0 2"
+          jq -e '.version == "2.1.0" and (.runs[0].results | length) > 0' "$RUNNER_TEMP/cli.sarif"
+
+      # The Action as a workflow uses it, from this checkout, against the same mock data.
+      - name: Action smoke test
+        id: check
+        uses: ./action
+        with:
+          path: site/src/check/fixtures
+          fail-on: never
+          annotations: false
+          data-url: ${{ runner.temp }}/mcp-data
+          sarif-file: ${{ runner.temp }}/action.sarif
+
+      - name: Check the Action's outputs
+        env:
+          FAILED: ${{ steps.check.outputs.failed }}
+          EXPLOITED: ${{ steps.check.outputs.exploited }}
+          SARIF: ${{ steps.check.outputs.sarif-file }}
+        run: |
+          test "$FAILED" = false
+          test "$EXPLOITED" -gt 0
+          jq -e '(.runs[0].results | length) > 0' "$SARIF"
+
+      # The cverdict package as npm lays it out (both tools in node_modules beside it): check's exit
+      # codes come through, and the MCP server answers every tool when started as `cverdict mcp`.
+      - name: Dispatcher smoke test
+        run: |
+          d="$RUNNER_TEMP/dispatch"
+          mkdir -p "$d/node_modules"
+          cp -R dispatcher "$d/cverdict"
+          ln -s "$PWD/cli" "$d/node_modules/cverdict-check"
+          ln -s "$PWD/mcp" "$d/node_modules/cverdict-mcp"
+          node "$d/cverdict/bin/cverdict.mjs" --version
+          set +e
+          node "$d/cverdict/bin/cverdict.mjs" check site/src/check/fixtures --data "$RUNNER_TEMP/mcp-data" >/dev/null; a=$?
+          node "$d/cverdict/bin/cverdict.mjs" nope 2>/dev/null; b=$?
+          set -e
+          test "$a $b" = "1 2"
+          npx tsx mcp/test/smoke.ts "$d/cverdict/bin/cverdict.mjs" "$RUNNER_TEMP/mcp-data" mcp
+
       # shellcheck ships with the ubuntu runner image.
       - name: Lint shell scripts
         run: shellcheck scripts/*.sh

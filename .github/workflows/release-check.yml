@@ -1,0 +1,105 @@
+# Publishes the dependency check (cli/) to npm as cverdict-check when a tag check-v<version> is
+# pushed. The same tag is what GitHub Action users pin: uses: markusweldon/cverdict/action@check-v0.1.0
+# (the Action runs the committed action/dist/index.mjs, which CI keeps in step with cli/src).
+#
+# npm trusted publishing, as release-mcp.yml: set it up once on npmjs.com, package cverdict-check →
+# Settings → Trusted publishing → GitHub Actions, with this repository and the workflow file name
+# release-check.yml (cli/README.md, "Releasing"). The build job runs npm ci, the tests and the
+# bundler with a read-only token and no id-token; the publish job only publishes the packed tarball.
+name: release-check
+
+on:
+  push:
+    tags: ['check-v*']
+
+concurrency:
+  group: release-check
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  build:
+    name: Check and pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The tag names the version: check-v0.1.0 publishes 0.1.0, and only if package.json says so.
+      - name: Check the tag against the package version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(jq -r .version cli/package.json)
+          if [ "$TAG" != "check-v$version" ]; then
+            echo "::error::tag $TAG does not match cli/package.json version $version (expected check-v$version)"
+            exit 1
+          fi
+
+      - run: npm run typecheck
+
+      - name: CLI tests
+        run: npx vitest run cli/test
+
+      - name: Build the CLI and the Action
+        run: npm run build:cli
+
+      # A tag must not ship an Action bundle that differs from its source.
+      - name: Check the committed Action bundle
+        run: git diff --exit-code -- action/dist
+
+      - name: Pack
+        id: pack
+        working-directory: cli
+        run: |
+          mkdir -p "$RUNNER_TEMP/pkg"
+          tarball=$(npm pack --silent --pack-destination "$RUNNER_TEMP/pkg")
+          tar -tzf "$RUNNER_TEMP/pkg/$tarball"
+          echo "tarball=$tarball" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: check-package
+          path: ${{ runner.temp }}/pkg/${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: check-package
+          path: pkg
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@11.21.1
+
+      - name: Publish
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: npm publish "./pkg/$TARBALL" --access public

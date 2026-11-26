@@ -210,6 +210,19 @@ describe('ingestWith (end to end on tiny repositories)', () => {
     expect(PACKAGE_ECOSYSTEMS.map((e) => result.osv.statuses[e].advisories)).toEqual([1, 0, 0, 0, 0, 0, 0, 0]);
   });
 
+  it('also keeps the records of older CVEs an OSV.dev advisory names (for packages-older.json)', async () => {
+    const routes = upstream();
+    const zip = buildZip([
+      { name: 'GHSA-bbbb-cccc-dddd.json', data: JSON.stringify({ id: 'GHSA-bbbb-cccc-dddd', modified: '2026-10-20T00:00:00Z', aliases: ['CVE-2026-100174'], affected: [{ package: { ecosystem: 'npm', name: 'old-lib' }, ranges: [{ type: 'SEMVER', events: [{ introduced: '0' }, { fixed: '1.0.1' }] }] }] }) },
+    ]);
+    for (const eco of PACKAGE_ECOSYSTEMS) routes[`${OSV.base}/${encodeURIComponent(eco)}/all.zip`] = () => new Response(new Uint8Array(zip), { status: 200 });
+    const { ctx, http } = setup({ routes });
+    const result = await ingestWith(ctx, { cvelistDir: cvelistRepo().clone, pocDir: pocRepo().clone, nucleiDir: nucleiRepo().clone }, { http, limits: LIMITS });
+    const old = result.cves.find((c) => c.id === 'CVE-2026-100174');
+    expect(old).toMatchObject({ inWindow: false });
+    expect(result.osv.mirror.ecosystems.npm?.records.map((r) => r[2])).toEqual([['CVE-2026-100174']]);
+  });
+
   it('finds catalog-only KEV records even when the catalog arrives after the pass', async () => {
     const cvelist = cvelistRepo();
     const fast = setup();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ATTRIBUTION, advisoryDatabase, advisoryUrl, ecosystemOfPurlType, packageKey, rangeText, rangesText } from './packages';
+import { ATTRIBUTION, advisoryDatabase, advisoryUrl, ecosystemOfPurlType, mergePackageFiles, packageKey, rangeText, rangesText } from './packages';
+import { PACKAGE_ECOSYSTEMS, ROW_COLS, SCHEMA_VERSION, rowsFromTable, type PackagesFile } from './contract';
 
 describe('packageKey', () => {
   it('normalises names per ecosystem', () => {
@@ -57,5 +58,41 @@ describe('rangeText', () => {
     expect(rangeText(['?git=unknown'])).toBe('only a git commit range is given');
     expect(rangeText(['?constructor=1'])).toBe('a "constructor" bound that cannot be compared');
     expect(rangesText([['>=0', '<1.0'], ['>=2.0', '<2.1']])).toBe('before 1.0; from 2.0, before 2.1');
+  });
+});
+
+describe('mergePackageFiles', () => {
+  const row = (id: string, s: number) => ROW_COLS.map((c) => (c === 'id' ? id : c === 's' ? s : c === 'c' || c === 'r' ? [] : c === 'tier' ? 'quiet' : c === 'pub' ? '2024-01-01T00:00:00Z' : c === 'x' || c === 'w' || c === 'k' || c === 'ai' ? 0 : c === 'cv' || c === 'e' || c === 'kd' || c === 'b' ? null : ''));
+  const file = (rows: unknown[][], packages: PackagesFile['packages'], matched: number): PackagesFile => ({
+    schema_version: SCHEMA_VERSION,
+    generated_at: '2026-11-26T00:00:00Z',
+    scope: '',
+    attribution: [],
+    sources: PACKAGE_ECOSYSTEMS.map((ecosystem) => ({ ecosystem, ok: ecosystem !== 'NuGet', stale: false, fetched_at: null, modified: null, advisories: 10, matched: ecosystem === 'npm' ? matched : 0, error: null })),
+    distinct: { advisories: 40, matched },
+    cves: { cols: ROW_COLS, rows },
+    packages,
+  });
+  const tracked = file([row('CVE-2026-1', 90)], { npm: { lodash: [['CVE-2026-1', 'GHSA-a', [['>=0', '<1']]]] }, PyPI: {} }, 1);
+  const older = file(
+    [row('CVE-2020-1', 10), row('CVE-2026-1', 5)],
+    { npm: { lodash: [['CVE-2020-1', 'GHSA-b', [['>=0', '<2']]]], ['__proto__']: [['CVE-2020-1', 'GHSA-c', [['>=0']]]], dup: [['CVE-2026-1', 'GHSA-d', [['>=0']]]] } },
+    2,
+  );
+
+  it('joins rows and entries, keeping the tracked row of a CVE in both', () => {
+    const m = mergePackageFiles(tracked, older);
+    expect(rowsFromTable(m.cves).map((r) => [r.id, r.s])).toEqual([['CVE-2026-1', 90], ['CVE-2020-1', 10]]);
+    expect(m.packages.npm!.lodash.map((e) => e[1])).toEqual(['GHSA-a', 'GHSA-b']);
+    expect(Object.prototype.hasOwnProperty.call(m.packages.npm, '__proto__')).toBe(true);
+    expect(Object.getPrototypeOf(m.packages.npm)).toBe(Object.prototype);
+    expect(m.packages.npm!.dup).toBeUndefined();
+    expect(m.packages.PyPI).toEqual({});
+    expect(m.sources.find((s) => s.ecosystem === 'npm')?.matched).toBe(3);
+    expect(m.distinct).toEqual({ advisories: 40, matched: 3 });
+  });
+
+  it('is the tracked file itself without an older one', () => {
+    expect(mergePackageFiles(tracked, null)).toBe(tracked);
   });
 });
