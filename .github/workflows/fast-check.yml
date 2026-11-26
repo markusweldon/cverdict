@@ -31,7 +31,7 @@ jobs:
       actions: write # list refresh-data runs and dispatch one (no contents: write: it cannot touch data)
       contents: read # check out the one script
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           sparse-checkout: scripts/fast-check.sh
