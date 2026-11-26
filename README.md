@@ -55,6 +55,7 @@ gives you your own copy.
 |---|---|
 | **In the browser** | Open [cverdict.dev](https://cverdict.dev). No account, no cookies. |
 | **From an AI agent** | `claude mcp add cverdict -- npx -y cverdict-mcp` ([other clients](mcp/README.md)) |
+| **From any AI agent, without MCP** | [`/llms.txt`](https://cverdict.dev/llms.txt) lists every file, feed and tool |
 | **As JSON** | `curl -s https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/meta.json` ([every file](#open-data-api)) |
 | **Your own copy** | Fork it and deploy to Vercel or GitHub Pages ([how](#deploy-your-own)) |
 
