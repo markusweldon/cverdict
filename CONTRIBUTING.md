@@ -54,6 +54,7 @@ site/       the Vite + Preact single-page app
 mcp/        the read-only MCP server for AI agents: src/, test/, the cverdict-mcp package files
 cli/        cverdict-check, the dependency check for terminals and CI (the Check Deps parser and matcher): src/, test/
 action/     the GitHub Action: action.yml and the committed bundle dist/index.mjs, built from cli/
+dispatcher/ the cverdict npm package: `cverdict check` and `cverdict mcp` run the two tools above (plain JS, no build)
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md
 .github/    ci.yml, refresh.yml (hourly data), release-mcp.yml (npm releases of mcp/), issue templates
 scripts/    publish-data-branch.sh, mock-data.ts, validate-data.ts, calibrate.ts, backtest.ts, mcp-measure.ts

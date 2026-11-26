@@ -2,19 +2,22 @@
  * CI smoke test of the built server: starts the bundle over stdio the way an MCP client does,
  * against a data tree on disk served from localhost, and calls every tool.
  *
- *   npx tsx mcp/test/smoke.ts mcp/dist/cverdict-mcp.mjs <data dir with v1/>
+ *   npx tsx mcp/test/smoke.ts mcp/dist/cverdict-mcp.mjs <data dir with v1/> [args...]
+ *
+ * Extra args go to the bundle: `smoke.ts <cverdict bin> <dir> mcp` starts the server through the
+ * cverdict dispatcher.
  */
 import { MCP_TOOLS } from '../../shared/mcp';
 import { call, connectStdio, fromDir, serveData } from './harness';
 
-const [bundle, dir] = process.argv.slice(2);
+const [bundle, dir, ...extra] = process.argv.slice(2);
 if (!bundle || !dir) {
   console.error('usage: smoke.ts <bundle> <data dir>');
   process.exit(2);
 }
 
 const data = await serveData(fromDir(dir));
-const s = await connectStdio(process.execPath, [bundle], { CVERDICT_DATA_BASE: data.base });
+const s = await connectStdio(process.execPath, [bundle, ...extra], { CVERDICT_DATA_BASE: data.base });
 let failed = false;
 try {
   const tools = (await s.client.listTools()).tools.map((t) => t.name);

@@ -114,6 +114,23 @@ jobs:
           test "$EXPLOITED" -gt 0
           jq -e '(.runs[0].results | length) > 0' "$SARIF"
 
+      # The cverdict package as npm lays it out (both tools in node_modules beside it): check's exit
+      # codes come through, and the MCP server answers every tool when started as `cverdict mcp`.
+      - name: Dispatcher smoke test
+        run: |
+          d="$RUNNER_TEMP/dispatch"
+          mkdir -p "$d/node_modules"
+          cp -R dispatcher "$d/cverdict"
+          ln -s "$PWD/cli" "$d/node_modules/cverdict-check"
+          ln -s "$PWD/mcp" "$d/node_modules/cverdict-mcp"
+          node "$d/cverdict/bin/cverdict.mjs" --version
+          set +e
+          node "$d/cverdict/bin/cverdict.mjs" check site/src/check/fixtures --data "$RUNNER_TEMP/mcp-data" >/dev/null; a=$?
+          node "$d/cverdict/bin/cverdict.mjs" nope 2>/dev/null; b=$?
+          set -e
+          test "$a $b" = "1 2"
+          npx tsx mcp/test/smoke.ts "$d/cverdict/bin/cverdict.mjs" "$RUNNER_TEMP/mcp-data" mcp
+
       # shellcheck ships with the ubuntu runner image.
       - name: Lint shell scripts
         run: shellcheck scripts/*.sh

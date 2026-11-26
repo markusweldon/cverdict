@@ -57,6 +57,7 @@ gives you your own copy.
 | **From an AI agent** | `claude mcp add cverdict -- npx -y cverdict-mcp` ([other clients](mcp/README.md)) |
 | **From any AI agent, without MCP** | [`/llms.txt`](https://cverdict.dev/llms.txt) lists every file, feed and tool |
 | **As JSON** | `curl -s https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/meta.json` ([every file](#open-data-api)) |
+| **One command for both tools** | `npx -y cverdict check` and `npx -y cverdict mcp` ([dispatcher/README.md](dispatcher/README.md)) |
 | **In CI, on your repos** | `npx -y cverdict-check`, or the GitHub Action `markusweldon/cverdict/action` ([how](cli/README.md)) |
 | **Your own copy** | Fork it and deploy to Vercel or GitHub Pages ([how](#deploy-your-own)) |
 
