@@ -237,6 +237,13 @@ What the card leaves out:
 - **Today**: CVEs newly exploited in the last 72 hours pulse on the waterfall, and the legend
   opens a list of them. Click a waterfall column to see that day's CVEs in Explore, or a spike
   label to open its patch-day batch. The feed has filters and a vendor watchlist.
+- **Today** also has **Heating up**: the four vendors with the most new exploitation evidence in the last
+  7 days (KEV and catalog listings and vendor reports first, then Metasploit, Exploit-DB and Nuclei), from
+  `events.json`. Newer evidence counts more; the fast lane counts for nothing, as it is not evidence of attacks.
+- **The Surge** has **Time to KEV**: for each year since 2023, how many days CISA took to list a CVE after
+  it was published (median and share within a week). It groups by the year CISA *listed* a CVE, never by
+  the year it was published: that grouping would make recent years look faster only because their late
+  listings have not happened yet.
 - **CVE pages**: a link shared in Slack, X, LinkedIn, Mastodon, Discord or a messenger shows the
   verdict and score in its preview.
 - **Woke Up** watches CVEs that left the window. It counts a CISA KEV, EU KEV or CIRCL listing,

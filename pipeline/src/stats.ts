@@ -3,7 +3,9 @@
  */
 import { cnaName, vendorProduct } from '../../shared/cna';
 import {
+  KEV_LAG_BUCKETS,
   NEW_EXPLOITED_HOURS,
+  kevLagBucket,
   NEW_EXPLOITED_LIST_MAX,
   NEW_EXPLOITED_VIA,
   SCHEMA_VERSION,
@@ -11,6 +13,7 @@ import {
   SURGE_TOP_CNAS,
   TIERS,
   severityBand,
+  type KevLagYear,
   type NewExploitedCve,
   type NewExploitedVia,
   type StatsFile,
@@ -326,6 +329,48 @@ function aiCredits(window: ScoredCve[]): StatsFile['ai_credits'] {
     .slice(0, TOP_AI_CREDITS);
 }
 
+/** The middle value of a list of numbers (the mean of the two middle ones for an even count); null when empty. */
+export function median(values: readonly number[]): number | null {
+  if (!values.length) return null;
+  const v = [...values].sort((a, b) => a - b);
+  const mid = v.length >> 1;
+  return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+}
+
+/**
+ * stats.json kev_lag: per year CISA added CVEs to KEV, days from each CVE's UTC publication day to its dateAdded.
+ * Grouped by the year added, so every year is complete; grouping by publication year would cut recent years' long
+ * lags off and make them look faster. KEV entries without a published record among `records` are left out, and
+ * listings dated after `now` do not exist yet. Years run from the first KEV year to now's, empty ones included.
+ */
+export function kevLag(kev: KevCatalog, records: Iterable<ScoredCve>, now: Date): KevLagYear[] {
+  const published = new Map<string, string>();
+  for (const s of records) published.set(s.cve.id, utcDay(s.cve.published));
+  const today = ymd(now);
+  const lags = new Map<number, number[]>();
+  for (const e of kev.entries.values()) {
+    const added = normalizeYmd(e.dateAdded);
+    const pub = published.get(e.cveID);
+    if (!added || !pub || added > today) continue;
+    const days = Math.round((Date.parse(added) - Date.parse(pub)) / DAY_MS);
+    if (!Number.isFinite(days)) continue;
+    const year = Number(added.slice(0, 4));
+    let list = lags.get(year);
+    if (!list) lags.set(year, (list = []));
+    list.push(days);
+  }
+  if (!lags.size) return [];
+  const thisYear = now.getUTCFullYear();
+  const out: KevLagYear[] = [];
+  for (let year = Math.min(...lags.keys()); year <= thisYear; year++) {
+    const list = lags.get(year) ?? [];
+    const buckets = KEV_LAG_BUCKETS.map(() => 0);
+    for (const d of list) buckets[kevLagBucket(d)]++;
+    out.push({ year, count: list.length, buckets, median_days: median(list), partial: year === thisYear });
+  }
+  return out;
+}
+
 export function buildStats({ history, kev, window, windowStart, now, catalogs, outside }: StatsInput): StatsFile {
   return {
     schema_version: SCHEMA_VERSION,
@@ -335,5 +380,6 @@ export function buildStats({ history, kev, window, windowStart, now, catalogs, o
     hourly: hourly(window, windowStart, now, catalogs, outside),
     cnas: cnas(window),
     ai_credits: aiCredits(window),
+    kev_lag: kevLag(kev, [...window, ...(outside ?? [])], now),
   };
 }

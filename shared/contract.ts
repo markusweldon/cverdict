@@ -352,6 +352,43 @@ export interface StatsFile {
   cnas: { cna: string; count: number; passed: number; no_cvss: number; ssvc_missing: number }[];
   /** Most common AI credit strings in the window. */
   ai_credits: { text: string; count: number }[];
+  /** Time to CISA KEV, one row per year CISA added CVEs, oldest first (see KevLagYear). Older files leave it out. */
+  kev_lag?: KevLagYear[];
+}
+
+/**
+ * How long after publication CISA lists a CVE in KEV, as stats.json kev_lag buckets: listed before the CVE record
+ * was published, the same UTC day, 1 to 7 days later, 8 to 30, 31 to 365, and more than a year later.
+ */
+export const KEV_LAG_BUCKETS = ['before', 'day', 'week', 'month', 'year', 'later'] as const;
+export type KevLagBucket = (typeof KEV_LAG_BUCKETS)[number];
+
+/** Index in KEV_LAG_BUCKETS of a lag in whole days (KEV dateAdded minus the CVE's UTC publication day). */
+export function kevLagBucket(days: number): number {
+  return days < 0 ? 0 : days === 0 ? 1 : days <= 7 ? 2 : days <= 30 ? 3 : days <= 365 ? 4 : 5;
+}
+
+/**
+ * The first year the site charts. KEV opened in November 2021 with hundreds of CVEs exploited years earlier, and kept
+ * adding that backlog through 2022, so those two years measure the catch-up, not the pace. They stay in the data.
+ */
+export const KEV_LAG_FIRST_YEAR = 2023;
+
+/**
+ * One stats.json kev_lag row: the CVEs CISA added to KEV in `year` whose CVE record is published, by days from
+ * publication to the KEV dateAdded. Grouped by the year CISA added them, never by the year the CVE was published:
+ * by publication year, recent years cannot have long lags yet, so they would read as faster than they are.
+ */
+export interface KevLagYear {
+  year: number;
+  /** KEV additions that year with a published CVE record; `buckets` sums to it. */
+  count: number;
+  /** Counts in KEV_LAG_BUCKETS order. */
+  buckets: number[];
+  /** Median lag in days over all `count` (negative for one listed before publication); null when count is 0. */
+  median_days: number | null;
+  /** True for the year of generated_at: added so far. */
+  partial: boolean;
 }
 
 /** CVSS severity bands, by base score: Critical 9.0+, High 7.0+, Medium 4.0+, Low 0.1+, None (0.0 or no score). */

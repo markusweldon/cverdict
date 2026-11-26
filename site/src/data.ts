@@ -11,6 +11,7 @@ import {
   rowsFromTable,
   type BatchesFile,
   type ChangesFile,
+  type EventsFile,
   type CveDetail,
   type CveShard,
   type KevFile,
@@ -61,6 +62,8 @@ export interface DataClient {
   readonly batches: Loader<BatchesFile>;
   readonly kev: Loader<KevFile>;
   readonly changes: Loader<ChangesFile>;
+  /** Verdict events of the last 7 days (about 9 KB gzip), for Today's Heating up strip. */
+  readonly events: Loader<EventsFile>;
   /** Old CVEs that woke up (404 on data published before woke.json existed). */
   readonly woke: Loader<WokeFile>;
   /** Receipts: the forward log and the hindsight backtest (404 before receipts.json existed). */
@@ -178,6 +181,7 @@ export function createDataClient(
     batches: resource<BatchesFile>('batches.json', json),
     kev: resource<KevFile>('kev.json', json),
     changes: resource<ChangesFile>('changes.json', json),
+    events: resource<EventsFile>('events.json', json),
     woke: resource<WokeFile>('woke.json', json),
     receipts: resource<ReceiptsFile>('receipts.json', json),
     packages: resource<PackagesFile>('packages.json', json),

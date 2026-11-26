@@ -12,6 +12,7 @@ import {
   PACKAGE_ECOSYSTEMS,
   ROW_COLS,
   SCHEMA_VERSION,
+  KEV_LAG_BUCKETS,
   SEVERITY_BANDS,
   SURGE_TOP_CNAS,
   SIGNAL_MIN_SCORE,
@@ -281,6 +282,49 @@ function checkNewExploited(json: Map<string, JsonObject>, index: readonly Row[] 
   }
 }
 
+/**
+ * stats.json kev_lag (optional): consecutive years, oldest first, ending at generated_at's year (the only partial
+ * one); each row's buckets are KEV_LAG_BUCKETS.length whole counts summing to `count`; the median is null exactly
+ * when the count is 0, else a whole or half day. Monthly KEV additions bound each year's count from above.
+ */
+export function checkKevLag(stats: JsonObject | undefined, errors: string[]): void {
+  const rows = stats?.kev_lag;
+  if (rows === undefined) return;
+  const bad = (why: string) => errors.push(`${PATHS.stats}: kev_lag ${why}`);
+  if (!Array.isArray(rows)) return void bad('is not an array');
+  if (!rows.length) return;
+  const generated = typeof stats?.generated_at === 'string' ? Number(stats.generated_at.slice(0, 4)) : NaN;
+  const added = new Map<number, number>();
+  for (const m of Array.isArray(stats?.monthly) ? stats.monthly : []) {
+    const o = asObject(m);
+    if (typeof o?.month === 'string' && typeof o.kev_added === 'number') added.set(Number(o.month.slice(0, 4)), (added.get(Number(o.month.slice(0, 4))) ?? 0) + o.kev_added);
+  }
+  let prev: number | null = null;
+  for (const item of rows) {
+    const r = asObject(item);
+    const year = r?.year as number;
+    const count = r?.count as number;
+    const buckets = r?.buckets;
+    const med = r?.median_days;
+    const shape =
+      Number.isInteger(year) &&
+      Number.isInteger(count) &&
+      count >= 0 &&
+      Array.isArray(buckets) &&
+      buckets.length === KEV_LAG_BUCKETS.length &&
+      buckets.every((v) => Number.isInteger(v) && v >= 0) &&
+      (count === 0 ? med === null : typeof med === 'number' && Number.isInteger(med * 2)) &&
+      r?.partial === (year === generated);
+    if (!shape) return void bad(`has a bad row ${JSON.stringify(item)}`);
+    if (prev !== null && year !== prev + 1) return void bad(`skips or repeats a year at ${year}`);
+    prev = year;
+    const sum = (buckets as number[]).reduce((a, v) => a + v, 0);
+    if (sum !== count) return void bad(`${year}: buckets sum to ${sum}, count is ${count}`);
+    if (added.size && count > (added.get(year) ?? 0)) return void bad(`${year}: count ${count} is more than the ${added.get(year) ?? 0} KEV additions in monthly`);
+  }
+  if (prev !== generated) bad(`ends at ${prev}, not at generated_at's year ${generated}`);
+}
+
 /** A listed CNA's count in month index `m` and band `k`, 0 outside its rows. */
 function cnaBand(c: JsonObject | null, m: number, k: number): number {
   const rows = c?.severity as number[][];
@@ -427,6 +471,7 @@ function checkConsistency(json: Map<string, JsonObject>, errors: string[], warni
   checkWoke(json, details, index ? new Set(index.map((r) => r.id)) : null, errors);
   checkNewExploited(json, index, errors);
   checkSurge(json.get(PATHS.surge), json.get(PATHS.stats), errors);
+  checkKevLag(json.get(PATHS.stats), errors);
   checkReceipts(json, errors);
   checkEvents(json, errors);
   checkPackages(json, details, index, errors, warnings);

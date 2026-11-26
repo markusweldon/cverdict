@@ -1792,15 +1792,42 @@ function buildStats(window: readonly Scored[], octAi: number, octKev: number): S
   }
   const ai = new Map<string, number>();
   for (const s of window) if (s.d.aiCredit) ai.set(s.d.aiCredit, (ai.get(s.d.aiCredit) ?? 0) + 1);
+  const monthly = monthlyStats(octAi, octKev);
   return {
     schema_version: SCHEMA_VERSION,
     generated_at: GENERATED_AT,
-    monthly: monthlyStats(octAi, octKev),
+    monthly,
     daily,
     hourly: { start: new Date(start).toISOString(), hours, counts },
     cnas: [...cnaMap.values()].sort((a, b) => b.count - a.count).slice(0, 25),
     ai_credits: [...ai.entries()].map(([text, count]) => ({ text, count })).sort((a, b) => b.count - a.count).slice(0, 20),
+    kev_lag: mockKevLag(monthly),
   };
+}
+
+/**
+ * Mock stats.json kev_lag: each KEV year's additions (from the mock monthly counts, a few without a record) split
+ * by fixed shares shaped like the live data, so the mock never draws from rand() and the other files stay as they
+ * were. The 2021 and 2022 backfill years lean on "later".
+ */
+const MOCK_LAG_SHARES: Record<string, { shares: number[]; median: number }> = {
+  backfill: { shares: [0.04, 0.01, 0.02, 0.04, 0.24, 0.65], median: 900 },
+  recent: { shares: [0.02, 0.17, 0.26, 0.13, 0.22, 0.2], median: 14 },
+};
+function mockKevLag(monthly: StatsFile['monthly']): NonNullable<StatsFile['kev_lag']> {
+  const added = new Map<number, number>();
+  for (const m of monthly) if (m.kev_added) added.set(Number(m.month.slice(0, 4)), (added.get(Number(m.month.slice(0, 4))) ?? 0) + m.kev_added);
+  const thisYear = Number(GENERATED_AT.slice(0, 4));
+  const first = Math.min(...added.keys());
+  const out: NonNullable<StatsFile['kev_lag']> = [];
+  for (let year = first; year <= thisYear; year++) {
+    const count = Math.floor((added.get(year) ?? 0) * 0.98);
+    const { shares, median } = MOCK_LAG_SHARES[year < 2023 ? 'backfill' : 'recent'];
+    const buckets = shares.map((f) => Math.floor(count * f));
+    buckets[5] += count - buckets.reduce((a, v) => a + v, 0);
+    out.push({ year, count, buckets, median_days: count ? median + (year % 3) * 4 : null, partial: year === thisYear });
+  }
+  return out;
 }
 
 const TIER_RANK: Record<Tier, number> = { quiet: 0, watch: 1, likely: 2, exploited: 3 };
