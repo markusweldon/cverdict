@@ -37,6 +37,7 @@ import { compareEvents } from '../../shared/atom';
 import { backtestProblems } from './backtest';
 import { parseItem } from './events';
 import { PATHS, SHARD_NAMES } from './emit/json';
+import { OLDER_TITLE_MAX } from './packages';
 import { BUDGETS } from './config';
 import type { Logger } from './types';
 import { asObject, type JsonObject } from './util/json';
@@ -597,10 +598,40 @@ const VERSION_RE = /^[^\s\u0000-\u001f\u007f-\u009f]{1,128}$/;
  * one in shared/packages.ts, notices included), package keys in packageKey() form, and exactly one
  * row per CVE named, equal to its index.json row and backed by a detail shard.
  */
+/**
+ * packages.json, then packages-older.json (both optional). The first holds tracked CVEs, each with a
+ * detail shard; the second every other CVE an advisory names, none with a detail shard, none in the
+ * first file, every one published before the window. Both share the same shape and entry rules.
+ */
 function checkPackages(json: Map<string, JsonObject>, details: Set<string>, index: Row[] | null, errors: string[], warnings: string[]): void {
-  const doc = json.get(PATHS.packages) as PackagesFile | undefined;
-  if (!doc) return;
-  const err = (msg: string): void => void errors.push(`${PATHS.packages}: ${msg}`);
+  const tracked = checkPackagesDoc(PATHS.packages, json.get(PATHS.packages) as PackagesFile | undefined, details, true, index, errors, warnings);
+  const older = checkPackagesDoc(PATHS.packagesOlder, json.get(PATHS.packagesOlder) as PackagesFile | undefined, details, false, null, errors, warnings);
+  if (!older) return;
+  const both = tracked ? older.filter((r) => tracked.has(r.id)) : [];
+  if (both.length > 0) errors.push(`${PATHS.packagesOlder}: ${both.length} rows are also in ${PATHS.packages} (first: ${both[0].id})`);
+  const start = (json.get(PATHS.meta) as Meta | undefined)?.window?.from;
+  const recent = start ? older.filter((r) => Date.parse(r.pub) >= Date.parse(start)) : [];
+  if (recent.length > 0) errors.push(`${PATHS.packagesOlder}: ${recent.length} rows are published in the window (first: ${recent[0].id})`);
+  const chips = older.filter((r) => r.c.length > 0 || r.r.length > 0 || r.t.length > OLDER_TITLE_MAX);
+  if (chips.length > 0) errors.push(`${PATHS.packagesOlder}: ${chips.length} rows are not slim (first: ${chips[0].id})`);
+}
+
+/** One package file; returns its row IDs (tracked) or rows (older), or null when it is absent or unreadable. */
+function checkPackagesDoc<T extends boolean>(
+  path: string,
+  doc: PackagesFile | undefined,
+  details: Set<string>,
+  withDetail: T,
+  index: Row[] | null,
+  errors: string[],
+  warnings: string[],
+): (T extends true ? Set<string> : Row[]) | null {
+  type Out = T extends true ? Set<string> : Row[];
+  if (!doc) return null;
+  const err = (msg: string): null => {
+    errors.push(`${path}: ${msg}`);
+    return null;
+  };
   if (JSON.stringify(doc.attribution) !== JSON.stringify(ATTRIBUTION)) err('attribution does not match shared/packages.ts ATTRIBUTION');
   const attribution = Array.isArray(doc.attribution) ? doc.attribution : [];
   if (!Array.isArray(doc.sources) || doc.sources.map((s) => s?.ecosystem).join() !== PACKAGE_ECOSYSTEMS.join()) return err('sources must list every ecosystem once, in PACKAGE_ECOSYSTEMS order');
@@ -662,10 +693,10 @@ function checkPackages(json: Map<string, JsonObject>, details: Set<string>, inde
   }
   if (bad.length > 0) err(`${bad.length} bad entries (first: ${bad[0]})`);
   else if (distinct && distinct.matched !== advisoryIds.size) err(`distinct.matched is ${distinct.matched}, but packages holds ${advisoryIds.size} advisories`);
-  for (const [eco, n] of unparsed) warnings.push(`${PATHS.packages}: ${n} ${eco} ranges have a bound shared/versions.ts cannot compare (shown as "possibly affected")`);
+  for (const [eco, n] of unparsed) warnings.push(`${path}: ${n} ${eco} ranges have a bound shared/versions.ts cannot compare (shown as "possibly affected")`);
 
-  const rows = readRows(`${PATHS.packages} cves`, asObject(doc.cves) ?? undefined, errors);
-  if (!rows) return;
+  const rows = readRows(`${path} cves`, asObject(doc.cves) ?? undefined, errors);
+  if (!rows) return null;
   const rowIds = rows.map((r) => r.id);
   if (new Set(rowIds).size !== rowIds.length) err('cves has duplicate rows');
   const unnamed = rowIds.filter((id) => !named.has(id));
@@ -673,13 +704,19 @@ function checkPackages(json: Map<string, JsonObject>, details: Set<string>, inde
   const rowSet = new Set(rowIds);
   const missing = [...named].filter((id) => !rowSet.has(id));
   if (missing.length > 0) err(`${missing.length} CVEs named in packages have no row in cves (first: ${missing[0]})`);
-  const noDetail = rowIds.filter((id) => !details.has(id));
-  if (noDetail.length > 0) err(`${noDetail.length} cves rows have no detail shard entry (first: ${noDetail[0]})`);
+  if (withDetail) {
+    const noDetail = rowIds.filter((id) => !details.has(id));
+    if (noDetail.length > 0) err(`${noDetail.length} cves rows have no detail shard entry (first: ${noDetail[0]})`);
+  } else {
+    const detailed = rowIds.filter((id) => details.has(id));
+    if (detailed.length > 0) err(`${detailed.length} cves rows have a detail shard entry, so belong in ${PATHS.packages} (first: ${detailed[0]})`);
+  }
   if (index) {
     const indexRows = new Map(index.map((r) => [r.id, JSON.stringify(ROW_COLS.map((c) => r[c]))]));
     const differ = rows.filter((r) => indexRows.has(r.id) && indexRows.get(r.id) !== JSON.stringify(ROW_COLS.map((c) => r[c])));
     if (differ.length > 0) err(`${differ.length} cves rows differ from their index.json row (first: ${differ[0].id})`);
   }
+  return (withDetail ? rowSet : rows) as Out;
 }
 
 function checkMeta(meta: Meta, index: Row[], json: Map<string, JsonObject>, errors: string[], warnings: string[]): void {

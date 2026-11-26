@@ -3,7 +3,7 @@
  * pipeline (which builds and validates the file) and the site (which matches an SBOM against it).
  * No Node or DOM APIs.
  */
-import type { PackageAttribution, PackageEcosystem } from './contract';
+import { PACKAGE_ECOSYSTEMS, type PackageAffect, type PackageAttribution, type PackageEcosystem, type PackagesFile } from './contract';
 import { isFirstRelease, parseEvent } from './versions';
 
 /**
@@ -158,3 +158,41 @@ export function rangeText(events: readonly string[]): string {
 
 /** Every range of an entry in words, joined with "; ". */
 export const rangesText = (ranges: readonly (readonly string[])[]): string => ranges.map(rangeText).filter(Boolean).join('; ');
+
+/**
+ * packages.json and packages-older.json as one index for the matcher: rows of both, and per ecosystem
+ * and package key the entries of both. `older` may be null (an older data tree, or a failed load): the
+ * result then is `tracked` as is. When the two come from different runs, a CVE in both keeps its
+ * tracked row and entries only. Objects are built with Object.fromEntries, so a package key such as
+ * `__proto__` stays a plain own key. `sources` (health) comes from `tracked`, with `matched` added up.
+ */
+export function mergePackageFiles(tracked: PackagesFile, older: PackagesFile | null): PackagesFile {
+  if (!older) return tracked;
+  const idCol = tracked.cves.cols.indexOf('id');
+  const trackedIds = new Set(tracked.cves.rows.map((r) => r[idCol]));
+  const olderIdCol = older.cves.cols.indexOf('id');
+  const packages: PackagesFile['packages'] = {};
+  for (const eco of PACKAGE_ECOSYSTEMS) {
+    const a = tracked.packages[eco];
+    const b = older.packages[eco];
+    if (!a && !b) continue;
+    const merged = new Map<string, PackageAffect[]>(Object.entries(a ?? {}));
+    for (const [key, list] of Object.entries(b ?? {})) {
+      const extra = Array.isArray(list) ? list.filter((e) => !trackedIds.has(e[0])) : [];
+      if (extra.length) merged.set(key, [...(merged.get(key) ?? []), ...extra]);
+    }
+    packages[eco] = Object.fromEntries(merged);
+  }
+  const olderMatched = new Map(older.sources.map((s) => [s.ecosystem, s.matched]));
+  const cols = tracked.cves.cols;
+  // Older rows in the tracked column order, whatever order their file lists the columns in.
+  const order = cols.map((c) => older.cves.cols.indexOf(c));
+  const rows = older.cves.rows.filter((r) => !trackedIds.has(r[olderIdCol])).map((r) => order.map((j) => (j < 0 ? null : r[j])));
+  return {
+    ...tracked,
+    sources: tracked.sources.map((s) => ({ ...s, matched: s.matched + (olderMatched.get(s.ecosystem) ?? 0) })),
+    distinct: { advisories: Math.max(tracked.distinct.advisories, older.distinct.advisories), matched: tracked.distinct.matched + older.distinct.matched },
+    cves: { cols, rows: [...tracked.cves.rows, ...rows] },
+    packages,
+  };
+}

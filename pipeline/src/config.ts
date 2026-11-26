@@ -329,6 +329,12 @@ export const BUDGETS = {
     /** Measured 122 KB gzip on 2026-11-03 (1,365 CVEs, 807 packages). Raise it before splitting the file. */
     'v1/packages.json': 256 * 1024,
     /**
+     * Every other CVE an OSV.dev advisory names (packages.ts): estimated 1.5 to 2.5 MB gzip for about
+     * 47,000 advisories (slim rows of ~140 bytes, ~94 bytes per package entry, at the gzip ratio of
+     * packages.json). Read by the CLI, the MCP server and Check Deps. Measure after the first run.
+     */
+    'v1/packages-older.json': 4 * 1024 * 1024,
+    /**
      * Internal carry-forward state (state.ts), read only by the pipeline: woke tracking (~25 KB)
      * plus the Receipts forward log. With times in minutes the log costs about 2.5 bytes gzip per
      * CVE: ~0.55 MB for the ~225,000 CVEs of 400 days at October 2026 volume (receipts.test.ts).

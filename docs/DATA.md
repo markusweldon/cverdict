@@ -32,6 +32,7 @@ Our scores, tiers, chips and statistics are CC0-1.0. Text and data copied from u
 | `v1/woke.json` | `WokeFile` | CVEs published before the window that gained exploitation evidence in the last 30 days; newest wake first | ~25 KB |
 | `v1/receipts.json` | `ReceiptsFile` | Receipts: KEV additions each method flagged before CISA listed them, from the forward log and the hindsight backtest | ~20 KB |
 | `v1/packages.json` | `PackagesFile` | Package versions affected by the CVEs that have a detail shard (window, KEV, EU KEV or CIRCL exploited, woke up), from OSV.dev advisories, with each CVE's row | ~120 KB |
+| `v1/packages-older.json` | `PackagesFile` | The same for every other CVE an OSV.dev advisory names: older, no detail shard, slim rows | ~2 MB (estimate) |
 | `v1/state.json` | none | **Internal and unstable.** State carried from one run to the next; do not build on it | ~35 KB, growing to ~0.55 MB |
 | `feeds/signal.xml` | Atom | Newest 100 Exploited and Likely-next CVEs | ~20 KB |
 | `feeds/kev.xml` | Atom | KEV additions, last 30 days | ~5 KB |
@@ -552,7 +553,7 @@ curl -s $BASE/packages.json | jq -r '.packages.npm.lodash[]? | [.[0], .[1], (.[2
 curl -s $BASE/packages.json | jq -r '.sources[] | [.ecosystem, (if .ok | not then "not checked" elif .stale then "stale" else "ok" end), .matched] | @tsv'
 ```
 
-Not covered: CVEs without a detail shard, advisories without a CVE ID, other ecosystems (deb, rpm,
+Not covered here: CVEs without a detail shard (they are in `packages-older.json`), advisories without a CVE ID, other ecosystems (deb, rpm,
 apk, containers) and other advisory databases.
 
 How it is kept up to date: the pipeline keeps a compact copy of the OSV records of the eight
@@ -561,6 +562,27 @@ ecosystems that name a CVE in its cache. Every run reads the newest lines of eac
 reads the full `all.zip` dump instead. A dump that cannot be downloaded or fails its checks is tried
 again a day later, and the copy keeps getting the changed records meanwhile. When OSV.dev cannot be reached, each
 ecosystem keeps its last copy and is marked `stale`.
+
+## `packages-older.json`
+
+Every other CVE that an OSV.dev advisory ties to a package version, so that a dependency check sees
+all of them, not only the tracked ones. Same shape as `packages.json` (`PackagesFile`), with three
+differences:
+
+- **Which CVEs**: those an advisory names that are not in `packages.json`. So every one was published
+  before the window, is not in CISA KEV, is not listed as exploited by EU KEV or CIRCL, and did not
+  wake up. They are scored by the same model as every other CVE: most are Quiet; a Metasploit module or
+  a Nuclei template makes one Likely next at any age, and an exploited flag from the vendor or CISA SSVC
+  makes one Exploited.
+- **No detail shard**: there is no CVE page for them, and the MCP server's `get_verdict` does not know
+  them. Link to [cve.org](https://www.cve.org/) or the advisory instead.
+- **Slim rows**: the same columns as `index.json`, but `c` and `r` (the chip lists) are empty and `t`
+  is cut to 80 characters.
+
+The two files never share a CVE, and `sources[]` is the same in both; `distinct.matched` and each
+`sources[].matched` count this file's advisories. A client that wants every CVE loads both and merges
+`cves.rows` and, per ecosystem and package key, the `packages` entries. A client that reads only
+`packages.json` keeps working, and checks the tracked CVEs only.
 
 ## `state.json` (internal)
 
@@ -617,6 +639,7 @@ revisions for older clients.
 | `receipts` | `receipts.json` | `McpReceiptsResult`: the forward log and backtest figures without the per-CVE lists, or one CVE's entries |
 | `search_cves` | `index.json` | `McpSearchResult`: window CVEs whose ID, CNA, vendor, product or title contain every word of the query |
 | `check_inventory` | `index.json`, `woke.json` | `McpInventoryResult`: for 1 to 200 vendor or product names, the window and woke-up CVEs whose vendor or product equals each name (the watchlist's rule, `shared/watch.ts`), most urgent first, with counts of what was left out, `no_match`, and the vendor feed for the name's slug (looser than the match: it folds accents and punctuation) |
+| `check_dependencies` | `packages.json`, `packages-older.json` | `McpDependenciesResult`: the lockfiles and SBOMs under 1 to 20 paths inside the server's working directory, matched like Check Deps against both package files. Per finding: CVE, tier at the evidence bar (or `possible`), verdict, score, KEV, ecosystem, package, version, `fixed_in`, advisories, file and line, `tracked` (false for an older CVE, linked to cve.org). With `counts` per tier, the files read, and `coverage` (`older_missing` says why older CVEs were left out). Quiet findings only with `include_quiet`; the least urgent are cut to keep under about 17,000 tokens, with a `note` |
 | `changes_since` | `events.json` | `McpChangesResult`: verdict events after `since` (within the 7-day log, else an error saying where it starts; a date takes that whole day) and at or before `until` if given, newest first, filtered by names (the watchlist's rule) and event types, paged, with `next_since` to pass back next time |
 
 The result types are in `shared/contract.ts` (section "MCP tool results"). Pages hold at most 50

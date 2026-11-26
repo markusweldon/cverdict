@@ -26,6 +26,8 @@ const spec = {
 };
 const OLD = 'CVE-2019-0001';
 cves.push(makeCve({ id: OLD, published: '2019-05-01T00:00:00.000Z', inWindow: false }));
+// Named only by an OSV advisory: no rule tracks it, so it goes to packages-older.json alone.
+cves.push(makeCve({ id: 'CVE-2015-9999', published: '2015-03-01T00:00:00.000Z', inWindow: false, title: `${'Long title '.repeat(12)}end` }));
 const pocs = { [OLD]: [repo(daysAgo(8))] };
 const wake = detectWakes({
   now: NOW,
@@ -75,8 +77,8 @@ describe('validateOutput', () => {
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
     expect(result.ok).toBe(true);
-    // 11 JSON files (incl. woke.json, receipts.json, state.json, packages.json), the shards, 4 feeds.
-    expect(result.files).toBe(12 + SHARD_NAMES.length + 5);
+    // 12 JSON files (incl. woke.json, receipts.json, state.json, packages.json, packages-older.json), the shards, 4 feeds.
+    expect(result.files).toBe(13 + SHARD_NAMES.length + 5);
     expect(lines[0]).toMatch(/^file\s+bytes\s+gzip\s+budget\s+status$/);
     expect(lines.some((l) => l.startsWith('v1/index.json'))).toBe(true);
     expect(lines.some((l) => l.startsWith('v1/cve/*.json (256'))).toBe(true);
@@ -306,7 +308,7 @@ describe('validateOutput', () => {
 
   it('enforces the file count limit', () => {
     for (let i = 0; i < 40; i++) write(`v1/extra-${i}.txt`, 'x');
-    expect(validateOutput(dir).errors).toContain(`${273 + 40} files emitted; the limit is 300`);
+    expect(validateOutput(dir).errors).toContain(`${274 + 40} files emitted; the limit is 300`);
   });
 
   it('builds packages.json from the OSV mirror with the index rows of the CVEs it names', () => {
@@ -348,6 +350,48 @@ describe('validateOutput', () => {
     expect(check((f) => void delete (f as Partial<PackagesFile>).distinct)).toEqual([`${PATHS.packages}: distinct is invalid`]);
     unlinkSync(join(dir, PATHS.packages));
     expect(validateOutput(dir).errors).toContain(`missing ${PATHS.packages}`);
+  });
+
+  it('puts every other CVE an advisory names in packages-older.json: scored, slim, no detail shard', () => {
+    const o = read<PackagesFile>(PATHS.packagesOlder);
+    const rows = rowsFromTable(o.cves);
+    expect(rows.map((r) => r.id)).toEqual(['CVE-2015-9999']);
+    expect(rows[0]).toMatchObject({ c: [], r: [], tier: 'quiet' });
+    expect(rows[0].t.length).toBeLessThanOrEqual(80);
+    expect(rows[0].t.endsWith('…')).toBe(true);
+    // Ecosystems with a copy and no hit stay as empty objects: checked, nothing found.
+    expect(o.packages).toEqual({ npm: { untracked: [['CVE-2015-9999', 'GHSA-zzzz-zzzz-zzzz', [['>=0', '<1.0.0']]]] }, PyPI: {}, Maven: {} });
+    expect(o.distinct).toEqual({ advisories: 4, matched: 1 });
+    expect(o.scope).toMatch(/^Every other CVE/);
+    const shard = read<CveShard>(PATHS.shard(shardOf('CVE-2015-9999')));
+    expect(shard.items['CVE-2015-9999']).toBeUndefined();
+    expect(rowsFromTable(read<PackagesFile>(PATHS.packages).cves).map((r) => r.id)).not.toContain('CVE-2015-9999');
+  });
+
+  it('checks packages-older.json: no tracked CVE, no detail shard, slim rows, all before the window', () => {
+    const o = read<PackagesFile>(PATHS.packagesOlder);
+    const tracked = read<PackagesFile>(PATHS.packages);
+    const check = (change: (f: PackagesFile) => void): string[] => {
+      const f = structuredClone(o);
+      change(f);
+      write(PATHS.packagesOlder, f);
+      return validateOutput(dir).errors.filter((e) => e.startsWith(PATHS.packagesOlder));
+    };
+    expect(check(() => {})).toEqual([]);
+    const log4j = tracked.cves.rows.find((r) => r[0] === 'CVE-2021-44228')!;
+    expect(
+      check((f) => {
+        f.cves.rows.push(log4j.map((v, i) => (i === 12 || i === 13 ? [] : v)));
+        f.packages.npm!.untracked.push(['CVE-2021-44228', 'GHSA-zzzz-zzzz-zzzz', [['>=0']]]);
+      }),
+    ).toEqual([
+      `${PATHS.packagesOlder}: 1 cves rows have a detail shard entry, so belong in ${PATHS.packages} (first: CVE-2021-44228)`,
+      `${PATHS.packagesOlder}: 1 rows are also in ${PATHS.packages} (first: CVE-2021-44228)`,
+    ]);
+    expect(check((f) => void (f.cves.rows[0][12] = ['kev.listed']))).toEqual([`${PATHS.packagesOlder}: 1 rows are not slim (first: CVE-2015-9999)`]);
+    expect(check((f) => void (f.cves.rows[0][1] = '2026-10-25T00:00:00Z'))).toEqual([`${PATHS.packagesOlder}: 1 rows are published in the window (first: CVE-2015-9999)`]);
+    unlinkSync(join(dir, PATHS.packagesOlder));
+    expect(validateOutput(dir).errors).toEqual([]);
   });
 });
 

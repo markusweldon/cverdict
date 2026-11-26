@@ -10,7 +10,7 @@ import { discover, isCheckable } from '../src/discover';
 import { data, md, prop, toAnnotations, toJson, toMarkdown, toSarif, toText } from '../src/report';
 import { DEFAULTS, run, type Options } from '../src/run';
 import { VERSION } from '../src/version';
-import { GEN, dataDir, npmLock, packagesFile, tree } from './fixture';
+import { GEN, dataDir, dataDirWithOlder, npmLock, olderFile, packagesFile, tree } from './fixture';
 
 const LOCK = npmLock({ lodash: '4.17.20', requests: '0', minimist: '1.2.5', 'left-pad': '1.3.0', express: '4.18.2' });
 const REQS = 'requests==2.28.0\nflask==3.0.0\n';
@@ -69,7 +69,7 @@ describe('data', () => {
       return new Response(body);
     }) as unknown as typeof fetch;
     expect((await loadPackages('https://mirror.example/v1', ok)).from).toBe('https://mirror.example/v1/packages.json');
-    expect(seen).toEqual(['https://mirror.example/v1/packages.json']);
+    expect(seen).toEqual(['https://mirror.example/v1/packages.json', 'https://mirror.example/v1/packages-older.json']);
     expect(checkPackagesFile({ ...packagesFile(), schema_version: SCHEMA_VERSION + 1 })).toMatch(/schema_version/);
     expect(checkPackagesFile({ ...packagesFile(), cves: { cols: ['__proto__'], rows: [] } })).toMatch(/columns/);
     expect(urlFor('https://x/v1/')).toBe('https://x/v1/packages.json');
@@ -83,8 +83,10 @@ describe('data', () => {
       return urls.length === 1 ? new Response('nope', { status: 503 }) : new Response(JSON.stringify(packagesFile()));
     }) as unknown as typeof fetch;
     const got = await loadPackages(null, flaky);
-    expect(urls).toHaveLength(2);
+    // The first base fails; the second serves packages.json, then packages-older.json from the same base.
+    expect(urls).toHaveLength(3);
     expect(got.from).toBe(urls[1]);
+    expect(urls[2]).toBe(urls[1].replace('packages.json', 'packages-older.json'));
     const down = (async () => new Response('', { status: 500 })) as unknown as typeof fetch;
     await expect(loadPackages(null, down)).rejects.toThrow(/HTTP 500.*HTTP 500/);
     await expect(loadPackages('/no/such/dir')).rejects.toBeInstanceOf(DataError);
@@ -255,5 +257,47 @@ describe('action', () => {
 describe('version', () => {
   it('matches cli/package.json', () => {
     expect(VERSION).toBe(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version);
+  });
+});
+
+describe('older CVEs (packages-older.json)', () => {
+  const root = tree({ 'requirements.txt': REQS, 'package-lock.json': npmLock({ express: '4.18.2' }) });
+
+  it('loads it beside packages.json, from a folder or a URL, and says why when it is missing', async () => {
+    const both = await loadPackages(dataDirWithOlder());
+    expect(both.olderError).toBeNull();
+    expect([...both.olderIds]).toEqual(['CVE-2019-3001']);
+    expect(both.file.cves.rows).toHaveLength(5);
+    expect((await loadPackages(dataDir())).olderError).toMatch(/no packages-older\.json next to/);
+    const seen: string[] = [];
+    const serve = (older: boolean) =>
+      (async (url: string) => {
+        seen.push(url);
+        if (url.endsWith('packages.json')) return new Response(JSON.stringify(packagesFile()));
+        return older ? new Response(JSON.stringify(olderFile())) : new Response('', { status: 404 });
+      }) as unknown as typeof fetch;
+    expect((await loadPackages('https://m.example/v1/', serve(true))).olderIds.size).toBe(1);
+    expect(seen).toEqual(['https://m.example/v1/packages.json', 'https://m.example/v1/packages-older.json']);
+    expect((await loadPackages('https://m.example/v1/', serve(false))).olderError).toBe('packages-older.json: HTTP 404');
+  });
+
+  it('finds an older CVE, links it to cve.org, and words a clean result by what was covered', async () => {
+    const a = io();
+    expect((await run(opts(root, { data: dataDirWithOlder(), failOn: 'likely', format: 'json' }), a.io)).code).toBe(1);
+    const j = JSON.parse(a.out.join(''));
+    expect(j.findings.map((f: { cve: string; group: string; tracked: boolean; url: string }) => [f.cve, f.group, f.tracked, f.url])).toEqual([
+      ['CVE-2019-3001', 'likely', false, 'https://www.cve.org/CVERecord?id=CVE-2019-3001'],
+      ['CVE-2026-1002', 'likely', true, 'https://cverdict.dev/cve/CVE-2026-1002'],
+    ]);
+    expect(j).toMatchObject({ tracked_cves: 4, older_cves: 1, advisories: 5, older_error: null });
+    const clean = tree({ 'package-lock.json': npmLock({ express: '4.18.2' }) });
+    const b = io();
+    await run(opts(clean, { data: dataDirWithOlder() }), b.io);
+    expect(b.out.join('')).toContain('None of the CVEs OSV.dev advisories tie to package versions affects these packages.');
+    expect(b.out.join('')).toContain('against the 5 CVEs OSV.dev advisories tie to package versions (data of');
+    const c = io();
+    await run(opts(clean), c.io);
+    expect(c.out.join('')).toContain('No tracked CVE affects these packages. Older CVEs were not checked');
+    expect(c.out.join('')).toMatch(/Run a scanner such as osv-scanner/);
   });
 });

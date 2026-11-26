@@ -65,3 +65,23 @@ export function tree(files: Record<string, string>): string {
 export function dataDir(file: PackagesFile = packagesFile()): string {
   return tree({ 'v1/packages.json': JSON.stringify(file) });
 }
+
+/** packages-older.json for the fixture: flask < 3.0.1 has an older CVE with a Metasploit module (Likely next). */
+export function olderFile(generatedAt = GEN): PackagesFile {
+  const base = packagesFile();
+  const r = row('CVE-2019-3001', { pub: '2019-04-01T00:00:00Z', s: 30, tier: 'likely', w: 1, v: 'pallets', p: 'flask', t: 'Flask session cookie forgery' });
+  return {
+    ...base,
+    generated_at: generatedAt,
+    scope: 'older',
+    distinct: { advisories: 5, matched: 1 },
+    sources: base.sources.map((s) => ({ ...s, matched: s.ecosystem === 'PyPI' ? 1 : 0 })),
+    cves: { cols: ROW_COLS, rows: [ROW_COLS.map((c) => r[c])] },
+    packages: { npm: {}, PyPI: { flask: [['CVE-2019-3001', 'PYSEC-2019-1', [['>=0', '<3.0.1']]]] } } as PackagesFile['packages'],
+  };
+}
+
+/** A data folder holding v1/packages.json and v1/packages-older.json. */
+export function dataDirWithOlder(): string {
+  return tree({ 'v1/packages.json': JSON.stringify(packagesFile()), 'v1/packages-older.json': JSON.stringify(olderFile()) });
+}

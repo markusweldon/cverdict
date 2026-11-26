@@ -1,18 +1,23 @@
 /**
- * Loads v1/packages.json, the advisory index the Check Deps page uses: from the data branch, then
- * the site's /data/ rewrite (MCP_DATA_BASES), or from a URL or local path given with --data.
+ * Loads v1/packages.json (the tracked CVEs) and v1/packages-older.json (every other CVE an OSV.dev
+ * advisory names), the index the Check Deps page uses: from the data branch, then the site's /data/
+ * rewrite (MCP_DATA_BASES), or from a URL or local path given with --data. The older file is read
+ * from where packages.json came from; without it (older data, or a failed load) the check covers the
+ * tracked CVEs only, and says so.
  *
  * Each attempt has a deadline for its headers and a cap on its body; the file is checked for the
  * schema version and the exact row columns before the matcher sees it, so no `__proto__` column
  * reaches rowFromColumns.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import { ROW_COLS, SCHEMA_VERSION, type PackagesFile } from '../../shared/contract';
+import { ROW_COLS, SCHEMA_VERSION, rowsFromTable, type PackagesFile } from '../../shared/contract';
+import { mergePackageFiles } from '../../shared/packages';
 import { MCP_DATA_BASES } from '../../shared/mcp';
 
 export const PACKAGES_FILE = 'packages.json';
+export const OLDER_FILE = 'packages-older.json';
 export const TIMEOUT_MS = 20_000;
 /** packages.json is under 1 MB today; anything past this is not ours. */
 export const MAX_BYTES = 64 * 1024 * 1024;
@@ -28,9 +33,14 @@ export class DataError extends Error {
 }
 
 export interface Loaded {
+  /** packages.json, merged with packages-older.json when that loaded. */
   file: PackagesFile;
-  /** Where it came from: a URL or a local path. */
+  /** Where packages.json came from: a URL or a local path. */
   from: string;
+  /** CVEs from packages-older.json: no CVE page, so their links go to cve.org. */
+  olderIds: ReadonlySet<string>;
+  /** Why packages-older.json is not in `file`, or null when it is. */
+  olderError: string | null;
 }
 
 /** A packages.json that matches the contract well enough to match against; else the reason it does not. */
@@ -58,13 +68,31 @@ function parseBody(bytes: Uint8Array, where: string): PackagesFile {
   return checked;
 }
 
-/** The file at a local path: packages.json itself, or a data directory holding v1/packages.json or packages.json. */
+function readLocal(file: string): PackagesFile {
+  if (statSync(file).size > MAX_BYTES) throw new DataError(`${file} is larger than ${MAX_BYTES} bytes`);
+  return parseBody(readFileSync(file), file);
+}
+
+/** The files at a local path: packages.json itself (packages-older.json beside it), or a data directory holding v1/ or the files. */
 function loadLocal(path: string): Loaded {
   const candidates = statSync(path).isDirectory() ? [join(path, 'v1', PACKAGES_FILE), join(path, PACKAGES_FILE)] : [path];
   const found = candidates.find((c) => existsSync(c));
   if (!found) throw new DataError(`No ${PACKAGES_FILE} in ${path} (looked for ${candidates.join(' and ')})`);
-  if (statSync(found).size > MAX_BYTES) throw new DataError(`${found} is larger than ${MAX_BYTES} bytes`);
-  return { file: parseBody(readFileSync(found), found), from: found };
+  const tracked = readLocal(found);
+  const olderPath = join(dirname(found), OLDER_FILE);
+  if (!existsSync(olderPath)) return withOlder(tracked, found, null, `no ${OLDER_FILE} next to ${found}`);
+  try {
+    return withOlder(tracked, found, readLocal(olderPath), null);
+  } catch (e) {
+    return withOlder(tracked, found, null, (e as Error).message);
+  }
+}
+
+function withOlder(tracked: PackagesFile, from: string, older: PackagesFile | null, olderError: string | null): Loaded {
+  const file = mergePackageFiles(tracked, older);
+  const trackedIds = new Set(rowsFromTable(tracked.cves).map((r) => r.id));
+  const olderIds = new Set(older ? rowsFromTable(older.cves).map((r) => r.id).filter((id) => !trackedIds.has(id)) : []);
+  return { file, from, olderIds, olderError };
 }
 
 async function fetchCapped(url: string, fetchImpl: typeof fetch, timeoutMs: number): Promise<Uint8Array> {
@@ -119,10 +147,18 @@ export async function loadPackages(data: string | null, fetchImpl: typeof fetch 
   const urls = data ? [urlFor(data)] : MCP_DATA_BASES.map((b) => `${b}${PACKAGES_FILE}`);
   const reasons: string[] = [];
   for (const url of urls) {
+    let tracked: PackagesFile;
     try {
-      return { file: parseBody(await fetchCapped(url, fetchImpl, timeoutMs), url), from: url };
+      tracked = parseBody(await fetchCapped(url, fetchImpl, timeoutMs), url);
     } catch (e) {
       reasons.push(`${new URL(url).host}: ${(e as Error).message}`);
+      continue;
+    }
+    const olderUrl = url.replace(/packages\.json(\?.*)?$/, OLDER_FILE);
+    try {
+      return withOlder(tracked, url, parseBody(await fetchCapped(olderUrl, fetchImpl, timeoutMs), olderUrl), null);
+    } catch (e) {
+      return withOlder(tracked, url, null, `${OLDER_FILE}: ${(e as Error).message}`);
     }
   }
   throw new DataError(`Could not load ${PACKAGES_FILE} (${reasons.join('; ')})`, reasons);

@@ -36,8 +36,8 @@ Options:
 Exit codes: 0 passed, 1 a confirmed CVE at or above --fail-on, 2 could not run.
 
 Files are read locally; only the public index (packages.json) is downloaded.
-Only tracked CVEs are checked (the last 30 days, CISA KEV, exploited catalogs,
-old CVEs that woke up), so this ranks what to fix first; it is not a full audit.
+Checks every CVE an OSV.dev advisory ties to a package version, ranked by
+exploitation evidence. Not covered: advisories without a CVE ID, OS packages.
 ${REPO_URL}/blob/main/cli/README.md
 `;
 

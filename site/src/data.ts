@@ -73,6 +73,8 @@ export interface DataClient {
    * check on the Check page (404 on data published before packages.json existed).
    */
   readonly packages: Loader<PackagesFile>;
+  /** Every other CVE an OSV.dev advisory names (packages-older.json, ~2 MB gzip): no CVE page. Older data has none (a 404). */
+  readonly packagesOlder: Loader<PackagesFile>;
   /** The CVE's full record, or null when it is not in our data (outside the window, not in KEV and not listed as exploited by EU KEV or CIRCL). */
   detail(id: string): Loader<CveDetail | null>;
   /** generated_at of the newest meta.json, bypassing every cache (null when unreachable). */
@@ -185,6 +187,7 @@ export function createDataClient(
     woke: resource<WokeFile>('woke.json', json),
     receipts: resource<ReceiptsFile>('receipts.json', json),
     packages: resource<PackagesFile>('packages.json', json),
+    packagesOlder: resource<PackagesFile>('packages-older.json', json),
     detail(id) {
       const norm = normalizeCveId(id);
       if (!norm) return { key: `cve:?${id}`, peek: () => null, load: () => Promise.resolve(null) };

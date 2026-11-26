@@ -31,6 +31,8 @@ try {
     ['receipts', {}],
     ['search_cves', { query: 'microsoft', limit: 5 }],
     ['check_inventory', { names: ['microsoft', 'fortinet', 'notarealvendor'] }],
+    // The server runs in the repository: the Check Deps fixtures are its lockfiles and SBOMs.
+    ['check_dependencies', { paths: ['site/src/check/fixtures'], include_quiet: true }],
     ['changes_since', { since: twoDaysBack }],
   ];
   console.log(`list_signal: total ${signal.value.total}, ${signal.result.content[0].text.length} B`);

@@ -15,6 +15,8 @@ import { countByGroup, failing, formatLabel, type FailOn, type Finding, type Rep
 export const GROUP_NAMES: Readonly<Record<Group, string>> = { ...TIER_NAMES, possible: 'Possibly affected, not confirmed' };
 export const GROUPS: readonly Group[] = ['exploited', 'likely', 'watch', 'quiet', 'possible'];
 export const cveUrl = (id: string) => `${BRAND.siteUrl}/cve/${encodeURIComponent(id)}`;
+/** Where a finding's CVE is explained: its CVE page when tracked, else its record on cve.org (older CVEs have no page). */
+export const findingUrl = (f: Pick<Finding, 'row' | 'tracked'>) => (f.tracked ? cveUrl(f.row.id) : `https://www.cve.org/CVERecord?id=${encodeURIComponent(f.row.id)}`);
 
 const fmtTime = (iso: string) => `${iso.slice(0, 16).replace('T', ' ')} UTC`;
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
@@ -38,7 +40,16 @@ export function verdictLine(report: Report, failOn: FailOn): string {
 }
 
 function scopeLine(report: Report): string {
-  return `Checked ${plural(report.checked, 'package')} in ${plural(report.files.filter((f) => f.result).length, 'file')} against ${plural(report.indexCves, 'tracked CVE')} (data of ${fmtTime(report.generatedAt)}, evidence bar ${report.knob}).`;
+  const c = report.coverage;
+  const against = c.olderError === null ? `the ${plural(c.tracked + c.older, 'CVE')} OSV.dev advisories tie to package versions` : `${plural(c.tracked, 'tracked CVE')} only`;
+  return `Checked ${plural(report.checked, 'package')} in ${plural(report.files.filter((f) => f.result).length, 'file')} against ${against} (data of ${fmtTime(report.generatedAt)}, evidence bar ${report.knob}).`;
+}
+
+/** The line for a run with no finding: what "nothing found" covers. */
+function cleanLine(report: Report): string {
+  return report.coverage.olderError === null
+    ? 'None of the CVEs OSV.dev advisories tie to package versions affects these packages.'
+    : 'No tracked CVE affects these packages. Older CVEs were not checked (see below), so this is not a clean result.';
 }
 
 /** Plain text for a terminal. */
@@ -57,7 +68,7 @@ export function toText(report: Report, failOn: FailOn): string {
     }
     out.push('');
   }
-  if (!report.findings.length) out.push('No tracked CVE affects these packages.', '');
+  if (!report.findings.length) out.push(cleanLine(report), '');
   out.push(...footer(report).map((l) => l.text));
   out.push('', verdictLine(report, failOn));
   return `${out.join('\n')}\n`;
@@ -73,11 +84,11 @@ export function toMarkdown(report: Report, failOn: FailOn): string {
     const list = by.get(g) ?? [];
     if (!list.length) continue;
     const table = ['| CVE | Score | Package | Fix | File |', '|---|--:|---|---|---|'];
-    for (const f of list) table.push(`| [${md(f.row.id)}](${cveUrl(f.row.id)}) | ${f.row.s} | ${md(pkgText(f))} | ${md(action(f))} | \`${code(where(f))}\` |`);
+    for (const f of list) table.push(`| [${md(f.row.id)}](${findingUrl(f)}) | ${f.row.s} | ${md(pkgText(f))} | ${md(action(f))} | \`${code(where(f))}\` |`);
     if (g === 'possible' || g === 'quiet') out.push(`<details><summary>${md(GROUP_NAMES[g])} (${counts[g]})</summary>`, '', ...table, '', '</details>', '');
     else out.push(`#### ${md(GROUP_NAMES[g])} (${counts[g]})`, '', ...table, '');
   }
-  if (!report.findings.length) out.push('No tracked CVE affects these packages.', '');
+  if (!report.findings.length) out.push(md(cleanLine(report)), '');
   for (const l of footer(report)) out.push(`- ${md(l.text)}`);
   out.push('', `**${md(verdictLine(report, failOn))}**`, '');
   return `${out.join('\n')}\n`;
@@ -95,7 +106,10 @@ export function toJson(report: Report, failOn: FailOn): string {
       failed: bad.size > 0,
       counts: countByGroup(report.findings),
       packages_checked: report.checked,
-      tracked_cves: report.indexCves,
+      tracked_cves: report.coverage.tracked,
+      older_cves: report.coverage.older,
+      advisories: report.coverage.advisories,
+      older_error: report.coverage.olderError,
       files: report.files.map((f) => ({ path: f.path, format: f.format, error: f.error, packages: f.result?.distinct ?? 0 })),
       findings: report.findings.map((f) => ({
         cve: f.row.id,
@@ -112,7 +126,8 @@ export function toJson(report: Report, failOn: FailOn): string {
         file: f.file,
         line: f.line,
         fails: bad.has(f),
-        url: cveUrl(f.row.id),
+        tracked: f.tracked,
+        url: findingUrl(f),
       })),
       ecosystems_down: report.ecosystemsDown,
       notes: report.notes,
@@ -150,8 +165,8 @@ export function toSarif(report: Report, version: string): string {
               name: f.row.id.replace(/-/g, ''),
               shortDescription: { text: clip(`${f.row.id}: ${f.row.t || who(f)}`, 200) },
               fullDescription: { text: clip(f.row.t || f.row.id, 1000) },
-              helpUri: cveUrl(f.row.id),
-              help: { text: `${TIER_NAMES[f.row.tier]} at the default evidence bar, score ${f.row.s}/100. Why: ${cveUrl(f.row.id)}` },
+              helpUri: findingUrl(f),
+              help: { text: `${TIER_NAMES[f.row.tier]} at the default evidence bar, score ${f.row.s}/100. ${f.tracked ? `Why: ${cveUrl(f.row.id)}` : `An older CVE with no ${BRAND.name} page: ${findingUrl(f)}`}` },
               properties: { 'security-severity': SARIF[f.group]!.severity, tags: ['security', 'dependency', BRAND.slug, f.group] },
             })),
           },
@@ -178,7 +193,7 @@ export function toAnnotations(report: Report): string[] {
     .filter((f) => kind[f.group])
     .map((f) => {
       const props = [`file=${prop(f.file)}`, ...(f.line ? [`line=${f.line}`] : []), `title=${prop(`${f.row.id} · ${GROUP_NAMES[f.group]}`)}`].join(',');
-      return `::${kind[f.group]} ${props}::${data(`${pkgText(f)} is affected by ${f.row.id} (score ${f.row.s}), ${action(f)}. ${cveUrl(f.row.id)}`)}`;
+      return `::${kind[f.group]} ${props}::${data(`${pkgText(f)} is affected by ${f.row.id} (score ${f.row.s}), ${action(f)}. ${findingUrl(f)}`)}`;
     });
 }
 
@@ -211,7 +226,14 @@ function footer(report: Report): { text: string }[] {
   const notChecked = report.packages - report.checked;
   if (notChecked > 0) out.push({ text: `${plural(notChecked, 'package')} not checked (outside the eight ecosystems, or no usable package URL).` });
   for (const n of report.notes) out.push({ text: `${n.file}: ${n.text}` });
-  out.push({ text: `Only tracked CVEs are checked: those published in the last 30 days, in CISA KEV, listed as exploited by EU KEV or CIRCL, or old ones that woke up. This is a priority overlay, not a full audit.` });
+  const c = report.coverage;
+  if (c.olderError === null) {
+    out.push({
+      text: `Covered: every CVE that one of ${c.advisories.toLocaleString('en-US')} OSV.dev advisories ties to a package version, ranked by exploitation evidence. Not covered: advisories without a CVE ID (malware reports among them), other ecosystems (deb, rpm, apk, containers) and bugs no advisory names yet.`,
+    });
+  } else {
+    out.push({ text: `Older CVEs were not checked (${c.olderError}): only CVEs published in the last 30 days, in CISA KEV, listed as exploited or woken up. Run a scanner such as osv-scanner for the rest.` });
+  }
   return out;
 }
 

@@ -1,7 +1,11 @@
 /**
- * v1/packages.json (docs/DATA.md "packages.json"): which package versions the tracked CVEs affect,
- * for the in-browser SBOM check. Built every run from the OSV mirror (sources/osv.ts) and the rows
- * of every scored CVE, which are exactly the CVEs with a detail shard (window, KEV, woke up).
+ * v1/packages.json and v1/packages-older.json (docs/DATA.md): which package versions CVEs affect,
+ * for Check Deps, the CLI and the MCP server. Built every run from the OSV mirror (sources/osv.ts).
+ *
+ * - packages.json: the tracked CVEs, those with a detail shard (window, KEV, exploited catalogs,
+ *   woke up), with their full rows.
+ * - packages-older.json: every other CVE an advisory names, all published before the window and
+ *   scored by the same model, with slim rows (no chip lists, short titles) and no CVE page.
  */
 import {
   PACKAGE_ECOSYSTEMS,
@@ -17,6 +21,34 @@ import type { OsvData } from './sources/osv';
 
 const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
+/** Title length kept in packages-older.json rows. */
+export const OLDER_TITLE_MAX = 80;
+
+export function olderPackagesScope(windowDays: number): string {
+  return (
+    `Every other CVE that OSV.dev advisories name for a package in npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist or NuGet: published more than ${windowDays} days ago, ` +
+    'not in CISA KEV, not listed as exploited and not woken up, scored by the same model. They have no detail shard; rows keep no chip lists and titles of at most 80 characters. ' +
+    'Only advisory IDs, package names and version ranges are kept.'
+  );
+}
+
+/** Every CVE an ecosystem copy names, for the ingest to keep their records. Ecosystems without a usable copy name none. */
+export function osvCveIds(osv: OsvData): Set<string> {
+  const out = new Set<string>();
+  for (const eco of PACKAGE_ECOSYSTEMS) {
+    const copy = osv.mirror.ecosystems[eco];
+    if (!osv.statuses[eco].ok || !copy) continue;
+    for (const [, , cves] of copy.records) for (const c of cves) out.add(c);
+  }
+  return out;
+}
+
+/** A row as packages-older.json keeps it: no chip or reason lists, the title cut to OLDER_TITLE_MAX. */
+export function slimRow(r: Row): Row {
+  const t = r.t.length > OLDER_TITLE_MAX ? `${r.t.slice(0, OLDER_TITLE_MAX - 1).trimEnd()}…` : r.t;
+  return { ...r, t, c: [], r: [] };
+}
+
 export function packagesScope(windowDays: number): string {
   return (
     `CVEs with a detail shard (published in the last ${windowDays} days, in CISA KEV, or in woke.json) that OSV.dev advisories ` +
@@ -29,7 +61,7 @@ export function packagesScope(windowDays: number): string {
  * Ecosystems without a copy get no `packages` entry, so the site reports them as not checked.
  * Several affected objects of one advisory that end up under one package key are merged.
  */
-export function buildPackagesFile(osv: OsvData, rowById: ReadonlyMap<string, Row>, generatedAt: string, windowDays: number): PackagesFile {
+export function buildPackagesFile(osv: OsvData, rowById: ReadonlyMap<string, Row>, generatedAt: string, windowDays: number, scope = packagesScope(windowDays)): PackagesFile {
   const sources: PackageSourceStatus[] = [];
   const packages: PackagesFile['packages'] = {};
   const named = new Set<string>();
@@ -84,7 +116,7 @@ export function buildPackagesFile(osv: OsvData, rowById: ReadonlyMap<string, Row
   return {
     schema_version: SCHEMA_VERSION,
     generated_at: generatedAt,
-    scope: packagesScope(windowDays),
+    scope,
     attribution: ATTRIBUTION.map((a) => ({ ...a, prefixes: [...a.prefixes] })),
     sources,
     distinct: { advisories: allIds.size, matched: matchedIds.size },

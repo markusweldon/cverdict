@@ -491,6 +491,11 @@ function matchAffect(eco, version, ranges, extra = []) {
 }
 // shared/packages.ts
 /**
+* Package keys, advisory IDs, licences and range wording for v1/packages.json, shared by the
+* pipeline (which builds and validates the file) and the site (which matches an SBOM against it).
+* No Node or DOM APIs.
+*/
+/**
 * How a package name is compared within an ecosystem, applied both to OSV names and to names from
 * the user's file. PyPI per PEP 503; crates.io treats case and "-"/"_" as equal; NuGet and
 * Packagist are case-insensitive; npm, Go module paths, Maven group:artifact and RubyGems as given.
@@ -517,6 +522,51 @@ var PURL_TYPES = /* @__PURE__ */ new Map([
 /** The ecosystem of a package URL type (`pkg:<type>/…`), or null when it is not covered. */
 function ecosystemOfPurlType(type) {
 	return PURL_TYPES.get(type.toLowerCase()) ?? null;
+}
+/**
+* packages.json and packages-older.json as one index for the matcher: rows of both, and per ecosystem
+* and package key the entries of both. `older` may be null (an older data tree, or a failed load): the
+* result then is `tracked` as is. When the two come from different runs, a CVE in both keeps its
+* tracked row and entries only. Objects are built with Object.fromEntries, so a package key such as
+* `__proto__` stays a plain own key. `sources` (health) comes from `tracked`, with `matched` added up.
+*/
+function mergePackageFiles(tracked, older) {
+	if (!older) return tracked;
+	const idCol = tracked.cves.cols.indexOf("id");
+	const trackedIds = new Set(tracked.cves.rows.map((r) => r[idCol]));
+	const olderIdCol = older.cves.cols.indexOf("id");
+	const packages = {};
+	for (const eco of PACKAGE_ECOSYSTEMS) {
+		const a = tracked.packages[eco];
+		const b = older.packages[eco];
+		if (!a && !b) continue;
+		const merged = new Map(Object.entries(a ?? {}));
+		for (const [key, list] of Object.entries(b ?? {})) {
+			const extra = Array.isArray(list) ? list.filter((e) => !trackedIds.has(e[0])) : [];
+			if (extra.length) merged.set(key, [...merged.get(key) ?? [], ...extra]);
+		}
+		packages[eco] = Object.fromEntries(merged);
+	}
+	const olderMatched = new Map(older.sources.map((s) => [s.ecosystem, s.matched]));
+	const cols = tracked.cves.cols;
+	const order = cols.map((c) => older.cves.cols.indexOf(c));
+	const rows = older.cves.rows.filter((r) => !trackedIds.has(r[olderIdCol])).map((r) => order.map((j) => j < 0 ? null : r[j]));
+	return {
+		...tracked,
+		sources: tracked.sources.map((s) => ({
+			...s,
+			matched: s.matched + (olderMatched.get(s.ecosystem) ?? 0)
+		})),
+		distinct: {
+			advisories: Math.max(tracked.distinct.advisories, older.distinct.advisories),
+			matched: tracked.distinct.matched + older.distinct.matched
+		},
+		cves: {
+			cols,
+			rows: [...tracked.cves.rows, ...rows]
+		},
+		packages
+	};
 }
 // site/src/check/match.ts
 /**
@@ -1800,7 +1850,10 @@ function lowestFix(pkg) {
 /** Group order for findings: Exploited first, possibly affected last; within a group by score, then CVE. */
 var compareFindings = (a, b) => RANK[b.group] - RANK[a.group] || b.row.s - a.row.s || a.row.id.localeCompare(b.row.id) || a.file.localeCompare(b.file) || a.pkg.name.localeCompare(b.pkg.name);
 /** Check `files` (relative to `cwd`) at evidence bar `knob`. Reads files; no network. */
-function checkFiles(files, cwd, index, knob = 50) {
+function checkFiles(files, cwd, index, knob = 50, older = {
+	olderIds: /* @__PURE__ */ new Set(),
+	olderError: null
+}) {
 	const reports = [];
 	const findings = [];
 	const notes = [];
@@ -1862,7 +1915,8 @@ function checkFiles(files, cwd, index, knob = 50) {
 				pkg,
 				file: path,
 				line: line(pkg.name, pkg.version),
-				fixedIn: lowestFix(pkg)
+				fixedIn: lowestFix(pkg),
+				tracked: !older.olderIds.has(hit.row.id)
 			});
 		}
 	}
@@ -1876,6 +1930,12 @@ function checkFiles(files, cwd, index, knob = 50) {
 		checked,
 		indexCves: index.cves.rows.length,
 		ecosystemsDown: index.sources.filter((s) => !s.ok).map((s) => s.ecosystem),
+		coverage: {
+			tracked: index.cves.rows.length - older.olderIds.size,
+			older: older.olderIds.size,
+			advisories: index.distinct?.advisories ?? 0,
+			olderError: older.olderError
+		},
 		notes
 	};
 }
@@ -1960,6 +2020,8 @@ var GROUPS = [
 	"possible"
 ];
 var cveUrl = (id) => `${BRAND.siteUrl}/cve/${encodeURIComponent(id)}`;
+/** Where a finding's CVE is explained: its CVE page when tracked, else its record on cve.org (older CVEs have no page). */
+var findingUrl = (f) => f.tracked ? cveUrl(f.row.id) : `https://www.cve.org/CVERecord?id=${encodeURIComponent(f.row.id)}`;
 var fmtTime = (iso) => `${iso.slice(0, 16).replace("T", " ")} UTC`;
 var plural = (n, one, many = `${one}s`) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 var pkgText = (f) => `${f.pkg.named ?? f.pkg.name}${f.pkg.version ? ` ${f.pkg.version}` : ""}`;
@@ -1979,7 +2041,13 @@ function verdictLine(report, failOn) {
 	return `Result: fail. ${plural(n, "CVE")} at ${TIER_NAMES[failOn]}${failOn === "exploited" ? "" : " or above"} (--fail-on ${failOn}).`;
 }
 function scopeLine(report) {
-	return `Checked ${plural(report.checked, "package")} in ${plural(report.files.filter((f) => f.result).length, "file")} against ${plural(report.indexCves, "tracked CVE")} (data of ${fmtTime(report.generatedAt)}, evidence bar ${report.knob}).`;
+	const c = report.coverage;
+	const against = c.olderError === null ? `the ${plural(c.tracked + c.older, "CVE")} OSV.dev advisories tie to package versions` : `${plural(c.tracked, "tracked CVE")} only`;
+	return `Checked ${plural(report.checked, "package")} in ${plural(report.files.filter((f) => f.result).length, "file")} against ${against} (data of ${fmtTime(report.generatedAt)}, evidence bar ${report.knob}).`;
+}
+/** The line for a run with no finding: what "nothing found" covers. */
+function cleanLine(report) {
+	return report.coverage.olderError === null ? "None of the CVEs OSV.dev advisories tie to package versions affects these packages." : "No tracked CVE affects these packages. Older CVEs were not checked (see below), so this is not a clean result.";
 }
 /** Plain text for a terminal. */
 function toText(report, failOn) {
@@ -2001,7 +2069,7 @@ function toText(report, failOn) {
 		}
 		out.push("");
 	}
-	if (!report.findings.length) out.push("No tracked CVE affects these packages.", "");
+	if (!report.findings.length) out.push(cleanLine(report), "");
 	out.push(...footer(report).map((l) => l.text));
 	out.push("", verdictLine(report, failOn));
 	return `${out.join("\n")}\n`;
@@ -2021,11 +2089,11 @@ function toMarkdown(report, failOn) {
 		const list = by.get(g) ?? [];
 		if (!list.length) continue;
 		const table = ["| CVE | Score | Package | Fix | File |", "|---|--:|---|---|---|"];
-		for (const f of list) table.push(`| [${md(f.row.id)}](${cveUrl(f.row.id)}) | ${f.row.s} | ${md(pkgText(f))} | ${md(action(f))} | \`${code(where(f))}\` |`);
+		for (const f of list) table.push(`| [${md(f.row.id)}](${findingUrl(f)}) | ${f.row.s} | ${md(pkgText(f))} | ${md(action(f))} | \`${code(where(f))}\` |`);
 		if (g === "possible" || g === "quiet") out.push(`<details><summary>${md(GROUP_NAMES[g])} (${counts[g]})</summary>`, "", ...table, "", "</details>", "");
 		else out.push(`#### ${md(GROUP_NAMES[g])} (${counts[g]})`, "", ...table, "");
 	}
-	if (!report.findings.length) out.push("No tracked CVE affects these packages.", "");
+	if (!report.findings.length) out.push(md(cleanLine(report)), "");
 	for (const l of footer(report)) out.push(`- ${md(l.text)}`);
 	out.push("", `**${md(verdictLine(report, failOn))}**`, "");
 	return `${out.join("\n")}\n`;
@@ -2041,7 +2109,10 @@ function toJson(report, failOn) {
 		failed: bad.size > 0,
 		counts: countByGroup(report.findings),
 		packages_checked: report.checked,
-		tracked_cves: report.indexCves,
+		tracked_cves: report.coverage.tracked,
+		older_cves: report.coverage.older,
+		advisories: report.coverage.advisories,
+		older_error: report.coverage.olderError,
 		files: report.files.map((f) => ({
 			path: f.path,
 			format: f.format,
@@ -2063,7 +2134,8 @@ function toJson(report, failOn) {
 			file: f.file,
 			line: f.line,
 			fails: bad.has(f),
-			url: cveUrl(f.row.id)
+			tracked: f.tracked,
+			url: findingUrl(f)
 		})),
 		ecosystems_down: report.ecosystemsDown,
 		notes: report.notes
@@ -2103,8 +2175,8 @@ function toSarif(report, version) {
 					name: f.row.id.replace(/-/g, ""),
 					shortDescription: { text: clip(`${f.row.id}: ${f.row.t || who(f)}`, 200) },
 					fullDescription: { text: clip(f.row.t || f.row.id, 1e3) },
-					helpUri: cveUrl(f.row.id),
-					help: { text: `${TIER_NAMES[f.row.tier]} at the default evidence bar, score ${f.row.s}/100. Why: ${cveUrl(f.row.id)}` },
+					helpUri: findingUrl(f),
+					help: { text: `${TIER_NAMES[f.row.tier]} at the default evidence bar, score ${f.row.s}/100. ${f.tracked ? `Why: ${cveUrl(f.row.id)}` : `An older CVE with no ${BRAND.name} page: ${findingUrl(f)}`}` },
 					properties: {
 						"security-severity": SARIF[f.group].severity,
 						tags: [
@@ -2148,7 +2220,7 @@ function toAnnotations(report) {
 			...f.line ? [`line=${f.line}`] : [],
 			`title=${prop(`${f.row.id} · ${GROUP_NAMES[f.group]}`)}`
 		].join(",");
-		return `::${kind[f.group]} ${props}::${data(`${pkgText(f)} is affected by ${f.row.id} (score ${f.row.s}), ${action(f)}. ${cveUrl(f.row.id)}`)}`;
+		return `::${kind[f.group]} ${props}::${data(`${pkgText(f)} is affected by ${f.row.id} (score ${f.row.s}), ${action(f)}. ${findingUrl(f)}`)}`;
 	});
 }
 function groupFindings(findings) {
@@ -2176,7 +2248,9 @@ function footer(report) {
 	const notChecked = report.packages - report.checked;
 	if (notChecked > 0) out.push({ text: `${plural(notChecked, "package")} not checked (outside the eight ecosystems, or no usable package URL).` });
 	for (const n of report.notes) out.push({ text: `${n.file}: ${n.text}` });
-	out.push({ text: `Only tracked CVEs are checked: those published in the last 30 days, in CISA KEV, listed as exploited by EU KEV or CIRCL, or old ones that woke up. This is a priority overlay, not a full audit.` });
+	const c = report.coverage;
+	if (c.olderError === null) out.push({ text: `Covered: every CVE that one of ${c.advisories.toLocaleString("en-US")} OSV.dev advisories ties to a package version, ranked by exploitation evidence. Not covered: advisories without a CVE ID (malware reports among them), other ecosystems (deb, rpm, apk, containers) and bugs no advisory names yet.` });
+	else out.push({ text: `Older CVEs were not checked (${c.olderError}): only CVEs published in the last 30 days, in CISA KEV, listed as exploited or woken up. Run a scanner such as osv-scanner for the rest.` });
 	return out;
 }
 var clip = (s, n) => {
@@ -2216,14 +2290,18 @@ var MCP_DATA_BASES = [`${RAW_DATA_URL}/v1/`, `${BRAND.siteUrl}/data/v1/`];
 ].join(" ");
 // cli/src/data.ts
 /**
-* Loads v1/packages.json, the advisory index the Check Deps page uses: from the data branch, then
-* the site's /data/ rewrite (MCP_DATA_BASES), or from a URL or local path given with --data.
+* Loads v1/packages.json (the tracked CVEs) and v1/packages-older.json (every other CVE an OSV.dev
+* advisory names), the index the Check Deps page uses: from the data branch, then the site's /data/
+* rewrite (MCP_DATA_BASES), or from a URL or local path given with --data. The older file is read
+* from where packages.json came from; without it (older data, or a failed load) the check covers the
+* tracked CVEs only, and says so.
 *
 * Each attempt has a deadline for its headers and a cap on its body; the file is checked for the
 * schema version and the exact row columns before the matcher sees it, so no `__proto__` column
 * reaches rowFromColumns.
 */
 var PACKAGES_FILE = "packages.json";
+var OLDER_FILE = "packages-older.json";
 var TIMEOUT_MS = 2e4;
 /** packages.json is under 1 MB today; anything past this is not ours. */
 var MAX_BYTES = 67108864;
@@ -2258,15 +2336,32 @@ function parseBody(bytes, where) {
 	if (typeof checked === "string") throw new DataError(`${where} is not a packages.json this tool can read: ${checked}`);
 	return checked;
 }
-/** The file at a local path: packages.json itself, or a data directory holding v1/packages.json or packages.json. */
+function readLocal(file) {
+	if (statSync(file).size > 67108864) throw new DataError(`${file} is larger than ${MAX_BYTES} bytes`);
+	return parseBody(readFileSync(file), file);
+}
+/** The files at a local path: packages.json itself (packages-older.json beside it), or a data directory holding v1/ or the files. */
 function loadLocal(path) {
 	const candidates = statSync(path).isDirectory() ? [join(path, "v1", PACKAGES_FILE), join(path, PACKAGES_FILE)] : [path];
 	const found = candidates.find((c) => existsSync(c));
 	if (!found) throw new DataError(`No ${PACKAGES_FILE} in ${path} (looked for ${candidates.join(" and ")})`);
-	if (statSync(found).size > 67108864) throw new DataError(`${found} is larger than ${MAX_BYTES} bytes`);
+	const tracked = readLocal(found);
+	const olderPath = join(dirname(found), OLDER_FILE);
+	if (!existsSync(olderPath)) return withOlder(tracked, found, null, `no ${OLDER_FILE} next to ${found}`);
+	try {
+		return withOlder(tracked, found, readLocal(olderPath), null);
+	} catch (e) {
+		return withOlder(tracked, found, null, e.message);
+	}
+}
+function withOlder(tracked, from, older, olderError) {
+	const file = mergePackageFiles(tracked, older);
+	const trackedIds = new Set(rowsFromTable(tracked.cves).map((r) => r.id));
 	return {
-		file: parseBody(readFileSync(found), found),
-		from: found
+		file,
+		from,
+		olderIds: new Set(older ? rowsFromTable(older.cves).map((r) => r.id).filter((id) => !trackedIds.has(id)) : []),
+		olderError
 	};
 }
 async function fetchCapped(url, fetchImpl, timeoutMs) {
@@ -2322,13 +2417,20 @@ async function loadPackages(data, fetchImpl = fetch, timeoutMs = TIMEOUT_MS) {
 	}
 	const urls = data ? [urlFor(data)] : MCP_DATA_BASES.map((b) => `${b}${PACKAGES_FILE}`);
 	const reasons = [];
-	for (const url of urls) try {
-		return {
-			file: parseBody(await fetchCapped(url, fetchImpl, timeoutMs), url),
-			from: url
-		};
-	} catch (e) {
-		reasons.push(`${new URL(url).host}: ${e.message}`);
+	for (const url of urls) {
+		let tracked;
+		try {
+			tracked = parseBody(await fetchCapped(url, fetchImpl, timeoutMs), url);
+		} catch (e) {
+			reasons.push(`${new URL(url).host}: ${e.message}`);
+			continue;
+		}
+		const olderUrl = url.replace(/packages\.json(\?.*)?$/, OLDER_FILE);
+		try {
+			return withOlder(tracked, url, parseBody(await fetchCapped(olderUrl, fetchImpl, timeoutMs), olderUrl), null);
+		} catch (e) {
+			return withOlder(tracked, url, null, `${OLDER_FILE}: ${e.message}`);
+		}
 	}
 	throw new DataError(`Could not load ${PACKAGES_FILE} (${reasons.join("; ")})`, reasons);
 }
@@ -2464,7 +2566,7 @@ async function run(o, io) {
 			report: null
 		};
 	}
-	const report = checkFiles(found.files, o.cwd, loaded.file, o.knob);
+	const report = checkFiles(found.files, o.cwd, loaded.file, o.knob, loaded);
 	for (const f of found.skipped) report.notes.push({
 		file: f,
 		text: "Left out: go.mod in the same folder lists the versions the build selects."

@@ -43,7 +43,7 @@ describe('the built bundle', () => {
       const s = await connectStdio(process.execPath, [bundle], { CVERDICT_DATA_BASE: data.base });
       try {
         expect(s.client.getServerVersion()?.version).toBe(MCP_SERVER.version);
-        expect((await s.client.listTools()).tools).toHaveLength(8);
+        expect((await s.client.listTools()).tools).toHaveLength(9);
         const { value } = await call(s.client, 'get_verdict', { ids: ['CVE-2026-10001', 'CVE-2019-0001'] });
         expect((value.items as { found: boolean; tier?: string }[]).map((i) => i.tier ?? i.found)).toEqual(['exploited', false]);
         const files = (value.data as { files: { url: string }[] }).files;

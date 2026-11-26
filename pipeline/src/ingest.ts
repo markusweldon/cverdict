@@ -13,6 +13,7 @@ import { loadMetasploit } from './sources/metasploit';
 import { loadNuclei, nucleiStatus } from './sources/nuclei';
 import { loadNucleiDates } from './sources/nuclei-history';
 import { loadOsv } from './sources/osv';
+import { osvCveIds } from './packages';
 import { openPoc, readPocRepos } from './sources/poc';
 import { loadEpssAsOf, type BacktestInputs } from './backtest';
 import { EMPTY_STATE, readSection } from './state';
@@ -130,8 +131,10 @@ export async function ingestWith(ctx: RunContext, opts: IngestOptions, deps: Ing
       kevIds: kevP.then((kev) => new Set(kev.data?.entries.keys())),
       // Old CVEs that woke up, and those listed as exploited by EU KEV or CIRCL (not SiberKapan,
       // not CIRCL suspected or attempts-only).
-      extraIds: Promise.all([wakeP, exploitedCatalogsP]).then(
-        ([w, c]) => new Set([...w.signals.keys(), ...exploitedCatalogIds([c['eu-kev'], c['circl-kev']], ymd(ctx.now))]),
+      // Every CVE an OSV.dev advisory names for a package, too: v1/packages-older.json scores them
+      // for the dependency check (they get no detail shard unless one of the rules above keeps them).
+      extraIds: Promise.all([wakeP, exploitedCatalogsP, osvP]).then(
+        ([w, c, o]) => new Set([...w.signals.keys(), ...exploitedCatalogIds([c['eu-kev'], c['circl-kev']], ymd(ctx.now)), ...osvCveIds(o.data)]),
       ),
       keepFrom: plan?.volumeFrom,
       minRecords: limits.cvelistRecords,

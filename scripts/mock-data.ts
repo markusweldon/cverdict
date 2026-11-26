@@ -71,7 +71,7 @@ import { RECEIPT_DEFINITIONS } from '../pipeline/src/emit/build';
 import { BACKTEST_COMMAND, SIGNALS } from '../pipeline/src/backtest';
 import { scoreMethods } from '../pipeline/src/receipts';
 import { serializeState, STATE_PATH } from '../pipeline/src/state';
-import { buildPackagesFile } from '../pipeline/src/packages';
+import { buildPackagesFile, olderPackagesScope, slimRow } from '../pipeline/src/packages';
 import { emptyOsvData, osvStatus, type OsvLite } from '../pipeline/src/sources/osv';
 import { PATHS } from '../pipeline/src/emit/json';
 import { eventsFeed } from '../pipeline/src/emit/atom';
@@ -1975,6 +1975,17 @@ const MOCK_PACKAGES: readonly (readonly [PackageEcosystem, string, string[][], s
   ['NuGet', 'CefSharp.Common', [['>=0', '<86.0.241']]],
   ['NuGet', 'Newtonsoft.Json', [['>=0', '<13.0.1']]],
 ];
+/**
+ * Mock packages-older.json: older CVEs no rule tracks, each named by one advisory. One has a Metasploit
+ * module (Likely next at any bar), one a score of 44 (Likely next from a bar of 40), the rest Quiet.
+ */
+const MOCK_OLDER: readonly (readonly [PackageEcosystem, string, string[][], Partial<Row>])[] = [
+  ['npm', 'minimist', [['>=0', '<1.2.6']], { s: 33, w: 1, tier: 'likely', v: 'minimist', p: 'minimist', t: 'Prototype pollution in minimist' }],
+  ['PyPI', 'requests', [['>=2.3.0', '<2.31.0']], { s: 44, tier: 'watch', v: 'psf', p: 'requests', t: 'Requests leaks Proxy-Authorization headers on redirect' }],
+  ['Maven', 'org.yaml:snakeyaml', [['>=0', '<2.0']], { s: 18, tier: 'quiet', v: 'snakeyaml', p: 'snakeyaml', t: 'SnakeYaml constructor deserialization can lead to remote code execution' }],
+  ['RubyGems', 'nokogiri', [['>=0', '<1.16.5']], { s: 12, tier: 'quiet', v: 'sparklemotion', p: 'nokogiri', t: 'Nokogiri updates packaged libxml2 for a use-after-free' }],
+];
+
 const ADVISORY_PREFIX: Record<PackageEcosystem, string> = { npm: 'GHSA', PyPI: 'PYSEC', Maven: 'GHSA', Go: 'GO', 'crates.io': 'RUSTSEC', RubyGems: 'GHSA', Packagist: 'DRUPAL-CORE', NuGet: 'GHSA' };
 const GHSA_CHARS = '23456789cfghjmpqrvwx';
 
@@ -2013,7 +2024,21 @@ function mockPackages(window: readonly Row[], older: readonly Row[], rows: Reado
     osv.mirror.ecosystems[eco] = { full_sync_at: iso(NOW - 3 * DAY), zip_etag: null, cursor: iso(NOW - 2 * HOUR), fetched_at: fetched, records: list };
     osv.statuses[eco] = { ok: true, stale, fetched_at: fetched, modified: iso(NOW - 2 * HOUR), advisories: list.length + 40, error: stale ? 'NuGet/modified_id.csv: HTTP 503' : null };
   }
-  return { file: buildPackagesFile(osv, rows, GENERATED_AT, WINDOW_DAYS), status: osvStatus(osv.statuses) };
+  // Older CVEs no rule tracks, named by advisories of their own: they go to packages-older.json only.
+  const olderRows = new Map<string, Row>();
+  MOCK_OLDER.forEach(([eco, name, ranges, row], i) => {
+    const id = `CVE-2024-${String(990001 + i)}`;
+    const base = rows.get(older[0].id)!;
+    olderRows.set(id, slimRow({ ...base, id, pub: iso(Date.parse('2024-03-12T15:00:00Z') + i * 40 * DAY), cna: 'GitHub_M', x: 0, w: 0, k: 0, ai: 0, kd: null, b: null, cv: 7.5, e: 0.004, ...row }));
+    const list = osv.mirror.ecosystems[eco]!.records;
+    list.push([mockAdvisory(eco === 'PyPI' ? 'PYSEC' : 'GHSA', `older/${eco}/${name}`), iso(NOW - (i + 3) * DAY), [id], [[name, ranges]]]);
+    list.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  });
+  return {
+    file: buildPackagesFile(osv, rows, GENERATED_AT, WINDOW_DAYS),
+    older: buildPackagesFile(osv, olderRows, GENERATED_AT, WINDOW_DAYS, olderPackagesScope(WINDOW_DAYS)),
+    status: osvStatus(osv.statuses),
+  };
 }
 
 function writeJson(root: string, rel: string, value: unknown): void {
@@ -2135,6 +2160,7 @@ function main(): void {
   // Every real run writes the state file (validate.ts requires it); the mock carries no sections.
   writeFileSync(join(tmp, STATE_PATH), serializeState(new Date(NOW), []));
   writeJson(tmp, PATHS.packages, packages.file);
+  writeJson(tmp, PATHS.packagesOlder, packages.older);
 
   const shards = Array.from({ length: SHARD_COUNT }, () => ({}) as Record<string, CveDetail>);
   for (const s of [...window, ...older]) shards[parseInt(shardOf(s.d.id), 16)][s.d.id] = toDetail(s);

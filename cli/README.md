@@ -7,9 +7,11 @@ Which of your dependencies' CVEs are **exploited** or **likely next**, today.
 Quiet. It uses the same parser and matcher as the site's [Check Deps](https://cverdict.dev/check) page. Your files
 are read where the check runs; the only download is the public index, `packages.json` (under 1 MB).
 
-It is a priority overlay, not a full audit. It only knows the tracked CVEs: those published in the last 30 days,
-those in CISA KEV, those EU KEV or CIRCL list as exploited, and older ones that woke up. Keep running a scanner
-such as osv-scanner, npm audit or Dependabot for the rest; use this to decide what to fix first.
+It checks every CVE that an [OSV.dev](https://osv.dev/) advisory ties to a package version, about 47,000
+advisories, and ranks the hits by exploitation evidence, so the few to fix first come first. Most old CVEs land in
+Quiet; one with a Metasploit module or a Nuclei template is Likely next at any age. Not covered: advisories without
+a CVE ID (malware reports among them), OS packages and containers (deb, rpm, apk) and bugs no advisory names yet.
+"Affected" means the version is inside an advisory's range, not that your code reaches the vulnerable part.
 
 ## On your machine
 
@@ -21,7 +23,7 @@ npx -y cverdict-check --fail-on likely --format json -o cverdict.json
 
 ```text
 CVErdict check
-Checked 3 packages in 1 file against 1,159 tracked CVEs (data of 2026-11-26 17:47 UTC, evidence bar 50).
+Checked 3 packages in 1 file against the <n> CVEs OSV.dev advisories tie to package versions (data of 2026-11-26 17:47 UTC, evidence bar 50).
 
 EXPLOITED (1)
   CVE-2025-54313  score 97  KEV due 2026-02-12  prettier · eslint-config-prettier

@@ -35,6 +35,8 @@ export interface Finding {
   line: number | null;
   /** The lowest version that fixes every matching advisory (lowestFix), if one is known. */
   fixedIn: string | null;
+  /** A tracked CVE (it has a CVE page); false for one from packages-older.json. */
+  tracked: boolean;
 }
 
 export interface Report {
@@ -48,6 +50,8 @@ export interface Report {
   indexCves: number;
   /** Ecosystems whose advisory data was missing in the last run. */
   ecosystemsDown: string[];
+  /** What the index covered: tracked CVEs, older ones (packages-older.json), distinct advisories naming a CVE, and why older ones are missing. */
+  coverage: { tracked: number; older: number; advisories: number; olderError: string | null };
   /** Notes from the parser, per file. */
   notes: { file: string; text: string }[];
 }
@@ -104,8 +108,14 @@ export function lowestFix(pkg: Pick<PackageHit, 'eco' | 'advisories'>): string |
 export const compareFindings = (a: Finding, b: Finding) =>
   RANK[b.group] - RANK[a.group] || b.row.s - a.row.s || a.row.id.localeCompare(b.row.id) || a.file.localeCompare(b.file) || a.pkg.name.localeCompare(b.pkg.name);
 
+/** Which CVEs of the index came from packages-older.json, and why it is missing (Loaded in data.ts). */
+export interface OlderInfo {
+  olderIds: ReadonlySet<string>;
+  olderError: string | null;
+}
+
 /** Check `files` (relative to `cwd`) at evidence bar `knob`. Reads files; no network. */
-export function checkFiles(files: readonly string[], cwd: string, index: PackagesFile, knob = KNOB_DEFAULT): Report {
+export function checkFiles(files: readonly string[], cwd: string, index: PackagesFile, knob = KNOB_DEFAULT, older: OlderInfo = { olderIds: new Set(), olderError: null }): Report {
   const reports: FileReport[] = [];
   const findings: Finding[] = [];
   const notes: Report['notes'] = [];
@@ -141,7 +151,7 @@ export function checkFiles(files: readonly string[], cwd: string, index: Package
         for (const pkg of hit.packages) {
           // A CVE confirmed for one package of the file lists its unconfirmed packages under "possible".
           const g: Group = group !== 'possible' && pkg.unchecked !== null ? 'possible' : group;
-          findings.push({ group: g, row: hit.row, pkg, file: path, line: line(pkg.name, pkg.version), fixedIn: lowestFix(pkg) });
+          findings.push({ group: g, row: hit.row, pkg, file: path, line: line(pkg.name, pkg.version), fixedIn: lowestFix(pkg), tracked: !older.olderIds.has(hit.row.id) });
         }
       }
     }
@@ -156,6 +166,7 @@ export function checkFiles(files: readonly string[], cwd: string, index: Package
     checked,
     indexCves: index.cves.rows.length,
     ecosystemsDown: index.sources.filter((s) => !s.ok).map((s) => s.ecosystem),
+    coverage: { tracked: index.cves.rows.length - older.olderIds.size, older: older.olderIds.size, advisories: index.distinct?.advisories ?? 0, olderError: older.olderError },
     notes,
   };
 }

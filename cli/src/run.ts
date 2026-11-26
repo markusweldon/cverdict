@@ -70,7 +70,7 @@ export async function run(o: Options, io: Io): Promise<RunResult> {
     io.err(`${(e as Error).message}\n`);
     return { code: 2, report: null };
   }
-  const report = checkFiles(found.files, o.cwd, loaded.file, o.knob);
+  const report = checkFiles(found.files, o.cwd, loaded.file, o.knob, loaded);
   for (const f of found.skipped) report.notes.push({ file: f, text: 'Left out: go.mod in the same folder lists the versions the build selects.' });
   const main = o.format === 'json' ? toJson(report, o.failOn) : o.format === 'sarif' ? toSarif(report, VERSION) : o.format === 'markdown' ? toMarkdown(report, o.failOn) : toText(report, o.failOn);
   if (o.output) write(o.cwd, o.output, main);

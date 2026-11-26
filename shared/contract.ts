@@ -1115,6 +1115,53 @@ export interface McpInventoryResult {
   names: McpInventoryName[];
 }
 
+/** One package hit by one CVE in one file (check_dependencies). */
+export interface McpDependencyFinding {
+  cve: string;
+  /** Tier at the evidence bar; "possible" when the version in the file could not be compared. */
+  group: Tier | 'possible';
+  verdict: string;
+  score: number;
+  in_kev: boolean;
+  kev_due: string | null;
+  exploited: boolean;
+  weaponized: boolean;
+  ecosystem: PackageEcosystem;
+  /** As the file names it; `named` is the advisory's spelling when they differ (Go). */
+  package: string;
+  named: string | null;
+  version: string | null;
+  /** The lowest version that fixes every matching advisory, if one is known. */
+  fixed_in: string | null;
+  advisories: string[];
+  /** Relative to the server's working directory, with forward slashes. */
+  file: string;
+  line: number | null;
+  /** True for a tracked CVE (it has a page and get_verdict knows it); false for an older one from packages-older.json. */
+  tracked: boolean;
+  url: string;
+  /** Upstream text, cut to 160 characters. */
+  title: string;
+}
+
+export interface McpDependenciesResult {
+  data: McpData;
+  knob: number;
+  /** What was checked and what was not, in words. */
+  scope: string;
+  /** Set when findings were left out to keep the answer within its size budget, or older CVEs could not be loaded. */
+  note: string | null;
+  files: { path: string; format: string | null; packages: number; error: string | null }[];
+  /** Distinct CVEs per group, over every finding (shown or not). */
+  counts: Record<Tier | 'possible', number>;
+  packages_checked: number;
+  coverage: { tracked_cves: number; older_cves: number; advisories: number; older_missing: string | null };
+  /** Findings before the cut; `omitted` of them are left out (least urgent first). */
+  total: number;
+  omitted: number;
+  items: McpDependencyFinding[];
+}
+
 export interface McpChangesResult extends McpPage<EventItem> {
   /** `since` as asked, as a full ISO date-time. A date-time is exclusive; a date takes that whole day. */
   since: string;

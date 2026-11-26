@@ -252,8 +252,9 @@ What the card leaves out:
   an EPSS jump or a first public exploit: an Exploit-DB entry, Metasploit module, Nuclei template,
   or a GitHub PoC repo at least 3 days old or with 2 stars (the code is not checked).
 - **Check Deps** reads CycloneDX, SPDX, package URL lists and npm, yarn, pnpm, pip, Poetry, uv,
-  Pipenv, Go, Cargo, Bundler, Composer, NuGet and Gradle lockfiles. It knows only the tracked CVEs,
-  so it is not a full audit. The same check runs in CI as [`cverdict-check`](cli/README.md), from npm
+  Pipenv, Go, Cargo, Bundler, Composer, NuGet and Gradle lockfiles, against every CVE an OSV.dev
+  advisory ties to a package version (older ones come from `packages-older.json` and have no CVE page
+  here), ranked by the same evidence. The same check runs in CI as [`cverdict-check`](cli/README.md), from npm
   or as a GitHub Action: job summary, annotations on the lockfile lines, SARIF for code scanning, and a
   failing step when a dependency is Exploited. Run it on a schedule too: verdicts change after you merge.
 - **Keys**: `j`/`k`, `/`, `Ctrl K`, `?`.
@@ -275,7 +276,7 @@ Only free, public data. Nothing from NVD.
 | [Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) | Templates that reference a CVE, and when the first one for each CVE landed (from the repository's history) | hourly | MIT |
 | [Exploit-DB](https://gitlab.com/exploit-database/exploitdb) | Entries that reference a CVE (IDs and links only) | every 6 h | GPL-2.0 |
 | [PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub) | Public proof-of-concept repositories per CVE | hourly | CC0-1.0 |
-| [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions affected by the tracked CVEs, for the Check Deps page only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
+| [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions each CVE affects, for Check Deps, `cverdict-check` and the MCP server only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
 
 What happens when a source is down is under [How it works](#how-it-works). Details and required
 notices: [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
@@ -313,8 +314,9 @@ modules), one event per stable id. For one vendor or product, subscribe to
 `https://cverdict.dev/feeds/v/<name>.xml` (for example `fortinet` or `palo-alto-networks`); the
 watchlist copies the URL. A check every 15 minutes starts a run as soon as CISA or ENISA list a new
 CVE. `woke.json` lists the old CVEs that woke up,
-`receipts.json` holds the Receipts figures with every hit and miss, and `packages.json` the package
-versions the tracked CVEs affect, which the Check Deps page compares with your file.
+`receipts.json` holds the Receipts figures with every hit and miss, and `packages.json` and
+`packages-older.json` the package versions the CVEs affect (tracked ones, then every other CVE an
+OSV.dev advisory names), which Check Deps compares with your file.
 
 Every file, every field, sharding and the versioning policy: [docs/DATA.md](docs/DATA.md).
 
@@ -339,8 +341,9 @@ claude mcp add cverdict -- npm --prefix "$PWD" run -s mcp
 ```
 
 Tools: `get_verdict` (1 to 15 CVE IDs), `list_signal`, `kev_due`, `woke_up`, `receipts`,
-`search_cves`, `check_inventory` (1 to 200 vendor or product names) and `changes_since` (verdict
-events of the last 7 days). Setup for other clients, options and limits: [mcp/README.md](mcp/README.md); what
+`search_cves`, `check_inventory` (1 to 200 vendor or product names), `check_dependencies` (the
+lockfiles and SBOMs in the folder the server runs in, matched against every CVE an OSV.dev advisory
+names; nothing leaves your machine) and `changes_since` (verdict events of the last 7 days). Setup for other clients, options and limits: [mcp/README.md](mcp/README.md); what
 each answer contains: [docs/DATA.md](docs/DATA.md#mcp-server); copyable commands on the site:
 [MCP Server](https://cverdict.dev/mcp).
 
@@ -436,9 +439,10 @@ demo GIF from a running build. See [tools/brand/README.md](tools/brand/README.md
 - **Upstream errors flow through.** Descriptions, product names and CVSS vectors are as the CNA
   published them.
 - **PoC links are unverified third-party code** and may be malware. Never run one outside a lab.
-- **Check Deps is not a scanner.** It knows only the tracked CVEs that an advisory ties to a package
-  version, in eight ecosystems. "Affected" means the version is inside the advisory's range, not
-  that your code reaches the vulnerable part.
+- **Check Deps is not a full scanner.** It knows the CVEs an OSV.dev advisory ties to a package
+  version, in eight ecosystems: not advisories without a CVE ID (malware reports among them), OS
+  packages or containers. "Affected" means the version is inside the advisory's range, not that your
+  code reaches the vulnerable part.
 
 ## Contributing
 
