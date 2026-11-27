@@ -225,3 +225,28 @@ export function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number]
   }, []);
   return [ref, width];
 }
+
+/**
+ * Reveal on scroll: arms the element (class `is-armed`, which CSS may use to hide or collapse
+ * parts of it) and adds `is-in` once it is on screen, so its CSS transitions play there. Without
+ * IntersectionObserver, or with reduced motion, nothing is armed and everything shows at once.
+ */
+export function useReveal<T extends HTMLElement>(): RefObject<T | null> {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || prefersReducedMotion() || typeof IntersectionObserver === 'undefined') return;
+    el.classList.add('is-armed');
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        el.classList.add('is-in');
+        io.disconnect();
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return ref;
+}

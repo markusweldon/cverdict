@@ -78,7 +78,8 @@ async function still(name, y) {
     window.scrollTo(0, Math.max(0, t - 64));
     return window.scrollY;
   }, top);
-  await page.waitForTimeout(400);
+  // Sections on The Surge animate in once scrolled to: let them finish.
+  await page.waitForTimeout(1400);
   const png = join(TMP, `${name}.png`);
   await page.screenshot({ path: png, clip: { ...CROP, y: top - scroll } });
   webp(png, join(SCREENS, `${name}.webp`));
@@ -99,7 +100,7 @@ await go('/surge', 'h1');
 await still('surge', await topOf('h1', null, 56));
 // Time to KEV, further down The Surge.
 await page.waitForSelector('#lag-h', { timeout: 20000 });
-await still('time-to-kev', await topOf('#lag-h', null, 40));
+await still('time-to-kev', await topOf('#lag-h', null, 72));
 // Heating up on Today, with the start of the signal feed under it.
 await go('/', '#heat-h');
 await still('heat', await topOf('#heat-h', null, 40));

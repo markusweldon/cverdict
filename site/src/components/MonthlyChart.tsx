@@ -311,6 +311,9 @@ export function MonthlyChart({ monthly, generatedAt, surge: surgeProp }: Monthly
     }
   };
 
+  // How many options differ from the defaults: the folded row says so, and starts open if any do.
+  const optionsOn = [view.group !== 'month', view.count !== 'published', view.log, view.compare, view.sev.length > 0, view.stack, !!view.cnaOnly, view.cnaOut.length > 0, view.kev].filter(Boolean).length;
+  const [moreOpen, setMoreOpen] = useState(() => optionsOn > 0);
   const showReset = series.range.custom;
   const presetOn = series.range.custom ? null : view.preset;
 
@@ -340,51 +343,57 @@ export function MonthlyChart({ monthly, generatedAt, surge: surgeProp }: Monthly
             </button>
           </div>
         </div>
-        <div class="mc__row">
-          <Seg label="Group by" value={view.group} options={(['month', 'quarter', 'year'] as const).map((g) => ({ id: g, label: GROUP_LABEL[g] }))} onPick={(g) => set({ ...view, group: g })} />
-          <Seg label="Count" value={view.count} options={[{ id: 'published', label: 'Published' }, { id: 'reserved', label: 'Reserved' }] as const} onPick={(c) => set({ ...view, count: c })} />
-          <Seg label="Scale" value={log ? 'log' : 'linear'} options={[{ id: 'linear', label: 'Linear' }, { id: 'log', label: 'Log' }] as const} onPick={(v) => set({ ...view, log: v === 'log' })} disabled={stacked} />
-          <Toggle on={view.compare} onClick={() => set({ ...view, compare: !view.compare })} label="A year earlier" tip="Dashed line: the same period one year earlier" />
-        </div>
-        <fieldset class="mc__row mc__filters" disabled={filtersOff || !series.filtersReady}>
-          <legend class="sr-only">Filters</legend>
-          <div class="seg seg--sm" role="group" aria-label="Severity (CVSS)">
-            {SEVERITY_BANDS.map((b) => (
-              <button key={b} type="button" class={`seg__btn mc__sev mc__sev--${b}`} aria-pressed={!view.sev.length || view.sev.includes(b) ? 'true' : 'false'} onClick={() => toggleSev(b)}>
-                <span class={`mc__dot s-sev s-sev--${b}`} aria-hidden="true" />
-                {b === 'none' ? 'None' : BAND_LABELS[b]}
-              </button>
-            ))}
+        <details class="mc__more" open={moreOpen} onToggle={(e) => setMoreOpen((e.currentTarget as HTMLDetailsElement).open)}>
+          <summary class="mc__moresum">
+            Options and filters
+            {optionsOn > 0 && <span class="mc__morecount">{optionsOn} on</span>}
+          </summary>
+          <div class="mc__row">
+            <Seg label="Group by" value={view.group} options={(['month', 'quarter', 'year'] as const).map((g) => ({ id: g, label: GROUP_LABEL[g] }))} onPick={(g) => set({ ...view, group: g })} />
+            <Seg label="Count" value={view.count} options={[{ id: 'published', label: 'Published' }, { id: 'reserved', label: 'Reserved' }] as const} onPick={(c) => set({ ...view, count: c })} />
+            <Seg label="Scale" value={log ? 'log' : 'linear'} options={[{ id: 'linear', label: 'Linear' }, { id: 'log', label: 'Log' }] as const} onPick={(v) => set({ ...view, log: v === 'log' })} disabled={stacked} />
+            <Toggle on={view.compare} onClick={() => set({ ...view, compare: !view.compare })} label="A year earlier" tip="Dashed line: the same period one year earlier" />
           </div>
-          <Toggle on={stacked} onClick={() => set({ ...view, stack: !view.stack })} label="Stack by severity" />
-          <label class="select mc__field mc__cna">
-            <span>CNA</span>
-            <select value={view.cnaOnly ? `+${view.cnaOnly}` : ''} onChange={(e) => onCna((e.currentTarget as HTMLSelectElement).value)}>
-              <option value="">All CNAs</option>
-              {idx && (
-                <optgroup label="Only one CNA">
-                  {idx.cnas.map((c) => (
-                    <option key={`+${c.key}`} value={`+${c.key}`}>
-                      Only {c.label}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {idx && (
-                <optgroup label="Leave one out">
-                  {idx.cnas.map((c) => (
-                    <option key={`-${c.key}`} value={`-${c.key}`} disabled={view.cnaOut.includes(c.key)}>
-                      Exclude {c.label}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </label>
-          {(has(WORDPRESS_CNAS) || !idx) && <Toggle on={groupOut(WORDPRESS_CNAS)} onClick={() => toggleGroup(WORDPRESS_CNAS)} label="Exclude WordPress" tip="Wordfence, WPScan and Patchstack, the WordPress plugin CNAs" />}
-          {(has(KERNEL_CNAS) || !idx) && <Toggle on={groupOut(KERNEL_CNAS)} onClick={() => toggleGroup(KERNEL_CNAS)} label="Exclude Linux kernel" tip="The Linux kernel CNA" />}
-          <Toggle on={view.kev} onClick={() => set({ ...view, kev: !view.kev })} label="In CISA KEV only" tip="CVEs CISA lists as known exploited, by the month the CVE was published" />
-        </fieldset>
+          <fieldset class="mc__row mc__filters" disabled={filtersOff || !series.filtersReady}>
+            <legend class="sr-only">Filters</legend>
+            <div class="seg seg--sm" role="group" aria-label="Severity (CVSS)">
+              {SEVERITY_BANDS.map((b) => (
+                <button key={b} type="button" class={`seg__btn mc__sev mc__sev--${b}`} aria-pressed={!view.sev.length || view.sev.includes(b) ? 'true' : 'false'} onClick={() => toggleSev(b)}>
+                  <span class={`mc__dot s-sev s-sev--${b}`} aria-hidden="true" />
+                  {b === 'none' ? 'None' : BAND_LABELS[b]}
+                </button>
+              ))}
+            </div>
+            <Toggle on={stacked} onClick={() => set({ ...view, stack: !view.stack })} label="Stack by severity" />
+            <label class="select mc__field mc__cna">
+              <span>CNA</span>
+              <select value={view.cnaOnly ? `+${view.cnaOnly}` : ''} onChange={(e) => onCna((e.currentTarget as HTMLSelectElement).value)}>
+                <option value="">All CNAs</option>
+                {idx && (
+                  <optgroup label="Only one CNA">
+                    {idx.cnas.map((c) => (
+                      <option key={`+${c.key}`} value={`+${c.key}`}>
+                        Only {c.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {idx && (
+                  <optgroup label="Leave one out">
+                    {idx.cnas.map((c) => (
+                      <option key={`-${c.key}`} value={`-${c.key}`} disabled={view.cnaOut.includes(c.key)}>
+                        Exclude {c.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </label>
+            {(has(WORDPRESS_CNAS) || !idx) && <Toggle on={groupOut(WORDPRESS_CNAS)} onClick={() => toggleGroup(WORDPRESS_CNAS)} label="Exclude WordPress" tip="Wordfence, WPScan and Patchstack, the WordPress plugin CNAs" />}
+            {(has(KERNEL_CNAS) || !idx) && <Toggle on={groupOut(KERNEL_CNAS)} onClick={() => toggleGroup(KERNEL_CNAS)} label="Exclude Linux kernel" tip="The Linux kernel CNA" />}
+            <Toggle on={view.kev} onClick={() => set({ ...view, kev: !view.kev })} label="In CISA KEV only" tip="CVEs CISA lists as known exploited, by the month the CVE was published" />
+          </fieldset>
+        </details>
         {/* Always there, one line tall at least, so a note or chip coming and going moves nothing below. */}
         {(
           <div class="mc__row mc__notes">
@@ -535,7 +544,8 @@ export function MonthlyChart({ monthly, generatedAt, surge: surgeProp }: Monthly
             ) : (
               <>
                 {n > 1 && <path class="chart__area s-volume" d={`${path(mainVals)}L${x(Math.max(0, cut - 1))} ${s.y(0)}L${x(0)} ${s.y(0)}Z`} />}
-                <path class="chart__line s-volume" d={path(mainVals)} />
+                {/* Keyed by range and grouping: a new range draws itself in again. */}
+                <path key={`${points[0]?.first}-${last?.last}-${view.group}`} class="chart__line s-volume mc__draw" d={path(mainVals)} pathLength={1} />
               </>
             )}
             {view.compare && (

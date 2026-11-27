@@ -138,3 +138,72 @@ export function ledeText(g: Growth | null): string {
   if (Number(r) < FLAT_HIGH) return `${when} saw about as many CVEs as a year earlier. ${LEDE_CALM}`;
   return `${when} saw ${r} times the CVEs of a year earlier. Exploitation stayed rare. ${LEDE_TAIL}`;
 }
+
+/** A month row with the KEV count (stats.json's monthly rows have both). */
+export interface KevMonthRow extends MonthRow {
+  kev_added: number;
+}
+
+/**
+ * The same months' KEV additions now and one year earlier, for the growth window `g`: the hero
+ * sets it beside the CVE growth. Null when a month is missing or the year-earlier count is zero.
+ */
+export function kevGrowth(monthly: readonly KevMonthRow[], g: Growth | null): { now: number; before: number; ratio: number } | null {
+  if (!g) return null;
+  const by = new Map(monthly.map((m) => [m.month, m.kev_added]));
+  let now = 0;
+  let before = 0;
+  for (let k = g.start; k <= g.end; k = shiftMonth(k, 1)) {
+    const a = by.get(k);
+    const b = by.get(shiftMonth(k, -12));
+    if (a === undefined || b === undefined) return null;
+    now += a;
+    before += b;
+  }
+  return before > 0 ? { now, before, ratio: now / before } : null;
+}
+
+/** First year of the risk chart: KEV opened in late 2021 with a backlog of old CVEs, which fills 2021 and 2022. */
+export const RISK_FROM = 2023;
+
+export interface RiskRow {
+  year: number;
+  published: number;
+  kev: number;
+  /** KEV additions per 1,000 CVEs published that year. */
+  perThousand: number;
+  /** The current, unfinished year. */
+  partial: boolean;
+}
+
+/** CVEs published and KEV additions per calendar year since `from`, and their ratio. */
+export function riskRows(monthly: readonly KevMonthRow[], generatedAt: string, from = RISK_FROM): RiskRow[] {
+  const done = new Set(completeMonths(monthly, generatedAt).map((m) => m.month));
+  const years = new Map<number, RiskRow>();
+  for (const m of monthly) {
+    const year = Number(m.month.slice(0, 4));
+    if (year < from) continue;
+    const row = years.get(year) ?? { year, published: 0, kev: 0, perThousand: 0, partial: false };
+    row.published += m.published;
+    row.kev += m.kev_added;
+    years.set(year, row);
+  }
+  const rows = [...years.values()].sort((a, b) => a.year - b.year);
+  for (const r of rows) {
+    r.perThousand = r.published > 0 ? (r.kev / r.published) * 1000 : 0;
+    // A year is partial until its December is complete.
+    r.partial = !done.has(`${r.year}-12`);
+  }
+  return rows.filter((r) => r.published > 0);
+}
+
+/** One sentence: how much faster volume grew than KEV additions, first year to last. */
+export function riskTakeaway(rows: readonly RiskRow[]): string {
+  if (rows.length < 2) return '';
+  const a = rows[0];
+  const b = rows[rows.length - 1];
+  if (a.published <= 0 || a.kev <= 0) return '';
+  const when = `${b.year}${b.partial ? ' so far' : ''}`;
+  const times = (x: number) => `${x.toFixed(1)} times`;
+  return `From ${a.year} to ${when}, CVEs grew ${times(b.published / a.published)} and KEV additions ${times(b.kev / a.kev)}: ${b.perThousand.toFixed(1)} KEV additions per 1,000 new CVEs, against ${a.perThousand.toFixed(1)} in ${a.year}.`;
+}

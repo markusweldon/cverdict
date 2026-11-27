@@ -26,13 +26,13 @@ interface Item {
 
 const PAGES: readonly [string, string, string][] = [
   ['Today', '', 'Signal, evidence bar, waterfall'],
-  ['The Surge', 'surge', 'Volume since 1999'],
+  ['Check', 'check', 'Am I affected? A GitHub repo, lockfile or SBOM'],
   ['KEV Clock', 'kev', 'CISA KEV due dates'],
   ['Woke Up', 'woke', 'Old CVEs with new exploit evidence'],
-  ['Check', 'check', 'Am I affected? A GitHub repo, lockfile or SBOM'],
   ['Explore', 'explore', 'Every CVE in the window'],
-  ['Batches', 'batches', 'Patch-day cohorts'],
+  ['Patch days', 'batches', 'Batches and bulk releases'],
   ['Receipts', 'receipts', 'Did we flag it before CISA did?'],
+  ['The Surge', 'surge', 'Volume since 1999'],
   ['Method', 'method', 'Formula, chips, sources'],
   ['MCP Server', 'mcp', 'AI agents: install, tools, limits'],
   ['Feeds & API', 'feeds', 'JSON, Atom, iCalendar'],

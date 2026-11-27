@@ -217,7 +217,7 @@ export function DailyChart({ days, kev, kevReady, partialLast, knob }: Props) {
               const monday = new Date(`${d.date}T00:00:00Z`).getUTCDay() === 1;
               const r = Math.min(3, bw / 3);
               return (
-                <g key={d.date} class={`dc__day${active === i ? ' is-on' : ''}${active !== null && active !== i ? ' is-off' : ''}`}>
+                <g key={d.date} class={`dc__day${active === i ? ' is-on' : ''}${active !== null && active !== i ? ' is-off' : ''}`} style={{ '--i': i }}>
                   {d.published > 0 && <path class={`dc__vol${partial ? ' is-partial' : ''}`} d={barPath(x, bw, y(d.published), base, r)} />}
                   {d.passed > 0 && <path class="dc__pass" d={barPath(x, bw, y(d.passed), base, r)} />}
                   {d.exploited > 0 && <path class="dc__exp" d={barPath(x, bw, y(d.exploited), base, r)} />}
