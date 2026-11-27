@@ -1,0 +1,66 @@
+# Creates the GitHub release for a package tag: mcp-v<version> (cverdict-mcp), check-v<version>
+# (cverdict-check and the GitHub Action) or cverdict-v<version> (cverdict). The three release
+# workflows call it after publishing to npm; run it by hand (Actions → github-release → Run
+# workflow) to add the release for a tag that has none. A tag that already has a release is left
+# as it is. The notes link the npm version and list the pull requests since the same package's
+# previous tag.
+name: github-release
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: An existing tag, such as check-v0.1.1
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  release:
+    name: GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! [[ "$TAG" =~ ^(mcp|check|cverdict)-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::$TAG is not a package tag (mcp-v, check-v or cverdict-v and a version)"
+            exit 1
+          fi
+          prefix=${BASH_REMATCH[1]}
+          version=${BASH_REMATCH[2]}
+          case "$prefix" in
+            mcp) name=cverdict-mcp ;;
+            check) name=cverdict-check ;;
+            cverdict) name=cverdict ;;
+          esac
+          git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || { echo "::error::tag $TAG does not exist"; exit 1; }
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::$TAG already has a release"
+            exit 0
+          fi
+          # The same package's previous version, so the notes cover only its own changes.
+          prev=$(git tag --list "$prefix-v*" --sort=-v:refname | awk -v t="$TAG" 'found { print; exit } $0 == t { found = 1 }')
+          notes="npm: [$name@$version](https://www.npmjs.com/package/$name/v/$version)"
+          if [ "$prefix" = check ]; then
+            notes="$notes · GitHub Action: \`uses: $GITHUB_REPOSITORY/action@$TAG\`"
+          fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$name $version" --notes "$notes" --generate-notes \
+            ${prev:+--notes-start-tag "$prev"}

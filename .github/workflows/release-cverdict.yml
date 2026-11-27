@@ -109,3 +109,12 @@ jobs:
             exit 0
           fi
           npm publish "./pkg/$TARBALL" --access public
+
+  # The GitHub release for this tag, once the package is on npm.
+  github-release:
+    needs: publish
+    permissions:
+      contents: write
+    uses: ./.github/workflows/github-release.yml
+    with:
+      tag: ${{ github.ref_name }}

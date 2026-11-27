@@ -14,6 +14,8 @@ Open-source CVE triage for the 2026 flood: the few CVEs that matter today, and e
 [![ci](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/ci.yml)
 [![refresh-data](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml/badge.svg)](https://github.com/markusweldon/cverdict/actions/workflows/refresh.yml)
 [![npm: cverdict-mcp](https://img.shields.io/npm/v/cverdict-mcp?label=npm%3A%20cverdict-mcp&color=c6f432&labelColor=111317)](https://www.npmjs.com/package/cverdict-mcp)
+[![npm: cverdict-check](https://img.shields.io/npm/v/cverdict-check?label=npm%3A%20cverdict-check&color=c6f432&labelColor=111317)](https://www.npmjs.com/package/cverdict-check)
+[![npm: cverdict](https://img.shields.io/npm/v/cverdict?label=npm%3A%20cverdict&color=c6f432&labelColor=111317)](https://www.npmjs.com/package/cverdict)
 [![code: MIT](https://img.shields.io/badge/code-MIT-c6f432?labelColor=111317)](LICENSE)
 [![scores: CC0](https://img.shields.io/badge/scores-CC0-c6f432?labelColor=111317)](#license)
 
