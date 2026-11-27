@@ -1,6 +1,6 @@
 {
   "name": "cverdict-check",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Check lockfiles and SBOMs against CVErdict: which of your dependencies' CVEs are exploited or likely next, from open CISA KEV, EPSS and exploit data. Runs locally; only the public index is downloaded.",
   "license": "MIT",
   "type": "module",

@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: markusweldon/cverdict/action@check-v0.1.0
+      - uses: markusweldon/cverdict/action@check-v0.1.1
         with:
           fail-on: exploited
 ```
@@ -94,7 +94,7 @@ To see the findings in the repository's **Security → Code scanning** tab, writ
       security-events: write
     steps:
       - uses: actions/checkout@v7
-      - uses: markusweldon/cverdict/action@check-v0.1.0
+      - uses: markusweldon/cverdict/action@check-v0.1.1
         id: cverdict
         with:
           fail-on: never

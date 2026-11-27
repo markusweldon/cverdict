@@ -77,7 +77,7 @@ you will see public files from cverdict.dev and your files coming from GitHub. N
 | **Your project, in a terminal** | `npx -y cverdict check` | Nothing. Only the public index is downloaded |
 | **A lockfile or SBOM** | Drop or paste it on the Check page's **Drop a file** tab | Nothing. It is read in your browser |
 
-<img alt="Demo of the Check page, Am I affected?, in the dark theme. The Check a repo tab is open. github.com/OWASP/NodeGoat is typed into the Repository field and Check repo is pressed. The results for OWASP/NodeGoat@master read: Read 1 file from OWASP/NodeGoat (master): 1,479 packages (1,091 distinct). 181 CVEs affect 128 of them, 4 Likely next, 35 Watch and 142 Quiet. The page scrolls to Likely next: CVE-2021-23337 in lodash 4.17.20, 4.17.11, 4.13.1 and 2.4.2, fixed in 4.17.21, score 60; CVE-2026-106445 and CVE-2026-33937 in handlebars 4.0.5, score 56; then CVE-2025-7783 in form-data, score 54." src="docs/assets/check-repo-dark.gif" width="100%">
+<img alt="Demo of the Check page, Am I affected?, in the dark theme. The Check a repo tab is open, with its diagram: GitHub sends the lockfiles and SBOMs to your browser, on your device, where they are matched and ranked; only the repo name goes out; cverdict.dev sends the public index, and nothing goes back. github.com/OWASP/NodeGoat is typed into the Repository field and Check repo is pressed. The results for OWASP/NodeGoat@master read: Read 1 file from OWASP/NodeGoat (master): 1,479 packages (1,091 distinct). 181 CVEs affect 128 of them, 4 Likely next, 35 Watch and 142 Quiet. The page scrolls to Likely next: CVE-2021-23337 in lodash 4.17.20, 4.17.11, 4.13.1 and 2.4.2, fixed in 4.17.21, score 60; CVE-2026-106445 and CVE-2026-33937 in handlebars 4.0.5, score 56; then CVE-2025-7783 in form-data, score 54." src="docs/assets/check-repo-dark.gif" width="100%">
 
 <sub>OWASP NodeGoat is an intentionally vulnerable app. Recorded from the production build with the data of
 Nov 27, 2026 14:47 UTC by <a href="tools/brand/screens.mjs"><code>tools/brand/screens.mjs</code></a>, with GitHub's
@@ -109,7 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: markusweldon/cverdict/action@check-v0.1.0
+      - uses: markusweldon/cverdict/action@check-v0.1.1
         with:
           fail-on: exploited
 ```
@@ -118,7 +118,7 @@ It writes a job summary, marks the lockfile lines in pull requests and fails the
 dependency is Exploited. SARIF for code scanning, other thresholds and every input:
 [cli/README.md](cli/README.md). The same check is the MCP server's `check_dependencies` tool.
 
-<a href="https://cverdict.dev/check"><img alt="The Watch in CI tab of the Check page, Am I affected?. Run it on every push, pull request and day: for private repositories, and to catch a dependency that turns Exploited after you merged. The GitHub Action reads your checkout in the runner: no SBOM, no app to install, no token, and nothing is sent to CVErdict. A Your repository field with the placeholder owner/repo and a button, Add to your repo on GitHub, which opens GitHub with .github/workflows/cverdict.yml filled in to review and commit. Below, the workflow file with a Copy button." src="docs/assets/screens/check-ci.webp" width="100%"></a>
+<a href="https://cverdict.dev/check"><img alt="The Watch in CI tab of the Check page, Am I affected?. Run it on every push, pull request and day: for private repositories, and to catch a dependency that turns Exploited after you merged. The GitHub Action reads your checkout in the runner: no SBOM, no app to install, no token, and nothing is sent to CVErdict. Above it, the diagram: your repo, private ones too, goes to your runner and the CVErdict Action, both inside a dashed box labelled In your CI; cverdict.dev sends the public index and nothing goes back; the result is a job summary, PR annotations and a failing step on Exploited. A Your repository field with the placeholder owner/repo and a button, Add to your repo on GitHub, which opens GitHub with .github/workflows/cverdict.yml filled in to review and commit." src="docs/assets/screens/check-ci.webp" width="100%"></a>
 
 <sub>The <b>Watch in CI</b> tab. The button opens GitHub's own new-file page with the workflow filled in: no app, no token, no account here.</sub>
 
