@@ -8,7 +8,7 @@
   "files": ["bin", "lib.mjs", "LICENSE", "README.md"],
   "engines": { "node": ">=22.12" },
   "dependencies": {
-    "cverdict-check": "^0.1.0",
+    "cverdict-check": "^0.1.1",
     "cverdict-mcp": "^0.2.0"
   },
   "repository": { "type": "git", "url": "git+https://github.com/markusweldon/cverdict.git", "directory": "dispatcher" },
