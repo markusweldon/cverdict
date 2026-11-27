@@ -32,7 +32,7 @@ const GROUPS: readonly [string, readonly [string[], string][]][] = [
       [['g', 's'], 'The Surge'],
       [['g', 'k'], 'KEV Clock'],
       [['g', 'w'], 'Woke Up'],
-      [['g', 'c'], 'Check Deps'],
+      [['g', 'c'], 'Check'],
       [['g', 'e'], 'Explore'],
       [['g', 'b'], 'Batches'],
       [['g', 'r'], 'Receipts'],

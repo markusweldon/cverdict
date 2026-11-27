@@ -7,6 +7,9 @@
  *   packages-older.json (older data, or a failed load) the check covers the tracked CVEs only.
  * - `run()` parses and matches in memory. It makes no request and writes no storage, history or
  *   URL. A failed index load is reported, not retried behind the user's back.
+ * - `runRepo()` checks a public GitHub repository the user named: its requests go to GitHub only
+ *   (api.github.com to list the files, raw.githubusercontent.com to read them, see repo.ts), never
+ *   to CVErdict, and the files are matched in memory exactly as a dropped file.
  * - The last result is kept in this module (memory only) until `clear()` or a reload, so opening a
  *   CVE from the results and going Back shows them again.
  */
@@ -14,7 +17,8 @@ import { rowsFromTable, type PackagesFile } from '../../../shared/contract';
 import { mergePackageFiles } from '../../../shared/packages';
 import { data, DataError, type DataClient } from '../data';
 import { checkComponents, type CheckResult } from './match';
-import { parse, ParseError, type FormatId } from './parse';
+import { parse, ParseError, type FormatId, type Parsed } from './parse';
+import { fetchRepoFiles, parseRepo, repoLabel, RepoError } from './repo';
 
 export const FILE_MAX = 50 * 1024 * 1024;
 export const PASTE_MAX = 5 * 1024 * 1024;
@@ -34,21 +38,44 @@ export type Failure =
   | { kind: 'file-too-large'; size: number }
   | { kind: 'paste-too-large'; size: number }
   | { kind: 'parse'; error: ParseError }
-  | { kind: 'index'; notPublished: boolean; error: Error };
+  | { kind: 'index'; notPublished: boolean; error: Error }
+  | { kind: 'repo'; error: RepoError };
 
 export interface Held {
   result: CheckResult;
-  /** File name, or null for pasted text. */
+  /** File name, or null for pasted text; "owner/repo@branch" for a repository. */
   file: string | null;
+  /** For a repository: what was read from it. */
+  repo?: RepoSource;
 }
 
-export type Stage = { stage: 'parsed'; packages: number } | { stage: 'waiting'; packages: number };
+export interface RepoSource {
+  /** owner/repo as asked, and the branch or commit that was read. */
+  name: string;
+  ref: string;
+  files: { path: string; format: FormatId; packages: number }[];
+  /** Files that were found but could not be read, with the parser's message. */
+  unread: { path: string; message: string }[];
+  /** Files over the cap, and whether GitHub cut a very large tree short. */
+  skipped: number;
+  truncated: boolean;
+  /** Set when only the root could be tried (GitHub's API limit). */
+  rootOnly: string | null;
+}
+
+export type Stage = { stage: 'parsed'; packages: number } | { stage: 'waiting'; packages: number } | { stage: 'fetching'; repo: string };
 
 export interface RunOptions {
   /** A "Read as" choice; null detects the format. */
   forced?: FormatId | null;
   /** Called between the steps, so the page can say what is happening. */
   onStage?: (s: Stage) => void;
+}
+
+export interface RepoRunOptions {
+  onStage?: (s: Stage) => void;
+  /** For tests: the fetch GitHub's files are read with. */
+  fetch?: typeof fetch;
 }
 
 export type Outcome = { ok: true; held: Held } | { ok: false; failure: Failure };
@@ -64,6 +91,8 @@ export interface CheckSession {
   /** Whether touch() has started the load. */
   started(): boolean;
   run(text: string, file: string | null, opts?: RunOptions): Promise<Outcome>;
+  /** Check a public GitHub repository: "owner/repo" or its URL. */
+  runRepo(input: string, opts?: RepoRunOptions): Promise<Outcome>;
   held(): Held | null;
   clear(): void;
 }
@@ -84,6 +113,17 @@ export function indexGlyphs(file: Pick<PackagesFile, 'cves' | 'packages'>): stri
   const seen = new Set<string>();
   for (const ch of JSON.stringify([file.cves.rows, file.packages])) if (ch > '\u007e') seen.add(ch);
   return [...seen].sort().join('');
+}
+
+/** The index, or the failure to report; waits a tick so the page can say "Checking..." first. */
+async function indexOrFailure(index: Promise<PackagesFile>): Promise<PackagesFile | { ok: false; failure: Failure }> {
+  try {
+    const [pkgs] = await Promise.all([index, tick()]);
+    return pkgs;
+  } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e));
+    return { ok: false, failure: { kind: 'index', notPublished: e instanceof DataError && e.status === 404, error } };
+  }
 }
 
 export function createSession(client: Pick<DataClient, 'packages'> & Partial<Pick<DataClient, 'packagesOlder'>>): CheckSession {
@@ -135,15 +175,50 @@ export function createSession(client: Pick<DataClient, 'packages'> & Partial<Pic
       }
       const packages = parsed.components.length;
       opts.onStage?.({ stage: merged ? 'parsed' : 'waiting', packages });
-      let pkgs: PackagesFile;
-      try {
-        // Let the page show "Checking n packages..." before the synchronous matching starts.
-        [pkgs] = await Promise.all([index, tick()]);
-      } catch (e) {
-        const error = e instanceof Error ? e : new Error(String(e));
-        return { ok: false, failure: { kind: 'index', notPublished: e instanceof DataError && e.status === 404, error } };
-      }
+      const pkgs = await indexOrFailure(index);
+      if (!('cves' in pkgs)) return pkgs;
       held = { result: checkComponents(parsed, pkgs), file };
+      return { ok: true, held };
+    },
+    async runRepo(input, opts = {}) {
+      const ref = parseRepo(input);
+      if (!ref) return { ok: false, failure: { kind: 'repo', error: new RepoError('invalid', 'Enter a public GitHub repository as owner/repo, or paste its github.com address.') } };
+      const index = touch();
+      opts.onStage?.({ stage: 'fetching', repo: repoLabel(ref) });
+      let got;
+      try {
+        got = await fetchRepoFiles(ref, opts.fetch ?? fetch);
+      } catch (e) {
+        if (e instanceof RepoError) return { ok: false, failure: { kind: 'repo', error: e } };
+        throw e;
+      }
+      const components: Parsed['components'] = [];
+      const notes: string[] = [];
+      const files: RepoSource['files'] = [];
+      const unread: RepoSource['unread'] = [];
+      for (const f of got.files) {
+        try {
+          const p = parse(f.text, f.path);
+          components.push(...p.components);
+          for (const n of p.notes) notes.push(`${f.path}: ${n}`);
+          files.push({ path: f.path, format: p.format, packages: p.components.length });
+        } catch (e) {
+          if (!(e instanceof ParseError)) throw e;
+          unread.push({ path: f.path, message: e.kind === 'json' ? 'This looks like JSON, but it could not be read.' : e.message });
+        }
+      }
+      if (!files.length) {
+        return { ok: false, failure: { kind: 'repo', error: new RepoError('no-files', `${got.files.length === 1 ? 'The one lockfile' : `None of the ${got.files.length} lockfiles and SBOMs`} found in ${repoLabel(ref)} could be read.`) } };
+      }
+      opts.onStage?.({ stage: merged ? 'parsed' : 'waiting', packages: components.length });
+      const pkgs = await indexOrFailure(index);
+      if (!('cves' in pkgs)) return pkgs;
+      const result = checkComponents({ format: files[0].format, components, notes }, pkgs);
+      held = {
+        result,
+        file: `${ref.owner}/${ref.repo}@${got.ref}`,
+        repo: { name: `${ref.owner}/${ref.repo}`, ref: got.ref, files, unread, skipped: got.skipped, truncated: got.truncated, rootOnly: got.rootOnly },
+      };
       return { ok: true, held };
     },
     held: () => held,

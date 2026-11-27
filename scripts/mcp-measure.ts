@@ -57,8 +57,8 @@ const events = await dc.run((c) => c.file('events.json', parse.events));
 const logStart = new Date(Date.parse(events.generated_at) - events.days * 86_400_000).toISOString();
 record('changes_since, the whole log', await dc.run((c) => changesSince(c, { since: logStart }, now)));
 record('check_inventory, 5 vendors', await dc.run((c) => checkInventory(c, { names: ['fortinet', 'vmware', 'apache software foundation', 'microsoft', 'notarealvendor'] }, now)));
-// check_dependencies: every Check Deps fixture with Quiet findings listed (about 200 packages); the budget cuts the least urgent.
-record('check_dependencies, the Check Deps fixtures with Quiet', await dc.run((c) => checkDependencies(c, { paths: ['site/src/check/fixtures'], include_quiet: true }, now), DEPENDENCIES_TIMEOUT_MS), true);
+// check_dependencies: every Check page fixture with Quiet findings listed (about 200 packages); the budget cuts the least urgent.
+record('check_dependencies, the Check page fixtures with Quiet', await dc.run((c) => checkDependencies(c, { paths: ['site/src/check/fixtures'], include_quiet: true }, now), DEPENDENCIES_TIMEOUT_MS), true);
 
 // Every shard: the largest verdicts, and the score math of every CVE.
 const names = Array.from({ length: SHARD_COUNT }, (_, i) => i.toString(16).padStart(2, '0'));

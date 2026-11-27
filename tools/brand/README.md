@@ -6,16 +6,19 @@ hand-edit the files in `docs/assets/`; change a script and run it again.
 
 | Command | Writes | Needs |
 | --- | --- | --- |
-| `npm run brand` | `docs/assets/*-dark.svg`, `*-light.svg`, `social-preview.svg` | nothing beyond `npm ci`; reads the live data branch |
+| `npm run brand` | `docs/assets/*-dark.svg`, `*-light.svg`, `social-preview.svg` | nothing beyond `npm ci`; reads the live data branch, and OWASP NodeGoat's lockfile at a pinned commit for `check-terminal-*` |
 | `npm run brand -- --data <dir>` | the same, from a local data tree (`site/public/data`, a pipeline `--out`) | |
 | `node tools/brand/render.mjs` | `docs/assets/social-preview.png` (1280x640) | Playwright with Chromium |
 | `node tools/brand/render.mjs --preview <dir>` | also every SVG as a 2x PNG on GitHub's light and dark page colours, to check by eye | Playwright |
-| `node tools/brand/screens.mjs --url <site>` | `docs/assets/screens/*.webp` and `docs/assets/demo-dark.gif` from a running production build | Playwright, ffmpeg |
+| `node tools/brand/screens.mjs --url <site>` | `docs/assets/screens/*.webp`, `docs/assets/demo-dark.gif` and `docs/assets/check-repo-dark.gif` from a running production build | Playwright, ffmpeg, git |
 | `node tools/brand/metrics.mjs` | `tools/brand/metrics.json`, the font widths `build.ts` lays text out with; only when the fonts change | Playwright |
 
 For the screenshots, build the site (`npm run build`) and serve `site/dist` with `/data/` pointing
 at a data tree, for example `npm run preview` after `npm run pipeline` or `npm run mock`. The page
-clock is set nine minutes after the data's `generated_at`.
+clock is set nine minutes after the data's `generated_at`. The repository check GIF and the terminal
+image both check OWASP NodeGoat, an intentionally vulnerable app, at the same pinned commit: the GIF
+replays GitHub's answers from that commit (fetched with git), so it needs no API quota and shows the
+same files as the terminal.
 
 When the data changes, rerun `npm run brand`, `render.mjs` and `screens.mjs` together and update the
 numbers and dates in the README text and alt text to the same run: `build.ts` prints the counts it

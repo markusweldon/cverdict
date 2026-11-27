@@ -517,7 +517,7 @@ lockfile. It covers the CVEs that have a detail shard (the window, every KEV CVE
 or CIRCL lists as exploited and every CVE in `woke.json`) and eight ecosystems: npm, PyPI, Maven, Go, crates.io, RubyGems, Packagist and NuGet.
 The data comes from [OSV.dev](https://osv.dev) (GitHub Advisory Database, PyPI Advisory Database,
 Go Vulnerability Database, RustSec, Drupal security advisories); only advisory IDs, package names
-and version ranges are kept. The site's Check Deps page matches a file against it in the browser.
+and version ranges are kept. The site's Check page matches a file against it in the browser.
 
 | Field | Meaning |
 |---|---|
@@ -639,7 +639,7 @@ revisions for older clients.
 | `receipts` | `receipts.json` | `McpReceiptsResult`: the forward log and backtest figures without the per-CVE lists, or one CVE's entries |
 | `search_cves` | `index.json` | `McpSearchResult`: window CVEs whose ID, CNA, vendor, product or title contain every word of the query |
 | `check_inventory` | `index.json`, `woke.json` | `McpInventoryResult`: for 1 to 200 vendor or product names, the window and woke-up CVEs whose vendor or product equals each name (the watchlist's rule, `shared/watch.ts`), most urgent first, with counts of what was left out, `no_match`, and the vendor feed for the name's slug (looser than the match: it folds accents and punctuation) |
-| `check_dependencies` | `packages.json`, `packages-older.json` | `McpDependenciesResult`: the lockfiles and SBOMs under 1 to 20 paths inside the server's working directory, matched like Check Deps against both package files. Per finding: CVE, tier at the evidence bar (or `possible`), verdict, score, KEV, ecosystem, package, version, `fixed_in`, advisories, file and line, `tracked` (false for an older CVE, linked to cve.org). With `counts` per tier, the files read, and `coverage` (`older_missing` says why older CVEs were left out). Quiet findings only with `include_quiet`; the least urgent are cut to keep under about 17,000 tokens, with a `note` |
+| `check_dependencies` | `packages.json`, `packages-older.json` | `McpDependenciesResult`: the lockfiles and SBOMs under 1 to 20 paths inside the server's working directory, matched like the Check page against both package files. Per finding: CVE, tier at the evidence bar (or `possible`), verdict, score, KEV, ecosystem, package, version, `fixed_in`, advisories, file and line, `tracked` (false for an older CVE, linked to cve.org). With `counts` per tier, the files read, and `coverage` (`older_missing` says why older CVEs were left out). Quiet findings only with `include_quiet`; the least urgent are cut to keep under about 17,000 tokens, with a `note` |
 | `changes_since` | `events.json` | `McpChangesResult`: verdict events after `since` (within the 7-day log, else an error saying where it starts; a date takes that whole day) and at or before `until` if given, newest first, filtered by names (the watchlist's rule) and event types, paged, with `next_since` to pass back next time |
 
 The result types are in `shared/contract.ts` (section "MCP tool results"). Pages hold at most 50

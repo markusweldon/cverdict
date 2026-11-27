@@ -29,7 +29,7 @@ const PAGES: readonly [string, string, string][] = [
   ['The Surge', 'surge', 'Volume since 1999'],
   ['KEV Clock', 'kev', 'CISA KEV due dates'],
   ['Woke Up', 'woke', 'Old CVEs with new exploit evidence'],
-  ['Check Deps', 'check', 'Your dependencies, from an SBOM or lockfile'],
+  ['Check', 'check', 'Am I affected? A GitHub repo, lockfile or SBOM'],
   ['Explore', 'explore', 'Every CVE in the window'],
   ['Batches', 'batches', 'Patch-day cohorts'],
   ['Receipts', 'receipts', 'Did we flag it before CISA did?'],

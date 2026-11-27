@@ -1,6 +1,6 @@
 /**
  * v1/packages.json and v1/packages-older.json (docs/DATA.md): which package versions CVEs affect,
- * for Check Deps, the CLI and the MCP server. Built every run from the OSV mirror (sources/osv.ts).
+ * for the Check page, the CLI and the MCP server. Built every run from the OSV mirror (sources/osv.ts).
  *
  * - packages.json: the tracked CVEs, those with a detail shard (window, KEV, exploited catalogs,
  *   woke up), with their full rows.

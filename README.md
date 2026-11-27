@@ -17,7 +17,7 @@ Open-source CVE triage for the 2026 flood: the few CVEs that matter today, and e
 [![code: MIT](https://img.shields.io/badge/code-MIT-c6f432?labelColor=111317)](LICENSE)
 [![scores: CC0](https://img.shields.io/badge/scores-CC0-c6f432?labelColor=111317)](#license)
 
-[**Live site**](https://cverdict.dev) · [Use it](#use-it) · [How it works](#how-it-works) · [Scoring](#how-scoring-works) · [Receipts](#receipts) · [MCP](#ask-from-an-ai-agent-mcp) · [Open data API](#open-data-api) · [Deploy your own](#deploy-your-own)
+[**Live site**](https://cverdict.dev) · [Use it](#use-it) · [Am I affected?](#am-i-affected) · [How it works](#how-it-works) · [Scoring](#how-scoring-works) · [Receipts](#receipts) · [MCP](#ask-from-an-ai-agent-mcp) · [Open data API](#open-data-api) · [Deploy your own](#deploy-your-own)
 
 </div>
 
@@ -54,12 +54,71 @@ gives you your own copy.
 | Where | How |
 |---|---|
 | **In the browser** | Open [cverdict.dev](https://cverdict.dev). No account, no cookies. |
+| **On your dependencies** | Paste a public GitHub repo at [cverdict.dev/check](https://cverdict.dev/check). No SBOM needed ([more](#am-i-affected)) |
 | **From an AI agent** | `claude mcp add cverdict -- npx -y cverdict-mcp` ([other clients](mcp/README.md)) |
 | **From any AI agent, without MCP** | [`/llms.txt`](https://cverdict.dev/llms.txt) lists every file, feed and tool |
 | **As JSON** | `curl -s https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/meta.json` ([every file](#open-data-api)) |
 | **One command for both tools** | `npx -y cverdict check` and `npx -y cverdict mcp` ([dispatcher/README.md](dispatcher/README.md)) |
-| **In CI, on your repos** | `npx -y cverdict-check`, or the GitHub Action `markusweldon/cverdict/action` ([how](cli/README.md)) |
+| **In CI, on your repos** | `npx -y cverdict-check`, or the GitHub Action `markusweldon/cverdict/action` ([one click](#am-i-affected), [every option](cli/README.md)) |
 | **Your own copy** | Fork it and deploy to Vercel or GitHub Pages ([how](#deploy-your-own)) |
+
+## Am I affected?
+
+**No SBOM, no account, no integration.** Point CVErdict at your project and it lists the
+dependencies with CVEs, most exploited first, by the same evidence as everything else here. Every way
+in uses the same parser and matcher, and none of them sends your files to CVErdict:
+
+| Check | How | What leaves your machine |
+|---|---|---|
+| **A public GitHub repo** | Paste `owner/repo` or its URL at [cverdict.dev/check](https://cverdict.dev/check) | The repository name, to GitHub. Its lockfiles and SBOMs come from raw.githubusercontent.com and are matched in your browser |
+| **Every push, pull request and day** | On the Check page's **In CI** tab, press **Add to your repo on GitHub**, or commit the workflow below. Private repos too | Nothing. The Action reads the checkout in the runner and downloads only the public index |
+| **Your project, in a terminal** | `npx -y cverdict check` | Nothing. Only the public index is downloaded |
+| **An SBOM or lockfile** | Drop or paste it on the Check page's **Lockfile or SBOM** tab | Nothing. It is read in your browser |
+
+<img alt="Demo of the Check page, Am I affected?, in the dark theme. The GitHub repo tab is open. github.com/OWASP/NodeGoat is typed into the Repository field and Check repo is pressed. The results for OWASP/NodeGoat@master read: Read 1 file from OWASP/NodeGoat (master): 1,479 packages (1,091 distinct). 181 CVEs affect 128 of them, 4 Likely next, 35 Watch and 142 Quiet. The page scrolls to Likely next: CVE-2021-23337 in lodash 4.17.20, 4.17.11, 4.13.1 and 2.4.2, fixed in 4.17.21, score 60; CVE-2026-106445 and CVE-2026-33937 in handlebars 4.0.5, score 56; then CVE-2025-7783 in form-data, score 54." src="docs/assets/check-repo-dark.gif" width="100%">
+
+<sub>OWASP NodeGoat is an intentionally vulnerable app. Recorded from the production build with the data of
+Nov 27, 2026 14:47 UTC by <a href="tools/brand/screens.mjs"><code>tools/brand/screens.mjs</code></a>, with GitHub's
+answers replayed from commit <code>c5cb68a</code> so the recording can be made again.</sub>
+
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/check-terminal-dark.svg">
+  <img alt="In a terminal or in CI. No SBOM needed: point it at your project. The output of npx -y cverdict check in a NodeGoat checkout: checked 1,090 packages in 1 file against the 34,778 CVEs OSV.dev advisories tie to package versions, data of 2026-11-27 14:47 UTC, evidence bar 50. Likely next (4): CVE-2021-23337, score 60, Lodash, in lodash 4.17.20 and 4.17.11, fixed in 4.17.21; CVE-2026-106445, score 56, and CVE-2026-33937, score 56, in handlebars 4.0.5, fixed in 4.7.10 and 4.7.9; and 1 more. Watch (35): CVE-2021-44906, score 49, in minimist 1.2.0 and 0.0.8; CVE-2026-106446, score 46, in handlebars 4.0.5; CVE-2020-7774, score 43, in y18n 3.2.1; and 32 more. Quiet (142). Result: pass. No confirmed CVE at Exploited. Each line names the lockfile line of the package." src="docs/assets/check-terminal-light.svg" width="100%">
+</picture>
+
+The workflow the **Add to your repo on GitHub** button fills in. It runs on pull requests, on pushes
+and once a day, because a dependency can turn Exploited after you merge:
+
+```yaml
+# .github/workflows/cverdict.yml
+name: cverdict
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 6 * * *' # verdicts change after you merge: re-check every day
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: markusweldon/cverdict/action@check-v0.1.0
+        with:
+          fail-on: exploited
+```
+
+It writes a job summary, marks the lockfile lines in pull requests and fails the step when a
+dependency is Exploited. SARIF for code scanning, other thresholds and every input:
+[cli/README.md](cli/README.md). The same check is the MCP server's `check_dependencies` tool.
+
+<a href="https://cverdict.dev/check"><img alt="The In CI tab of the Check page, Am I affected?. Run it on every push, pull request and day: for private repositories, and to catch a dependency that turns Exploited after you merged. The GitHub Action reads your checkout in the runner: no SBOM, no app to install, no token, and nothing is sent to CVErdict. A Your repository field with the placeholder owner/repo and a button, Add to your repo on GitHub, which opens GitHub with .github/workflows/cverdict.yml filled in to review and commit. Below, the workflow file with a Copy button." src="docs/assets/screens/check-ci.webp" width="100%"></a>
+
+<sub>The <b>In CI</b> tab. The button opens GitHub's own new-file page with the workflow filled in: no app, no token, no account here.</sub>
 
 ## Why
 
@@ -88,7 +147,7 @@ The needles are still there. CVErdict shows you the few that matter today, and e
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-it-works-dark.svg">
-  <img alt="How CVErdict works, top to bottom. Public sources: CVE records from CVE List V5 (433,237 records) and CISA Vulnrichment (227,532), with SSVC and CVSS from CISA and nothing from NVD; confirmed exploitation from CISA KEV (1,805), ENISA EU KEV (92), the CIRCL catalog (30) and SiberKapan (information only); exploits and odds from Metasploit (7,276), Nuclei templates (4,825), Exploit-DB (47,182), PoC-in-GitHub (12,494) and EPSS (413,901); package versions from OSV.dev (47,515), for dependency checks only and never part of a score. They feed the pipeline, a GitHub Actions run every hour at minute 17 that never stops for one failing feed, in five steps: 01 Ingest (fetch, cache, keep the last good copy), 02 Score (reason chips, a plain sum from 15), 03 Tier (four tiers at the evidence bar of 50), 04 Emit (JSON, 256 CVE shards, Atom, iCal) and 05 Validate (every file checked, or nothing ships). The output goes to the data branch, one orphan commit replaced every run, holding v1/meta.json, signal.json, index.json, cve/00 to ff.json, receipts.json, packages.json, packages-older.json, the Atom feeds and kev-due.ics. Five readers use that branch: cverdict.dev, a static site on Vercel that rewrites /data/* to the branch so it needs no redeploy; the Atom and iCalendar feeds; the open JSON API on the data branch on GitHub, with no key and CC0 scores; the read-only MCP server, npx -y cverdict mcp; and the dependency check, npx -y cverdict check or the GitHub Action, which reads your files locally. Record counts are from the run of Nov 27, 2026 14:47 UTC." src="docs/assets/how-it-works-light.svg" width="100%">
+  <img alt="How CVErdict works, top to bottom. Public sources: CVE records from CVE List V5 (433,237 records) and CISA Vulnrichment (227,532), with SSVC and CVSS from CISA and nothing from NVD; confirmed exploitation from CISA KEV (1,805), ENISA EU KEV (92), the CIRCL catalog (30) and SiberKapan (information only); exploits and odds from Metasploit (7,276), Nuclei templates (4,825), Exploit-DB (47,182), PoC-in-GitHub (12,494) and EPSS (413,901); package versions from OSV.dev (47,515), for dependency checks only and never part of a score. They feed the pipeline, a GitHub Actions run every hour at minute 17 that never stops for one failing feed, in five steps: 01 Ingest (fetch, cache, keep the last good copy), 02 Score (reason chips, a plain sum from 15), 03 Tier (four tiers at the evidence bar of 50), 04 Emit (JSON, 256 CVE shards, Atom, iCal) and 05 Validate (every file checked, or nothing ships). The output goes to the data branch, one orphan commit replaced every run, holding v1/meta.json, signal.json, index.json, cve/00 to ff.json, receipts.json, packages.json, packages-older.json, the Atom feeds and kev-due.ics. Five readers use that branch: cverdict.dev, a static site on Vercel that rewrites /data/* to the branch so it needs no redeploy; the Atom and iCalendar feeds; the open JSON API on the data branch on GitHub, with no key and CC0 scores; the read-only MCP server, npx -y cverdict mcp; and Check, the dependency check: npx -y cverdict check or the GitHub Action, no SBOM needed. Record counts are from the run of Nov 27, 2026 14:47 UTC." src="docs/assets/how-it-works-light.svg" width="100%">
 </picture>
 
 **One writer, many readers.** The hourly run is the only thing that writes. The site, the feeds, the API and the MCP server all read the same files, so they always agree.
@@ -105,7 +164,7 @@ in, so a bad run publishes nothing.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
-  <img alt="CVErdict architecture by folder. At the top, .github/workflows/refresh.yml runs on cron at minute 17 every hour, or from an external timer, with four jobs: Build data, Publish, Deploy Pages (optional) and Watchdog. Three columns below. pipeline/src writes: sources/*.ts has one loader per feed (cvelist, kev, catalogs, epss, metasploit, nuclei, exploitdb, poc, osv); ingest.ts tries the primary, then the fallback, then the cache; normalize.ts turns untrusted CVE JSON 5 into plain, checked records; score.ts applies chips and points, strongest per family; woke.ts and receipts.ts track old CVEs that woke up, the forward log and the backtest; batches.ts, stats.ts and packages.ts build patch days, counts and OSV package ranges; emit/ holds json.ts, atom.ts and ics.ts; validate.ts and run.ts check every file and swap the tree in atomically. shared/ is the contract both sides import: contract.ts (every file format and tierFor), model.ts (every chip and its points, score model v0.4.0), verdict.ts (the one-line verdict), shard.ts (FNV-1a of the CVE ID picks one of 256 detail files), packages.ts and versions.ts (version ranges for eight ecosystems) and brand.ts. The readers only read: site/src (Preact and Vite), site/src/check (SBOM and lockfile parsers that run in the browser), api/share.ts (link previews for chat and social bots only), mcp/src (the npm package cverdict-mcp), cli/src and action/ (cverdict-check, the Check Deps matcher for terminals and CI, and the GitHub Action), dispatcher/ (the npm package cverdict: cverdict check and cverdict mcp) and vercel.json (rewrites /data/* and /feeds/* to the data branch). At the bottom, scripts/publish-data-branch.sh writes one parentless commit per run to the data branch, which the readers fetch. scripts/backtest.ts and calibrate.ts reproduce the numbers, and ci.yml runs typecheck, tests, and the builds and smoke tests of every package." src="docs/assets/architecture-light.svg" width="100%">
+  <img alt="CVErdict architecture by folder. At the top, .github/workflows/refresh.yml runs on cron at minute 17 every hour, or from an external timer, with four jobs: Build data, Publish, Deploy Pages (optional) and Watchdog. Three columns below. pipeline/src writes: sources/*.ts has one loader per feed (cvelist, kev, catalogs, epss, metasploit, nuclei, exploitdb, poc, osv); ingest.ts tries the primary, then the fallback, then the cache; normalize.ts turns untrusted CVE JSON 5 into plain, checked records; score.ts applies chips and points, strongest per family; woke.ts and receipts.ts track old CVEs that woke up, the forward log and the backtest; batches.ts, stats.ts and packages.ts build patch days, counts and OSV package ranges; emit/ holds json.ts, atom.ts and ics.ts; validate.ts and run.ts check every file and swap the tree in atomically. shared/ is the contract both sides import: contract.ts (every file format and tierFor), model.ts (every chip and its points, score model v0.4.0), verdict.ts (the one-line verdict), shard.ts (FNV-1a of the CVE ID picks one of 256 detail files), packages.ts and versions.ts (version ranges for eight ecosystems) and brand.ts. The readers only read: site/src (Preact and Vite), site/src/check (SBOM and lockfile parsers that run in the browser), api/share.ts (link previews for chat and social bots only), mcp/src (the npm package cverdict-mcp), cli/src and action/ (cverdict-check, the Check page’s matcher for terminals and CI, and the GitHub Action), dispatcher/ (the npm package cverdict: cverdict check and cverdict mcp) and vercel.json (rewrites /data/* and /feeds/* to the data branch). At the bottom, scripts/publish-data-branch.sh writes one parentless commit per run to the data branch, which the readers fetch. scripts/backtest.ts and calibrate.ts reproduce the numbers, and ci.yml runs typecheck, tests, and the builds and smoke tests of every package." src="docs/assets/architecture-light.svg" width="100%">
 </picture>
 
 </details>
@@ -215,13 +274,13 @@ all new CVEs against CVErdict's 2.4%. The Receipts page always shows the latest 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/surfaces-dark.svg">
-  <img alt="Twelve ways in, one verdict. No account, no tracking, no cookies, and keyboard first: j and k to move, slash to search, Ctrl K for everything. Today, at /: the noise meter, the signal waterfall, Heating up, the evidence bar and the signal feed. CVE pages, at /cve/ID: the verdict, the score chip by chip, what we could not see and Copy as ticket. KEV Clock, at /kev: every KEV due date counting down, with ransomware and forensic flags. Woke Up, at /woke: old CVEs that gained exploitation evidence in the last 30 days. Receipts, at /receipts: flagged before KEV, next to CVSS 7 and EPSS 10%, every hit and miss. Check Deps, at /check: every CVE an advisory names, for your SBOM or lockfile, read in your browser and never uploaded. Explore, at /explore: every CVE of the window, searchable and filterable by day. Batches, at /batches: patch days and bulk releases, and the few CVEs in each that matter. The Surge, at /surge: monthly CVE volume since 1999, Time to KEV, KEV additions and AI-credited CVEs. Method, at /method: every chip, its points and the known blind spots. MCP, at /mcp: add the read-only MCP server to an AI agent in one command. Feeds and API, at /feeds: Atom and iCalendar feeds, the open JSON files and llms.txt." src="docs/assets/surfaces-light.svg" width="100%">
+  <img alt="Twelve ways in, one verdict. No account, no tracking, no cookies, and keyboard first: j and k to move, slash to search, Ctrl K for everything. Today, at /: the noise meter, the signal waterfall, Heating up, the evidence bar and the signal feed. CVE pages, at /cve/ID: the verdict, the score chip by chip, what we could not see and Copy as ticket. KEV Clock, at /kev: every KEV due date counting down, with ransomware and forensic flags. Woke Up, at /woke: old CVEs that gained exploitation evidence in the last 30 days. Receipts, at /receipts: flagged before KEV, next to CVSS 7 and EPSS 10%, every hit and miss. Check, at /check: Am I affected? A public GitHub repo, a lockfile or an SBOM, matched in your browser. Explore, at /explore: every CVE of the window, searchable and filterable by day. Batches, at /batches: patch days and bulk releases, and the few CVEs in each that matter. The Surge, at /surge: monthly CVE volume since 1999, Time to KEV, KEV additions and AI-credited CVEs. Method, at /method: every chip, its points and the known blind spots. MCP, at /mcp: add the read-only MCP server to an AI agent in one command. Feeds and API, at /feeds: Atom and iCalendar feeds, the open JSON files and llms.txt." src="docs/assets/surfaces-light.svg" width="100%">
 </picture>
 
 <table>
 <tr>
 <td width="50%" valign="top"><a href="https://cverdict.dev/cve/CVE-2026-119958"><img alt="The page of CVE-2026-119958, a Windows LDAP remote code execution bug in Microsoft Windows 10 Version 1607, part of the Nov 10 patch day. Tier Likely next, with the verdict: public proof of concept (2 vetted repos). Buttons for Copy as ticket, Copy link, JSON and cve.org. The evidence by family: exploit artifacts plus 20 for 2 PoC repos (2 vetted), severity plus 13 for Critical 9.8 network, CISA SSVC plus 14. The score dial reads 70 out of 100, and the arithmetic adds base 15, plus 20, 13, 8, 6 and 8." src="docs/assets/screens/cve.webp"></a><br><sub><b>CVE page.</b> The verdict, every chip and its points, and the sum.</sub></td>
-<td width="50%" valign="top"><a href="https://cverdict.dev/check"><img alt="Check Deps results for a sample package-lock.json with 7 packages: 61 CVEs affect 5 of them, 4 Exploited, 2 Likely next, 2 Watch and 53 Quiet, older CVEs included. The Exploited group lists CVE-2023-5217 and CVE-2023-4863 in electron 22.3.0 and CVE-2023-22894 in @strapi/strapi 4.5.0, each with its GitHub advisory, the affected ranges and the fixed version, then CVE-2025-54313 in eslint-config-prettier." src="docs/assets/screens/check.webp"></a><br><sub><b>Check Deps.</b> Your SBOM or lockfile, matched in the browser. Nothing is uploaded.</sub></td>
+<td width="50%" valign="top"><a href="https://cverdict.dev/check"><img alt="Check results for a sample package-lock.json with 7 packages: 61 CVEs affect 5 of them, 4 Exploited, 2 Likely next, 2 Watch and 53 Quiet, older CVEs included. The Exploited group lists CVE-2023-5217 and CVE-2023-4863 in electron 22.3.0 and CVE-2023-22894 in @strapi/strapi 4.5.0, each with its GitHub advisory, the affected ranges and the fixed version, then CVE-2025-54313 in eslint-config-prettier." src="docs/assets/screens/check.webp"></a><br><sub><b>Check.</b> Am I affected? A repo, a lockfile or an SBOM, matched in the browser.</sub></td>
 </tr>
 <tr>
 <td valign="top"><a href="https://cverdict.dev/receipts"><img alt="The Receipts page: the live record since Nov 3, 2026. CISA added 29 CVEs CVErdict had already seen to KEV; CVErdict flagged 13 of them before CISA listed them, a median of 3 days earlier (1 on the listing day). A table compares CVErdict, CVSS 7 or more and EPSS 10% or more on flagged before KEV, same day, median lead and alert volume: 13, 22 and 0 of 29, with alert volumes of 888, 15,491 and 44 of the 31,454 CVEs watched." src="docs/assets/screens/receipts.webp"></a><br><sub><b>Receipts.</b> Every hit and every miss, against CVSS 7 and EPSS 10%.</sub></td>
@@ -256,7 +315,7 @@ What the card leaves out:
 - **Woke Up** watches CVEs that left the window. It counts a CISA KEV, EU KEV or CIRCL listing,
   an EPSS jump or a first public exploit: an Exploit-DB entry, Metasploit module, Nuclei template,
   or a GitHub PoC repo at least 3 days old or with 2 stars (the code is not checked).
-- **Check Deps** reads CycloneDX, SPDX, package URL lists and npm, yarn, pnpm, pip, Poetry, uv,
+- **Check** (Am I affected?) reads a public GitHub repo's lockfiles, or CycloneDX, SPDX, package URL lists and npm, yarn, pnpm, pip, Poetry, uv,
   Pipenv, Go, Cargo, Bundler, Composer, NuGet and Gradle lockfiles, against every CVE an OSV.dev
   advisory ties to a package version (older ones come from `packages-older.json` and have no CVE page
   here), ranked by the same evidence. The same check runs in CI as [`cverdict-check`](cli/README.md), from npm
@@ -281,7 +340,7 @@ Only free, public data. Nothing from NVD.
 | [Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) | Templates that reference a CVE, and when the first one for each CVE landed (from the repository's history) | hourly | MIT |
 | [Exploit-DB](https://gitlab.com/exploit-database/exploitdb) | Entries that reference a CVE (IDs and links only) | every 6 h | GPL-2.0 |
 | [PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub) | Public proof-of-concept repositories per CVE | hourly | CC0-1.0 |
-| [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions each CVE affects, for Check Deps, `cverdict-check` and the MCP server only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
+| [OSV.dev](https://osv.dev/) (GitHub Advisory Database, PyPA, Go, RustSec and Drupal advisories) | Package versions each CVE affects, for the Check page, `cverdict-check` and the MCP server only; never part of a score | hourly (full copy weekly) | CC-BY-4.0 (GitHub, PyPA, Go), CC0-1.0 (RustSec), MIT (Drupal) |
 
 What happens when a source is down is under [How it works](#how-it-works). Details and required
 notices: [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
@@ -321,7 +380,7 @@ watchlist copies the URL. A check every 15 minutes starts a run as soon as CISA 
 CVE. `woke.json` lists the old CVEs that woke up,
 `receipts.json` holds the Receipts figures with every hit and miss, and `packages.json` and
 `packages-older.json` the package versions the CVEs affect (tracked ones, then every other CVE an
-OSV.dev advisory names), which Check Deps compares with your file.
+OSV.dev advisory names), which the Check page compares with your files.
 
 Every file, every field, sharding and the versioning policy: [docs/DATA.md](docs/DATA.md).
 
@@ -444,7 +503,7 @@ demo GIF from a running build. See [tools/brand/README.md](tools/brand/README.md
 - **Upstream errors flow through.** Descriptions, product names and CVSS vectors are as the CNA
   published them.
 - **PoC links are unverified third-party code** and may be malware. Never run one outside a lab.
-- **Check Deps is not a full scanner.** It knows the CVEs an OSV.dev advisory ties to a package
+- **Check is not a full scanner.** It knows the CVEs an OSV.dev advisory ties to a package
   version, in eight ecosystems: not advisories without a CVE ID (malware reports among them), OS
   packages or containers. "Affected" means the version is inside the advisory's range, not that your
   code reaches the vulnerable part.

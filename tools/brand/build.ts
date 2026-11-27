@@ -17,7 +17,8 @@
  * tools/brand/render.mjs turns social-preview.svg into the PNG for the repository settings.
  * Brand rules: tools/brand/README.md. Do not hand-edit the SVGs; change this file and rerun it.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BRAND, RAW_DATA_URL } from '../../shared/brand';
@@ -25,6 +26,9 @@ import { KNOB_DEFAULT, KNOB_MAX, KNOB_MIN, WATCH_FLOOR, type BatchesFile, type C
 import { BASE_POINTS, CHIPS, COLD_START_DAYS, EXPLOITED_BONUS, EXPLOITED_FLOOR, SCORE_MODEL } from '../../shared/model';
 import { cnaName } from '../../shared/cna';
 import { shardOf } from '../../shared/shard';
+import { checkFiles, countByGroup } from '../../cli/src/check';
+import { loadPackages } from '../../cli/src/data';
+import { toText } from '../../cli/src/report';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
@@ -523,7 +527,7 @@ function howItWorks(T: Theme): string {
     { icon: 'Rss', title: 'Feeds', sub: 'Atom: signal, KEV, woke up. iCalendar: KEV due dates.', color: T.ink.likely },
     { icon: 'Code', title: 'Open JSON API', sub: 'The data branch on GitHub. No key, CC0 scores.', color: T.ink.watch },
     { icon: 'Terminal', title: 'MCP server', sub: 'npx -y cverdict mcp. Read-only, for AI agents.', color: T.ai },
-    { icon: 'Lock', title: 'Check deps', sub: 'npx -y cverdict check, or the GitHub Action. Files stay local.', color: T.ai },
+    { icon: 'Lock', title: 'Check', sub: 'npx -y cverdict check, or the GitHub Action. No SBOM needed.', color: T.ai },
   ];
   const ow = (W - 96 - (outs.length - 1) * 16) / outs.length;
   // Tall enough for the longest description at this column width.
@@ -634,7 +638,7 @@ function architecture(T: Theme): string {
     { name: 'site/src/check/', note: 'SBOM and lockfile parsers. Your file never leaves the browser' },
     { name: 'api/share.ts', note: 'Link previews with the verdict, for chat and social bots only' },
     { name: 'mcp/src/', note: 'server.ts, tools.ts, data.ts: the npm package cverdict-mcp' },
-    { name: 'cli/src/ · action/', note: 'cverdict-check: the Check Deps matcher for terminals and CI, and the GitHub Action' },
+    { name: 'cli/src/ · action/', note: 'cverdict-check: the Check page’s matcher for terminals and CI, and the GitHub Action' },
     { name: 'dispatcher/', note: 'The npm package cverdict: cverdict check and cverdict mcp' },
     { name: 'vercel.json', note: 'Rewrites /data/* and /feeds/* to the data branch' },
   ]);
@@ -1301,7 +1305,7 @@ function surfaces(T: Theme): string {
     { name: 'KEV Clock', route: '/kev', iconName: 'Clock', body: 'Every KEV due date counting down, with ransomware and forensic flags.', color: T.ink.exploited },
     { name: 'Woke Up', route: '/woke', iconName: 'Alert', body: 'Old CVEs that gained exploitation evidence in the last 30 days.', color: T.ink.exploited },
     { name: 'Receipts', route: '/receipts', iconName: 'Check', body: 'Flagged before KEV, next to CVSS 7 and EPSS 10%, every hit and miss.', color: T.ok },
-    { name: 'Check Deps', route: '/check', iconName: 'Lock', body: 'Every CVE an advisory names, for your SBOM or lockfile. Read in your browser, never uploaded.', color: T.ai },
+    { name: 'Check', route: '/check', iconName: 'Lock', body: 'Am I affected? A public GitHub repo, a lockfile or an SBOM, matched in your browser.', color: T.ai },
     { name: 'Explore', route: '/explore', iconName: 'Search', body: 'Every CVE of the window, searchable and filterable by day.', color: T.ink.likely },
     { name: 'Batches', route: '/batches', iconName: 'Layers', body: 'Patch days and bulk releases, and the few CVEs in each that matter.', color: T.ink.likely },
     { name: 'The Surge', route: '/surge', iconName: 'Sparkle', body: 'Monthly CVE volume since 1999, Time to KEV, KEV additions and AI-credited CVEs.', color: T.ink.watch },
@@ -1354,11 +1358,106 @@ function socialPreview(): string {
 }
 
 // ------------------------------------------------------------------------------------------------
+// 9. The dependency check in a terminal, on a real public repository
+// ------------------------------------------------------------------------------------------------
+
+/** OWASP NodeGoat, an intentionally vulnerable app, at a pinned commit, so the image can be made again. */
+const DEMO = { owner: 'OWASP', repo: 'NodeGoat', sha: 'c5cb68a7084e4ae7dcc60e6a98768720a81841e8', file: 'package-lock.json' };
+
+/** The real `cverdict check` text for the demo lockfile, against the same data as every other image. */
+async function demoCheck(): Promise<{ text: string; checked: number; groups: Record<string, number> }> {
+  const res = await fetch(`https://raw.githubusercontent.com/${DEMO.owner}/${DEMO.repo}/${DEMO.sha}/${DEMO.file}`);
+  if (!res.ok) throw new Error(`${DEMO.owner}/${DEMO.repo} ${DEMO.file}: HTTP ${res.status}`);
+  const dir = mkdtempSync(join(tmpdir(), 'cverdict-demo-'));
+  writeFileSync(join(dir, DEMO.file), await res.text());
+  const loaded = await loadPackages(DATA);
+  const report = checkFiles([DEMO.file], dir, loaded.file, KNOB_DEFAULT, loaded);
+  rmSync(dir, { recursive: true, force: true });
+  return { text: toText(report, 'exploited'), checked: report.checked, groups: countByGroup(report.findings) };
+}
+
+/**
+ * The text cut to fit a card: the scope line, each tier group with its first CVEs (at most two
+ * package lines each), and a line saying how many were left out, then the verdict. Nothing is
+ * reworded; only lines are left out, and each cut says so.
+ */
+function terminalLines(out: string, perGroup = 3): { s: string; kind: 'prompt' | 'head' | 'group' | 'cve' | 'pkg' | 'more' | 'result' | 'plain'; tier?: string }[] {
+  const lines = out.trimEnd().split('\n');
+  const res: ReturnType<typeof terminalLines> = [{ s: '$ npx -y cverdict check', kind: 'prompt' }];
+  let i = 0;
+  for (; i < lines.length && !/^[A-Z][A-Z ,]+ \(\d+\)$/.test(lines[i]); i++) if (lines[i]) res.push({ s: lines[i], kind: 'head' });
+  for (; i < lines.length; i++) {
+    const g = /^([A-Z][A-Z ,]+) \((\d+)\)$/.exec(lines[i]);
+    if (!g) continue;
+    const tier = g[1].startsWith('EXPLOITED') ? 'exploited' : g[1].startsWith('LIKELY') ? 'likely' : g[1].startsWith('WATCH') ? 'watch' : 'quiet';
+    if (tier === 'quiet') {
+      res.push({ s: '', kind: 'plain' }, { s: `${g[1]} (${g[2]})`, kind: 'group', tier }, { s: '  …', kind: 'more' });
+      continue;
+    }
+    res.push({ s: '', kind: 'plain' }, { s: lines[i], kind: 'group', tier });
+    let shown = 0;
+    let pk = 0;
+    let j = i + 1;
+    for (; j < lines.length && lines[j] !== ''; j++) {
+      const l = lines[j];
+      if (l.startsWith('  CVE-')) {
+        shown++;
+        pk = 0;
+        if (shown <= perGroup) res.push({ s: l, kind: 'cve', tier });
+      } else if (shown <= perGroup && ++pk <= 2) res.push({ s: l, kind: 'pkg' });
+    }
+    if (shown > perGroup) res.push({ s: `  … ${fmt(shown - perGroup)} more`, kind: 'more' });
+    i = j;
+  }
+  const verdict = lines.find((l) => l.startsWith('Result:'));
+  if (verdict) res.push({ s: '', kind: 'plain' }, { s: verdict, kind: 'result' });
+  return res;
+}
+
+function terminal(T: Theme, demo: Awaited<ReturnType<typeof demoCheck>>): string {
+  const W = 1200;
+  let b = '';
+  const [hd, hy] = heading(T, 48, 64, 'In a terminal or in CI', 'No SBOM needed: point it at your project', `npx -y cverdict check reads the lockfiles where you run it, downloads only the public index and ranks what it finds by exploitation evidence. The same check runs as a GitHub Action. Real output for ${DEMO.owner}/${DEMO.repo}, an intentionally vulnerable app.`);
+  b += hd;
+  const ls = terminalLines(demo.text);
+  const size = 14.5;
+  const lh = 22;
+  const x0 = 48;
+  const y0 = hy + 36;
+  const w = W - 96;
+  const textW = w - 48;
+  // Long lines wrap like a terminal would, at the card's width.
+  const rows: { s: string; kind: string; tier?: string; indent: number }[] = [];
+  for (const l of ls) {
+    // SVG drops leading spaces, so the indent becomes an offset of whole monospace cells.
+    const indent = l.s.length - l.s.trimStart().length;
+    for (const part of l.s ? wrap(l.s.trimStart(), textW - indent * size * 0.6, size, 'mono') : ['']) rows.push({ ...l, s: part, indent });
+  }
+  const h = 44 + rows.length * lh + 24;
+  const termBg = T.name === 'dark' ? '#07080a' : '#111317';
+  b += rect(x0, y0, w, h, 12, termBg, T.name === 'dark' ? T.border : '#23272e');
+  ['#ff5f57', '#febc2e', '#28c840'].forEach((c, k) => (b += `<circle cx="${x0 + 22 + k * 18}" cy="${y0 + 20}" r="5.5" fill="${c}" opacity="0.85"/>`));
+  b += text(x0 + w / 2, y0 + 25, `~/${DEMO.repo}`, { size: 13, font: 'mono', fill: '#8a919c', anchor: 'middle' });
+  // The terminal stays dark in both themes, as terminals do; tier colours are the dark theme's.
+  const ink: Record<string, string> = { exploited: '#ff4d4f', likely: '#ff8a3d', watch: '#f5c542', quiet: '#8a919c' };
+  rows.forEach((r, k) => {
+    const y = y0 + 44 + (k + 1) * lh - 6;
+    const fill = r.kind === 'prompt' ? '#c6f432' : r.kind === 'group' || r.kind === 'cve' ? ink[r.tier ?? 'quiet'] : r.kind === 'result' ? '#e6e8eb' : r.kind === 'pkg' || r.kind === 'more' || r.kind === 'head' ? '#a3a9b3' : '#e6e8eb';
+    b += text(x0 + 24 + r.indent * size * 0.6, y, r.s, { size, font: 'mono', weight: r.kind === 'group' || r.kind === 'result' || r.kind === 'prompt' ? 600 : 400, fill });
+  });
+  const H = y0 + h + 96;
+  const g = demo.groups;
+  b += footer(T, W, H, `${DEMO.owner}/${DEMO.repo} at ${DEMO.sha.slice(0, 7)}: ${fmt(demo.checked)} packages, ${fmt(g.exploited)} Exploited, ${fmt(g.likely)} Likely next, ${fmt(g.watch)} Watch. Data of ${RUN}.`);
+  return svgDoc(W, H, 'cverdict check in a terminal', `The output of npx -y cverdict check on ${DEMO.owner}/${DEMO.repo}.`, frame(T, W, H, 'term') + b);
+}
+
+// ------------------------------------------------------------------------------------------------
 // Write
 // ------------------------------------------------------------------------------------------------
 
 mkdirSync(OUT, { recursive: true });
 const ex = await exampleCve();
+const demo = await demoCheck();
 const written: string[] = [];
 const write = (name: string, svg: string) => {
   writeFileSync(join(OUT, name), svg);
@@ -1374,10 +1473,12 @@ for (const T of THEMES) {
   write(`signal-narrow-${T.name}.svg`, signal(T, true));
   write(`receipts-${T.name}.svg`, receiptsCard(T));
   write(`surfaces-${T.name}.svg`, surfaces(T));
+  write(`check-terminal-${T.name}.svg`, terminal(T, demo));
 }
 write('social-preview.svg', socialPreview());
 console.log(written.join('\n'));
 console.log(`\ndata: run of ${RUN} (${meta.score_model}); example ${ex.id} = ${ex.score.value}`);
+console.log(`demo: ${DEMO.owner}/${DEMO.repo} ${fmt(demo.checked)} packages, ${JSON.stringify(demo.groups)}`);
 console.log(
   JSON.stringify({
     window: [meta.window.from, meta.window.to],

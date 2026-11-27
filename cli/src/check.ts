@@ -1,5 +1,5 @@
 /**
- * Checks files against packages.json with the Check Deps page's own parser and matcher, and turns
+ * Checks files against packages.json with the Check page's own parser and matcher, and turns
  * the results into findings: one per (CVE, package, file), with the line the package is on.
  */
 import { readFileSync, statSync } from 'node:fs';
