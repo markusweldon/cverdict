@@ -305,7 +305,7 @@ Unknown → 404 view. Update `document.title` per route.
   (`woke.json`), grouped by week, most urgent first at the evidence bar; `?kind=` filters by signal kind; each row shows its
   dated signals; notes say since when first-seen kinds are tracked and what the last run could not check; links to
   `woke.xml`.
-- **Batches (`/batches`)**: cohort cards with tier bars; expand to families and top CVEs.
+- **Patch days (`/batches`)**: batch (cohort) cards with tier bars; expand to families and top CVEs.
 - **Receipts (`/receipts`)**: how often CVErdict, CVSS 7 or more and EPSS 10% or more flagged a CVE before CISA
   listed it (`receipts.json`). Two parts, never mixed: the forward log, and the 180-day backtest marked as hindsight,
   with strict and "with undated evidence" columns. Every figure shows its n.

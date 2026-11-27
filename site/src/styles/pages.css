@@ -2129,8 +2129,8 @@ circle.dc__kev {
 }
 
 /* The header wraps the nav onto its own scrolling row before the links can run under the
-   search button. Eleven links without the search text fit on one row down to 1,181 px. */
-@media (max-width: 1180px) {
+   search button. The seven links and two menus fit on one row down to 961 px. */
+@media (max-width: 960px) {
   .top__inner {
     flex-wrap: wrap;
     height: auto;
@@ -3650,4 +3650,490 @@ circle.dc__kev {
   .flow__node,
   .flow__result { animation: none; }
   .flow__dot { display: none; }
+}
+
+/* ---------------------------------------------------------------------------------------------
+   The Surge: hero, numbered sections, the risk chart and the scroll-in animations
+   --------------------------------------------------------------------------------------------- */
+.sh {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sh__hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 20px 22px 14px;
+  overflow: hidden;
+  border: 1px solid var(--b-accent);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 62%),
+    var(--surface);
+  animation: sect-in 0.6s var(--ease) both;
+}
+
+.sh__label {
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sh__big {
+  margin: 8px 0 0;
+  color: var(--text);
+  font-size: clamp(52px, 6.4vw, 80px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  text-shadow: 0 0 32px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.sh__x {
+  margin-left: 2px;
+  color: var(--accent);
+  font-size: 0.62em;
+}
+
+.sh__note {
+  max-width: 48ch;
+  margin: 8px 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.sh__note strong {
+  color: var(--text);
+}
+
+.sh__note .sh__kev {
+  color: var(--exploited);
+}
+
+.spark {
+  height: 72px;
+  margin-top: auto;
+  color: var(--accent);
+}
+
+.spark svg {
+  display: block;
+  overflow: visible;
+}
+
+.spark__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent));
+  animation: draw 1.5s var(--ease) 0.15s both;
+}
+
+.spark__area {
+  animation: fade-up 1s ease 0.6s both;
+}
+
+.spark__dot {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop 0.45s var(--ease) 1.4s both;
+}
+
+.sh__axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 4px 0 0;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.sh__tiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.sh__tiles .tile {
+  align-content: space-between;
+  animation: sect-in 0.6s var(--ease) both;
+}
+
+.sh__tiles .tile:nth-child(2) { animation-delay: 0.06s; }
+.sh__tiles .tile:nth-child(3) { animation-delay: 0.12s; }
+.sh__tiles .tile:nth-child(4) { animation-delay: 0.18s; }
+
+/* Numbered sections, as in the brand diagrams. */
+.sect__kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sect__n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--b-accent);
+  border-radius: var(--r-xs);
+  background: var(--t-accent);
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.sect__title {
+  font-size: 16px;
+}
+
+.sect__more {
+  margin-top: 10px;
+}
+
+.sect.is-armed {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.6s var(--ease),
+    transform 0.6s var(--ease);
+}
+
+.sect.is-armed.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* 01: the line draws itself in, the area follows. */
+.mc__draw {
+  stroke-dasharray: 1;
+  animation: draw 1.8s var(--ease) 0.1s both;
+}
+
+.mc .chart__area {
+  animation: fade-up 1.2s ease 0.7s both;
+}
+
+/* 01: the folded options and filters. */
+.mc__more > .mc__row + .mc__row,
+.mc__more > .mc__row + .mc__filters {
+  margin-top: 8px;
+}
+
+.mc__moresum {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.mc__moresum::-webkit-details-marker {
+  display: none;
+}
+
+.mc__moresum::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-right: 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.18s var(--ease);
+}
+
+.mc__moresum:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.mc__more[open] > .mc__moresum {
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.mc__more[open] > .mc__moresum::before {
+  transform: translateY(1px) rotate(-135deg);
+}
+
+.mc__morecount {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* 02: volume is not risk. */
+.gap__legend {
+  margin-bottom: 12px;
+}
+
+.gap__key {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+
+.gap__key--kev {
+  background: var(--exploited);
+}
+
+.gap__rows {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gap__row {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr) 7em;
+  gap: 14px;
+  align-items: center;
+}
+
+.gap__year {
+  font-size: 13px;
+}
+
+.gap__bars {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+/* The value sits just after its bar; the margin keeps room for it at 100%. */
+.gap__track {
+  position: relative;
+  display: block;
+  height: 16px;
+  margin-right: 64px;
+}
+
+.gap__track--kev {
+  height: 9px;
+}
+
+.gap__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+  transform-origin: left center;
+}
+
+.gap__bar--kev {
+  background: var(--exploited);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--exploited) 55%, transparent);
+}
+
+.gap__val {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--w) + 8px);
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.gap__val--kev {
+  color: var(--exploited);
+}
+
+.gap__rate {
+  display: grid;
+  justify-items: end;
+}
+
+.gap__num {
+  color: var(--exploited);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.gap__unit {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Bars grow in, row by row, once their section is on screen. */
+.sect.is-armed .gap__bar {
+  transform: scaleX(0);
+  transition: transform 0.9s var(--ease) calc(var(--i, 0) * 0.12s + 0.15s);
+}
+
+.sect.is-armed .gap__val,
+.sect.is-armed .gap__num {
+  opacity: 0;
+  transition: opacity 0.4s ease calc(var(--i, 0) * 0.12s + 0.75s);
+}
+
+.sect.is-armed.is-in .gap__bar {
+  transform: none;
+}
+
+.sect.is-armed.is-in .gap__val,
+.sect.is-armed.is-in .gap__num {
+  opacity: 1;
+}
+
+/* 03: each year's bar wipes in from the left. */
+.sect.is-armed .lag__bar {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 1s var(--ease) 0.15s;
+}
+
+.sect.is-armed .lag__row:nth-child(2) .lag__bar { transition-delay: 0.27s; }
+.sect.is-armed .lag__row:nth-child(3) .lag__bar { transition-delay: 0.39s; }
+.sect.is-armed .lag__row:nth-child(4) .lag__bar { transition-delay: 0.51s; }
+.sect.is-armed .lag__row:nth-child(5) .lag__bar { transition-delay: 0.63s; }
+
+.sect.is-armed.is-in .lag__bar {
+  clip-path: inset(0 0 0 0);
+}
+
+/* 04: the day bars rise, left to right. */
+.sect.is-armed .dc__day path {
+  transform: scaleY(0);
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 0.7s var(--ease) calc(var(--i, 0) * 0.02s + 0.1s);
+}
+
+.sect.is-armed.is-in .dc__day path {
+  transform: none;
+}
+
+/* 05 and 06: the bars fill from the left. */
+.sect.is-armed .inlinebar__fill {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.8s var(--ease) calc(var(--i, 0) * 0.04s + 0.1s);
+}
+
+.sect.is-armed.is-in .inlinebar__fill {
+  transform: none;
+}
+
+.ranklist--bars li {
+  position: relative;
+  padding-left: 8px;
+  padding-right: 6px;
+}
+
+.ranklist--bars li::before {
+  content: '';
+  position: absolute;
+  inset: 4px auto 4px 0;
+  width: var(--w);
+  border-radius: 0 3px 3px 0;
+  background: var(--t-ai);
+  transform-origin: left center;
+}
+
+.ranklist--bars li > * {
+  position: relative;
+}
+
+.sect.is-armed .ranklist--bars li::before {
+  transform: scaleX(0);
+  transition: transform 0.8s var(--ease) calc(var(--i, 0) * 0.04s + 0.1s);
+}
+
+.sect.is-armed.is-in .ranklist--bars li::before {
+  transform: none;
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+@keyframes sect-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (max-width: 900px) {
+  .sh {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gap__row {
+    grid-template-columns: 4.5em minmax(0, 1fr) 4.6em;
+    gap: 10px;
+  }
+
+  .gap__track {
+    margin-right: 52px;
+  }
+
+  .gap__num {
+    font-size: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sh__hero,
+  .sh__tiles .tile,
+  .spark__line,
+  .spark__area,
+  .spark__dot,
+  .mc__draw,
+  .mc .chart__area {
+    animation: none;
+  }
 }

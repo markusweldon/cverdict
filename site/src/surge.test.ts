@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEDE_FALLBACK, busiestComplete, growth, ledeText, monthProgress, onPace, shiftMonth, windowLabel, type MonthRow } from './surge';
+import { LEDE_FALLBACK, busiestComplete, growth, kevGrowth, ledeText, monthProgress, onPace, riskRows, riskTakeaway, shiftMonth, windowLabel, type MonthRow } from './surge';
 
 /** Consecutive months from `start`, one published count each. */
 const months = (start: string, counts: number[]): MonthRow[] => counts.map((published, i) => ({ month: shiftMonth(start, i), published }));
@@ -158,5 +158,30 @@ describe('ledeText', () => {
   it('never uses an em dash', () => {
     expect(ledeText({ start: '2026-09', end: '2026-10', ratio: 3 })).not.toContain('\u2014');
     expect(LEDE_FALLBACK).not.toContain('\u2014');
+  });
+});
+
+describe('the risk chart', () => {
+  const months = (year: number, published: number, kev: number, upTo = 12) =>
+    Array.from({ length: upTo }, (_, i) => ({ month: `${year}-${String(i + 1).padStart(2, '0')}`, published, reserved: 0, rejected: 0, ai: 0, kev_added: kev }));
+
+  it('sums each year from 2023, with KEV additions per 1,000 CVEs, and marks the unfinished year', () => {
+    const monthly = [...months(2022, 2000, 50), ...months(2023, 2000, 16), ...months(2024, 4000, 20, 11)];
+    const rows = riskRows(monthly, '2024-11-20T10:00:00Z');
+    expect(rows.map((r) => [r.year, r.published, r.kev, r.partial])).toEqual([
+      [2023, 24000, 192, false],
+      [2024, 44000, 220, true],
+    ]);
+    expect(rows[0].perThousand).toBeCloseTo(8);
+    expect(riskTakeaway(rows)).toBe('From 2023 to 2024 so far, CVEs grew 1.8 times and KEV additions 1.1 times: 5.0 KEV additions per 1,000 new CVEs, against 8.0 in 2023.');
+  });
+
+  it('compares the growth window’s KEV additions with the same months a year earlier', () => {
+    const monthly = [...months(2025, 1000, 10), ...months(2026, 3000, 12)];
+    const g = growth(monthly, '2026-12-31T23:00:00Z');
+    expect(g?.ratio).toBeCloseTo(3);
+    expect(kevGrowth(monthly, g)).toEqual({ now: 24, before: 20, ratio: 1.2 });
+    expect(kevGrowth(monthly, null)).toBeNull();
+    expect(kevGrowth(months(2026, 3000, 12), g)).toBeNull();
   });
 });

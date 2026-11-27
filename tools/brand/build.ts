@@ -1307,7 +1307,7 @@ function surfaces(T: Theme): string {
     { name: 'Receipts', route: '/receipts', iconName: 'Check', body: 'Flagged before KEV, next to CVSS 7 and EPSS 10%, every hit and miss.', color: T.ok },
     { name: 'Check', route: '/check', iconName: 'Lock', body: 'Am I affected? A public GitHub repo, a lockfile or an SBOM, matched in your browser.', color: T.ai },
     { name: 'Explore', route: '/explore', iconName: 'Search', body: 'Every CVE of the window, searchable and filterable by day.', color: T.ink.likely },
-    { name: 'Batches', route: '/batches', iconName: 'Layers', body: 'Patch days and bulk releases, and the few CVEs in each that matter.', color: T.ink.likely },
+    { name: 'Patch days', route: '/batches', iconName: 'Layers', body: 'Batches and bulk releases, and the few CVEs in each that matter.', color: T.ink.likely },
     { name: 'The Surge', route: '/surge', iconName: 'Sparkle', body: 'Monthly CVE volume since 1999, Time to KEV, KEV additions and AI-credited CVEs.', color: T.ink.watch },
     { name: 'Method', route: '/method', iconName: 'Filter', body: 'Every chip, its points and the known blind spots.', color: T.ink.watch },
     { name: 'MCP', route: '/mcp', iconName: 'Terminal', body: 'Add the read-only MCP server to an AI agent in one command.', color: T.ai },

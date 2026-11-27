@@ -1,5 +1,5 @@
 /** Page chrome: header with navigation and data status, and the footer. */
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Meta } from '../../../shared/contract';
 import { BRAND, REPO_URL } from '../../../shared/brand';
 import { dataStatusTip, fmtAge, fmtDateTime } from '../format';
@@ -7,7 +7,7 @@ import { useData, useNow } from '../hooks';
 import { data } from '../data';
 import { href, type Route } from '../router';
 import { overlay, theme, toggleTheme, useStore } from '../state';
-import { IconMoon, IconSearch, IconSource, IconSun, Mark } from './icons';
+import { IconChevronDown, IconMoon, IconSearch, IconSource, IconSun, Mark } from './icons';
 
 export const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
@@ -23,19 +23,123 @@ function Wordmark({ class: cls, tag = 'span' }: { class: string; tag?: 'span' | 
   );
 }
 
-const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
+interface NavLink {
+  name: Route['name'];
+  path: string;
+  label: string;
+  /** One line under the label in a menu. */
+  hint?: string;
+}
+type NavItem = NavLink | { menu: string; label: string; items: readonly NavLink[] };
+
+/**
+ * By what people come to do: what matters now (Today, Check), what is due and what changed (KEV
+ * Clock, Woke Up), then search and proof (Explore, Receipts, The Surge). How it works and the
+ * integrations sit in Docs, at the end of the row. Ctrl K reaches every page either way.
+ */
+const NAV: readonly NavItem[] = [
   { name: 'today', path: '', label: 'Today' },
-  { name: 'surge', path: 'surge', label: 'The Surge' },
+  { name: 'check', path: 'check', label: 'Check' },
   { name: 'kev', path: 'kev', label: 'KEV Clock' },
   { name: 'woke', path: 'woke', label: 'Woke Up' },
-  { name: 'check', path: 'check', label: 'Check' },
-  { name: 'explore', path: 'explore', label: 'Explore' },
-  { name: 'batches', path: 'batches', label: 'Batches' },
+  {
+    menu: 'explore',
+    label: 'Explore',
+    items: [
+      { name: 'explore', path: 'explore', label: 'All CVEs', hint: 'Every CVE of the window, by day' },
+      { name: 'batches', path: 'batches', label: 'Patch days', hint: 'Batches and bulk releases' },
+    ],
+  },
   { name: 'receipts', path: 'receipts', label: 'Receipts' },
-  { name: 'method', path: 'method', label: 'Method' },
-  { name: 'mcp', path: 'mcp', label: 'MCP' },
-  { name: 'feeds', path: 'feeds', label: 'Feeds & API' },
+  { name: 'surge', path: 'surge', label: 'The Surge' },
+  {
+    menu: 'docs',
+    label: 'Docs',
+    items: [
+      { name: 'method', path: 'method', label: 'Method', hint: 'The chips, their points, blind spots' },
+      { name: 'mcp', path: 'mcp', label: 'MCP server', hint: 'Verdicts for AI agents' },
+      { name: 'feeds', path: 'feeds', label: 'Feeds & API', hint: 'Atom, iCalendar, JSON and llms.txt' },
+    ],
+  },
 ];
+
+/** A nav entry that opens a short list of pages. A disclosure, not an ARIA menu: the list holds plain links. */
+function NavMenu({ item, route, row }: { item: Extract<NavItem, { menu: string }>; route: Route; row: { current: HTMLElement | null } }) {
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const id = `navmenu-${item.menu}`;
+  const current = item.items.some((i) => i.name === route.name);
+  const close = (focus = false) => {
+    setAt(null);
+    if (focus) btn.current?.focus();
+  };
+  // Fixed, so the scrolling nav row on narrow screens cannot clip it.
+  const open = () => {
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    setAt({ top: Math.round(r.bottom + 6), left: Math.round(Math.max(8, Math.min(r.left - 6, window.innerWidth - 268))) });
+  };
+  useEffect(() => close(), [route.name]);
+  useEffect(() => {
+    if (!at) return;
+    const away = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!btn.current?.contains(t) && !panel.current?.contains(t)) close();
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      close(true);
+    };
+    const gone = () => close();
+    const nav = row.current;
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', key, true);
+    window.addEventListener('resize', gone);
+    nav?.addEventListener('scroll', gone);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', key, true);
+      window.removeEventListener('resize', gone);
+      nav?.removeEventListener('scroll', gone);
+    };
+  }, [at]);
+  return (
+    <>
+      <button
+        ref={btn}
+        type="button"
+        class={`nav__link nav__menubtn${current ? ' is-current' : ''}`}
+        aria-expanded={at ? 'true' : 'false'}
+        aria-controls={id}
+        onClick={() => (at ? close() : open())}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!at) open();
+            requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>('a')?.focus());
+          }
+        }}
+      >
+        {item.label}
+        <IconChevronDown size={12} class="nav__chev" />
+      </button>
+      <div ref={panel} id={id} class="navmenu" hidden={!at} style={at ? { top: `${at.top}px`, left: `${at.left}px` } : undefined}>
+        <ul class="navmenu__list">
+          {item.items.map((i) => (
+            <li key={i.name}>
+              <a class="navmenu__item" href={href(i.path)} aria-current={route.name === i.name ? 'page' : undefined} onClick={() => close()}>
+                <span class="navmenu__label">{i.label}</span>
+                {i.hint && <span class="navmenu__hint">{i.hint}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
+  );
+}
 
 /** Freshness of the last pipeline run: fresh < 2h, late < 6h, stale beyond. */
 export function freshness(meta: Meta, now: number): 'fresh' | 'late' | 'stale' {
@@ -67,7 +171,7 @@ export function Header({ route }: { route: Route }) {
   // Bring its link into view (no smooth scroll) whenever the page changes.
   useEffect(() => {
     const row = nav.current;
-    const link = row?.querySelector<HTMLElement>('[aria-current="page"]');
+    const link = row?.querySelector<HTMLElement>('.nav__link[aria-current="page"], .nav__link.is-current');
     if (!row || !link || row.scrollWidth <= row.clientWidth) return;
     const left = link.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft;
     const right = left + link.offsetWidth;
@@ -100,11 +204,15 @@ export function Header({ route }: { route: Route }) {
         </a>
         <DataStatus />
         <nav class="nav" aria-label="Primary" ref={nav}>
-          {NAV.map((n) => (
-            <a key={n.name} class="nav__link" href={href(n.path)} aria-current={route.name === n.name ? 'page' : undefined}>
-              {n.label}
-            </a>
-          ))}
+          {NAV.map((n) =>
+            'menu' in n ? (
+              <NavMenu key={n.menu} item={n} route={route} row={nav} />
+            ) : (
+              <a key={n.name} class="nav__link" href={href(n.path)} aria-current={route.name === n.name ? 'page' : undefined}>
+                {n.label}
+              </a>
+            ),
+          )}
         </nav>
         <div class="top__actions">
           <button type="button" class="searchbtn" onClick={() => overlay.set('palette')} aria-label="Search CVEs, vendors and pages" aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}>

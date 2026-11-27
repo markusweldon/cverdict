@@ -25,7 +25,7 @@ function weeks(list: readonly Batch[]): [string, Batch[]][] {
 }
 
 export default function Batches() {
-  useTitle('Batches');
+  useTitle('Patch days');
   useKnobUrl();
   const level = useStore(knob);
   const loc = useLocation();
@@ -69,9 +69,9 @@ export default function Batches() {
   return (
     <div class="page">
       <header class="page__head">
-        <p class="eyebrow">Patch-day cohorts</p>
+        <p class="eyebrow">Batches and bulk releases</p>
         <h1 class="page__title" tabIndex={-1}>
-          Batches
+          Patch days
         </h1>
         <p class="page__lede">
           {list.length ? (
