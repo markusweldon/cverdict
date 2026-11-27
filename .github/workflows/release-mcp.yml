@@ -167,3 +167,12 @@ jobs:
       - name: Publish server.json
         working-directory: mcp
         run: ../mcp-publisher publish
+
+  # The GitHub release for this tag, once the package is on npm and in the MCP Registry.
+  github-release:
+    needs: registry
+    permissions:
+      contents: write
+    uses: ./.github/workflows/github-release.yml
+    with:
+      tag: ${{ github.ref_name }}

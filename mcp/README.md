@@ -189,7 +189,9 @@ push a tag `mcp-v<version>`, for example
 matches the version, runs the MCP tests and the smoke test, packs the bundle and publishes it to
 npm through trusted publishing, with provenance. A last job lists the version on the
 [MCP Registry](https://registry.modelcontextprotocol.io) from `mcp/server.json`, logged in with the
-workflow's GitHub OIDC identity. No npm or registry token is stored anywhere.
+workflow's GitHub OIDC identity, and then the GitHub release for the tag is added
+([`github-release.yml`](https://github.com/markusweldon/cverdict/blob/main/.github/workflows/github-release.yml)).
+No npm or registry token is stored anywhere.
 
 One-time setup: the first version is published by hand (`npm run build:mcp` at the root, then
 `npm login` and `npm publish` in `mcp/`). Then on npmjs.com, package `cverdict-mcp` → Settings →

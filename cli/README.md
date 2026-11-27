@@ -155,4 +155,5 @@ fresh build: after changing `cli/src`, `shared` or `site/src/check`, run `npm ru
 To release, bump `version` in `cli/package.json` and `cli/src/version.ts`, merge, then push a tag
 `check-v<version>`. [release-check.yml](../.github/workflows/release-check.yml) checks, packs and publishes to npm
 with trusted publishing (set up once on npmjs.com: package `cverdict-check` → Settings → Trusted publishing →
-GitHub Actions, this repository, workflow `release-check.yml`). Action users pin the same tag.
+GitHub Actions, this repository, workflow `release-check.yml`). Action users pin the same tag. A last job adds the
+GitHub release for the tag ([github-release.yml](../.github/workflows/github-release.yml)).
