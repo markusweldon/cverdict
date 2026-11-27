@@ -99,7 +99,15 @@ jobs:
       # Trusted publishing needs npm 11.5.1 or later.
       - run: npm install -g npm@11.21.1
 
+      # A tag for a version already on npm (the first one was published by hand, before trusted
+      # publishing could be set up) marks that release in git and publishes nothing.
       - name: Publish
         env:
           TARBALL: ${{ needs.build.outputs.tarball }}
-        run: npm publish "./pkg/$TARBALL" --access public
+        run: |
+          spec=$(tar -xzOf "./pkg/$TARBALL" package/package.json | jq -r '"\(.name)@\(.version)"')
+          if [ -n "$(npm view "$spec" version 2>/dev/null)" ]; then
+            echo "::notice::$spec is already on npm: nothing to publish"
+            exit 0
+          fi
+          npm publish "./pkg/$TARBALL" --access public

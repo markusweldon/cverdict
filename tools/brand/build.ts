@@ -440,7 +440,7 @@ function howItWorks(T: Theme): string {
     { title: 'CVE records', color: T.muted, icon: 'Layers', items: [['CVE List V5', records('cvelist')], ['CISA Vulnrichment', records('cisa-adp')], ['SSVC and CVSS from CISA', null], ['Nothing from NVD', null]] },
     { title: 'Confirmed exploitation', color: T.ink.exploited, icon: 'Flame', items: [['CISA KEV', records('kev')], ['ENISA EU KEV', records('eu-kev')], ['CIRCL catalog', records('circl-kev')], ['SiberKapan', 'info only']] },
     { title: 'Exploits and odds', color: T.ink.likely, icon: 'Crosshair', items: [['Metasploit', records('metasploit')], ['Nuclei templates', records('nuclei')], ['Exploit-DB', records('exploitdb')], ['PoC-in-GitHub', records('poc-github')], ['EPSS (FIRST)', records('epss')]] },
-    { title: 'Package versions', color: T.ai, icon: 'Lock', items: [['OSV.dev', records('osv')], ['For Check Deps only', null], ['Never part of a score', null]] },
+    { title: 'Package versions', color: T.ai, icon: 'Lock', items: [['OSV.dev', records('osv')], ['For dependency checks only', null], ['Never part of a score', null]] },
   ];
   const gy = hy + 44;
   const gw = (W - 96 - 3 * 16) / 4;
@@ -502,7 +502,7 @@ function howItWorks(T: Theme): string {
   b += iconTile(T, 'Source', 68, dy + 22, 48, T.accent);
   b += text(132, dy + 42, 'data branch', { size: 20, font: 'mono', weight: 600, fill: T.text });
   b += text(132, dy + 68, 'one orphan commit, replaced every run', { size: 15, fill: T.muted });
-  const files = ['v1/meta.json', 'signal.json', 'index.json', 'cve/00…ff.json', 'receipts.json', 'packages.json', 'feeds/*.xml', 'kev-due.ics'];
+  const files = ['v1/meta.json', 'signal.json', 'index.json', 'cve/00…ff.json', 'receipts.json', 'packages.json', 'packages-older.json', 'feeds/*.xml', 'kev-due.ics'];
   let fx = 470;
   let fy = dy + 22;
   for (const f of files) {
@@ -521,11 +521,13 @@ function howItWorks(T: Theme): string {
   const outs: { icon: string; title: string; sub: string; color: string }[] = [
     { icon: 'Scan', title: 'cverdict.dev', sub: 'Static site on Vercel. /data/* is rewritten to the branch, so no redeploy.', color: T.accent },
     { icon: 'Rss', title: 'Feeds', sub: 'Atom: signal, KEV, woke up. iCalendar: KEV due dates.', color: T.ink.likely },
-    { icon: 'Code', title: 'Open JSON API', sub: 'raw.githubusercontent.com. No key, CC0 scores.', color: T.ink.watch },
-    { icon: 'Terminal', title: 'MCP server', sub: 'npx -y cverdict-mcp. Read-only, for AI agents.', color: T.ai },
+    { icon: 'Code', title: 'Open JSON API', sub: 'The data branch on GitHub. No key, CC0 scores.', color: T.ink.watch },
+    { icon: 'Terminal', title: 'MCP server', sub: 'npx -y cverdict mcp. Read-only, for AI agents.', color: T.ai },
+    { icon: 'Lock', title: 'Check deps', sub: 'npx -y cverdict check, or the GitHub Action. Files stay local.', color: T.ai },
   ];
-  const ow = gw;
-  const oh = 124;
+  const ow = (W - 96 - (outs.length - 1) * 16) / outs.length;
+  // Tall enough for the longest description at this column width.
+  const oh = 74 + Math.max(...outs.map((o) => wrap(o.sub, ow - 30, 15).length)) * 20 + 14;
   outs.forEach((o, i) => {
     const x = 48 + i * (ow + 16);
     b += rect(x, oy, ow, oh, 12, panel(T), T.border);
@@ -536,16 +538,16 @@ function howItWorks(T: Theme): string {
   // fan-out lines from the branch to the outputs
   const busY = dy + dh + 24;
   const x0 = 48 + ow / 2;
-  const x3 = 48 + 3 * (ow + 16) + ow / 2;
+  const x3 = 48 + (outs.length - 1) * (ow + 16) + ow / 2;
   b += `<path d="M${W / 2} ${dy + dh + 4}V${busY}M${x0} ${busY}H${x3}" fill="none" stroke="${T.faintUi}" stroke-width="1.5" stroke-linecap="round"/>`;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < outs.length; i++) {
     const x = 48 + i * (ow + 16) + ow / 2;
     b += arrow(x, busY, x, oy - 6, T.faintUi);
   }
 
   const H = oy + oh + 96;
   b += footer(T, W, H, `Record counts from the run of ${RUN}.`);
-  return svgDoc(W, H, 'How CVErdict works', 'Public sources feed an hourly GitHub Actions pipeline that ingests, scores, tiers, emits and validates, publishes to the data branch, and four readers use that branch.', frame(T, W, H, id) + b);
+  return svgDoc(W, H, 'How CVErdict works', 'Public sources feed an hourly GitHub Actions pipeline that ingests, scores, tiers, emits and validates, publishes to the data branch, and five readers use that branch.', frame(T, W, H, id) + b);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -579,7 +581,7 @@ function fileBox(T: Theme, x: number, y: number, w: number, head: string, headNo
 function architecture(T: Theme): string {
   const W = 1200;
   let b = '';
-  const [hd, hy] = heading(T, 48, 64, 'Architecture', 'Where each part lives in the repository', 'One TypeScript repository. The pipeline writes files, the site, the API and the MCP server only read them, and shared/ is the contract both sides import.');
+  const [hd, hy] = heading(T, 48, 64, 'Architecture', 'Where each part lives in the repository', 'One TypeScript repository. The pipeline writes files, the site, the API, the MCP server and the CLI only read them, and shared/ is the contract both sides import.');
   b += hd;
 
   // Top: workflows
@@ -632,6 +634,8 @@ function architecture(T: Theme): string {
     { name: 'site/src/check/', note: 'SBOM and lockfile parsers. Your file never leaves the browser' },
     { name: 'api/share.ts', note: 'Link previews with the verdict, for chat and social bots only' },
     { name: 'mcp/src/', note: 'server.ts, tools.ts, data.ts: the npm package cverdict-mcp' },
+    { name: 'cli/src/ · action/', note: 'cverdict-check: the Check Deps matcher for terminals and CI, and the GitHub Action' },
+    { name: 'dispatcher/', note: 'The npm package cverdict: cverdict check and cverdict mcp' },
     { name: 'vercel.json', note: 'Rewrites /data/* and /feeds/* to the data branch' },
   ]);
   b += rBox;
@@ -668,7 +672,7 @@ function architecture(T: Theme): string {
     { s: 'calibrate.ts', o: { size: 14.5, font: 'mono', fill: T.muted } },
     { s: ' reproduce the numbers; ', o: { size: 15, fill: T.faint } },
     { s: 'ci.yml', o: { size: 14.5, font: 'mono', fill: T.muted } },
-    { s: ' runs typecheck, tests, both builds and an MCP smoke test.', o: { size: 15, fill: T.faint } },
+    { s: ' runs typecheck, tests, the builds and smoke tests of every package.', o: { size: 15, fill: T.faint } },
   ]);
   const H = ky + 16 + 86;
   b += footer(T, W, H, `Paths as of ${day(meta.generated_at)}.`);
@@ -1292,18 +1296,18 @@ function surfaces(T: Theme): string {
   const [hd, hy] = heading(T, 48, 64, 'On the site', 'Twelve ways in, one verdict', 'No account, no tracking, no cookies. Keyboard first: j and k to move, / to search, Ctrl K for everything.');
   b += hd;
   const items: { name: string; route: string; iconName: string; body: string; color: string }[] = [
-    { name: 'Today', route: '/', iconName: 'Scan', body: 'The noise meter, the signal waterfall, the evidence bar and the signal feed.', color: T.accent },
+    { name: 'Today', route: '/', iconName: 'Scan', body: 'The noise meter, the signal waterfall, Heating up, the evidence bar and the signal feed.', color: T.accent },
     { name: 'CVE pages', route: '/cve/<id>', iconName: 'Info', body: 'The verdict, the score chip by chip, what we could not see, "Copy as ticket".', color: T.accent },
     { name: 'KEV Clock', route: '/kev', iconName: 'Clock', body: 'Every KEV due date counting down, with ransomware and forensic flags.', color: T.ink.exploited },
     { name: 'Woke Up', route: '/woke', iconName: 'Alert', body: 'Old CVEs that gained exploitation evidence in the last 30 days.', color: T.ink.exploited },
     { name: 'Receipts', route: '/receipts', iconName: 'Check', body: 'Flagged before KEV, next to CVSS 7 and EPSS 10%, every hit and miss.', color: T.ok },
-    { name: 'Check Deps', route: '/check', iconName: 'Lock', body: 'Drop an SBOM or lockfile. Read in your browser, never uploaded.', color: T.ai },
+    { name: 'Check Deps', route: '/check', iconName: 'Lock', body: 'Every CVE an advisory names, for your SBOM or lockfile. Read in your browser, never uploaded.', color: T.ai },
     { name: 'Explore', route: '/explore', iconName: 'Search', body: 'Every CVE of the window, searchable and filterable by day.', color: T.ink.likely },
     { name: 'Batches', route: '/batches', iconName: 'Layers', body: 'Patch days and bulk releases, and the few CVEs in each that matter.', color: T.ink.likely },
-    { name: 'The Surge', route: '/surge', iconName: 'Sparkle', body: 'Monthly CVE volume since 1999, KEV additions and AI-credited CVEs.', color: T.ink.watch },
+    { name: 'The Surge', route: '/surge', iconName: 'Sparkle', body: 'Monthly CVE volume since 1999, Time to KEV, KEV additions and AI-credited CVEs.', color: T.ink.watch },
     { name: 'Method', route: '/method', iconName: 'Filter', body: 'Every chip, its points and the known blind spots.', color: T.ink.watch },
     { name: 'MCP', route: '/mcp', iconName: 'Terminal', body: 'Add the read-only MCP server to an AI agent in one command.', color: T.ai },
-    { name: 'Feeds & API', route: '/feeds', iconName: 'Rss', body: 'Atom and iCalendar feeds and the open JSON files.', color: T.muted },
+    { name: 'Feeds & API', route: '/feeds', iconName: 'Rss', body: 'Atom and iCalendar feeds, the open JSON files and llms.txt.', color: T.muted },
   ];
   const cols = 4;
   const gap = 16;

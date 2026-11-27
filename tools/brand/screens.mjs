@@ -91,6 +91,12 @@ await go('/woke', 'h1');
 await still('woke', await topOf('h1', null, 56));
 await go('/surge', 'h1');
 await still('surge', await topOf('h1', null, 56));
+// Time to KEV, further down The Surge.
+await page.waitForSelector('#lag-h', { timeout: 20000 });
+await still('time-to-kev', await topOf('#lag-h', null, 40));
+// Heating up on Today, with the start of the signal feed under it.
+await go('/', '#heat-h');
+await still('heat', await topOf('#heat-h', null, 40));
 
 // Check Deps with a sample lockfile, read in the browser only.
 const lock = {
