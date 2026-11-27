@@ -4,7 +4,7 @@ Which of your dependencies' CVEs are **exploited** or **likely next**, today.
 
 `cverdict-check` reads your lockfiles and SBOMs, matches them against the CVEs
 [CVErdict](https://cverdict.dev) tracks, and sorts the hits by its verdicts: Exploited, Likely next, Watch and
-Quiet. It uses the same parser and matcher as the site's [Check Deps](https://cverdict.dev/check) page. Your files
+Quiet. It uses the same parser and matcher as the site's [Check](https://cverdict.dev/check) page. Your files
 are read where the check runs; the only download is the public index, `packages.json` (under 1 MB).
 
 It checks every CVE that an [OSV.dev](https://osv.dev/) advisory ties to a package version, about 47,000
@@ -77,7 +77,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: markusweldon/cverdict/action@check-v0.1.0
         with:
           fail-on: exploited
@@ -93,7 +93,7 @@ To see the findings in the repository's **Security → Code scanning** tab, writ
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: markusweldon/cverdict/action@check-v0.1.0
         id: cverdict
         with:

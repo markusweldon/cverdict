@@ -2823,6 +2823,113 @@ circle.dc__kev {
   font-size: 12.5px;
 }
 
+/* The three ways in: a public repo (default), a file, or CI. */
+.check__modes {
+  margin-bottom: 12px;
+}
+
+.check__paneltitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.check__panelsub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.check__repoform {
+  display: grid;
+  gap: 6px;
+}
+
+.check__reporow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.check__reporow .input {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.input {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono-system);
+  font-size: 13px;
+}
+
+.input:focus {
+  border-color: var(--b-accent);
+  outline: none;
+}
+
+:root[data-theme='light'] .input:focus {
+  border-color: var(--accent);
+}
+
+.check__hint {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.check__dropnote {
+  flex-basis: 100%;
+}
+
+.check__trust {
+  margin-top: 8px;
+}
+
+.linkbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.check__ci > * {
+  min-width: 0;
+}
+
+.check__ci .snippet {
+  min-width: 0;
+  margin: 0;
+}
+
+/* The workflow's long lines scroll inside the block, never the page. */
+.check__ci .snippet pre {
+  overflow-x: auto;
+}
+
+.check__repofiles {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.check__filelist {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
 .check__label {
   margin-top: 4px;
   font-size: 13px;

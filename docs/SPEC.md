@@ -273,7 +273,7 @@ Self-hosted fonts via `@fontsource-variable/geist` and `@fontsource-variable/gei
 **Data loading** (`data.ts`): base = `${import.meta.env.BASE_URL}data/v1/`. Fetch `meta.json` + `signal.json` +
 `stats.json` + `batches.json` + `kev.json` + `changes.json` + `woke.json` for Today; `index.json` lazily (Explore, or
 knob < 35); `woke.json` and `receipts.json` on their pages; `packages.json` only on the first interaction with the
-Check Deps input card; shards on demand per CVE (cache in memory). Show a skeleton while loading and a friendly error state with retry.
+Check input card; shards on demand per CVE (cache in memory). Show a skeleton while loading and a friendly error state with retry.
 If a CVE isn't in our shards, show "Outside the 30-day window" with links to cve.org / the raw record.
 
 **Routing** (`router.ts`): History API, base-path aware (`import.meta.env.BASE_URL`), intercept same-origin `<a>` clicks.
@@ -312,7 +312,7 @@ Unknown → 404 view. Update `document.title` per route.
 - **Explore (`/explore`)**: all window CVEs; virtualised list (render only visible rows); search (ID/vendor/product/title),
   filters (tier, CNA, vendor, chip, publish day `?day=YYYY-MM-DD` shown as a removable "Published Oct 13" chip;
   an invalid day is ignored), sort (score/date); URL-synced.
-- **Check Deps (`/check`)**: an SBOM (CycloneDX JSON or XML, SPDX JSON or tag-value, package URLs) or a lockfile is read
+- **Check (`/check`, "Am I affected?")**: an SBOM (CycloneDX JSON or XML, SPDX JSON or tag-value, package URLs) or a lockfile is read
   in the browser (`check/parse.ts`) and matched against `packages.json` with `shared/versions.ts` (`check/match.ts`);
   results grouped by tier at the evidence bar, then "possibly affected, not confirmed", "not checked" and "not affected by a
   tracked CVE". `packages.json` loads on the first interaction with the input card, never on page open; nothing from the

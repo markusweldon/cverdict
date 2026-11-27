@@ -64,7 +64,7 @@ ${MCP_TOOLS.map((t) => `- \`${t.name}\`: ${t.title}`).join('\n')}
 ## Optional
 
 - [Source code](${REPO_URL}): fork it to run your own copy
-- [Check Deps](${site}/check): match an SBOM or lockfile against every CVE an OSV.dev advisory names, in the browser (nothing is uploaded)
+- [Check](${site}/check): "Am I affected?" Match a public GitHub repo, a lockfile or an SBOM against every CVE an OSV.dev advisory names, in the browser (nothing is uploaded)
 - [packages.json](${data}/packages.json) and [packages-older.json](${data}/packages-older.json): the package versions each CVE affects, tracked CVEs then every other one
 - [cverdict-check](${REPO_URL}/blob/main/cli/README.md): the same check from a terminal or CI (\`npx -y cverdict-check\`, or the GitHub Action \`${BRAND.repo}/action\`), with SARIF output
 `;

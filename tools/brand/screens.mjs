@@ -3,10 +3,16 @@
 //   npm run build && npm run preview            # or any server that serves site/dist and /data/
 //   node tools/brand/screens.mjs --url http://localhost:4173 [--cve CVE-2026-119958]
 //
-// Writes docs/assets/screens/*.webp (dark theme, 2x) and docs/assets/demo-dark.gif. The page clock
-// is set a few minutes after the data's generated_at, so "data age" reads as it did live. The
-// Check Deps shot uses a sample package-lock.json written to a temporary folder (it is never
-// committed, so no dependency bot picks it up). Needs Playwright with Chromium and ffmpeg.
+// Writes docs/assets/screens/*.webp (dark theme, 2x), docs/assets/demo-dark.gif and
+// docs/assets/check-repo-dark.gif. The page clock is set a few minutes after the data's
+// generated_at, so "data age" reads as it did live. The Check shot uses a sample package-lock.json
+// written to a temporary folder (it is never committed, so no dependency bot picks it up).
+//
+// The repository check GIF checks OWASP/NodeGoat at a pinned commit, the same lockfile as the
+// terminal image (tools/brand/build.ts). GitHub's answers are replayed from that commit, fetched
+// with git, so the GIF can be made again without GitHub's API limit and shows the same files
+// whatever the branch holds today. The page's own code reads and matches them as it would live.
+// Needs Playwright with Chromium, git and ffmpeg.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -98,7 +104,7 @@ await still('time-to-kev', await topOf('#lag-h', null, 40));
 await go('/', '#heat-h');
 await still('heat', await topOf('#heat-h', null, 40));
 
-// Check Deps with a sample lockfile, read in the browser only.
+// Check with a sample lockfile, read in the browser only.
 const lock = {
   name: 'demo-app',
   lockfileVersion: 3,
@@ -118,11 +124,95 @@ const lockDir = join(TMP, 'demo');
 mkdirSync(lockDir);
 writeFileSync(join(lockDir, 'package-lock.json'), JSON.stringify(lock, null, 2));
 await go('/check', 'h1');
+await page.locator('.check__modes').getByRole('button', { name: 'Drop a file' }).click();
 await page.locator('input[type=file]').first().setInputFiles(join(lockDir, 'package-lock.json'));
 await page.waitForSelector('.checkpk', { timeout: 20000 });
 await page.waitForTimeout(800);
 // From the results heading down: the verdict groups are the point of this page.
 await still('check', await topOf('h2, h3', 'Results for', 28));
+
+// Watch in CI: the one-click workflow and the command line.
+await go('/check', 'h1');
+await page.locator('.check__modes').getByRole('button', { name: 'Watch in CI' }).click();
+await page.waitForSelector('.check__ci');
+await still('check-ci', await topOf('h1', null, 56));
+
+/** Frames to an animated GIF, at 10 frames a second. */
+const toGif = (prefix, out, width = 1280) =>
+  execFileSync('ffmpeg', [
+    '-y', '-loglevel', 'error', '-framerate', '10', '-i', join(TMP, `${prefix}%04d.png`),
+    '-vf', `scale=${width}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
+    '-loop', '0', out,
+  ]);
+
+// Repository check GIF: paste a repository, read its lockfile from GitHub, see the verdicts.
+const DEMO = { owner: 'OWASP', repo: 'NodeGoat', branch: 'master', sha: 'c5cb68a7084e4ae7dcc60e6a98768720a81841e8' };
+const git = (...a) => execFileSync('git', ['-C', join(TMP, 'repo'), ...a], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+mkdirSync(join(TMP, 'repo'));
+git('init', '-q');
+git('fetch', '-q', '--depth', '1', `https://github.com/${DEMO.owner}/${DEMO.repo}.git`, DEMO.sha);
+const tree = git('ls-tree', '-r', '--long', 'FETCH_HEAD')
+  .trim()
+  .split('\n')
+  .map((l) => {
+    const [info, path] = l.split('\t');
+    const [, type, sha, size] = info.trim().split(/\s+/);
+    return { path, type, sha, size: Number(size) };
+  });
+const repoApi = `https://api.github.com/repos/${DEMO.owner}/${DEMO.repo}`;
+await page.route('https://api.github.com/**', (r) => {
+  const u = r.request().url();
+  if (u === repoApi) return r.fulfill({ json: { full_name: `${DEMO.owner}/${DEMO.repo}`, default_branch: DEMO.branch } });
+  if (u === `${repoApi}/git/trees/${DEMO.branch}?recursive=1`) return r.fulfill({ json: { sha: DEMO.sha, tree, truncated: false } });
+  return r.fulfill({ status: 404, json: { message: 'Not Found' } });
+});
+const rawBase = `https://raw.githubusercontent.com/${DEMO.owner}/${DEMO.repo}/${DEMO.branch}/`;
+await page.route('https://raw.githubusercontent.com/**', (r) => {
+  const u = r.request().url();
+  if (!u.startsWith(rawBase)) return r.fulfill({ status: 404, body: '404: Not Found' });
+  const path = decodeURIComponent(u.slice(rawBase.length));
+  return r.fulfill({ body: git('show', `FETCH_HEAD:${path}`) });
+});
+await go('/check', '#check-repo');
+await page.mouse.move(4, 896);
+const rc = await page.evaluate(() => {
+  const a = document.querySelector('h1').getBoundingClientRect();
+  return { x: a.left - 24, y: a.top + window.scrollY - 32 };
+});
+const repoClip = { x: Math.max(0, rc.x), y: Math.max(64, rc.y), width: 1216, height: Math.min(760, 900 - Math.max(64, rc.y)) };
+let rn = 0;
+const rframe = async () => page.screenshot({ path: join(TMP, `r${String(rn++).padStart(4, '0')}.png`), clip: repoClip });
+const rhold = async (frames) => {
+  for (let k = 0; k < frames; k++) {
+    await rframe();
+    await page.waitForTimeout(100);
+  }
+};
+await rhold(8);
+await page.locator('#check-repo').click();
+for (const ch of `github.com/${DEMO.owner}/${DEMO.repo}`) {
+  await page.keyboard.type(ch);
+  await rframe();
+}
+await rhold(6);
+await page.getByRole('button', { name: 'Check repo' }).click();
+await page.mouse.move(4, 896);
+for (let k = 0; k < 40 && !(await page.locator('.checkpk').count()); k++) await rframe();
+await page.waitForSelector('.checkpk', { timeout: 20000 });
+await page.waitForTimeout(500);
+// Glide down to the verdicts, then hold on them. The clip is in viewport terms, so it stays put
+// below the sticky header while the page moves under it.
+const from = await page.evaluate(() => window.scrollY);
+const to = Math.max(0, (await topOf('h2, h3', 'Results for', 28)) - repoClip.y);
+for (let k = 1; k <= 12; k++) {
+  await page.evaluate((y) => window.scrollTo(0, y), from + (to - from) * (1 - (1 - k / 12) ** 3));
+  await page.waitForTimeout(30);
+  await rframe();
+}
+await rhold(40);
+await page.unrouteAll({ behavior: 'ignoreErrors' });
+const repoGif = join(ASSETS, 'check-repo-dark.gif');
+toGif('r', repoGif, 1100);
 
 // Demo GIF: the evidence bar on Today, Balanced, Broad, Strict and back.
 await go('/', '.today__hero');
@@ -146,15 +236,11 @@ for (const label of ['Broad', 'Strict', 'Balanced']) {
   await hold(label === 'Balanced' ? 16 : 18);
 }
 const gif = join(ASSETS, 'demo-dark.gif');
-execFileSync('ffmpeg', [
-  '-y', '-loglevel', 'error', '-framerate', '10', '-i', join(TMP, 'f%04d.png'),
-  '-vf', 'scale=1280:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle',
-  '-loop', '0', gif,
-]);
+toGif('f', gif);
 
 await browser.close();
 rmSync(TMP, { recursive: true, force: true });
-for (const f of [...readdirSync(SCREENS).map((f) => join(SCREENS, f)), gif]) console.log(`${(statSync(f).size / 1024).toFixed(0).padStart(6)} KB  ${f}`);
+for (const f of [...readdirSync(SCREENS).map((f) => join(SCREENS, f)), gif, repoGif]) console.log(`${(statSync(f).size / 1024).toFixed(0).padStart(6)} KB  ${f}`);
 if (errors.length) {
   console.error(`page errors:\n${errors.join('\n')}`);
   process.exitCode = 1;

@@ -1779,7 +1779,7 @@ function parse(input, filename = "", forced = null) {
 }
 // cli/src/check.ts
 /**
-* Checks files against packages.json with the Check Deps page's own parser and matcher, and turns
+* Checks files against packages.json with the Check page's own parser and matcher, and turns
 * the results into findings: one per (CVE, package, file), with the line the package is on.
 */
 /** The Check page reads files up to this size. */
@@ -2291,7 +2291,7 @@ var MCP_DATA_BASES = [`${RAW_DATA_URL}/v1/`, `${BRAND.siteUrl}/data/v1/`];
 // cli/src/data.ts
 /**
 * Loads v1/packages.json (the tracked CVEs) and v1/packages-older.json (every other CVE an OSV.dev
-* advisory names), the index the Check Deps page uses: from the data branch, then the site's /data/
+* advisory names), the index the Check page uses: from the data branch, then the site's /data/
 * rewrite (MCP_DATA_BASES), or from a URL or local path given with --data. The older file is read
 * from where packages.json came from; without it (older data, or a failed load) the check covers the
 * tracked CVEs only, and says so.
@@ -2434,16 +2434,13 @@ async function loadPackages(data, fetchImpl = fetch, timeoutMs = TIMEOUT_MS) {
 	}
 	throw new DataError(`Could not load ${PACKAGES_FILE} (${reasons.join("; ")})`, reasons);
 }
-// cli/src/discover.ts
+// site/src/check/files.ts
 /**
-* Finds the lockfiles and SBOMs to check under the paths given on the command line.
-*
-* A file named on the command line is always read (its format is told by its content if its name
-* says nothing). A directory is walked for the file names the Check Deps page knows, plus common
-* SBOM names, skipping dependency, build and VCS directories. The walk never follows symbolic
-* links, so a link cannot lead it out of the repository or round in a loop.
+* Which files a dependency check reads, shared by the browser (a public GitHub repo, Check page) and
+* the command line (cli/src/discover.ts): the lockfile names the parser knows, common SBOM names,
+* and the folders never searched. Pure: no Node or DOM APIs.
 */
-/** Directories never walked: installed dependencies, build output, virtualenvs, VCS metadata. */
+/** Directories never walked: installed dependencies, build output, virtualenvs, VCS metadata, test data. */
 var SKIP_DIRS = /* @__PURE__ */ new Set([
 	".git",
 	".hg",
@@ -2467,7 +2464,10 @@ var SKIP_DIRS = /* @__PURE__ */ new Set([
 	"coverage",
 	".next",
 	".nuxt",
-	".cache"
+	".cache",
+	"testdata",
+	"fixtures",
+	"__fixtures__"
 ]);
 /** CycloneDX and SPDX files as tools usually name them. */
 var SBOM_NAME = /^(?:bom\.(?:json|xml)|sbom(?:[\w.-]{0,64})?\.json|[\w.-]{1,128}\.(?:cdx\.(?:json|xml)|spdx(?:\.json)?))$/i;

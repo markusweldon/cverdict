@@ -46,13 +46,13 @@ Pipeline flags that make iteration fast:
 ```text
 shared/     contract.ts (public data types), model.ts (chips and points), shard.ts, brand.ts, cna.ts (CNA display
             names), verdict.ts and share.ts (verdict words and link-preview tags), share-images.ts (share image
-            hashes), versions.ts and packages.ts (version ranges and package keys for the Check Deps page),
+            hashes), versions.ts and packages.ts (version ranges and package keys for the Check page),
             mcp.ts (MCP snippets and tool copy)
 api/        share.ts: the Vercel Function for link-preview bots (tests in api/_test/)
 pipeline/   src/ (sources → normalize → score → batches/stats/changes → emit → validate), test/
 site/       the Vite + Preact single-page app
 mcp/        the read-only MCP server for AI agents: src/, test/, the cverdict-mcp package files
-cli/        cverdict-check, the dependency check for terminals and CI (the Check Deps parser and matcher): src/, test/
+cli/        cverdict-check, the dependency check for terminals and CI (the Check page's parser and matcher): src/, test/
 action/     the GitHub Action: action.yml and the committed bundle dist/index.mjs, built from cli/
 dispatcher/ the cverdict npm package: `cverdict check` and `cverdict mcp` run the two tools above (plain JS, no build)
 docs/       SPEC.md (build spec), SCORING.md, DATA.md, DEPLOY.md

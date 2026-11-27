@@ -203,7 +203,7 @@ describe('check session', () => {
     const s = createSession(client);
     s.touch();
     const stages: string[] = [];
-    const run = s.run(fixture('requirements.txt'), 'requirements.txt', { onStage: (st) => stages.push(`${st.stage} ${st.packages}`) });
+    const run = s.run(fixture('requirements.txt'), 'requirements.txt', { onStage: (st) => stages.push(`${st.stage} ${'packages' in st ? st.packages : st.repo}`) });
     await new Promise((r) => setTimeout(r, 5));
     expect(stages).toEqual(['waiting 5']);
     release();

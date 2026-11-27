@@ -1,6 +1,6 @@
 /**
  * Loads v1/packages.json (the tracked CVEs) and v1/packages-older.json (every other CVE an OSV.dev
- * advisory names), the index the Check Deps page uses: from the data branch, then the site's /data/
+ * advisory names), the index the Check page uses: from the data branch, then the site's /data/
  * rewrite (MCP_DATA_BASES), or from a URL or local path given with --data. The older file is read
  * from where packages.json came from; without it (older data, or a failed load) the check covers the
  * tracked CVEs only, and says so.

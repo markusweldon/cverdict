@@ -2,46 +2,15 @@
  * Finds the lockfiles and SBOMs to check under the paths given on the command line.
  *
  * A file named on the command line is always read (its format is told by its content if its name
- * says nothing). A directory is walked for the file names the Check Deps page knows, plus common
+ * says nothing). A directory is walked for the file names the Check page knows, plus common
  * SBOM names, skipping dependency, build and VCS directories. The walk never follows symbolic
  * links, so a link cannot lead it out of the repository or round in a loop.
  */
 import { lstatSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
-import { formatOfFilename } from '../../site/src/check/parse';
+import { SKIP_DIRS, isCheckable } from '../../site/src/check/files';
 
-/** Directories never walked: installed dependencies, build output, virtualenvs, VCS metadata. */
-export const SKIP_DIRS: ReadonlySet<string> = new Set([
-  '.git',
-  '.hg',
-  '.svn',
-  'node_modules',
-  'bower_components',
-  'jspm_packages',
-  'vendor',
-  'Pods',
-  '.venv',
-  'venv',
-  '__pycache__',
-  '.tox',
-  '.nox',
-  '.gradle',
-  '.terraform',
-  'dist',
-  'build',
-  'out',
-  'target',
-  'coverage',
-  '.next',
-  '.nuxt',
-  '.cache',
-]);
-
-/** CycloneDX and SPDX files as tools usually name them. */
-const SBOM_NAME = /^(?:bom\.(?:json|xml)|sbom(?:[\w.-]{0,64})?\.json|[\w.-]{1,128}\.(?:cdx\.(?:json|xml)|spdx(?:\.json)?))$/i;
-
-/** True when the walk picks a file of this name. */
-export const isCheckable = (name: string): boolean => formatOfFilename(name) !== null || SBOM_NAME.test(name);
+export { SKIP_DIRS, isCheckable };
 
 export const MAX_DEPTH = 12;
 export const MAX_FILES = 500;

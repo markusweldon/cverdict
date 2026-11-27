@@ -331,7 +331,7 @@ export const BUDGETS = {
     /**
      * Every other CVE an OSV.dev advisory names (packages.ts): estimated 1.5 to 2.5 MB gzip for about
      * 47,000 advisories (slim rows of ~140 bytes, ~94 bytes per package entry, at the gzip ratio of
-     * packages.json). Read by the CLI, the MCP server and Check Deps. Measure after the first run.
+     * packages.json). Read by the CLI, the MCP server and the Check page. Measure after the first run.
      */
     'v1/packages-older.json': 4 * 1024 * 1024,
     /**

@@ -26,8 +26,8 @@ const JSON_FILES: readonly [string, string][] = [
   ['events.json', 'Verdict events from the last 7 days: KEV and catalog listings, vendor reports, moves into Likely next or Exploited, fast lane, new exploit modules and templates. Newest first, each with a stable id.'],
   ['woke.json', 'Old CVEs (published before the window) that gained exploitation evidence in the last 30 days, with the dated signals.'],
   ['receipts.json', 'Receipts: which CVEs CISA added to KEV that each method had flagged before the listing, from the live log and the hindsight backtest.'],
-  ['packages.json', 'Package versions the tracked CVEs affect, from OSV.dev advisories, for the Check Deps page. About 120 KB gzip.'],
-  ['packages-older.json', 'The same for every other CVE an OSV.dev advisory names: older, scored, no CVE page. Read with packages.json by Check Deps, cverdict-check and the MCP server. About 2 MB gzip.'],
+  ['packages.json', 'Package versions the tracked CVEs affect, from OSV.dev advisories, for the Check page. About 120 KB gzip.'],
+  ['packages-older.json', 'The same for every other CVE an OSV.dev advisory names: older, scored, no CVE page. Read with packages.json by the Check page, cverdict-check and the MCP server. About 2 MB gzip.'],
 ];
 
 const SHARD_JS = `// FNV-1a 32-bit of the upper-cased ID, mod ${SHARD_COUNT}, as two hex digits.

@@ -1,7 +1,7 @@
 # CVErdict check (GitHub Action)
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v7
 - uses: markusweldon/cverdict/action@check-v0.1.0
   with:
     fail-on: exploited

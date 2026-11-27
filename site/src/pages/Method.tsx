@@ -74,10 +74,10 @@ const BLIND_SPOTS: readonly [string, ComponentChildren][] = [
   ['PoCs are unverified', 'Proof-of-concept repos are counted, never run. Fake PoCs that carry malware are common, so treat every link as hostile.'],
   ['Vendor text is data', 'Descriptions are written by CNAs and sometimes contain hostile markup. Everything is shown as plain text.'],
   [
-    'Check Deps knows only what we track',
+    'Check knows advisories, not your code',
     <>
-      The <a href={href('check')}>Check Deps</a> page compares an SBOM or lockfile with the CVEs in this data that an OSV.dev advisory ties to a package version, in eight package ecosystems. A clean result there is
-      not a full audit, and “affected” means the version is in the advisory’s range, not that your code reaches the vulnerable part.
+      The <a href={href('check')}>Check</a> page compares a GitHub repo, lockfile or SBOM with every CVE an OSV.dev advisory ties to a package version, in eight package ecosystems. It cannot see
+      advisories without a CVE ID (malware reports among them), OS packages or containers, and “affected” means the version is in the advisory’s range, not that your code reaches the vulnerable part.
     </>,
   ],
 ];
@@ -94,7 +94,7 @@ const ATTRIBUTIONS: readonly [string, string, string][] = [
   ['Exploit-DB', 'https://www.exploit-db.com', 'OffSec; only IDs, flags and links are used'],
   ['PoC-in-GitHub', 'https://github.com/nomi-sec/PoC-in-GitHub', 'nomi-sec; linked repos are third-party and unverified'],
   [
-    'OSV.dev advisories (Check Deps page only)',
+    'OSV.dev advisories (Check page only)',
     'https://osv.dev/',
     'GitHub Advisory Database, PyPI and Go databases (CC-BY-4.0), RustSec (CC0-1.0), Drupal (MIT, Ackama); never part of a score',
   ],

@@ -14,9 +14,12 @@ import { advisoryUrl, ATTRIBUTION, rangesText } from '../../../shared/packages';
 import { copyTicket, watchVendorOf } from '../actions';
 import { groupByTier, GROUP_ORDER, type CheckResult, type CveHit, type Group, type NotCheckedGroup, type PackageHit } from '../check/match';
 import { FORMAT_LABEL, FORMATS, isFormatId, parseErrorText, type Component, type FormatId } from '../check/parse';
-import { fileTooLarge, fmtSize, indexGlyphs, pasteTooLarge, session, type Failure, type Held } from '../check/session';
+import { addWorkflowUrl, CLI_LINE, workflowYaml, WORKFLOW_PATH } from '../check/ci';
+import { API as GITHUB_API, parseRepo } from '../check/repo';
+import { fileTooLarge, fmtSize, indexGlyphs, pasteTooLarge, session, type Failure, type Held, type RepoSource, type Stage } from '../check/session';
 import { ExtLink } from '../components/ExtLink';
-import { IconAlert, IconLock, IconRefresh } from '../components/icons';
+import { IconAlert, IconExternal, IconLock, IconRefresh } from '../components/icons';
+import { Snippet } from '../components/Snippet';
 import { CveRow } from '../components/Row';
 import { TierPill } from '../components/Tier';
 import { data } from '../data';
@@ -42,7 +45,7 @@ const GROUP_LABEL: Readonly<Record<Group, string>> = {
 };
 const NAMES_SHOWN = 1000;
 
-type Status = { kind: 'idle' } | { kind: 'reading'; name: string } | { kind: 'checking'; packages: number } | { kind: 'waiting'; packages: number; slow: boolean };
+type Status = { kind: 'idle' } | { kind: 'fetching'; repo: string } | { kind: 'reading'; name: string } | { kind: 'checking'; packages: number } | { kind: 'waiting'; packages: number; slow: boolean };
 type IndexState = 'idle' | 'loading' | 'ready' | 'error';
 interface Input {
   text: string;
@@ -190,8 +193,10 @@ function More({ title, count, children }: { title: string; count: number; childr
   );
 }
 
-function summaryText(r: CheckResult, days: number | null, older = session.older()?.loaded ?? false): string {
-  const read = `Read ${FORMAT_LABEL.get(r.format)}: ${plural(r.total, 'package')} (${fmtInt(r.distinct)} distinct).`;
+function summaryText(r: CheckResult, days: number | null, older = session.older()?.loaded ?? false, repo: RepoSource | undefined = session.held()?.repo): string {
+  const read = repo
+    ? `Read ${plural(repo.files.length, 'file')} from ${repo.name} (${repo.ref}): ${plural(r.total, 'package')} (${fmtInt(r.distinct)} distinct).`
+    : `Read ${FORMAT_LABEL.get(r.format)}: ${plural(r.total, 'package')} (${fmtInt(r.distinct)} distinct).`;
   const affecting = r.cves.filter((c) => c.affected).length;
   const skipped = r.distinct - r.checked;
   if (r.checked === 0) return `${read} None of them could be checked (listed below).`;
@@ -237,7 +242,7 @@ function Coverage({ index, state, days, older = session.older() }: { index: Pack
         osv-scanner, npm audit or pip-audit.
       </p>
       <p>
-        The same check runs in CI: <code>npx -y {BRAND.slug}-check</code>, or the GitHub Action, with a job summary, SARIF for code scanning, and a failing step when a dependency is Exploited.{' '}
+        The same check runs in a terminal or in CI: <code>{CLI_LINE}</code>, or the GitHub Action, with a job summary, SARIF for code scanning, and a failing step when a dependency is Exploited.{' '}
         <ExtLink href={`${REPO_URL}/blob/main/cli/README.md`}>How to set it up</ExtLink>
       </p>
       {index?.sources.map((s) =>
@@ -272,13 +277,119 @@ function FailureText({ failure }: { failure: Failure }) {
     }
     case 'index':
       return failure.notPublished ? <>Not published yet. The first pipeline run with this feature has not finished.</> : <>The package index could not be loaded, so nothing was checked.</>;
+    case 'repo':
+      return <>{failure.error.message}</>;
   }
+}
+
+/** What a repository check read: each file with its format and packages, what could not be read, and any limit hit. */
+function RepoFiles({ repo }: { repo: RepoSource }) {
+  return (
+    <div class="check__repofiles">
+      {repo.rootOnly && (
+        <p class="check__warn">
+          <IconAlert size={12} /> {repo.rootOnly}
+        </p>
+      )}
+      {(repo.truncated || repo.skipped > 0) && (
+        <p class="check__warn">
+          <IconAlert size={12} /> {repo.truncated ? 'GitHub cut the file list of this very large repository short, so some folders were not searched. ' : ''}
+          {repo.skipped > 0 ? `${plural(repo.skipped, 'more lockfile')} beyond the first ${repo.files.length + repo.unread.length} were left out. ` : ''}
+          Check the rest as files, or in CI.
+        </p>
+      )}
+      <details class="chart__table">
+        <summary>
+          Files read <span class="muted">{fmtInt(repo.files.length)}</span>
+        </summary>
+        <ul class="check__filelist">
+          {repo.files.map((f) => (
+            <li key={f.path}>
+              <UserText class="mono">{f.path}</UserText> <span class="muted">{FORMAT_LABEL.get(f.format)} · {plural(f.packages, 'package')}</span>
+            </li>
+          ))}
+          {repo.unread.map((f) => (
+            <li key={f.path}>
+              <UserText class="mono">{f.path}</UserText> <span class="muted">not read: {f.message}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}
+
+type Mode = 'repo' | 'file' | 'ci';
+const MODES: readonly [Mode, string][] = [
+  ['repo', 'Check a repo'],
+  ['file', 'Drop a file'],
+  ['ci', 'Watch in CI'],
+];
+
+/** Page status from a session stage. */
+const statusOf = (s: Stage): Status =>
+  s.stage === 'fetching' ? { kind: 'fetching', repo: s.repo } : s.stage === 'waiting' ? { kind: 'waiting', packages: s.packages, slow: false } : { kind: 'checking', packages: s.packages };
+
+/** The Watch in CI path: the workflow file, a one-click way to add it, and the command line. */
+function CiPanel({ repoInput, setRepoInput }: { repoInput: string; setRepoInput: (v: string) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [why, setWhy] = useState<string | null>(null);
+  const add = async () => {
+    const r = parseRepo(repoInput);
+    if (!r) {
+      setWhy('Enter your repository as owner/repo first.');
+      return;
+    }
+    setWhy(null);
+    setAdding(true);
+    // The default branch, so the file lands where the workflow runs; main when GitHub cannot say.
+    let branch = r.ref ?? 'main';
+    if (!r.ref) {
+      try {
+        const res = await fetch(`${GITHUB_API}/repos/${encodeURIComponent(r.owner)}/${encodeURIComponent(r.repo)}`, { headers: { accept: 'application/vnd.github+json' } });
+        const b = res.ok ? ((await res.json()) as { default_branch?: unknown }) : null;
+        if (typeof b?.default_branch === 'string' && /^[A-Za-z0-9._\/-]{1,200}$/.test(b.default_branch)) branch = b.default_branch;
+      } catch {
+        // main, as above
+      }
+    }
+    setAdding(false);
+    window.open(addWorkflowUrl(r, branch), '_blank', 'noopener,noreferrer');
+  };
+  return (
+    <section class="panel check__card check__ci" aria-labelledby="check-ci-h">
+      <h2 class="check__paneltitle" id="check-ci-h">
+        Run it on every push, pull request and day
+      </h2>
+      <p class="check__panelsub">
+        For private repositories, and to catch a dependency that turns Exploited after you merged. The GitHub Action reads your checkout in the runner: no SBOM, no app to install, no token, and
+        nothing is sent to {BRAND.name}. It writes a job summary, marks the lockfile lines in pull requests, and fails the step when a dependency is Exploited.
+      </p>
+      <div class="check__repoform">
+        <label class="check__label" for="check-ci-repo">
+          Your repository
+        </label>
+        <div class="check__reporow">
+          <input id="check-ci-repo" class="input user-text" placeholder="owner/repo" autocomplete="off" spellcheck={false} value={repoInput} onInput={(e) => setRepoInput((e.currentTarget as HTMLInputElement).value)} />
+          <button type="button" class="btn btn--primary" onClick={() => void add()} disabled={adding}>
+            Add to your repo on GitHub <IconExternal size={12} />
+          </button>
+        </div>
+        <p class="check__hint muted">{why ?? `Opens GitHub with ${WORKFLOW_PATH} filled in. Review it and press Commit.`}</p>
+      </div>
+      <Snippet title={WORKFLOW_PATH} code={workflowYaml()} />
+      <Snippet title="Or in a terminal, in your project folder" code={CLI_LINE} />
+      <p class="check__panelsub">
+        Code scanning (SARIF), outputs and options: <ExtLink href={`${REPO_URL}/blob/main/cli/README.md#in-github-actions`}>the Action’s docs</ExtLink>.
+      </p>
+    </section>
+  );
 }
 
 const tierGroups: readonly Tier[] = ['exploited', 'likely', 'watch', 'quiet'];
 
 export default function Check() {
-  useTitle('Check Your Dependencies');
+  useTitle('Am I affected?');
   useKnobUrl();
   const level = useStore(knob);
   const now = useNow(60_000);
@@ -296,6 +407,8 @@ export default function Check() {
   const [file, setFile] = useState<File | null>(null);
   const [forced, setForced] = useState<FormatId | 'auto'>('auto');
   const [drag, setDrag] = useState(false);
+  const [mode, setMode] = useState<Mode>(() => (session.held() && !session.held()?.repo ? 'file' : 'repo'));
+  const [repoInput, setRepoInput] = useState(() => session.held()?.repo?.name ?? '');
   const fileInput = useRef<HTMLInputElement>(null);
   const resultsHead = useRef<HTMLHeadingElement>(null);
   const errorBox = useRef<HTMLDivElement>(null);
@@ -354,7 +467,7 @@ export default function Check() {
     try {
       out = await session.run(input.text, input.file, {
         forced: fmt,
-        onStage: (s) => id === runId.current && setStatus(s.stage === 'waiting' ? { kind: 'waiting', packages: s.packages, slow: false } : { kind: 'checking', packages: s.packages }),
+        onStage: (s) => id === runId.current && setStatus(statusOf(s)),
       });
     } catch (e) {
       // A bug must not leave the page saying "Reading..." with Check disabled.
@@ -373,6 +486,34 @@ export default function Check() {
     lastInput.current = null;
     setHeld(out.held);
     setAnnounce(summaryText(out.held.result, days));
+    requestAnimationFrame(() => resultsHead.current?.focus());
+  };
+
+  const checkRepo = async () => {
+    touch();
+    const id = ++runId.current;
+    lastInput.current = null;
+    setFailure(null);
+    setHint(null);
+    setAnnounce(null);
+    let out;
+    try {
+      out = await session.runRepo(repoInput, { onStage: (s) => id === runId.current && setStatus(statusOf(s)) });
+    } catch (e) {
+      if (id === runId.current) {
+        setStatus({ kind: 'idle' });
+        setHint('This repository could not be read.');
+      }
+      throw e;
+    }
+    if (id !== runId.current) return;
+    setStatus({ kind: 'idle' });
+    if (!out.ok) {
+      setFailure(out.failure);
+      return;
+    }
+    setHeld(out.held);
+    setAnnounce(summaryText(out.held.result, days, undefined, out.held.repo));
     requestAnimationFrame(() => resultsHead.current?.focus());
   };
 
@@ -511,15 +652,70 @@ export default function Check() {
   return (
     <div class="page page--check">
       <header class="page__head">
-        <p class="eyebrow">Does this affect me?</p>
+        <p class="eyebrow">Check your dependencies</p>
         <h1 class="page__title" tabIndex={-1}>
-          Check Your Dependencies
+          Am I affected?
         </h1>
-        <p class="page__lede">
-          Drop an SBOM or a lockfile to see which of the CVEs {BRAND.name} tracks affect your packages, with each CVE’s verdict. Your file is read here in your browser and never uploaded.
+        <p class="page__lede">Paste a public GitHub repo or drop a lockfile, and see which of your dependencies have CVEs, most exploited first.</p>
+        <p class="page__lede check__trust">
+          <strong>We never see your code.</strong> No account, no upload, no SBOM needed: everything is matched here in your browser. Don’t take our word for it: open your browser’s
+          network tab while it runs, and you will see public files from cverdict.dev and your files coming from GitHub. Nothing goes back.
         </p>
       </header>
 
+      <div class="check__modes" role="group" aria-label="What to check">
+        <div class="seg">
+          {MODES.map(([m, label]) => (
+            <button key={m} type="button" class="seg__btn" aria-pressed={mode === m ? 'true' : 'false'} onClick={() => setMode(m)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {mode === 'repo' && (
+        <section class="panel check__card check__repo" aria-labelledby="check-repo-h" onFocusIn={touch} onPointerDown={touch}>
+          <h2 class="check__paneltitle" id="check-repo-h">
+            Check a public GitHub repository
+          </h2>
+          <form
+            class="check__repoform"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void checkRepo();
+            }}
+          >
+            <label class="check__label" for="check-repo">
+              Repository
+            </label>
+            <div class="check__reporow">
+              <input
+                id="check-repo"
+                class="input user-text"
+                placeholder="owner/repo or https://github.com/owner/repo"
+                autocomplete="off"
+                spellcheck={false}
+                value={repoInput}
+                onInput={(e) => setRepoInput((e.currentTarget as HTMLInputElement).value)}
+              />
+              <button type="submit" class="btn btn--primary" disabled={busy}>
+                Check repo
+              </button>
+            </div>
+          </form>
+          <p class="check__privacy">
+            <IconLock size={13} />
+            <span>
+              The repository name goes to GitHub, not to {BRAND.name}: GitHub’s API lists its files, and the lockfiles and SBOMs in it are downloaded from raw.githubusercontent.com and matched here,
+              like a dropped file. Folders such as node_modules and vendor are skipped. Public repositories only: for a private one, use <button type="button" class="linkbtn" onClick={() => setMode('ci')}>Watch in CI</button>.
+            </span>
+          </p>
+        </section>
+      )}
+
+      {mode === 'ci' && <CiPanel repoInput={repoInput} setRepoInput={setRepoInput} />}
+
+      {mode === 'file' && (
       <section
         class={`panel check__card${drag ? ' is-drag' : ''}`}
         aria-labelledby="check-input"
@@ -559,6 +755,7 @@ export default function Check() {
             Choose a file
           </label>
           <p class="muted">or paste it below</p>
+          <p class="muted check__hint check__dropnote">A lockfile is enough. An SBOM works too: CycloneDX, SPDX or package URLs.</p>
         </div>
         {file && (
           <p class="check__file">
@@ -609,9 +806,14 @@ export default function Check() {
           </span>
         </p>
       </section>
+      )}
 
       <div class="check__status" role="status">
-        {status.kind === 'reading' ? (
+        {status.kind === 'fetching' ? (
+          <p>
+            Reading the lockfiles of <UserText>{status.repo}</UserText> from GitHub...
+          </p>
+        ) : status.kind === 'reading' ? (
           <p>
             Reading <UserText>{status.name}</UserText>...
           </p>
@@ -652,6 +854,7 @@ export default function Check() {
             Results{held?.file ? <> for <UserText>{held.file}</UserText></> : null}
           </h2>
           <p class="check__summary">{summaryText(result, days)}</p>
+          {held?.repo && <RepoFiles repo={held.repo} />}
           {(tierCounts.length > 0 || possible > 0) && (
             <p class="check__counts" aria-label="Affecting CVEs by tier">
               {tierCounts.map(([t, n]) => (

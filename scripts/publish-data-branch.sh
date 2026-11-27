@@ -142,8 +142,8 @@ Base URL: \`https://raw.githubusercontent.com/${repo}/${BRANCH}/\`
 | \`v1/woke.json\` | Old CVEs (published before the window) that gained exploitation evidence in the last 30 days |
 | \`v1/events.json\` | Verdict events of the last 7 days (KEV and catalog listings, vendor reports, moves into Likely next or Exploited, fast lane, new exploit modules and templates), newest first |
 | \`v1/receipts.json\` | Receipts: how often CVErdict flagged a CVE before CISA listed it in KEV (forward log and hindsight backtest) |
-| \`v1/packages.json\` | Package versions the CVEs with a detail shard affect, from OSV.dev advisories, with each CVE's row (for the site's Check Deps page) |
-| \`v1/packages-older.json\` | The same for every other CVE OSV.dev advisories name (older, no detail shard), with slim rows (for Check Deps, the CLI and the MCP server) |
+| \`v1/packages.json\` | Package versions the CVEs with a detail shard affect, from OSV.dev advisories, with each CVE's row (for the site's Check page) |
+| \`v1/packages-older.json\` | The same for every other CVE OSV.dev advisories name (older, no detail shard), with slim rows (for the Check page, the CLI and the MCP server) |
 | \`v1/state.json\` | Internal state carried between runs; unstable, do not build on it |
 | \`feeds/signal.xml\` | Atom: newest Exploited and Likely-next CVEs |
 | \`feeds/kev.xml\` | Atom: KEV additions |

@@ -28,7 +28,7 @@ const NAV: readonly { name: Route['name']; path: string; label: string }[] = [
   { name: 'surge', path: 'surge', label: 'The Surge' },
   { name: 'kev', path: 'kev', label: 'KEV Clock' },
   { name: 'woke', path: 'woke', label: 'Woke Up' },
-  { name: 'check', path: 'check', label: 'Check Deps' },
+  { name: 'check', path: 'check', label: 'Check' },
   { name: 'explore', path: 'explore', label: 'Explore' },
   { name: 'batches', path: 'batches', label: 'Batches' },
   { name: 'receipts', path: 'receipts', label: 'Receipts' },
@@ -137,7 +137,7 @@ export function Footer() {
           </div>
         </div>
         <p class="foot__text">
-          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, ENISA EU KEV, the CIRCL (CC0) and SiberKapan (CC-BY-4.0) catalogs, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the <a href={href('check')}>Check Deps</a> page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
+          Built only from free public data: CVE List V5, CISA KEV and Vulnrichment, ENISA EU KEV, the CIRCL (CC0) and SiberKapan (CC-BY-4.0) catalogs, FIRST EPSS, Metasploit, Nuclei, Exploit-DB, PoC-in-GitHub and, for the <a href={href('check')}>Check</a> page, OSV.dev advisories. Quiet ≠ safe. Not in KEV ≠ not exploited. Not affiliated with
           CISA, ENISA, CIRCL, MITRE, FIRST or any vendor.
         </p>
         <nav class="foot__links" aria-label="Footer">
