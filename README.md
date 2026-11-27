@@ -17,7 +17,7 @@ Open-source CVE triage for the 2026 flood: the few CVEs that matter today, and e
 [![code: MIT](https://img.shields.io/badge/code-MIT-c6f432?labelColor=111317)](LICENSE)
 [![scores: CC0](https://img.shields.io/badge/scores-CC0-c6f432?labelColor=111317)](#license)
 
-[**Live site**](https://cverdict.dev) · [Use it](#use-it) · [Am I affected?](#am-i-affected) · [How it works](#how-it-works) · [Scoring](#how-scoring-works) · [Receipts](#receipts) · [MCP](#ask-from-an-ai-agent-mcp) · [Open data API](#open-data-api) · [Deploy your own](#deploy-your-own)
+[**Live site**](https://cverdict.dev) · [Use it](#use-it) · [Am I affected?](#am-i-affected) · [How it works](#how-it-works) · [Scoring](#how-scoring-works) · [Receipts](#receipts) · [MCP](#ask-from-an-ai-agent-mcp) · [Open data API](#open-data-api)
 
 </div>
 
@@ -60,22 +60,24 @@ gives you your own copy.
 | **As JSON** | `curl -s https://raw.githubusercontent.com/markusweldon/cverdict/data/v1/meta.json` ([every file](#open-data-api)) |
 | **One command for both tools** | `npx -y cverdict check` and `npx -y cverdict mcp` ([dispatcher/README.md](dispatcher/README.md)) |
 | **In CI, on your repos** | `npx -y cverdict-check`, or the GitHub Action `markusweldon/cverdict/action` ([one click](#am-i-affected), [every option](cli/README.md)) |
-| **Your own copy** | Fork it and deploy to Vercel or GitHub Pages ([how](#deploy-your-own)) |
+| **Your own copy** | Fork it and deploy to Vercel or GitHub Pages ([how](docs/DEPLOY.md)) |
 
 ## Am I affected?
 
-**No SBOM, no account, no integration.** Point CVErdict at your project and it lists the
-dependencies with CVEs, most exploited first, by the same evidence as everything else here. Every way
-in uses the same parser and matcher, and none of them sends your files to CVErdict:
+**We never see your code.** No account, no upload, no SBOM needed. Point CVErdict at your project
+and it lists the dependencies with CVEs, most exploited first, by the same evidence as everything
+else here. Every way in uses the same parser and matcher, and none of them sends your files to
+CVErdict. Don't take our word for it: open your browser's network tab while the Check page runs, and
+you will see public files from cverdict.dev and your files coming from GitHub. Nothing goes back.
 
 | Check | How | What leaves your machine |
 |---|---|---|
-| **A public GitHub repo** | Paste `owner/repo` or its URL at [cverdict.dev/check](https://cverdict.dev/check) | The repository name, to GitHub. Its lockfiles and SBOMs come from raw.githubusercontent.com and are matched in your browser |
-| **Every push, pull request and day** | On the Check page's **In CI** tab, press **Add to your repo on GitHub**, or commit the workflow below. Private repos too | Nothing. The Action reads the checkout in the runner and downloads only the public index |
+| **A public GitHub repo** | Paste `owner/repo` or its URL on the **Check a repo** tab at [cverdict.dev/check](https://cverdict.dev/check) | The repository name, to GitHub. Its lockfiles and SBOMs come from raw.githubusercontent.com and are matched in your browser |
+| **Every push, pull request and day** | On the Check page's **Watch in CI** tab, press **Add to your repo on GitHub**, or commit the workflow below. Private repos too | Nothing. The Action reads the checkout in the runner and downloads only the public index |
 | **Your project, in a terminal** | `npx -y cverdict check` | Nothing. Only the public index is downloaded |
-| **An SBOM or lockfile** | Drop or paste it on the Check page's **Lockfile or SBOM** tab | Nothing. It is read in your browser |
+| **A lockfile or SBOM** | Drop or paste it on the Check page's **Drop a file** tab | Nothing. It is read in your browser |
 
-<img alt="Demo of the Check page, Am I affected?, in the dark theme. The GitHub repo tab is open. github.com/OWASP/NodeGoat is typed into the Repository field and Check repo is pressed. The results for OWASP/NodeGoat@master read: Read 1 file from OWASP/NodeGoat (master): 1,479 packages (1,091 distinct). 181 CVEs affect 128 of them, 4 Likely next, 35 Watch and 142 Quiet. The page scrolls to Likely next: CVE-2021-23337 in lodash 4.17.20, 4.17.11, 4.13.1 and 2.4.2, fixed in 4.17.21, score 60; CVE-2026-106445 and CVE-2026-33937 in handlebars 4.0.5, score 56; then CVE-2025-7783 in form-data, score 54." src="docs/assets/check-repo-dark.gif" width="100%">
+<img alt="Demo of the Check page, Am I affected?, in the dark theme. The Check a repo tab is open. github.com/OWASP/NodeGoat is typed into the Repository field and Check repo is pressed. The results for OWASP/NodeGoat@master read: Read 1 file from OWASP/NodeGoat (master): 1,479 packages (1,091 distinct). 181 CVEs affect 128 of them, 4 Likely next, 35 Watch and 142 Quiet. The page scrolls to Likely next: CVE-2021-23337 in lodash 4.17.20, 4.17.11, 4.13.1 and 2.4.2, fixed in 4.17.21, score 60; CVE-2026-106445 and CVE-2026-33937 in handlebars 4.0.5, score 56; then CVE-2025-7783 in form-data, score 54." src="docs/assets/check-repo-dark.gif" width="100%">
 
 <sub>OWASP NodeGoat is an intentionally vulnerable app. Recorded from the production build with the data of
 Nov 27, 2026 14:47 UTC by <a href="tools/brand/screens.mjs"><code>tools/brand/screens.mjs</code></a>, with GitHub's
@@ -116,9 +118,9 @@ It writes a job summary, marks the lockfile lines in pull requests and fails the
 dependency is Exploited. SARIF for code scanning, other thresholds and every input:
 [cli/README.md](cli/README.md). The same check is the MCP server's `check_dependencies` tool.
 
-<a href="https://cverdict.dev/check"><img alt="The In CI tab of the Check page, Am I affected?. Run it on every push, pull request and day: for private repositories, and to catch a dependency that turns Exploited after you merged. The GitHub Action reads your checkout in the runner: no SBOM, no app to install, no token, and nothing is sent to CVErdict. A Your repository field with the placeholder owner/repo and a button, Add to your repo on GitHub, which opens GitHub with .github/workflows/cverdict.yml filled in to review and commit. Below, the workflow file with a Copy button." src="docs/assets/screens/check-ci.webp" width="100%"></a>
+<a href="https://cverdict.dev/check"><img alt="The Watch in CI tab of the Check page, Am I affected?. Run it on every push, pull request and day: for private repositories, and to catch a dependency that turns Exploited after you merged. The GitHub Action reads your checkout in the runner: no SBOM, no app to install, no token, and nothing is sent to CVErdict. A Your repository field with the placeholder owner/repo and a button, Add to your repo on GitHub, which opens GitHub with .github/workflows/cverdict.yml filled in to review and commit. Below, the workflow file with a Copy button." src="docs/assets/screens/check-ci.webp" width="100%"></a>
 
-<sub>The <b>In CI</b> tab. The button opens GitHub's own new-file page with the workflow filled in: no app, no token, no account here.</sub>
+<sub>The <b>Watch in CI</b> tab. The button opens GitHub's own new-file page with the workflow filled in: no app, no token, no account here.</sub>
 
 ## Why
 
@@ -411,37 +413,12 @@ names; nothing leaves your machine) and `changes_since` (verdict events of the l
 each answer contains: [docs/DATA.md](docs/DATA.md#mcp-server); copyable commands on the site:
 [MCP Server](https://cverdict.dev/mcp).
 
-## Deploy your own
+## Run your own copy
 
+Don't want to depend on cverdict.dev? Fork it: the site, the hourly data and the MCP server all run
+from your copy, on the free tier of Vercel or GitHub Pages.
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/markusweldon/cverdict)
-
-**Vercel, zero config.** Import the repository and deploy. The site is static; `/data/*` and
-the feed files under `/feeds/` are rewritten to the `data` branch on raw.githubusercontent.com, so
-fresh data arrives every hour without a redeploy. One small function answers link-preview bots
-only, so shared CVE links show their verdict; people never reach it
-([Link previews](docs/DEPLOY.md#link-previews)). A fresh clone reads this repository's data until
-you point it at your own: set `repo` in `shared/brand.ts` and change the `/data/` and `/feeds/`
-rewrites in `vercel.json` (see [Forking and renaming](docs/DEPLOY.md#forking-and-renaming)). Until
-then it needs no workflow runs of its own.
-
-**GitHub Pages.** The repository must be public, because the refresh workflow reads the `data`
-branch anonymously.
-
-1. Fork the repository and enable Actions on the fork.
-2. Settings → Pages → Source: **GitHub Actions**.
-3. Settings → Secrets and variables → Actions → **Variables**: add `REFRESH_SCHEDULE` = `on`.
-   Copies skip the hourly schedule without it.
-4. Actions → **refresh-data** → Run workflow. From then on it publishes the data and redeploys
-   the site every hour.
-
-Pages has no functions, so a shared CVE link shows the site card, not its verdict, and CVE pages
-are served with status 404 (they still work in a browser). For links you want to share, use Vercel.
-
-GitHub often runs the hourly schedule late. To refresh every hour, start the workflow from a free
-external timer: [Reliable hourly refresh](docs/DEPLOY.md#reliable-hourly-refresh).
-
-Renaming, custom domains, the optional `SITE_URL` variable and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
-Hosting costs nothing on either platform's free tier.
+Every step, both platforms and renaming: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Local development
 

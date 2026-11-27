@@ -146,7 +146,7 @@ describe('session.runRepo', () => {
   });
 });
 
-describe('the In CI workflow', () => {
+describe('the Watch in CI workflow', () => {
   it('runs the pinned Action on pull requests, pushes and a daily schedule', () => {
     const y = workflowYaml();
     expect(y).toMatch(/uses: markusweldon\/cverdict\/action@check-v\d+\.\d+\.\d+/);

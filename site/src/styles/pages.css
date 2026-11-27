@@ -2882,6 +2882,14 @@ circle.dc__kev {
   font-size: 12.5px;
 }
 
+.check__dropnote {
+  flex-basis: 100%;
+}
+
+.check__trust {
+  margin-top: 8px;
+}
+
 .linkbtn {
   padding: 0;
   border: 0;

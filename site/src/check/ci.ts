@@ -1,5 +1,5 @@
 /**
- * The "In CI" path of the Check page: the workflow file a repository adds to run the check on every
+ * The "Watch in CI" path of the Check page: the workflow file a repository adds to run the check on every
  * push, pull request and day, and a link that opens GitHub's new-file page with it filled in. The
  * Action reads the checkout in the runner; nothing is sent to CVErdict and no app is installed.
  */

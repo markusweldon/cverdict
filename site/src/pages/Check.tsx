@@ -321,16 +321,16 @@ function RepoFiles({ repo }: { repo: RepoSource }) {
 
 type Mode = 'repo' | 'file' | 'ci';
 const MODES: readonly [Mode, string][] = [
-  ['repo', 'GitHub repo'],
-  ['file', 'Lockfile or SBOM'],
-  ['ci', 'In CI'],
+  ['repo', 'Check a repo'],
+  ['file', 'Drop a file'],
+  ['ci', 'Watch in CI'],
 ];
 
 /** Page status from a session stage. */
 const statusOf = (s: Stage): Status =>
   s.stage === 'fetching' ? { kind: 'fetching', repo: s.repo } : s.stage === 'waiting' ? { kind: 'waiting', packages: s.packages, slow: false } : { kind: 'checking', packages: s.packages };
 
-/** The In CI path: the workflow file, a one-click way to add it, and the command line. */
+/** The Watch in CI path: the workflow file, a one-click way to add it, and the command line. */
 function CiPanel({ repoInput, setRepoInput }: { repoInput: string; setRepoInput: (v: string) => void }) {
   const [adding, setAdding] = useState(false);
   const [why, setWhy] = useState<string | null>(null);
@@ -656,9 +656,10 @@ export default function Check() {
         <h1 class="page__title" tabIndex={-1}>
           Am I affected?
         </h1>
-        <p class="page__lede">
-          Point it at a public GitHub repo, a lockfile or an SBOM, and see which of your dependencies have CVEs, most exploited first. No SBOM needed, no account, no integration: everything is
-          matched here in your browser.
+        <p class="page__lede">Paste a public GitHub repo or drop a lockfile, and see which of your dependencies have CVEs, most exploited first.</p>
+        <p class="page__lede check__trust">
+          <strong>We never see your code.</strong> No account, no upload, no SBOM needed: everything is matched here in your browser. Don’t take our word for it: open your browser’s
+          network tab while it runs, and you will see public files from cverdict.dev and your files coming from GitHub. Nothing goes back.
         </p>
       </header>
 
@@ -706,7 +707,7 @@ export default function Check() {
             <IconLock size={13} />
             <span>
               The repository name goes to GitHub, not to {BRAND.name}: GitHub’s API lists its files, and the lockfiles and SBOMs in it are downloaded from raw.githubusercontent.com and matched here,
-              like a dropped file. Folders such as node_modules and vendor are skipped. Public repositories only: for a private one, use <button type="button" class="linkbtn" onClick={() => setMode('ci')}>In CI</button>.
+              like a dropped file. Folders such as node_modules and vendor are skipped. Public repositories only: for a private one, use <button type="button" class="linkbtn" onClick={() => setMode('ci')}>Watch in CI</button>.
             </span>
           </p>
         </section>
@@ -754,6 +755,7 @@ export default function Check() {
             Choose a file
           </label>
           <p class="muted">or paste it below</p>
+          <p class="muted check__hint check__dropnote">A lockfile is enough. An SBOM works too: CycloneDX, SPDX or package URLs.</p>
         </div>
         {file && (
           <p class="check__file">

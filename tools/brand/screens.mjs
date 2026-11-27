@@ -124,16 +124,16 @@ const lockDir = join(TMP, 'demo');
 mkdirSync(lockDir);
 writeFileSync(join(lockDir, 'package-lock.json'), JSON.stringify(lock, null, 2));
 await go('/check', 'h1');
-await page.locator('.check__modes').getByRole('button', { name: 'Lockfile or SBOM' }).click();
+await page.locator('.check__modes').getByRole('button', { name: 'Drop a file' }).click();
 await page.locator('input[type=file]').first().setInputFiles(join(lockDir, 'package-lock.json'));
 await page.waitForSelector('.checkpk', { timeout: 20000 });
 await page.waitForTimeout(800);
 // From the results heading down: the verdict groups are the point of this page.
 await still('check', await topOf('h2, h3', 'Results for', 28));
 
-// In CI: the one-click workflow and the command line.
+// Watch in CI: the one-click workflow and the command line.
 await go('/check', 'h1');
-await page.locator('.check__modes').getByRole('button', { name: 'In CI' }).click();
+await page.locator('.check__modes').getByRole('button', { name: 'Watch in CI' }).click();
 await page.waitForSelector('.check__ci');
 await still('check-ci', await topOf('h1', null, 56));
 
