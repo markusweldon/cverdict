@@ -2531,7 +2531,7 @@ function discover(paths, cwd, limits = {
 }
 // cli/src/version.ts
 /** Same as cli/package.json (checked by a test). */
-var VERSION = "0.1.0";
+var VERSION = "0.1.1";
 // cli/src/run.ts
 /**
 * One check run, shared by the command line (main.ts) and the GitHub Action (action.ts): find the

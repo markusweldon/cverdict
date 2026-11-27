@@ -2,7 +2,7 @@
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: markusweldon/cverdict/action@check-v0.1.0
+- uses: markusweldon/cverdict/action@check-v0.1.1
   with:
     fail-on: exploited
 ```
