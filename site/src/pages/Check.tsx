@@ -6,6 +6,7 @@
  * web fonts are split by unicode-range, and rendering a character from another range would fetch a
  * font subset, a request that depends on the file. Rows here never prefetch a shard.
  */
+import { CheckFlow } from '../components/CheckFlow';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { BRAND, REPO_URL } from '../../../shared/brand';
@@ -672,6 +673,8 @@ export default function Check() {
           ))}
         </div>
       </div>
+
+      <CheckFlow mode={mode} />
 
       {mode === 'repo' && (
         <section class="panel check__card check__repo" aria-labelledby="check-repo-h" onFocusIn={touch} onPointerDown={touch}>
