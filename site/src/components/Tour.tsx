@@ -20,7 +20,7 @@ import { cveHref, href, navigate } from '../router';
 import { growth, kevGrowth, windowLabel } from '../surge';
 import { TIER_META } from '../tiers';
 import { Countdown, upcomingKev } from './Kev';
-import { Snippet } from './Snippet';
+import { McpInstall } from './McpInstall';
 import { Spark } from './Spark';
 import { TierBar, TierIcon } from './Tier';
 import { IconArrowRight, IconClock, IconCode, IconFilter, IconLayers, IconLock, IconRefresh, IconRss, IconSearch, IconShield, IconSparkle } from './icons';
@@ -371,7 +371,7 @@ function AgentsCard() {
     <Card kind="agents" i={0} icon={<IconCode size={13} />} kicker="MCP · for AI agents" wide>
       <h4 class="tour__title">Verdicts in your agent, one command</h4>
       <p class="tour__text">A read-only MCP server: verdicts, KEV due dates and your dependencies, from the same open data.</p>
-      <Snippet title="Claude Code" code="claude mcp add cverdict -- npx -y cverdict-mcp" />
+      <McpInstall />
       <More to="mcp" label="Other clients" />
     </Card>
   );

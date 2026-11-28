@@ -80,6 +80,7 @@ function Ticker({ meta, passed24h, kevSoon, kevLast, batchesWeek }: { meta: Meta
   const now = useNow(30_000);
   const state = freshness(meta, now);
   // Most actionable first: on a phone the row scrolls and the first two or three are what shows.
+  // Then published before passed, the hero's noise-to-signal order.
   const items: { label: string; value: string; tone?: string; to?: string; tip: string }[] = [
     { label: 'KEV due ≤ 72h', value: kevSoon === null ? '…' : fmtInt(kevSoon), tone: kevSoon ? 'warn' : undefined, to: 'kev', tip: 'CISA KEV deadlines in the next three days' },
     {
@@ -91,8 +92,8 @@ function Ticker({ meta, passed24h, kevSoon, kevLast, batchesWeek }: { meta: Meta
         ? `CISA last added a CVE to KEV on ${fmtDate(kevLast.last, Number.NaN)}: ${kevLast.resetBy[0].id}${kevLast.resetBy.length > 1 ? ` and ${kevLast.resetBy.length - 1} more` : ''}. Longest gap without a listing in 30 days: ${kevLast.longestGap} ${kevLast.longestGap === 1 ? 'day' : 'days'}.`
         : 'When CISA last added a CVE to KEV',
     },
-    { label: 'Passed 24h', value: fmtInt(passed24h), tone: passed24h ? 'lit' : undefined, tip: 'Published in the last 24 hours and Exploited or Likely at the current evidence bar. Most CVEs clear the bar days after they are published.' },
     { label: 'Published 24h', value: fmtInt(meta.counts.published_24h), tip: meta.definitions.published_24h ?? '' },
+    { label: 'Passed 24h', value: fmtInt(passed24h), tone: passed24h ? 'lit' : undefined, tip: 'Published in the last 24 hours and Exploited or Likely at the current evidence bar. Most CVEs clear the bar days after they are published.' },
     { label: 'Batches this week', value: batchesWeek === null ? '…' : fmtInt(batchesWeek), to: 'batches', tip: 'Patch-day cohorts (50+ CVEs from one CNA in a day) in the last 7 days' },
     { label: 'Data age', value: fmtAge(meta.generated_at, now), tone: state === 'fresh' ? 'ok' : state === 'late' ? 'warn' : 'bad', to: 'method#sources', tip: 'Time since the last hourly pipeline run' },
 

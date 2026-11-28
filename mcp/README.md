@@ -18,9 +18,19 @@ with npm provenance, which links each one to the commit and workflow that built 
 ```sh
 # Claude Code
 claude mcp add cverdict -- npx -y cverdict-mcp
+
+# Codex
+codex mcp add cverdict -- npx -y cverdict-mcp
+
+# Gemini CLI
+gemini mcp add cverdict npx -- -y cverdict-mcp
+
+# VS Code
+code --add-mcp '{"name":"cverdict","command":"npx","args":["-y","cverdict-mcp"]}'
 ```
 
-Other clients take an `mcpServers` entry (key names vary by client):
+Cursor (`~/.cursor/mcp.json`), Claude Desktop (`claude_desktop_config.json`) and other clients take
+an `mcpServers` entry (key names vary by client):
 
 ```json
 {

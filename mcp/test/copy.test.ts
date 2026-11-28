@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MCP_INSTRUCTIONS, MCP_MSG, MCP_SERVER, MCP_SNIPPETS, MCP_TOOLS, VERDICT } from '../../shared/mcp';
+import { MCP_CLIENTS, MCP_INSTRUCTIONS, MCP_MSG, MCP_SERVER, MCP_SNIPPETS, MCP_TOOLS, VERDICT } from '../../shared/mcp';
 import { LIMITS } from '../src/tools';
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -104,6 +104,19 @@ describe('package and docs', () => {
     expect(MCP_SNIPPETS[3][1]).toContain('npm --prefix "$PWD" run -s mcp');
   });
 
+  it('gives each client picker entry a command that starts the published package', () => {
+    expect(MCP_CLIENTS.map((c) => c.label)).toEqual(['Claude Code', 'Codex', 'Cursor', 'VS Code', 'Gemini CLI', 'Claude Desktop']);
+    expect(MCP_CLIENTS[0].code).toBe(MCP_SNIPPETS[0][1]);
+    expect(MCP_CLIENTS.find((c) => c.id === 'codex')?.code).toBe('codex mcp add cverdict -- npx -y cverdict-mcp');
+    expect(MCP_CLIENTS.find((c) => c.id === 'gemini')?.code).toBe('gemini mcp add cverdict npx -- -y cverdict-mcp');
+    const vscode = MCP_CLIENTS.find((c) => c.id === 'vscode')?.code ?? '';
+    expect(JSON.parse(vscode.replace(/^code --add-mcp '(.*)'$/, '$1'))).toEqual({ name: 'cverdict', command: 'npx', args: ['-y', 'cverdict-mcp'] });
+    for (const id of ['cursor', 'claude-desktop']) {
+      expect(JSON.parse(MCP_CLIENTS.find((c) => c.id === id)?.code ?? '').mcpServers.cverdict).toEqual({ command: 'npx', args: ['-y', 'cverdict-mcp'] });
+    }
+    expect(new Set(MCP_CLIENTS.map((c) => c.id)).size).toBe(MCP_CLIENTS.length);
+  });
+
   it('documents every tool and the same clone command everywhere', () => {
     const docs = { readme: section(read('README.md'), '## Ask from an AI agent (MCP)'), data: section(read('docs/DATA.md'), '## MCP server'), mcp: read('mcp/README.md') };
     for (const [where, text] of Object.entries(docs)) for (const t of MCP_TOOLS) expect(text, `${t.name} in ${where}`).toContain(`\`${t.name}\``);
@@ -116,7 +129,8 @@ describe('package and docs', () => {
     expect(docs.mcp).toContain(`1 to ${LIMITS.ids} IDs, at most ${LIMITS.detailIds} with \`detail\``);
     // The MCP Server page shows the snippets and tools; Feeds & API keeps #mcp for old links.
     const page = read('site/src/pages/Mcp.tsx');
-    expect(page).toContain('MCP_SNIPPETS.map');
+    expect(page).toContain('MCP_SNIPPETS.slice(1).map');
+    expect(page).toContain('<McpInstall />');
     expect(page).toContain('MCP_TOOLS.map');
     expect(page).toContain(`1 to ${LIMITS.ids} CVE IDs, at most ${LIMITS.detailIds} with detail`);
     expect(read('site/src/pages/Feeds.tsx')).toContain('id="mcp"');

@@ -4770,3 +4770,19 @@ circle.dc__kev {
     transform: none;
   }
 }
+
+/* MCP client picker (homepage MCP card, MCP Server page): the tabs wrap on a phone. */
+.mcpi {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mcpi__tabs {
+  justify-self: start;
+  max-width: 100%;
+}
+
+.mcpi .snippet pre {
+  overflow-x: auto;
+}
