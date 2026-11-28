@@ -320,7 +320,7 @@ Unknown → 404 view. Update `document.title` per route.
   (`--font-mono-system`) so no web font subset is fetched for it; rows do not prefetch shards; results stay in module
   memory until Clear or reload (`check/session.ts`). Caps: files 50 MB, pasted text 5 MB, lines 64 KB in line formats.
   The chunk is not warmed on other pages.
-- **The Surge (`/surge`)**: monthly published since 1999 (SVG area/line), daily published vs passed for the window,
+- **Trends (`/surge`, headed The Surge)**: monthly published since 1999 (SVG area/line), daily published vs passed for the window,
   top CNAs table. The monthly chart's controls all live in the query string, and the default view has none:
   `range=12m|24m|5y` or `from=YYYY-MM&to=YYYY-MM` (also set by dragging across the chart; Reset zoom goes back to
   the preset), `group=quarter|year` (custom ranges widen to whole periods; the period holding the current month is

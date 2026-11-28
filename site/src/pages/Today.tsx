@@ -8,6 +8,7 @@ import { Changes } from '../components/Changes';
 import { freshness } from '../components/Chrome';
 import { FilterBar } from '../components/FilterBar';
 import { HeatStrip } from '../components/HeatStrip';
+import { Tour } from '../components/Tour';
 import { IconArrowRight, IconLayers } from '../components/icons';
 import { kevUrgency, KevStrip } from '../components/Kev';
 import { Knob } from '../components/Knob';
@@ -118,7 +119,7 @@ function Hero({ meta, counts, level }: { meta: Meta; counts: TierCounts; level: 
         Last {meta.window.days} days · {fmtDate(meta.window.from)} – {fmtDate(meta.window.to)}
       </p>
       <h1 class="hero__line" id="hero-h" tabIndex={-1}>
-        <a class="hero__group hero__link" href={href('surge')} aria-label={`${fmtInt(total)} new CVEs published. See The Surge.`}>
+        <a class="hero__group hero__link" href={href('surge')} aria-label={`${fmtInt(total)} new CVEs published. See Trends.`}>
           <CountUp class="hero__noise" value={total} />
           <span class="hero__unit">new CVEs published</span>
         </a>
@@ -520,6 +521,15 @@ export default function Today() {
         </section>
 
         <HeatStrip cards={heat} />
+
+        <Tour
+          stats={stats.status === 'ready' ? stats.data : null}
+          kev={kev.status === 'ready' ? kev.data.entries : null}
+          batches={batches.status === 'ready' ? batches.data : null}
+          counts={counts}
+          total={meta.status === 'ready' ? meta.data.counts.window_published : null}
+          days={meta.status === 'ready' ? meta.data.window.days : 30}
+        />
 
         <section class="today__feed" id="feed" aria-labelledby="feed-h">
           <header class="section__head">

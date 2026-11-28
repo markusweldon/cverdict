@@ -15,10 +15,11 @@ import { data } from '../data';
 import { dailyAt, dailyTakeaway, kevByDay, lastDayPartial, type DayRow } from '../daily';
 import { cnaName, fmtInt, fmtMonth, fmtPct } from '../format';
 import { chartYears } from '../kevlag';
-import { useCountUp, useData, useReveal, useTitle, useWidth } from '../hooks';
+import { useCountUp, useData, useReveal, useTitle } from '../hooks';
+import { SPARK_MONTHS, Spark } from '../components/Spark';
 import { href } from '../router';
 import { knob, useStore } from '../state';
-import { LEDE_FALLBACK, busiestComplete, growth, kevGrowth, ledeText, riskRows, shiftMonth, windowLabel, type Growth } from '../surge';
+import { LEDE_FALLBACK, busiestComplete, growth, kevGrowth, ledeText, riskRows, shiftMonth, windowLabel } from '../surge';
 
 function DailyTable({ days, kev, kevReady, partialLast }: { days: readonly DayRow[]; kev: ReadonlyMap<string, number>; kevReady: boolean; partialLast: boolean }) {
   return (
@@ -93,39 +94,6 @@ function Section({ n, kicker, id, title, sub, aside, children, class: cls }: { n
   );
 }
 
-const SPARK_MONTHS = 36;
-
-/** CVEs per month over three years, the growth window lit. Drawn in on load, in pixels so the dots stay round. */
-function Spark({ stats, g }: { stats: StatsFile; g: Growth | null }) {
-  const [ref, W] = useWidth<HTMLDivElement>();
-  const rows = stats.monthly.slice(-SPARK_MONTHS);
-  const H = 72;
-  const max = Math.max(1, ...rows.map((r) => r.published));
-  const x = (i: number) => 4 + (rows.length > 1 ? (i * (W - 8)) / (rows.length - 1) : (W - 8) / 2);
-  const y = (v: number) => H - 3 - (v / max) * (H - 10);
-  const line = rows.map((r, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(r.published).toFixed(1)}`).join('');
-  const lit = g ? rows.map((r, i) => ({ r, i })).filter(({ r }) => r.month >= g.start && r.month <= g.end) : [];
-  return (
-    <div class="spark" ref={ref} aria-hidden="true">
-      {W > 0 && (
-        <svg width={W} height={H} focusable="false">
-          <defs>
-            <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="currentColor" stop-opacity="0.3" />
-              <stop offset="1" stop-color="currentColor" stop-opacity="0" />
-            </linearGradient>
-          </defs>
-          <path class="spark__area" d={`${line}L${x(rows.length - 1)} ${H}L${x(0)} ${H}Z`} fill="url(#spark-fill)" />
-          <path class="spark__line" d={line} pathLength={1} />
-          {lit.map(({ r, i }) => (
-            <circle key={r.month} class="spark__dot" cx={x(i)} cy={y(r.published)} r={3.5} />
-          ))}
-        </svg>
-      )}
-    </div>
-  );
-}
-
 function Hero({ stats, ytd }: { stats: StatsFile; ytd: number }) {
   const m = stats.monthly;
   const last = m[m.length - 1];
@@ -164,7 +132,7 @@ function Hero({ stats, ytd }: { stats: StatsFile; ytd: number }) {
               </>
             )}
           </p>
-          <Spark stats={stats} g={g} />
+          <Spark monthly={stats.monthly} lit={g} />
           <p class="sh__axis mono" aria-hidden="true">
             <span>{fmtMonth(shiftMonth(last.month, 1 - Math.min(SPARK_MONTHS, m.length)))}</span>
             <span>{fmtMonth(last.month)}</span>
@@ -190,7 +158,7 @@ const CNA_TOP = 10;
 const AI_TOP = 10;
 
 export default function Surge() {
-  useTitle('The Surge');
+  useTitle('Trends');
   const stats = useData(data.stats);
   const meta = useData(data.meta);
   const cnas = useMemo(() => (stats.status === 'ready' ? stats.data.cnas : []), [stats]);
@@ -218,7 +186,7 @@ export default function Surge() {
   return (
     <div class="page page--surge">
       <header class="page__head">
-        <p class="eyebrow">CVE volume since 1999</p>
+        <p class="eyebrow">Trends · CVE volume since 1999</p>
         <h1 class="page__title" tabIndex={-1}>
           The Surge
         </h1>

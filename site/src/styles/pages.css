@@ -17,6 +17,7 @@
     'hero knob knob'
     'wf wf wf'
     'heat heat heat'
+    'tour tour tour'
     'feed feed side'
     'batches batches batches';
   gap: 16px 20px;
@@ -2102,6 +2103,7 @@ circle.dc__kev {
       'knob'
       'wf'
       'heat'
+      'tour'
       'feed'
       'side'
       'batches';
@@ -2128,35 +2130,15 @@ circle.dc__kev {
   }
 }
 
-/* The header wraps the nav onto its own scrolling row before the links can run under the
-   search button. The seven links and two menus fit on one row down to 961 px. */
-@media (max-width: 960px) {
-  .top__inner {
-    flex-wrap: wrap;
-    height: auto;
-    padding-top: 10px;
-    row-gap: 0;
-  }
-
+/* Below 1,101 px the row of links no longer fits beside the search button (12 px spare there):
+   the menu button takes over, and opens every page in a sheet. */
+@media (max-width: 1100px) {
   .nav {
-    order: 3;
-    width: calc(100% + var(--gutter) * 2);
-    margin: 8px calc(var(--gutter) * -1) 0;
-    padding: 0 calc(var(--gutter) - 8px) 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .nav::-webkit-scrollbar {
     display: none;
   }
 
-  .nav__link[aria-current='page']::after {
-    bottom: -6px;
-  }
-
-  :root {
-    --header-h: 98px;
+  .top__menu {
+    display: inline-flex;
   }
 }
 
@@ -4135,5 +4117,425 @@ circle.dc__kev {
   .mc__draw,
   .mc .chart__area {
     animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Today: Everything in CVErdict, a live card for every page (components/Tour.tsx)
+   --------------------------------------------------------------------------------------------- */
+.tour {
+  grid-area: tour;
+  display: grid;
+  gap: 26px;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.tour__head {
+  display: grid;
+  gap: 4px;
+}
+
+.tour__head .section__title {
+  font-size: 22px;
+  letter-spacing: -0.015em;
+}
+
+.tour__sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tour__band {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tour__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tour__card {
+  --c: var(--muted);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px 20px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--c) 6%, transparent), transparent 55%),
+    var(--surface);
+  transition:
+    border-color 0.2s ease,
+    transform 0.25s var(--ease),
+    box-shadow 0.25s var(--ease);
+}
+
+.tour__card:hover {
+  border-color: color-mix(in srgb, var(--c) 45%, var(--border-strong));
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--c) 45%, rgb(0 0 0 / 0.7));
+}
+
+.tour__card--wide {
+  grid-column: span 2;
+}
+
+.tour__card--check {
+  border-color: var(--b-accent);
+  background:
+    radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 60%),
+    var(--surface);
+}
+
+.tour__card--check { --c: var(--accent); }
+.tour__card--kev { --c: var(--exploited); }
+.tour__card--woke { --c: var(--likely); }
+.tour__card--explore { --c: var(--text); }
+.tour__card--patch { --c: var(--watch); }
+.tour__card--trends { --c: var(--accent); }
+.tour__card--receipts { --c: var(--ok); }
+.tour__card--method { --c: var(--watch); }
+.tour__card--agents { --c: var(--ai); }
+.tour__card--api { --c: var(--muted); }
+
+.tour__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--c);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tour__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.tour__text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.tour__text strong {
+  color: var(--text);
+}
+
+.tour__big {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.tour__of {
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.tour__x {
+  margin-left: 2px;
+  color: var(--accent);
+  font-size: 0.6em;
+}
+
+.tour__countdown .countdown__label {
+  display: none;
+}
+
+.tour__countdown .countdown__time {
+  color: var(--exploited);
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--exploited) 40%, transparent);
+}
+
+.tour__form {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tour__form .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.tour__err {
+  margin: 0;
+  color: var(--exploited);
+  font-size: 12.5px;
+}
+
+.tour__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: auto;
+  padding-top: 6px;
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.tour__more .icon {
+  color: var(--c);
+  transition: transform 0.2s var(--ease);
+}
+
+.tour__card:hover .tour__more .icon {
+  transform: translateX(3px);
+}
+
+.tour__tierbar .tierbar {
+  height: 10px;
+}
+
+.tour__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tour__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Receipts: one square per KEV listing, lit when CVErdict flagged it first. */
+.tour__dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tour__dots li {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--quiet);
+}
+
+.tour__dots li.is-lit {
+  background: var(--ok);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 55%, transparent);
+}
+
+.tour__card--trends .spark {
+  margin-top: 2px;
+}
+
+.tour__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.tour__chip {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.tour__try {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 2px 0 0;
+  font-size: 12.5px;
+}
+
+.tour__chip--try {
+  border-color: var(--b-accent);
+  background: var(--t-accent);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tour__chip--try:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.tour__trust {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ok);
+  font-size: 12.5px;
+}
+
+.tour__chip--hot {
+  border-color: var(--b-exploited);
+  color: var(--exploited);
+}
+
+.tour__list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+.tour__list li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.tour__list .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tour__card .snippet {
+  min-width: 0;
+}
+
+.tour__card .snippet pre {
+  overflow-x: auto;
+}
+
+/* Each group plays once a fifth of the way up the screen: its label draws, then its cards rise
+   one after another; numbers count up, the receipts light up, the sparkline draws in. */
+.tour__band.is-armed .tour__card,
+.tour__band.is-armed .grouplabel {
+  opacity: 0;
+}
+
+.tour__band.is-armed.is-in .grouplabel {
+  opacity: 1;
+  animation: tour-in 0.5s var(--ease) both;
+}
+
+.tour__band.is-armed .grouplabel__rule {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.tour__band.is-armed.is-in .grouplabel__rule {
+  transform: none;
+  transition: transform 0.9s var(--ease) 0.15s;
+}
+
+.tour__band.is-armed.is-in .tour__card {
+  opacity: 1;
+  animation: tour-in 0.6s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 0.08s + 0.12s);
+}
+
+.tour__band.is-armed .tour__dots li.is-lit {
+  background: var(--quiet);
+  box-shadow: none;
+}
+
+.tour__band.is-armed.is-in .tour__dots li.is-lit {
+  animation: dot-lit 0.35s ease both;
+  animation-delay: calc(var(--d, 0) * 0.045s + 0.6s);
+}
+
+@keyframes tour-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes dot-lit {
+  to {
+    background: var(--ok);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 55%, transparent);
+  }
+}
+
+@media (max-width: 1180px) {
+  .tour__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Phones: each group is a row of cards to swipe, so the page stays short. */
+@media (max-width: 640px) {
+  .tour__grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 84%;
+    margin: 0 calc(var(--gutter) * -1);
+    padding: 2px var(--gutter) 8px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+  }
+
+  .tour__grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tour__card {
+    scroll-snap-align: start;
+  }
+
+  .tour__card--wide {
+    grid-column: auto;
+  }
+
+  .tour__card:hover {
+    transform: none;
+  }
+
+  .tour__form {
+    flex-wrap: wrap;
+  }
+
+  .tour__form .btn {
+    flex: 1 0 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__card,
+  .tour__more .icon {
+    transition: none;
+  }
+
+  .tour__card:hover {
+    transform: none;
   }
 }

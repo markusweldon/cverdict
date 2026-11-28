@@ -1300,7 +1300,7 @@ function surfaces(T: Theme): string {
   const [hd, hy] = heading(T, 48, 64, 'On the site', 'Twelve ways in, one verdict', 'No account, no tracking, no cookies. Keyboard first: j and k to move, / to search, Ctrl K for everything.');
   b += hd;
   const items: { name: string; route: string; iconName: string; body: string; color: string }[] = [
-    { name: 'Today', route: '/', iconName: 'Scan', body: 'The noise meter, the signal waterfall, Heating up, the evidence bar and the signal feed.', color: T.accent },
+    { name: 'Today', route: '/', iconName: 'Scan', body: 'The noise meter, the waterfall, Heating up, a card for every page and the signal feed.', color: T.accent },
     { name: 'CVE pages', route: '/cve/<id>', iconName: 'Info', body: 'The verdict, the score chip by chip, what we could not see, "Copy as ticket".', color: T.accent },
     { name: 'KEV Clock', route: '/kev', iconName: 'Clock', body: 'Every KEV due date counting down, with ransomware and forensic flags.', color: T.ink.exploited },
     { name: 'Woke Up', route: '/woke', iconName: 'Alert', body: 'Old CVEs that gained exploitation evidence in the last 30 days.', color: T.ink.exploited },
@@ -1308,10 +1308,10 @@ function surfaces(T: Theme): string {
     { name: 'Check', route: '/check', iconName: 'Lock', body: 'Am I affected? A public GitHub repo, a lockfile or an SBOM, matched in your browser.', color: T.ai },
     { name: 'Explore', route: '/explore', iconName: 'Search', body: 'Every CVE of the window, searchable and filterable by day.', color: T.ink.likely },
     { name: 'Patch days', route: '/batches', iconName: 'Layers', body: 'Batches and bulk releases, and the few CVEs in each that matter.', color: T.ink.likely },
-    { name: 'The Surge', route: '/surge', iconName: 'Sparkle', body: 'Monthly CVE volume since 1999, Time to KEV, KEV additions and AI-credited CVEs.', color: T.ink.watch },
+    { name: 'Trends', route: '/surge', iconName: 'Sparkle', body: 'The surge since 1999, KEV additions per 1,000 CVEs, Time to KEV and AI credits.', color: T.ink.watch },
     { name: 'Method', route: '/method', iconName: 'Filter', body: 'Every chip, its points and the known blind spots.', color: T.ink.watch },
     { name: 'MCP', route: '/mcp', iconName: 'Terminal', body: 'Add the read-only MCP server to an AI agent in one command.', color: T.ai },
-    { name: 'Feeds & API', route: '/feeds', iconName: 'Rss', body: 'Atom and iCalendar feeds, the open JSON files and llms.txt.', color: T.muted },
+    { name: 'API', route: '/feeds', iconName: 'Rss', body: 'Atom and iCalendar feeds, the open JSON files and llms.txt.', color: T.muted },
   ];
   const cols = 4;
   const gap = 16;

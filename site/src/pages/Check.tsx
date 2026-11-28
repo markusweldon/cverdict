@@ -416,6 +416,23 @@ export default function Check() {
   const runId = useRef(0);
   const lastInput = useRef<Input | null>(null);
 
+  // A link to /check#repo=owner/repo (the homepage's repo box) checks that repository on arrival.
+  // A fragment, not a query: browsers never send it, so the name stays out of server logs.
+  useEffect(() => {
+    const m = /^#repo=(.+)$/.exec(window.location.hash);
+    if (!m) return;
+    let r = '';
+    try {
+      r = decodeURIComponent(m[1]);
+    } catch {
+      return;
+    }
+    if (!parseRepo(r)) return;
+    setMode('repo');
+    setRepoInput(r);
+    void checkRepo(r).catch(() => undefined);
+  }, []);
+
   const follow = (p: Promise<PackagesFile>) => {
     setIndexState(session.index() ? 'ready' : 'loading');
     p.then(
@@ -490,7 +507,7 @@ export default function Check() {
     requestAnimationFrame(() => resultsHead.current?.focus());
   };
 
-  const checkRepo = async () => {
+  const checkRepo = async (input = repoInput) => {
     touch();
     const id = ++runId.current;
     lastInput.current = null;
@@ -499,7 +516,7 @@ export default function Check() {
     setAnnounce(null);
     let out;
     try {
-      out = await session.runRepo(repoInput, { onStage: (s) => id === runId.current && setStatus(statusOf(s)) });
+      out = await session.runRepo(input, { onStage: (s) => id === runId.current && setStatus(statusOf(s)) });
     } catch (e) {
       if (id === runId.current) {
         setStatus({ kind: 'idle' });
