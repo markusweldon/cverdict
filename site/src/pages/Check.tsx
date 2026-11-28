@@ -16,6 +16,7 @@ import { copyTicket, watchVendorOf } from '../actions';
 import { groupByTier, GROUP_ORDER, type CheckResult, type CveHit, type Group, type NotCheckedGroup, type PackageHit } from '../check/match';
 import { FORMAT_LABEL, FORMATS, isFormatId, parseErrorText, type Component, type FormatId } from '../check/parse';
 import { addWorkflowUrl, CLI_LINE, workflowYaml, WORKFLOW_PATH } from '../check/ci';
+import { handoff } from '../check/handoff';
 import { API as GITHUB_API, parseRepo } from '../check/repo';
 import { fileTooLarge, fmtSize, indexGlyphs, pasteTooLarge, session, type Failure, type Held, type RepoSource, type Stage } from '../check/session';
 import { ExtLink } from '../components/ExtLink';
@@ -418,8 +419,20 @@ export default function Check() {
 
   // A link to /check#repo=owner/repo (the homepage's repo box) checks that repository on arrival.
   // A fragment, not a query: browsers never send it, so the name stays out of server logs.
+  // From the homepage's Check card: #file brings the file chosen there, #ci opens Watch in CI.
   useEffect(() => {
-    const m = /^#repo=(.+)$/.exec(window.location.hash);
+    const hash = window.location.hash;
+    if (hash === '#ci') {
+      setMode('ci');
+      return;
+    }
+    if (hash === '#file') {
+      setMode('file');
+      const f = handoff.take();
+      if (f) void readFile(f);
+      return;
+    }
+    const m = /^#repo=(.+)$/.exec(hash);
     if (!m) return;
     let r = '';
     try {

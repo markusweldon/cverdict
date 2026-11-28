@@ -8,22 +8,29 @@
  */
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { BRAND, REPO_URL } from '../../../shared/brand';
 import { type BatchesFile, type KevEntry, KNOB_DEFAULT, type StatsFile, type Tier } from '../../../shared/contract';
 import { CHIPS } from '../../../shared/model';
+import { CLI_LINE } from '../check/ci';
+import { handoff } from '../check/handoff';
 import { parseRepo } from '../check/repo';
+import { copyLink } from '../actions';
 import { data } from '../data';
 import { tierAt } from '../filters';
-import { cnaName, fmtDate, fmtInt, HOUR_MS, kevDeadline, vendorProduct } from '../format';
+import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, HOUR_MS, kevDeadline, vendorProduct } from '../format';
 import { prefersReducedMotion, useCountUp, useData, useNow } from '../hooks';
 import { methodScore } from '../receipts';
 import { cveHref, href, navigate } from '../router';
 import { growth, kevGrowth, windowLabel } from '../surge';
 import { TIER_META } from '../tiers';
 import { Countdown, upcomingKev } from './Kev';
+import { CheckFlow, type FlowMode } from './CheckFlow';
 import { McpInstall } from './McpInstall';
+import { Picker } from './Picker';
+import { Snippet } from './Snippet';
 import { Spark } from './Spark';
 import { TierBar, TierIcon } from './Tier';
-import { IconArrowRight, IconClock, IconCode, IconFilter, IconLayers, IconLock, IconRefresh, IconRss, IconSearch, IconShield, IconSparkle } from './icons';
+import { IconArrowRight, IconClock, IconCopy, IconCode, IconFilter, IconLayers, IconLock, IconRefresh, IconRss, IconSearch, IconShield, IconSparkle } from './icons';
 
 /** A number that counts up from zero once its group is on screen. */
 function Num({ value, format = fmtInt, on }: { value: number; format?: (v: number) => string; on: boolean }) {
@@ -39,9 +46,9 @@ function More({ to, label }: { to: string; label: string }) {
   );
 }
 
-function Card({ kind, i, icon, kicker, children, wide }: { kind: string; i: number; icon: ComponentChildren; kicker: string; children: ComponentChildren; wide?: boolean }) {
+function Card({ kind, i, icon, kicker, children, wide, lead }: { kind: string; i: number; icon: ComponentChildren; kicker: string; children: ComponentChildren; wide?: boolean; lead?: boolean }) {
   return (
-    <article class={`tour__card tour__card--${kind}${wide ? ' tour__card--wide' : ''}`} style={{ '--i': i }}>
+    <article class={`tour__card tour__card--${kind}${wide ? ' tour__card--wide' : ''}${lead ? ' tour__card--lead' : ''}`} style={{ '--i': i }}>
       <p class="tour__kicker">
         {icon} {kicker}
       </p>
@@ -65,7 +72,7 @@ export function GroupLabel({ n, label, note, id }: { n: string; label: string; n
 }
 
 /** One group of cards: plays its animations once on screen. */
-function Band({ n, label, note, children }: { n: string; label: string; note: string; children: (on: boolean) => ComponentChildren }) {
+function Band({ n, label, note, lead, children }: { n: string; label: string; note: string; lead?: ComponentChildren; children: (on: boolean) => ComponentChildren }) {
   const ref = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
   useEffect(() => {
@@ -92,6 +99,8 @@ function Band({ n, label, note, children }: { n: string; label: string; note: st
   return (
     <div class="tour__band" ref={ref} role="group" aria-labelledby={id}>
       <GroupLabel n={n} label={label} note={note} id={id} />
+      {/* A full-width card above the row: on a phone it stays out of the swipe row. */}
+      {lead}
       <div class="tour__grid">{children(on)}</div>
     </div>
   );
@@ -100,13 +109,26 @@ function Band({ n, label, note, children }: { n: string; label: string; note: st
 /** A public, intentionally vulnerable app with a committed lockfile: a real result in one tap. */
 const TRY_REPO = 'OWASP/NodeGoat';
 
-function CheckCard() {
+type CheckWay = FlowMode;
+
+/** Same three ways as the Check page, one word each. */
+const CHECK_WAYS: readonly { id: CheckWay; label: string }[] = [
+  { id: 'repo', label: 'Repo' },
+  { id: 'file', label: 'File' },
+  { id: 'ci', label: 'CI' },
+];
+
+const CHECK_TEXT: Record<CheckWay, string> = {
+  repo: 'A public GitHub repo, read straight from GitHub into your browser and ranked by exploitation. No SBOM, no account, no upload.',
+  file: 'Drop a lockfile or an SBOM and see which dependencies have CVEs worth your time. No account, no upload.',
+  ci: 'Check on every push, pull request and day, private repos too. The GitHub Action fails the build when a dependency is Exploited.',
+};
+
+function CheckRepo() {
   const [value, setValue] = useState('');
   const [bad, setBad] = useState(false);
   return (
-    <Card kind="check" i={0} icon={<IconLock size={13} />} kicker="Check · Am I affected?" wide>
-      <h4 class="tour__title">Check your dependencies in one paste</h4>
-      <p class="tour__text">A public GitHub repo, read straight from GitHub into your browser and ranked by exploitation. No SBOM, no account, no upload.</p>
+    <>
       <form
         class="tour__form"
         onSubmit={(e) => {
@@ -155,14 +177,101 @@ function CheckCard() {
           That is not a GitHub repository. Try owner/repo, for example OWASP/NodeGoat.
         </p>
       )}
-      <More to="check" label="Or drop a lockfile, or watch it in CI" />
+    </>
+  );
+}
+
+/** The file goes to the Check page in this tab's memory (check/handoff.ts), never anywhere else. */
+function CheckFile() {
+  const [drag, setDrag] = useState(false);
+  const open = (f: File | undefined) => {
+    if (!f) return;
+    handoff.put(f);
+    navigate(`${href('check')}#file`);
+  };
+  return (
+    <>
+      <div
+        class={`tour__drop${drag ? ' is-drag' : ''}`}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          setDrag(true);
+        }}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={(e) => {
+          const to = e.relatedTarget as Node | null;
+          if (!to || !(e.currentTarget as HTMLElement).contains(to)) setDrag(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDrag(false);
+          open(e.dataTransfer?.files[0]);
+        }}
+      >
+        <span class="tour__droptitle">Drop a lockfile or SBOM</span>
+        <label class="btn btn--primary">
+          <input type="file" class="sr-only user-text" onChange={(e) => open((e.currentTarget as HTMLInputElement).files?.[0])} />
+          Choose a file
+        </label>
+      </div>
+      <p class="tour__trust">
+        <IconLock size={12} /> We never see your file: it is read and matched in your browser.
+      </p>
+    </>
+  );
+}
+
+function CheckCi() {
+  return (
+    <>
+      <Snippet title="Or in a terminal, in your project folder" code={CLI_LINE} />
+      <button type="button" class="btn btn--primary tour__cta" onClick={() => navigate(`${href('check')}#ci`)}>
+        Add the GitHub Action
+      </button>
+      <p class="tour__trust">
+        <IconLock size={12} /> Runs in your own runner: no token, no app, nothing sent to us.
+      </p>
+    </>
+  );
+}
+
+function CheckCard() {
+  const [way, setWay] = useState<CheckWay>('repo');
+  return (
+    <Card kind="check" i={0} icon={<IconLock size={13} />} kicker="Check" lead>
+      <div class="tour__checkgrid">
+        <div class="tour__checkmain">
+          <h4 class="tour__title">Am I affected? Find out in seconds</h4>
+          <p class="tour__text">{CHECK_TEXT[way]}</p>
+          <Picker label="How to check" options={CHECK_WAYS} value={way} onPick={setWay} />
+          {way === 'repo' && <CheckRepo />}
+          {way === 'file' && <CheckFile />}
+          {way === 'ci' && <CheckCi />}
+          <p class="tour__proof">
+            {way === 'ci' ? (
+              <>
+                Don’t take our word for it: <a href={`${REPO_URL}/tree/main/cli`}>read the Action’s source</a>. It only downloads the public index.
+              </>
+            ) : (
+              <>Don’t take our word for it: open your browser’s network tab while it runs. Public files come in from cverdict.dev{way === 'repo' ? ' and GitHub' : ''}, and nothing goes back.</>
+            )}
+          </p>
+        </div>
+        {/* The same diagram as the Check page, for the chosen tab. */}
+        <CheckFlow mode={way} compact />
+        <div class="tour__checkmore">
+          <More to="check" label="How it works" />
+        </div>
+      </div>
     </Card>
   );
 }
 
 function KevCard({ entries }: { entries: readonly KevEntry[] | null }) {
   const now = useNow(60_000);
-  const next = entries ? upcomingKev(entries, now).find((e) => kevDeadline(e.due_date) >= now) : undefined;
+  const upcoming = entries ? upcomingKev(entries, now).filter((e) => kevDeadline(e.due_date) >= now) : [];
+  const next = upcoming[0];
+  const after = upcoming.slice(1, 4);
   const soon = entries
     ? entries.filter((e) => {
         const left = kevDeadline(e.due_date) - now;
@@ -182,6 +291,20 @@ function KevCard({ entries }: { entries: readonly KevEntry[] | null }) {
             <span class="muted">{vendorProduct(next.vendor, next.product)}</span>
           </p>
           {soon > 0 && <p class="tour__chips"><span class="tour__chip tour__chip--hot">{fmtInt(soon)} due within 72 hours</span></p>}
+          {after.length > 0 && (
+            <ul class="tour__list" aria-label="Then">
+              {after.map((e) => (
+                <li key={e.id}>
+                  <IconClock size={12} />
+                  <a href={cveHref(e.id)} class="mono">
+                    {e.id}
+                  </a>
+                  <span class="muted">{vendorProduct(e.vendor, e.product)}</span>
+                  <span class="tour__due mono">{fmtDate(e.due_date)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       ) : (
         <p class="tour__text">Every CISA KEV due date, counting down, with ransomware and forensic flags.</p>
@@ -220,7 +343,7 @@ function WokeCard({ on, near }: { on: boolean; near: boolean }) {
             </p>
           )}
           <ul class="tour__list">
-            {w.items.slice(0, 2).map((i) => (
+            {w.items.slice(0, 3).map((i) => (
               <li key={i.id}>
                 <TierIcon tier={tierAt(i.row, KNOB_DEFAULT)} size={12} />
                 <a href={cveHref(i.id)} class="mono">
@@ -346,6 +469,10 @@ function ReceiptsCard({ on, near }: { on: boolean; near: boolean }) {
   );
 }
 
+/** A few chips and their points, straight from the model: exploitation first, then exploit code. */
+const SAMPLE_CHIPS = ['kev.listed', 'x.metasploit', 'x.nuclei', 'epss.high', 'x.poc'].flatMap((id) => CHIPS.filter((c) => c.id === id));
+const SAMPLE_MAX = Math.max(1, ...SAMPLE_CHIPS.map((c) => c.points));
+
 function MethodCard({ on }: { on: boolean }) {
   return (
     <Card kind="method" i={2} icon={<IconFilter size={13} />} kicker="Method">
@@ -354,6 +481,15 @@ function MethodCard({ on }: { on: boolean }) {
         <span class="tour__of"> reason chips</span>
       </p>
       <p class="tour__text">Each score is a plain sum of them, from a base of 15. No machine learning, no LLM-written text: every point links to its evidence.</p>
+      <ul class="tour__pts" aria-label="Points for some of the chips">
+        {SAMPLE_CHIPS.map((c) => (
+          <li key={c.id} style={{ '--w': `${(c.points / SAMPLE_MAX) * 100}%` }}>
+            <span class="tour__ptlabel">{c.short}</span>
+            <span class="tour__ptbar" aria-hidden="true" />
+            <span class="tour__ptval mono">+{c.points}</span>
+          </li>
+        ))}
+      </ul>
       <p class="tour__legend">
         {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
           <span key={t}>
@@ -366,18 +502,61 @@ function MethodCard({ on }: { on: boolean }) {
   );
 }
 
-function AgentsCard() {
+function AgentsCard({ kev }: { kev: readonly KevEntry[] | null }) {
+  const now = useNow(60_000);
+  // What the kev_due tool would return right now (its default: the next 7 days, soonest first).
+  const due = kev ? upcomingKev(kev, now).filter((e) => kevDeadline(e.due_date) >= now && kevDeadline(e.due_date) - now <= 7 * DAY_MS) : [];
   return (
     <Card kind="agents" i={0} icon={<IconCode size={13} />} kicker="MCP · for AI agents" wide>
       <h4 class="tour__title">Verdicts in your agent, one command</h4>
       <p class="tour__text">A read-only MCP server: verdicts, KEV due dates and your dependencies, from the same open data.</p>
       <McpInstall />
+      <div class="tour__chat">
+        <p class="tour__bubble tour__bubble--you">Which KEV deadlines are due this week?</p>
+        {due.length > 0 && (
+          <div class="tour__bubble tour__bubble--tool">
+            <p class="tour__tool mono">kev_due · today’s data</p>
+            <p>
+              {fmtInt(due.length)} in the next 7 days, soonest first:
+            </p>
+            <ul class="tour__list">
+              {due.slice(0, 2).map((e) => (
+                <li key={e.id}>
+                  <a href={cveHref(e.id)} class="mono">
+                    {e.id}
+                  </a>
+                  <span class="muted">{vendorProduct(e.vendor, e.product)}</span>
+                  <span class="tour__due mono">{fmtDate(e.due_date)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
       <More to="mcp" label="Other clients" />
     </Card>
   );
 }
 
+const updated = (age: string) => (age === 'now' ? 'updated just now' : `updated ${age} ago`);
+
+/** One line of the meta.json excerpt: a key and its value, coloured by type. */
+function JsonLine({ k, v, indent = 1, last }: { k: string; v: string | number; indent?: number; last?: boolean }) {
+  return (
+    <span class="term__line">
+      {'  '.repeat(indent)}
+      <span class="term__key">"{k}"</span>: <span class={typeof v === 'number' ? 'term__num' : 'term__str'}>{typeof v === 'number' ? v : `"${v}"`}</span>
+      {last ? '' : ','}
+    </span>
+  );
+}
+
 function ApiCard() {
+  const meta = useData(data.meta);
+  const now = useNow(60_000);
+  const m = meta.status === 'ready' ? meta.data : null;
+  const url = `${BRAND.siteUrl}/data/v1/meta.json`;
+  const cmd = `curl -s ${url}`;
   const files = ['signal.json', 'kev.json', 'cve/00…ff.json', 'feeds/*.xml', 'kev-due.ics', 'llms.txt'];
   return (
     <Card kind="api" i={1} icon={<IconRss size={13} />} kicker="API">
@@ -385,11 +564,47 @@ function ApiCard() {
       <p class="tour__text">The same files this site reads, refreshed hourly. Scores are CC0.</p>
       <p class="tour__chips">
         {files.map((f) => (
-          <span key={f} class="tour__chip mono">
+          <span key={f} class="tour__chip tour__chip--api mono">
             {f}
           </span>
         ))}
       </p>
+      {/* The real answer to the command, from the meta.json this page already loaded. */}
+      <figure class="term">
+        <figcaption class="term__bar">
+          <span class="term__live">
+            <i aria-hidden="true" />
+            {m ? updated(fmtAge(m.generated_at, now)) : 'live'}
+          </span>
+          <button type="button" class="btn btn--ghost btn--sm" onClick={() => void copyLink(cmd, 'Command')}>
+            <IconCopy size={12} /> Copy
+          </button>
+        </figcaption>
+        <pre class="term__body mono">
+          <span class="term__line">
+            <span class="term__prompt">$</span> curl -s {url.replace(/^https?:\/\//, '')}
+          </span>
+          {m ? (
+            <>
+              <span class="term__line">{'{'}</span>
+              <JsonLine k="generated_at" v={m.generated_at} />
+              <span class="term__line">
+                {'  '}
+                <span class="term__key">"counts"</span>: {'{'}
+              </span>
+              <JsonLine k="window_published" v={m.counts.window_published} indent={2} />
+              <JsonLine k="window_passed" v={m.counts.window_passed} indent={2} />
+              <JsonLine k="kev_total" v={m.counts.kev_total} indent={2} last />
+              <span class="term__line">
+                {'  },'} <span class="term__more">…</span>
+              </span>
+              <span class="term__line">{'}'}</span>
+            </>
+          ) : (
+            <span class="term__line term__more">…</span>
+          )}
+        </pre>
+      </figure>
       <More to="feeds" label="Feeds and files" />
     </Card>
   );
@@ -433,10 +648,9 @@ export function Tour({ stats, kev, batches, counts, total, days }: TourProps) {
         </h2>
         <p class="tour__sub">Every page, with what it shows right now. Pick what matters to you.</p>
       </header>
-      <Band n="01" label="Act on it" note="What needs you now">
+      <Band n="01" label="Act on it" note="What needs you now" lead={<CheckCard />}>
         {(on) => (
           <>
-            <CheckCard />
             <KevCard entries={kev} />
             <WokeCard on={on} near={near} />
           </>
@@ -455,7 +669,7 @@ export function Tour({ stats, kev, batches, counts, total, days }: TourProps) {
       <Band n="03" label="Build with it" note="Bring the verdicts into your tools">
         {(on) => (
           <>
-            <AgentsCard />
+            <AgentsCard kev={kev} />
             <ApiCard />
             <MethodCard on={on} />
           </>

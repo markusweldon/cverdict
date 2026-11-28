@@ -2433,11 +2433,9 @@ circle.dc__kev {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* The knob stays at hand while you scroll the feed. */
+  /* A full-bleed row under the hero. Not pinned: on a phone it took a fifth of the screen all the
+     way down, and the bar is a setting you change now and then, not while reading. */
   .today__knob {
-    position: sticky;
-    top: calc(var(--top-h, var(--header-h)) - 1px);
-    z-index: 15;
     margin: 0 calc(var(--gutter) * -1);
   }
 
@@ -4435,7 +4433,7 @@ circle.dc__kev {
 .tour__card--receipts { --c: var(--ok); }
 .tour__card--method { --c: var(--watch); }
 .tour__card--agents { --c: var(--ai); }
-.tour__card--api { --c: var(--muted); }
+.tour__card--api { --c: var(--ok); }
 
 .tour__kicker {
   display: inline-flex;
@@ -4778,11 +4776,418 @@ circle.dc__kev {
   min-width: 0;
 }
 
-.mcpi__tabs {
-  justify-self: start;
-  max-width: 100%;
-}
 
 .mcpi .snippet pre {
   overflow-x: auto;
+}
+
+/* Equal-width tabs on a card, one row of --n cells, capped so they never stretch across a wide
+   page. On a phone more than three tabs make rows of three (six tabs, two tidy rows). */
+.picker {
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  max-width: calc(var(--n) * 100px);
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+
+.picker__btn {
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    color 0.12s,
+    box-shadow 0.12s;
+}
+
+.picker__btn:hover {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .picker--many {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.picker__btn[aria-pressed='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow:
+    0 0 0 1px var(--border-strong),
+    0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+/* On a homepage card the chosen tab takes the card's colour. */
+.tour__card .picker__btn[aria-pressed='true'] {
+  color: var(--c);
+}
+
+/* The Check card's File tab: a small drop target that hands the file to the Check page. */
+.tour__drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r);
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.tour__drop.is-drag {
+  border-color: var(--accent);
+  background: var(--t-accent);
+}
+
+.tour__droptitle {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tour__drop .btn,
+.tour__cta {
+  cursor: pointer;
+}
+
+.tour__cta {
+  align-self: flex-start;
+}
+
+@media (max-width: 640px) {
+  .tour__drop .btn {
+    flex: 1 0 100%;
+  }
+
+  .tour__cta {
+    align-self: stretch;
+  }
+}
+
+/* Act on it: Check is a full-width card above the row, its controls beside the flow diagram of
+   the chosen tab. Narrower, the diagram goes under the controls (and top to bottom on a phone). */
+.tour__card--lead {
+  margin-bottom: 14px;
+}
+
+.tour__checkgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  grid-template-areas:
+    'main flow'
+    'more flow';
+  align-items: center;
+  gap: 8px 28px;
+}
+
+.tour__checkmain { grid-area: main; }
+.tour__checkgrid > .flow { grid-area: flow; }
+.tour__checkmore { grid-area: more; }
+
+.tour__checkmain {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tour__card .flow {
+  max-width: none;
+  margin: 0;
+  padding: 24px 16px 16px;
+}
+
+.tour__card .flow__grid {
+  grid-template-columns: minmax(0, 1fr) minmax(84px, 0.75fr) minmax(0, 1.1fr) minmax(84px, 0.75fr) minmax(0, 1.05fr);
+}
+
+.tour__card .flow__node--dst .flow__title {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  /* Stacked, the link to the Check page comes last, under the diagram. */
+  .tour__checkgrid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'main' 'flow' 'more';
+    gap: 18px;
+  }
+}
+
+/* With Check above the row, KEV Clock and Woke Up share the row half and half (in the two-column
+   and phone layouts they already fill it). */
+@media (min-width: 1181px) {
+  .tour__card--kev,
+  .tour__card--woke {
+    grid-column: span 2;
+  }
+}
+
+/* The Check card's diagram on a phone: the same flow as one short row, icons and names only. The
+   full captions are on the Check page and in the figure's screen-reader text. */
+@media (max-width: 720px) {
+  .flow--compact .flow__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(20px, 0.4fr) minmax(0, 1fr) minmax(20px, 0.4fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 4px;
+    row-gap: 14px;
+  }
+  .flow--compact .flow__node--src { grid-column: 1; grid-row: 1; }
+  .flow--compact .flow__wire--in { grid-column: 2; grid-row: 1; }
+  .flow--compact .flow__node--mid { grid-column: 3; grid-row: 1; }
+  .flow--compact .flow__wire--index { grid-column: 4; grid-row: 1; }
+  .flow--compact .flow__node--dst { grid-column: 5; grid-row: 1; }
+  .flow--compact .flow__zone--mid { grid-column: 3; grid-row: 1; margin: -12px -6px; }
+  .flow--compact .flow__zone--left { grid-column: 1 / 4; grid-row: 1; margin: -12px -6px; }
+  .flow--compact .flow__zonelabel {
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .flow--compact .flow__node {
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 4px;
+    text-align: center;
+  }
+  .flow--compact .flow__sub,
+  .flow--compact .flow__wiretext { display: none; }
+  .flow--compact .flow__title { font-size: 12px; line-height: 1.25; }
+  .flow--compact .flow__node--dst { padding-inline: 2px; }
+  .flow--compact .flow__node--dst .flow__title { font-size: 10px; white-space: nowrap; }
+  .flow--compact .flow__wire { flex-direction: column; gap: 0; padding: 0; }
+  .flow--compact .flow__line { width: 100%; height: 2px; flex: none; }
+  .flow--compact .flow__wire--in .flow__line::after { top: 50%; bottom: auto; left: auto; right: 0; transform: translateY(-50%) rotate(45deg); }
+  .flow--compact .flow__wire--index .flow__line::after { top: 50%; left: 0; transform: translateY(-50%) rotate(-135deg); }
+  .flow--compact .flow__dot { top: 50%; left: 0; margin: -3px 0 0; animation-name: flow-x; }
+  .flow--compact .flow__wire--index .flow__dot { animation-name: flow-x-back; }
+  .flow--compact .flow__result {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    margin-top: 6px;
+    border-radius: var(--r);
+    font-size: 12px;
+  }
+}
+
+/* KEV Clock: the deadlines after the next one, with their dates. */
+.tour__due {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+/* Method: points per chip, as small bars on one scale. */
+.tour__pts {
+  display: grid;
+  gap: 5px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.tour__pts li {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 8px;
+}
+
+.tour__ptlabel {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour__ptbar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.tour__ptbar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w);
+  border-radius: inherit;
+  background: var(--c);
+  transform-origin: left center;
+}
+
+.tour__band.is-armed.is-in .tour__ptbar::after {
+  animation: tour-bar 0.7s var(--ease) 0.3s both;
+}
+
+@keyframes tour-bar {
+  from { transform: scaleX(0); }
+  to { transform: none; }
+}
+
+.tour__ptval {
+  color: var(--text);
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__band.is-armed.is-in .tour__ptbar::after { animation: none; }
+}
+
+/* MCP: a first question, and what the kev_due tool returns for it with today's data. */
+.tour__chat {
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.tour__bubble {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: var(--r);
+}
+
+.tour__bubble p {
+  margin: 0;
+}
+
+.tour__bubble--you {
+  justify-self: end;
+  max-width: 85%;
+  border-bottom-right-radius: 3px;
+  background: var(--raised);
+  color: var(--text);
+}
+
+.tour__bubble--tool {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--ai) 30%, transparent);
+  border-bottom-left-radius: 3px;
+  background: var(--t-ai);
+  color: var(--text);
+}
+
+.tour__tool {
+  color: var(--ai);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+/* Check: the invitation to verify it, as on the Check page. */
+.tour__proof {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.tour__proof a {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+
+/* API: file chips in the card's green, and a small terminal with the live answer from meta.json. */
+.tour__chip--api {
+  border-color: color-mix(in srgb, var(--ok) 30%, transparent);
+  background: var(--t-ok);
+  color: var(--text);
+}
+
+.term {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg);
+}
+
+.term__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--raised);
+}
+
+.term__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.term__live i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 70%, transparent);
+  animation: term-live 2.4s ease-in-out infinite;
+}
+
+@keyframes term-live {
+  50% { opacity: 0.35; }
+}
+
+.term__body {
+  display: grid;
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  color: var(--faint);
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.term__line {
+  display: block;
+}
+
+.term__prompt {
+  color: var(--ok);
+}
+
+.term__body > .term__line:first-child {
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.term__key { color: var(--ai); }
+.term__str { color: var(--ok); }
+.term__num { color: var(--watch); }
+.term__more { color: var(--faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .term__live i { animation: none; }
 }

@@ -105,13 +105,15 @@ describe('package and docs', () => {
   });
 
   it('gives each client picker entry a command that starts the published package', () => {
-    expect(MCP_CLIENTS.map((c) => c.label)).toEqual(['Claude Code', 'Codex', 'Cursor', 'Copilot · VS Code', 'Gemini CLI', 'Claude Desktop']);
+    expect(MCP_CLIENTS.map((c) => c.label)).toEqual(['Claude', 'Codex', 'Cursor', 'Copilot', 'Gemini', 'Antigravity']);
+    // One word each, so the picker stays a tidy grid.
+    for (const c of MCP_CLIENTS) expect(c.label).toMatch(/^\S+$/);
     expect(MCP_CLIENTS[0].code).toBe(MCP_SNIPPETS[0][1]);
     expect(MCP_CLIENTS.find((c) => c.id === 'codex')?.code).toBe('codex mcp add cverdict -- npx -y cverdict-mcp');
     expect(MCP_CLIENTS.find((c) => c.id === 'gemini')?.code).toBe('gemini mcp add cverdict npx -- -y cverdict-mcp');
-    const vscode = MCP_CLIENTS.find((c) => c.id === 'vscode')?.code ?? '';
+    const vscode = MCP_CLIENTS.find((c) => c.id === 'copilot')?.code ?? '';
     expect(JSON.parse(vscode.replace(/^code --add-mcp '(.*)'$/, '$1'))).toEqual({ name: 'cverdict', command: 'npx', args: ['-y', 'cverdict-mcp'] });
-    for (const id of ['cursor', 'claude-desktop']) {
+    for (const id of ['cursor', 'antigravity']) {
       expect(JSON.parse(MCP_CLIENTS.find((c) => c.id === id)?.code ?? '').mcpServers.cverdict).toEqual({ command: 'npx', args: ['-y', 'cverdict-mcp'] });
     }
     expect(new Set(MCP_CLIENTS.map((c) => c.id)).size).toBe(MCP_CLIENTS.length);

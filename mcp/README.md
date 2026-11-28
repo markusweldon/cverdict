@@ -29,8 +29,8 @@ gemini mcp add cverdict npx -- -y cverdict-mcp
 code --add-mcp '{"name":"cverdict","command":"npx","args":["-y","cverdict-mcp"]}'
 ```
 
-Cursor (`~/.cursor/mcp.json`), Claude Desktop (`claude_desktop_config.json`) and other clients take
-an `mcpServers` entry (key names vary by client):
+Cursor (`~/.cursor/mcp.json`), Antigravity (Manage MCP Servers, View raw config), Claude Desktop
+(`claude_desktop_config.json`) and other clients take an `mcpServers` entry (key names vary by client):
 
 ```json
 {
