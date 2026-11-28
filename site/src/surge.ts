@@ -207,3 +207,25 @@ export function riskTakeaway(rows: readonly RiskRow[]): string {
   const times = (x: number) => `${x.toFixed(1)} times`;
   return `From ${a.year} to ${when}, CVEs grew ${times(b.published / a.published)} and KEV additions ${times(b.kev / a.kev)}: ${b.perThousand.toFixed(1)} KEV additions per 1,000 new CVEs, against ${a.perThousand.toFixed(1)} in ${a.year}.`;
 }
+
+/**
+ * This year so far and the same days of the year before, for any monthly count: the current
+ * month counts in full, the same month a year earlier in proportion to the days elapsed (by
+ * generatedAt, UTC). Null without the year before.
+ */
+export function sameDaysLastYear<T extends MonthRow>(monthly: readonly T[], generatedAt: string, pick: (m: T) => number): { year: number; now: number; before: number } | null {
+  const last = monthly[monthly.length - 1];
+  if (!last) return null;
+  const year = Number(last.month.slice(0, 4));
+  const monthIdx = Number(last.month.slice(5)) - 1;
+  const asOf = new Date(generatedAt);
+  const dayFrac = asOf.getUTCDate() / new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate();
+  const prev = monthly.filter((m) => m.month.startsWith(`${year - 1}-`));
+  if (!prev.length) return null;
+  const now = monthly.filter((m) => m.month.startsWith(`${year}-`)).reduce((a, m) => a + pick(m), 0);
+  const byMonth = new Map(prev.map((m) => [Number(m.month.slice(5)) - 1, pick(m)]));
+  let before = 0;
+  for (let i = 0; i < monthIdx; i++) before += byMonth.get(i) ?? 0;
+  before += (byMonth.get(monthIdx) ?? 0) * dayFrac;
+  return { year, now, before };
+}

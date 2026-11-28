@@ -9,6 +9,7 @@ import { freshness } from '../components/Chrome';
 import { FilterBar } from '../components/FilterBar';
 import { HeatStrip } from '../components/HeatStrip';
 import { Tour } from '../components/Tour';
+import { YearBand } from '../components/YearBand';
 import { IconArrowRight } from '../components/icons';
 import { kevUrgency, KevStrip } from '../components/Kev';
 import { Knob } from '../components/Knob';
@@ -468,6 +469,8 @@ export default function Today() {
   return (
     <div class="today">
       {ready ? <Ticker meta={meta.data} passed24h={passed24h} kevSoon={kevSoon} batchesWeek={weekBatches?.length ?? null} /> : <Loading label="Loading today’s numbers" lines={1} height="28px" class="ticker-skel" />}
+
+      {meta.status === 'ready' && <YearBand meta={meta.data} stats={stats.status === 'ready' ? stats.data : null} kev={kev.status === 'ready' ? kev.data.entries : null} />}
 
       <div class="today__grid">
         <div class="today__hero">
