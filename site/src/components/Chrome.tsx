@@ -1,4 +1,5 @@
 /** Page chrome: header with navigation and data status, and the footer. */
+import { Fragment } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Meta } from '../../../shared/contract';
 import { BRAND, REPO_URL } from '../../../shared/brand';
@@ -7,7 +8,8 @@ import { useData, useNow } from '../hooks';
 import { data } from '../data';
 import { href, type Route } from '../router';
 import { overlay, theme, toggleTheme, useStore } from '../state';
-import { IconChevronDown, IconMoon, IconSearch, IconSource, IconSun, Mark } from './icons';
+import { Dialog } from './Dialog';
+import { IconMoon, IconSearch, IconSource, IconSun, IconX, Mark } from './icons';
 
 export const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
@@ -27,117 +29,91 @@ interface NavLink {
   name: Route['name'];
   path: string;
   label: string;
-  /** One line under the label in a menu. */
-  hint?: string;
+  /** One line under the label in the menu sheet. */
+  hint: string;
 }
-type NavItem = NavLink | { menu: string; label: string; items: readonly NavLink[] };
 
 /**
- * By what people come to do: what matters now (Today, Check), what is due and what changed (KEV
- * Clock, Woke Up), then search and proof (Explore, Receipts, The Surge). How it works and the
- * integrations sit in Docs, at the end of the row. Ctrl K reaches every page either way.
+ * Every page, in three groups by what people come to do. Wide screens show all of them in one
+ * row with a divider between groups; narrower ones get a menu button that opens the same groups
+ * as a sheet, each page with one line on what it is. Ctrl K reaches every page either way.
  */
-const NAV: readonly NavItem[] = [
-  { name: 'today', path: '', label: 'Today' },
-  { name: 'check', path: 'check', label: 'Check' },
-  { name: 'kev', path: 'kev', label: 'KEV Clock' },
-  { name: 'woke', path: 'woke', label: 'Woke Up' },
+export const NAV_GROUPS: readonly { id: string; label: string; items: readonly NavLink[] }[] = [
   {
-    menu: 'explore',
-    label: 'Explore',
+    id: 'act',
+    label: 'Act on it',
     items: [
-      { name: 'explore', path: 'explore', label: 'All CVEs', hint: 'Every CVE of the window, by day' },
-      { name: 'batches', path: 'batches', label: 'Patch days', hint: 'Batches and bulk releases' },
+      { name: 'today', path: '', label: 'Today', hint: 'The few CVEs that matter now, and why' },
+      { name: 'check', path: 'check', label: 'Check', hint: 'Am I affected? A repo, lockfile or SBOM' },
+      { name: 'kev', path: 'kev', label: 'KEV Clock', hint: 'CISA due dates, counting down' },
+      { name: 'woke', path: 'woke', label: 'Woke Up', hint: 'Old CVEs with new exploit evidence' },
     ],
   },
-  { name: 'receipts', path: 'receipts', label: 'Receipts' },
-  { name: 'surge', path: 'surge', label: 'The Surge' },
   {
-    menu: 'docs',
-    label: 'Docs',
+    id: 'look',
+    label: 'Look into it',
     items: [
-      { name: 'method', path: 'method', label: 'Method', hint: 'The chips, their points, blind spots' },
-      { name: 'mcp', path: 'mcp', label: 'MCP server', hint: 'Verdicts for AI agents' },
-      { name: 'feeds', path: 'feeds', label: 'Feeds & API', hint: 'Atom, iCalendar, JSON and llms.txt' },
+      { name: 'explore', path: 'explore', label: 'Explore', hint: 'Every CVE of the window, by day' },
+      { name: 'batches', path: 'batches', label: 'Patch days', hint: 'Batches and bulk releases' },
+      { name: 'surge', path: 'surge', label: 'Trends', hint: 'The surge in volume, and what it is not' },
+      { name: 'receipts', path: 'receipts', label: 'Receipts', hint: 'Every hit and miss, against CISA' },
+    ],
+  },
+  {
+    id: 'build',
+    label: 'Build with it',
+    items: [
+      { name: 'method', path: 'method', label: 'Method', hint: 'The chips, their points, the blind spots' },
+      { name: 'mcp', path: 'mcp', label: 'MCP', hint: 'Verdicts for AI agents, one command' },
+      { name: 'feeds', path: 'feeds', label: 'API', hint: 'Atom, iCalendar, JSON and llms.txt' },
     ],
   },
 ];
 
-/** A nav entry that opens a short list of pages. A disclosure, not an ARIA menu: the list holds plain links. */
-function NavMenu({ item, route, row }: { item: Extract<NavItem, { menu: string }>; route: Route; row: { current: HTMLElement | null } }) {
-  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
-  const btn = useRef<HTMLButtonElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
-  const id = `navmenu-${item.menu}`;
-  const current = item.items.some((i) => i.name === route.name);
-  const close = (focus = false) => {
-    setAt(null);
-    if (focus) btn.current?.focus();
-  };
-  // Fixed, so the scrolling nav row on narrow screens cannot clip it.
-  const open = () => {
-    const r = btn.current?.getBoundingClientRect();
-    if (!r) return;
-    setAt({ top: Math.round(r.bottom + 6), left: Math.round(Math.max(8, Math.min(r.left - 6, window.innerWidth - 268))) });
-  };
-  useEffect(() => close(), [route.name]);
-  useEffect(() => {
-    if (!at) return;
-    const away = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (!btn.current?.contains(t) && !panel.current?.contains(t)) close();
-    };
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      close(true);
-    };
-    const gone = () => close();
-    const nav = row.current;
-    document.addEventListener('pointerdown', away);
-    document.addEventListener('keydown', key, true);
-    window.addEventListener('resize', gone);
-    nav?.addEventListener('scroll', gone);
-    return () => {
-      document.removeEventListener('pointerdown', away);
-      document.removeEventListener('keydown', key, true);
-      window.removeEventListener('resize', gone);
-      nav?.removeEventListener('scroll', gone);
-    };
-  }, [at]);
+/** The menu sheet for narrow screens: the same groups, each page with what it is for. */
+function NavSheet({ open, onClose, route }: { open: boolean; onClose: () => void; route: Route }) {
   return (
-    <>
-      <button
-        ref={btn}
-        type="button"
-        class={`nav__link nav__menubtn${current ? ' is-current' : ''}`}
-        aria-expanded={at ? 'true' : 'false'}
-        aria-controls={id}
-        onClick={() => (at ? close() : open())}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (!at) open();
-            requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>('a')?.focus());
-          }
-        }}
-      >
-        {item.label}
-        <IconChevronDown size={12} class="nav__chev" />
-      </button>
-      <div ref={panel} id={id} class="navmenu" hidden={!at} style={at ? { top: `${at.top}px`, left: `${at.left}px` } : undefined}>
-        <ul class="navmenu__list">
-          {item.items.map((i) => (
-            <li key={i.name}>
-              <a class="navmenu__item" href={href(i.path)} aria-current={route.name === i.name ? 'page' : undefined} onClick={() => close()}>
-                <span class="navmenu__label">{i.label}</span>
-                {i.hint && <span class="navmenu__hint">{i.hint}</span>}
-              </a>
-            </li>
+    <Dialog open={open} onClose={onClose} label="Menu" class="dialog--sheet">
+      <div class="sheet">
+        <div class="sheet__top">
+          <span class="brand">
+            <Mark size={20} />
+            <Wordmark class="brand__name" />
+          </span>
+          <button type="button" class="iconbtn" onClick={onClose} aria-label="Close the menu">
+            <IconX />
+          </button>
+        </div>
+        <button
+          type="button"
+          class="searchbtn sheet__search"
+          onClick={() => {
+            onClose();
+            overlay.set('palette');
+          }}
+        >
+          <IconSearch size={14} />
+          <span>Search CVEs, vendors and pages</span>
+        </button>
+        <nav aria-label="All pages">
+          {NAV_GROUPS.map((g, gi) => (
+            <section key={g.id} class="sheet__group" style={{ '--g': gi }}>
+              <h2 class="sheet__label">{g.label}</h2>
+              <ul class="sheet__list">
+                {g.items.map((n, i) => (
+                  <li key={n.name} style={{ '--i': gi * 4 + i }}>
+                    <a class="sheet__item" href={href(n.path)} aria-current={route.name === n.name ? 'page' : undefined} onClick={onClose}>
+                      <span class="sheet__name">{n.label}</span>
+                      <span class="sheet__hint">{n.hint}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </nav>
       </div>
-    </>
+    </Dialog>
   );
 }
 
@@ -165,13 +141,15 @@ function DataStatus() {
 
 export function Header({ route }: { route: Route }) {
   const mode = useStore(theme);
+  const [sheet, setSheet] = useState(false);
+  useEffect(() => setSheet(false), [route.name]);
   const el = useRef<HTMLElement>(null);
   const nav = useRef<HTMLElement>(null);
   // On narrow screens the nav is a scrolling row, so the current page can sit off-screen.
   // Bring its link into view (no smooth scroll) whenever the page changes.
   useEffect(() => {
     const row = nav.current;
-    const link = row?.querySelector<HTMLElement>('.nav__link[aria-current="page"], .nav__link.is-current');
+    const link = row?.querySelector<HTMLElement>('.nav__link[aria-current="page"]');
     if (!row || !link || row.scrollWidth <= row.clientWidth) return;
     const left = link.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft;
     const right = left + link.offsetWidth;
@@ -204,15 +182,16 @@ export function Header({ route }: { route: Route }) {
         </a>
         <DataStatus />
         <nav class="nav" aria-label="Primary" ref={nav}>
-          {NAV.map((n) =>
-            'menu' in n ? (
-              <NavMenu key={n.menu} item={n} route={route} row={nav} />
-            ) : (
-              <a key={n.name} class="nav__link" href={href(n.path)} aria-current={route.name === n.name ? 'page' : undefined}>
-                {n.label}
-              </a>
-            ),
-          )}
+          {NAV_GROUPS.map((g, gi) => (
+            <Fragment key={g.id}>
+              {gi > 0 && <span class="nav__sep" aria-hidden="true" />}
+              {g.items.map((n) => (
+                <a key={n.name} class="nav__link" href={href(n.path)} aria-current={route.name === n.name ? 'page' : undefined}>
+                  {n.label}
+                </a>
+              ))}
+            </Fragment>
+          ))}
         </nav>
         <div class="top__actions">
           <button type="button" class="searchbtn" onClick={() => overlay.set('palette')} aria-label="Search CVEs, vendors and pages" aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}>
@@ -223,10 +202,18 @@ export function Header({ route }: { route: Route }) {
           <button type="button" class="iconbtn" onClick={toggleTheme} aria-label={mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} data-tip={mode === 'dark' ? 'Light theme' : 'Dark theme'}>
             {mode === 'dark' ? <IconSun /> : <IconMoon />}
           </button>
-          <a class="iconbtn" href={REPO_URL} target="_blank" rel="noopener noreferrer nofollow" aria-label="Source code on GitHub (opens in a new tab)" data-tip="Source & data on GitHub">
+          <a class="iconbtn top__gh" href={REPO_URL} target="_blank" rel="noopener noreferrer nofollow" aria-label="Source code on GitHub (opens in a new tab)" data-tip="Source & data on GitHub">
             <IconSource />
           </a>
+          <button type="button" class="iconbtn top__menu" onClick={() => setSheet(true)} aria-label="Menu: all pages" aria-haspopup="dialog" aria-expanded={sheet ? 'true' : 'false'}>
+            <span class="burger" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
         </div>
+        <NavSheet open={sheet} onClose={() => setSheet(false)} route={route} />
       </div>
     </header>
   );
