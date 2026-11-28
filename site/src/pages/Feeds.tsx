@@ -80,7 +80,7 @@ export default function Feeds() {
   return (
     <div class="page page--feeds">
       <header class="page__head">
-        <p class="eyebrow">Open data, refreshed hourly</p>
+        <p class="eyebrow">API · Open data, refreshed hourly</p>
         <h1 class="page__title" tabIndex={-1}>
           Feeds &amp; API
         </h1>

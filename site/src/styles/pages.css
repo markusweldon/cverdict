@@ -410,13 +410,14 @@
   grid-area: batches;
 }
 
-/* One rhythm on Today: 16 px between panels (the grid gap), 24 px before a section that opens
-   with a bare title (Everything in CVErdict, Signal and the side column beside it, Patch days). */
+/* One rhythm, as on every page: 16 px between panels (the grid gap), and 28 px, the gap under a
+   page head, before a section that opens with a bare title (Everything in CVErdict, Signal and
+   the side column beside it, Patch days). */
 .today__grid > .tour,
 .today__grid > .today__feed,
 .today__grid > .today__side,
 .today__grid > .today__batches {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .hero {
@@ -1431,7 +1432,7 @@
   z-index: 10;
   display: grid;
   gap: 8px;
-  margin: 0 calc(var(--gutter) * -1) 14px;
+  margin: 0 calc(var(--gutter) * -1) 12px;
   padding: 10px var(--gutter);
   border-bottom: 1px solid var(--border);
   background: var(--glass);
@@ -3048,7 +3049,7 @@ circle.dc__kev {
 
 .check__paneltitle {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -4019,7 +4020,7 @@ circle.dc__kev {
 }
 
 .sect__title {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .sect__more {
