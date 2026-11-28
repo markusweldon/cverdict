@@ -3,10 +3,11 @@
 //   npm run build && npm run preview            # or any server that serves site/dist and /data/
 //   node tools/brand/screens.mjs --url http://localhost:4173 [--cve CVE-2026-119958]
 //
-// Writes docs/assets/screens/*.webp (dark theme, 2x), docs/assets/demo-dark.gif and
-// docs/assets/check-repo-dark.gif. The page clock is set a few minutes after the data's
-// generated_at, so "data age" reads as it did live. The Check shot uses a sample package-lock.json
-// written to a temporary folder (it is never committed, so no dependency bot picks it up).
+// Writes docs/assets/screens/*.webp (dark theme, 2x), docs/assets/demo-dark.gif,
+// docs/assets/check-repo-dark.gif and docs/assets/home-check-dark.gif. The page clock is set a
+// few minutes after the data's generated_at, so "data age" reads as it did live. The Check shot
+// uses a sample package-lock.json written to a temporary folder (it is never committed, so no
+// dependency bot picks it up).
 //
 // The repository check GIF checks OWASP/NodeGoat at a pinned commit, the same lockfile as the
 // terminal image (tools/brand/build.ts). GitHub's answers are replayed from that commit, fetched
@@ -104,6 +105,10 @@ await still('time-to-kev', await topOf('#lag-h', null, 72));
 // Heating up on Today, with the start of the signal feed under it.
 await go('/', '#heat-h');
 await still('heat', await topOf('#heat-h', null, 40));
+// The map of every page on Today: Act on it (Check with its flow, KEV Clock, Woke Up), then Build
+// with it (MCP, API, Method). Each band animates in once on screen; still() waits for it.
+await still('home', await topOf('#tour-g01', null, 28));
+await still('build', await topOf('#tour-g03', null, 28));
 
 // Check with a sample lockfile, read in the browser only.
 const lock = {
@@ -239,9 +244,44 @@ for (const label of ['Broad', 'Strict', 'Balanced']) {
 const gif = join(ASSETS, 'demo-dark.gif');
 toGif('f', gif);
 
+// Home GIF: the Check card on Today, Repo, File and CI, each with its flow diagram. The moving dots
+// are CSS animations, so frames wait in real time rather than on the page clock.
+await go('/', '#tour-g01');
+await page.evaluate(() => {
+  const card = document.querySelector('.tour__card--check');
+  window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 96);
+});
+await page.waitForTimeout(1600);
+// One frame for all three tabs: as tall as the tallest of them.
+const checkTab = (label) => page.locator('.tour__card--check .picker__btn', { hasText: new RegExp(`^${label}$`) });
+let hb = await page.locator('.tour__card--check').boundingBox();
+for (const label of ['File', 'CI', 'Repo']) {
+  await checkTab(label).click();
+  const b = await page.locator('.tour__card--check').boundingBox();
+  if (b.height > hb.height) hb = b;
+}
+await page.mouse.move(4, 896);
+await page.waitForTimeout(800);
+const homeClip = { x: hb.x - 16, y: hb.y - 16, width: hb.width + 32, height: hb.height + 32 };
+let hn = 0;
+const hhold = async (frames) => {
+  for (let k = 0; k < frames; k++) {
+    await page.screenshot({ path: join(TMP, `h${String(hn++).padStart(4, '0')}.png`), clip: homeClip });
+    await page.waitForTimeout(100);
+  }
+};
+await hhold(18);
+for (const label of ['File', 'CI', 'Repo']) {
+  await checkTab(label).click();
+  await page.mouse.move(4, 896);
+  await hhold(label === 'Repo' ? 10 : 22);
+}
+const homeGif = join(ASSETS, 'home-check-dark.gif');
+toGif('h', homeGif);
+
 await browser.close();
 rmSync(TMP, { recursive: true, force: true });
-for (const f of [...readdirSync(SCREENS).map((f) => join(SCREENS, f)), gif, repoGif]) console.log(`${(statSync(f).size / 1024).toFixed(0).padStart(6)} KB  ${f}`);
+for (const f of [...readdirSync(SCREENS).map((f) => join(SCREENS, f)), gif, repoGif, homeGif]) console.log(`${(statSync(f).size / 1024).toFixed(0).padStart(6)} KB  ${f}`);
 if (errors.length) {
   console.error(`page errors:\n${errors.join('\n')}`);
   process.exitCode = 1;
