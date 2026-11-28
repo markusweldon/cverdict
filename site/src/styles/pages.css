@@ -4778,11 +4778,106 @@ circle.dc__kev {
   min-width: 0;
 }
 
-.mcpi__tabs {
-  justify-self: start;
-  max-width: 100%;
-}
 
 .mcpi .snippet pre {
   overflow-x: auto;
+}
+
+/* Equal-width tabs on a card, one row of --n cells, capped so they never stretch across a wide
+   page. On a phone more than three tabs make rows of three (six tabs, two tidy rows). */
+.picker {
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  max-width: calc(var(--n) * 100px);
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+
+.picker__btn {
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    color 0.12s,
+    box-shadow 0.12s;
+}
+
+.picker__btn:hover {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .picker--many {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.picker__btn[aria-pressed='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow:
+    0 0 0 1px var(--border-strong),
+    0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+/* On a homepage card the chosen tab takes the card's colour. */
+.tour__card .picker__btn[aria-pressed='true'] {
+  color: var(--c);
+}
+
+/* The Check card's File tab: a small drop target that hands the file to the Check page. */
+.tour__drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r);
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.tour__drop.is-drag {
+  border-color: var(--accent);
+  background: var(--t-accent);
+}
+
+.tour__droptitle {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tour__drop .btn,
+.tour__cta {
+  cursor: pointer;
+}
+
+.tour__cta {
+  align-self: flex-start;
+}
+
+@media (max-width: 640px) {
+  .tour__drop .btn {
+    flex: 1 0 100%;
+  }
+
+  .tour__cta {
+    align-self: stretch;
+  }
 }

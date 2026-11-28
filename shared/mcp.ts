@@ -29,12 +29,12 @@ const MCP_JSON = JSON.stringify({ mcpServers: { [BRAND.slug]: { command: 'npx', 
  * a terminal command where the client has one, else the file to put the mcpServers entry in.
  */
 export const MCP_CLIENTS: readonly { id: string; label: string; where: string; code: string }[] = [
-  { id: 'claude-code', label: 'Claude Code', where: 'In a terminal', code: `claude mcp add ${BRAND.slug} -- npx -y ${MCP_SERVER.npm}` },
+  { id: 'claude', label: 'Claude', where: 'Claude Code, in a terminal', code: `claude mcp add ${BRAND.slug} -- npx -y ${MCP_SERVER.npm}` },
   { id: 'codex', label: 'Codex', where: 'In a terminal', code: `codex mcp add ${BRAND.slug} -- npx -y ${MCP_SERVER.npm}` },
   { id: 'cursor', label: 'Cursor', where: 'In ~/.cursor/mcp.json', code: MCP_JSON },
-  { id: 'vscode', label: 'Copilot · VS Code', where: 'In a terminal', code: `code --add-mcp '${JSON.stringify({ name: BRAND.slug, command: 'npx', args: ['-y', MCP_SERVER.npm] })}'` },
-  { id: 'gemini', label: 'Gemini CLI', where: 'In a terminal', code: `gemini mcp add ${BRAND.slug} npx -- -y ${MCP_SERVER.npm}` },
-  { id: 'claude-desktop', label: 'Claude Desktop', where: 'In claude_desktop_config.json (Settings, Developer, Edit Config)', code: MCP_JSON },
+  { id: 'copilot', label: 'Copilot', where: 'VS Code, in a terminal', code: `code --add-mcp '${JSON.stringify({ name: BRAND.slug, command: 'npx', args: ['-y', MCP_SERVER.npm] })}'` },
+  { id: 'gemini', label: 'Gemini', where: 'Gemini CLI, in a terminal', code: `gemini mcp add ${BRAND.slug} npx -- -y ${MCP_SERVER.npm}` },
+  { id: 'antigravity', label: 'Antigravity', where: 'In mcp_config.json: Manage MCP Servers, View raw config', code: MCP_JSON },
 ];
 
 /**
@@ -44,7 +44,7 @@ export const MCP_CLIENTS: readonly { id: string; label: string; where: string; c
 export const MCP_SNIPPETS: readonly [title: string, code: string][] = [
   ['Claude Code', `claude mcp add ${BRAND.slug} -- npx -y ${BRAND.slug}-mcp`],
   [
-    'Any other client: an mcpServers entry (check yours for the exact key names)',
+    'Claude Desktop, Windsurf and other clients: an mcpServers entry (check yours for the exact key names)',
     `{\n  "mcpServers": {\n    "${BRAND.slug}": {\n      "command": "npx",\n      "args": ["-y", "${BRAND.slug}-mcp"]\n    }\n  }\n}`,
   ],
   ['Behind a proxy: add to the entry (Node 22.21 or later; older versions ignore NODE_USE_ENV_PROXY)', `"env": { "NODE_USE_ENV_PROXY": "1", "HTTPS_PROXY": "http://proxy.example:3128" }`],
