@@ -67,6 +67,18 @@ describe('heatingUp', () => {
     ]);
   });
 
+  it('lays the evidence out by day for the strip, merged vendor CVEs included, the fast lane left out', () => {
+    const items = [ev('CVE-A', 'kev_added', 2), ev('CVE-A', 'nuclei_template', 3 * 24 + 1), ev('CVE-A', 'fast_lane', 4), ev('CVE-B', 'metasploit_module', 6 * 24 + 2)];
+    items[3].vendor = items[0].vendor;
+    const [card] = heatingUp(file(items));
+    expect(card.more).toEqual(['CVE-B']);
+    expect(card.timeline).toEqual([
+      { day: 0, type: 'metasploit_module' },
+      { day: HEAT_DAYS - 1 - 3, type: 'nuclei_template' },
+      { day: HEAT_DAYS - 1, type: 'kev_added' },
+    ]);
+  });
+
   it('copes with no file and a bad generated_at', () => {
     expect(heatingUp(null)).toEqual([]);
     expect(heatingUp({ generated_at: 'nope', items: [ev('CVE-A', 'kev_added', 1)] })).toEqual([]);

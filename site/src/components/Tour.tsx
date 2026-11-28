@@ -83,7 +83,7 @@ function Band({ n, label, note, children }: { n: string; label: string; note: st
         el.classList.add('is-in');
         io.disconnect();
       },
-      { rootMargin: '0px 0px -20% 0px', threshold: 0 },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0 },
     );
     io.observe(el);
     return () => io.disconnect();
