@@ -1,0 +1,2102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<id>https://cverdict-psi.vercel.app/feeds/events.xml</id>
+<title type="text">CVErdict · verdict events</title>
+<subtitle type="text">Why verdicts moved in the last 7 days: CISA KEV and catalog listings, vendor reports, moves into Likely next or Exploited, the fast lane, and new exploit modules and templates. Up to 200, newest first.</subtitle>
+<link rel="self" type="application/atom+xml" href="https://cverdict.dev/feeds/events.xml"/>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/"/>
+<updated>2026-11-28T14:47:27Z</updated>
+<author><name>CVErdict</name><uri>https://github.com/markusweldon/cverdict</uri></author>
+<generator uri="https://github.com/markusweldon/cverdict">cverdict-pipeline</generator>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2011-10042:likely</id>
+<title type="text">CVE-2011-10042 · http-session · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2011-10042"/>
+<updated>2026-11-28T14:47:27Z</updated>
+<published>2026-11-28T14:47:27Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.7% · 77th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-120213:likely</id>
+<title type="text">CVE-2026-120213 · @fastify/http-proxy · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120213"/>
+<updated>2026-11-28T06:47:30Z</updated>
+<published>2026-11-28T06:47:30Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-135788:likely</id>
+<title type="text">CVE-2026-135788 · D-Link DIR-X1860 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-135788"/>
+<updated>2026-11-28T04:47:25Z</updated>
+<published>2026-11-28T04:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: public PoC · Nov 28; CISA SSVC: total technical impact. Tier: Watch → Likely next · score 52/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-129975:likely</id>
+<title type="text">CVE-2026-129975 · Red Hat Hardened Images · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129975"/>
+<updated>2026-11-28T03:47:27Z</updated>
+<published>2026-11-28T03:47:27Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: total technical impact. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-135208:likely</id>
+<title type="text">CVE-2026-135208 · kerberos-io Kerberos Agent · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-135208"/>
+<updated>2026-11-28T03:47:27Z</updated>
+<published>2026-11-28T03:47:27Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: total technical impact; CISA SSVC: automatable; CISA SSVC: public PoC · Nov 28. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-135695:likely</id>
+<title type="text">CVE-2026-135695 · rConfig Core · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-135695"/>
+<updated>2026-11-28T03:47:27Z</updated>
+<published>2026-11-28T03:47:27Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: total technical impact; CISA SSVC: public PoC · Nov 28. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-134882:likely</id>
+<title type="text">CVE-2026-134882 · TOTOLINK A7100RU · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-134882"/>
+<updated>2026-11-28T02:47:30Z</updated>
+<published>2026-11-28T02:47:30Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: total technical impact; CISA SSVC: automatable. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-136404:likely</id>
+<title type="text">CVE-2026-136404 · ntop n2n · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136404"/>
+<updated>2026-11-28T00:47:31Z</updated>
+<published>2026-11-28T00:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-136411:likely</id>
+<title type="text">CVE-2026-136411 · busybox · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136411"/>
+<updated>2026-11-28T00:47:31Z</updated>
+<published>2026-11-28T00:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-136716</id>
+<title type="text">CVE-2026-136716 · Drupal core · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136716"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-136716"/>
+<updated>2026-11-27T18:47:26Z</updated>
+<published>2026-11-27T18:47:26Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 27, due Nov 30. Known ransomware use: Unknown. Tier: Likely next → Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-136548:likely</id>
+<title type="text">CVE-2026-136548 · Tenda RX3 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136548"/>
+<updated>2026-11-27T17:47:39Z</updated>
+<published>2026-11-27T17:47:39Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: public PoC · Nov 27; CISA SSVC: total technical impact; CISA SSVC: automatable. Tier: Watch → Likely next · score 60/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-136553:likely</id>
+<title type="text">CVE-2026-136553 · Tenda RX3 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136553"/>
+<updated>2026-11-27T17:47:39Z</updated>
+<published>2026-11-27T17:47:39Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: public PoC · Nov 27; CISA SSVC: total technical impact; CISA SSVC: automatable. Tier: Watch → Likely next · score 60/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-120777:likely</id>
+<title type="text">CVE-2026-120777 · Microsoft Azure Managed Service Identity · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120777"/>
+<updated>2026-11-27T16:47:28Z</updated>
+<published>2026-11-27T16:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-120787:likely</id>
+<title type="text">CVE-2026-120787 · Microsoft 365 Apps for Enterprise · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120787"/>
+<updated>2026-11-27T16:47:28Z</updated>
+<published>2026-11-27T16:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-136821:likely</id>
+<title type="text">CVE-2026-136821 · D-Link R32 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136821"/>
+<updated>2026-11-27T16:47:28Z</updated>
+<published>2026-11-27T16:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: public PoC · Nov 27; CISA SSVC: total technical impact. Tier: Watch → Likely next · score 52/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-120846</id>
+<title type="text">CVE-2026-120846 · Uncanny Owl Uncanny Automator · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120846"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/5a36a1fde578ae7c5aec5aab67d27b47ea81a65d"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 27: scannable at scale. Tier: Quiet → Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-122060</id>
+<title type="text">CVE-2026-122060 · WP Recipe Maker · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-122060"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/fabcc0f8119d47b21d17383fc5cc59272cb48ec1"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 27: scannable at scale. Tier: Quiet → Likely next · score 32/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-103813:likely</id>
+<title type="text">CVE-2026-103813 · Dell PowerStore 500T · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-103813"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.4% · 72nd pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-109480:likely</id>
+<title type="text">CVE-2026-109480 · Microsoft Profile Data Roaming Service (PDRS) · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-109480"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-109490:likely</id>
+<title type="text">CVE-2026-109490 · Microsoft Entra · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-109490"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-135202:likely</id>
+<title type="text">CVE-2026-135202 · wpconnectco Orders Sync to Airtable for WooCommerce · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-135202"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-135693:likely</id>
+<title type="text">CVE-2026-135693 · rConfig Core · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-135693"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-65817:likely</id>
+<title type="text">CVE-2026-65817 · Microsoft Azure Managed Instance for Apache Cassandra · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-65817"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-70193:likely</id>
+<title type="text">CVE-2026-70193 · Microsoft SharePoint Online · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-70193"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-70305:likely</id>
+<title type="text">CVE-2026-70305 · Microsoft Azure Portal · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-70305"/>
+<updated>2026-11-27T15:47:25Z</updated>
+<published>2026-11-27T15:47:25Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-136716</id>
+<title type="text">CVE-2026-136716 · Drupal core · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136716"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-27T14:47:28Z</updated>
+<published>2026-11-27T14:47:28Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">Fast lane: network, automatable, total impact, product in KEV. Tier: Watch → Likely next · score 64/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-123903</id>
+<title type="text">CVE-2026-123903 · VMware vCenter Server · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123903"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/3c341fd9f4d9692290384629669babfe927d4a8b"/>
+<updated>2026-11-27T14:47:28Z</updated>
+<published>2026-11-27T14:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · critical) · added Nov 27: scannable at scale. Tier: Likely next · score 68/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-23794</id>
+<title type="text">CVE-2026-23794 · Apache Software Foundation Apache Syncope · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-23794"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-23794.yaml"/>
+<updated>2026-11-27T14:47:28Z</updated>
+<published>2026-11-27T14:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Feb 3. First Nuclei template. Tier: Likely next · score 32/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-27797</id>
+<title type="text">CVE-2026-27797 · homarr-labs homarr · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-27797"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-27797.yaml"/>
+<updated>2026-11-27T14:47:28Z</updated>
+<published>2026-11-27T14:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Mar 7. First Nuclei template. Tier: Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-49360</id>
+<title type="text">CVE-2026-49360 · DataRecce recce · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-49360"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-49360.yaml"/>
+<updated>2026-11-27T14:47:28Z</updated>
+<published>2026-11-27T14:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Aug 21. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-54386</id>
+<title type="text">CVE-2026-54386 · marimo-team marimo · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-54386"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-54386.yaml"/>
+<updated>2026-11-27T14:47:28Z</updated>
+<published>2026-11-27T14:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Jun 17. First Nuclei template. Tier: Likely next · score 34/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-75597</id>
+<title type="text">CVE-2026-75597 · pyload · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-75597"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-75597.yaml"/>
+<updated>2026-11-27T14:47:28Z</updated>
+<published>2026-11-27T14:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Oct 9. First Nuclei template. Tier: Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-116207</id>
+<title type="text">CVE-2026-116207 · yeswiki · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116207"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-116207.yaml"/>
+<updated>2026-11-27T07:47:40Z</updated>
+<published>2026-11-27T07:47:40Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Oct 25. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-133335</id>
+<title type="text">CVE-2026-133335 · virtuemart.net VirtueMart extension for Joomla · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133335"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/e43371072b6d99f7071b7c397f9abd50ea829dd8"/>
+<updated>2026-11-27T07:47:40Z</updated>
+<published>2026-11-27T07:47:40Z</published>
+<category term="nuclei_template"/>
+<category term="exploited"/>
+<summary type="text">Nuclei template (http · critical) · added Nov 27: scannable at scale. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-25505</id>
+<title type="text">CVE-2026-25505 · maziggy bambuddy · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-25505"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-25505.yaml"/>
+<updated>2026-11-27T07:47:40Z</updated>
+<published>2026-11-27T07:47:40Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Feb 4. First Nuclei template. Tier: Likely next · score 66/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-48053</id>
+<title type="text">CVE-2026-48053 · learningequality kolibri · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-48053"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-48053.yaml"/>
+<updated>2026-11-27T07:47:40Z</updated>
+<published>2026-11-27T07:47:40Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Aug 17. First Nuclei template. Tier: Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-62314</id>
+<title type="text">CVE-2026-62314 · TecharoHQ anubis · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-62314"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-62314.yaml"/>
+<updated>2026-11-27T07:47:40Z</updated>
+<published>2026-11-27T07:47:40Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Jul 15. First Nuclei template. Tier: Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-73245</id>
+<title type="text">CVE-2026-73245 · kestra-io kestra · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-73245"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-73245.yaml"/>
+<updated>2026-11-27T07:47:40Z</updated>
+<published>2026-11-27T07:47:40Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Aug 11. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-107904:likely</id>
+<title type="text">CVE-2026-107904 · valorapps.com Easy File Uploader extension for Joomla · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-107904"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-115899:likely</id>
+<title type="text">CVE-2026-115899 · Cribl Stream · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-115899"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-125294:likely</id>
+<title type="text">CVE-2026-125294 · POSIMYTH Nexter Blocks Pro · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-125294"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-126054:likely</id>
+<title type="text">CVE-2026-126054 · Google Cloud Dataform · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126054"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-126708:likely</id>
+<title type="text">CVE-2026-126708 · Eclipse Foundation Eclipse Mosquitto · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126708"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-129713:likely</id>
+<title type="text">CVE-2026-129713 · Danfoss AK-SM8xxA · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129713"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-133949:likely</id>
+<title type="text">CVE-2026-133949 · Pip maintainers pip · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133949"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-134292:likely</id>
+<title type="text">CVE-2026-134292 · surrealdb · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-134292"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-14492:likely</id>
+<title type="text">CVE-2026-14492 · revmakx WP Duplicate – WordPress Migration Plugin · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-14492"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-99310:likely</id>
+<title type="text">CVE-2026-99310 · Linux · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-99310"/>
+<updated>2026-11-27T01:47:28Z</updated>
+<published>2026-11-27T01:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-130778:likely</id>
+<title type="text">CVE-2026-130778 · lxc incus · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-130778"/>
+<updated>2026-11-27T00:47:26Z</updated>
+<published>2026-11-27T00:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-133648:likely</id>
+<title type="text">CVE-2026-133648 · flowintel · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133648"/>
+<updated>2026-11-27T00:47:26Z</updated>
+<published>2026-11-27T00:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-14914:likely</id>
+<title type="text">CVE-2026-14914 · Tegsoft Yönetim ve Bilişim Hizmetleri Tic. Ltd. Şti. Tegsoft Contact Center · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-14914"/>
+<updated>2026-11-26T23:47:26Z</updated>
+<published>2026-11-26T23:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-69157:likely</id>
+<title type="text">CVE-2026-69157 · ontola atomic-server · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-69157"/>
+<updated>2026-11-26T23:47:26Z</updated>
+<published>2026-11-26T23:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-75521:likely</id>
+<title type="text">CVE-2026-75521 · mirendev runtime · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-75521"/>
+<updated>2026-11-26T23:47:26Z</updated>
+<published>2026-11-26T23:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-80188:likely</id>
+<title type="text">CVE-2026-80188 · BuddyBoss Addons · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-80188"/>
+<updated>2026-11-26T23:47:26Z</updated>
+<published>2026-11-26T23:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-100397:likely</id>
+<title type="text">CVE-2026-100397 · rucio · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-100397"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-110960:likely</id>
+<title type="text">CVE-2026-110960 · Auth Armor · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-110960"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-113425:likely</id>
+<title type="text">CVE-2026-113425 · F5 NGINX Plus · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-113425"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-116442:likely</id>
+<title type="text">CVE-2026-116442 · Dell PowerStore 500T · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116442"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-116561:likely</id>
+<title type="text">CVE-2026-116561 · Apache Software Foundation Apache Tomcat · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116561"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121385:likely</id>
+<title type="text">CVE-2026-121385 · User Registration Aide · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121385"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121810:likely</id>
+<title type="text">CVE-2026-121810 · F5 NGINX Plus · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121810"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-123634:likely</id>
+<title type="text">CVE-2026-123634 · F5 NGINX Plus · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123634"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 62/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-126967:likely</id>
+<title type="text">CVE-2026-126967 · SmarterTools SmarterMail · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-126967"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 52/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-129039:likely</id>
+<title type="text">CVE-2026-129039 · Tribulant Software Newsletters · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129039"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-129056:likely</id>
+<title type="text">CVE-2026-129056 · Paul Ryan Authorizer · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129056"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-129073:likely</id>
+<title type="text">CVE-2026-129073 · miniorange otp verification · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129073"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-129474:likely</id>
+<title type="text">CVE-2026-129474 · PHP Group PHP · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129474"/>
+<updated>2026-11-26T22:47:31Z</updated>
+<published>2026-11-26T22:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 2 PoC repos (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 64/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/metasploit_module:CVE-2026-123158</id>
+<title type="text">CVE-2026-123158 · OpenBSD OpenSSH · Metasploit module</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123158"/>
+<link rel="related" href="https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/ssh/openssh_musl_crypt_bypass.rb"/>
+<updated>2026-11-26T12:47:24Z</updated>
+<published>2026-11-26T12:47:24Z</published>
+<category term="metasploit_module"/>
+<category term="exploited"/>
+<summary type="text">Metasploit: exploit/linux/ssh/openssh_musl_crypt_bypass (excellent). Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-19422:likely</id>
+<title type="text">CVE-2026-19422 · Zohocorp DDI Central · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-19422"/>
+<updated>2026-11-26T12:47:24Z</updated>
+<published>2026-11-26T12:47:24Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 4.1% · 91st pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-75869:likely</id>
+<title type="text">CVE-2026-75869 · Zohocorp DDI Central · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-75869"/>
+<updated>2026-11-26T12:47:24Z</updated>
+<published>2026-11-26T12:47:24Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 24.3% · 98th pct. Tier: Watch → Likely next · score 57/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/vendor_exploited:CVE-2026-133342</id>
+<title type="text">CVE-2026-133342 · joomdonation.com Events Booking extension for Joomla · vendor reports exploitation</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133342"/>
+<link rel="related" href="https://www.cve.org/CVERecord?id=CVE-2026-133342"/>
+<updated>2026-11-26T11:47:28Z</updated>
+<published>2026-11-26T11:47:28Z</published>
+<category term="vendor_exploited"/>
+<category term="exploited"/>
+<summary type="text">New CVE, published Nov 26. Vendor CVSS: exploitation reported (E:A). Tier: Exploited · score 90/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-123903</id>
+<title type="text">CVE-2026-123903 · VMware vCenter Server · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123903"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-26T10:47:32Z</updated>
+<published>2026-11-26T10:47:32Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 26. Fast lane: network, CVSS 9.8, no SSVC yet, product in KEV. Tier: Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-134808:likely</id>
+<title type="text">CVE-2026-134808 · Gogs · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-134808"/>
+<updated>2026-11-26T10:47:32Z</updated>
+<published>2026-11-26T10:47:32Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 52/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-12122</id>
+<title type="text">CVE-2026-12122 · themeum Kirki – Freeform Page Builder, Website Builder &amp; Customizer · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-12122"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-12122.yaml"/>
+<updated>2026-11-26T07:47:31Z</updated>
+<published>2026-11-26T07:47:31Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Jul 2. First Nuclei template. Tier: Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-12507:likely</id>
+<title type="text">CVE-2026-12507 · Zohocorp AssetExplorer · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-12507"/>
+<updated>2026-11-26T07:47:31Z</updated>
+<published>2026-11-26T07:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 13.7% · 97th pct. Tier: Watch → Likely next · score 69/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-12591:likely</id>
+<title type="text">CVE-2026-12591 · Zohocorp M365 Manager Plus · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-12591"/>
+<updated>2026-11-26T07:47:31Z</updated>
+<published>2026-11-26T07:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 4.2% · 91st pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-128138:likely</id>
+<title type="text">CVE-2026-128138 · nltk · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-128138"/>
+<updated>2026-11-26T07:47:31Z</updated>
+<published>2026-11-26T07:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 2 PoC repos (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-120539:likely</id>
+<title type="text">CVE-2026-120539 · seventhqueen Restrictions for BuddyPress · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120539"/>
+<updated>2026-11-26T04:47:27Z</updated>
+<published>2026-11-26T04:47:27Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 2 PoC repos (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-133993:likely</id>
+<title type="text">CVE-2026-133993 · D-Link DIR-600L · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133993"/>
+<updated>2026-11-26T02:47:24Z</updated>
+<published>2026-11-26T02:47:24Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: public PoC · Nov 26; CISA SSVC: total technical impact; CISA SSVC: automatable. Tier: Watch → Likely next · score 60/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-132165:exploited</id>
+<title type="text">CVE-2026-132165 · Drupal core · now Exploited</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-132165"/>
+<updated>2026-11-26T01:24:10Z</updated>
+<published>2026-11-26T01:24:10Z</published>
+<category term="tier_up"/>
+<category term="exploited"/>
+<summary type="text">New CVE, published Nov 26. New evidence: CISA KEV · added Nov 24 · due Nov 27; 5 PoC repos (1 vetted), unverified, may be malware; Product in KEV (×5): Drupal Core. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-104099:likely</id>
+<title type="text">CVE-2026-104099 · fabiolb fabio · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-104099"/>
+<updated>2026-11-25T23:47:29Z</updated>
+<published>2026-11-25T23:47:29Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 3 PoC repos (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2023-25914</id>
+<title type="text">CVE-2023-25914 · Danfoss AK-SM800A · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2023-25914"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2023-25914"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Nov 28. Known ransomware use: Unknown. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2023-25915</id>
+<title type="text">CVE-2023-25915 · Danfoss AK-SM800A · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2023-25915"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2023-25915"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Nov 28. Known ransomware use: Unknown. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2025-41450</id>
+<title type="text">CVE-2025-41450 · Danfoss AK-SM 8xxA Series · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-41450"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2025-41450"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Dec 9. Known ransomware use: Unknown. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-133275</id>
+<title type="text">CVE-2026-133275 · Mitel MiCollab · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133275"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133275"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Nov 28. Known ransomware use: Unknown. Tier: Quiet → Exploited · score 90/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-133303</id>
+<title type="text">CVE-2026-133303 · Mitel MiCollab · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133303"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133303"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Nov 28. Known ransomware use: Unknown. Tier: Likely next → Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-133311</id>
+<title type="text">CVE-2026-133311 · Mitel MiCollab · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133311"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133311"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Dec 9. Known ransomware use: Unknown. Tier: Quiet → Exploited · score 90/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-133323</id>
+<title type="text">CVE-2026-133323 · Mitel MiCollab · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133323"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133323"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Nov 28. Known ransomware use: Unknown. Tier: Likely next → Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-133324</id>
+<title type="text">CVE-2026-133324 · Mitel MiCollab · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133324"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133324"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Nov 28. Known ransomware use: Unknown. Tier: Quiet → Exploited · score 90/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-133469</id>
+<title type="text">CVE-2026-133469 · vatesfr xen-orchestra · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133469"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133469"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Nov 28. Known ransomware use: Unknown. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-125812:likely</id>
+<title type="text">CVE-2026-125812 · WP Media WP Rocket · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-125812"/>
+<updated>2026-11-25T20:47:27Z</updated>
+<published>2026-11-25T20:47:27Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Quiet to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Quiet → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-107844</id>
+<title type="text">CVE-2026-107844 · contao · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-107844"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-107844.yaml"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Oct 9. First Nuclei template. Tier: Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-120735</id>
+<title type="text">CVE-2026-120735 · latepoint Appointment Booking Plugin – LatePoint | Calendar &amp; Scheduling for WordPress · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120735"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/3349319cec10329dba544a0cf9e71064d5317944"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · high) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-129014</id>
+<title type="text">CVE-2026-129014 · DynamiApps Frontend Admin by DynamiApps · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129014"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/cb5cdd0ab0b5ea31e04fb864a60011befab8469e"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-24124</id>
+<title type="text">CVE-2026-24124 · dragonflyoss dragonfly · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-24124"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-24124.yaml"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Jan 22. First Nuclei template. Tier: Likely next · score 54/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-3514</id>
+<title type="text">CVE-2026-3514 · prefecthq/prefect · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-3514"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-3514.yaml"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Jun 2. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-43644</id>
+<title type="text">CVE-2026-43644 · stefanprodan podinfo · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-43644"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-43644.yaml"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published May 14. First Nuclei template. Tier: Likely next · score 18/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-44478</id>
+<title type="text">CVE-2026-44478 · hoppscotch · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-44478"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-44478.yaml"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published May 13. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-52769</id>
+<title type="text">CVE-2026-52769 · yeswiki · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-52769"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-52769.yaml"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Sep 4. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-63644</id>
+<title type="text">CVE-2026-63644 · xddxdd bird-lg-go · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-63644"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/4f997bcb80318a517bc4fe7b64306a5b1a7425e2"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · high) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-71427</id>
+<title type="text">CVE-2026-71427 · wpengine wp-graphql-content-blocks · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-71427"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/298b4efafdcade513962a549a568f7271b63b5b8"/>
+<updated>2026-11-25T19:47:32Z</updated>
+<published>2026-11-25T19:47:32Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-103406</id>
+<title type="text">CVE-2026-103406 · Juniper Networks Session Smart Conductor · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-103406"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-103406"/>
+<updated>2026-11-25T16:47:33Z</updated>
+<published>2026-11-25T16:47:33Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 25, due Nov 28. Known ransomware use: Unknown. Tier: Watch → Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-133323</id>
+<title type="text">CVE-2026-133323 · Mitel MiCollab · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133323"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-25T16:47:33Z</updated>
+<published>2026-11-25T16:47:33Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">Fast lane: network, automatable, total impact, product in KEV. Tier: Watch → Likely next · score 64/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-25242</id>
+<title type="text">CVE-2026-25242 · gogs · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-25242"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-25242.yaml"/>
+<updated>2026-11-25T16:47:33Z</updated>
+<published>2026-11-25T16:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Feb 19. First Nuclei template. Tier: Likely next · score 42/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-32767</id>
+<title type="text">CVE-2026-32767 · siyuan-note siyuan · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-32767"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-32767.yaml"/>
+<updated>2026-11-25T16:47:33Z</updated>
+<published>2026-11-25T16:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Mar 20. First Nuclei template. Tier: Likely next · score 66/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-123214:likely</id>
+<title type="text">CVE-2026-123214 · Joomla! Project Joomla! CMS · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123214"/>
+<updated>2026-11-25T14:47:32Z</updated>
+<published>2026-11-25T14:47:32Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 1 PoC repo (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-134401:likely</id>
+<title type="text">CVE-2026-134401 · Google Chrome · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-134401"/>
+<updated>2026-11-25T14:47:32Z</updated>
+<published>2026-11-25T14:47:32Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: 2 PoC repos (1 vetted), unverified, may be malware. Tier: Watch → Likely next · score 64/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-104350:likely</id>
+<title type="text">CVE-2026-104350 · Adobe Campaign Classic · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-104350"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.2% · 68th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-104351:likely</id>
+<title type="text">CVE-2026-104351 · Adobe Campaign Classic · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-104351"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 66th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-105780:likely</id>
+<title type="text">CVE-2026-105780 · Adobe Campaign Classic · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-105780"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.0% · 62nd pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-105781:likely</id>
+<title type="text">CVE-2026-105781 · Adobe Campaign Classic · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-105781"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.0% · 63rd pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-124560:likely</id>
+<title type="text">CVE-2026-124560 · D-Link DIR-878 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-124560"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.5% · 74th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-48360:likely</id>
+<title type="text">CVE-2026-48360 · Adobe Connect Desktop App · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-48360"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.7% · 77th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-51912:likely</id>
+<title type="text">CVE-2026-51912 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-51912"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 64th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-92188:likely</id>
+<title type="text">CVE-2026-92188 · Quest Foglight for Databases · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-92188"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.0% · 63rd pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-92189:likely</id>
+<title type="text">CVE-2026-92189 · Quest Foglight for Databases · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-92189"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 63rd pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-92190:likely</id>
+<title type="text">CVE-2026-92190 · Quest Foglight for Databases · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-92190"/>
+<updated>2026-11-25T13:47:28Z</updated>
+<published>2026-11-25T13:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 64th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/metasploit_module:CVE-2026-119618</id>
+<title type="text">CVE-2026-119618 · Apache Software Foundation Apache HTTP Server · Metasploit module</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-119618"/>
+<link rel="related" href="https://github.com/rapid7/metasploit-framework/blob/master/modules/auxiliary/scanner/http/apache_mod_http2_cve_2026_119618.rb"/>
+<updated>2026-11-25T12:47:29Z</updated>
+<published>2026-11-25T12:47:29Z</published>
+<category term="metasploit_module"/>
+<category term="likely"/>
+<summary type="text">Metasploit: auxiliary/scanner/http/apache_mod_http2_cve_2026_119618 (normal). Tier: Likely next · score 66/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-136547:likely</id>
+<title type="text">CVE-2026-136547 · Tenda RX3 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136547"/>
+<updated>2026-11-25T12:47:29Z</updated>
+<published>2026-11-25T12:47:29Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: public PoC · Nov 25; CISA SSVC: total technical impact; CISA SSVC: automatable. Tier: Watch → Likely next · score 60/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-136552:likely</id>
+<title type="text">CVE-2026-136552 · Tenda RX3 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136552"/>
+<updated>2026-11-25T12:47:29Z</updated>
+<published>2026-11-25T12:47:29Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: public PoC · Nov 25; CISA SSVC: total technical impact. Tier: Watch → Likely next · score 52/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/catalog_listed:eu-kev:CVE-2025-34035</id>
+<title type="text">CVE-2025-34035 · EnGenius EnShare IoT Gigabit Cloud Service · listed as exploited by EU KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-34035"/>
+<link rel="related" href="https://euvd.enisa.europa.eu/vulnerability/EUVD-2025-18966"/>
+<updated>2026-11-25T11:47:31Z</updated>
+<published>2026-11-25T11:47:31Z</published>
+<category term="catalog_listed"/>
+<category term="exploited"/>
+<summary type="text">EU KEV lists it as exploited, added Nov 25. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/catalog_listed:eu-kev:CVE-2025-49931</id>
+<title type="text">CVE-2025-49931 · Crocoblock JetSearch · listed as exploited by EU KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-49931"/>
+<link rel="related" href="https://euvd.enisa.europa.eu/vulnerability/EUVD-2025-35527"/>
+<updated>2026-11-25T11:47:31Z</updated>
+<published>2026-11-25T11:47:31Z</published>
+<category term="catalog_listed"/>
+<category term="exploited"/>
+<summary type="text">EU KEV lists it as exploited, added Nov 25. Tier: Exploited · score 90/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/catalog_listed:eu-kev:CVE-2026-127057</id>
+<title type="text">CVE-2026-127057 · Danfoss AK-SC 355 · listed as exploited by EU KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-127057"/>
+<link rel="related" href="https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-131451"/>
+<updated>2026-11-25T11:47:31Z</updated>
+<published>2026-11-25T11:47:31Z</published>
+<category term="catalog_listed"/>
+<category term="exploited"/>
+<summary type="text">EU KEV lists it as exploited, added Nov 20. Tier: Watch → Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/catalog_listed:eu-kev:CVE-2026-3496</id>
+<title type="text">CVE-2026-3496 · Crocoblock JetBooking · listed as exploited by EU KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-3496"/>
+<link rel="related" href="https://euvd.enisa.europa.eu/vulnerability/EUVD-2026-11158"/>
+<updated>2026-11-25T11:47:31Z</updated>
+<published>2026-11-25T11:47:31Z</published>
+<category term="catalog_listed"/>
+<category term="exploited"/>
+<summary type="text">EU KEV lists it as exploited, added Nov 25. Tier: Exploited · score 90/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/vendor_exploited:CVE-2026-133335</id>
+<title type="text">CVE-2026-133335 · virtuemart.net VirtueMart extension for Joomla · vendor reports exploitation</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133335"/>
+<link rel="related" href="https://www.cve.org/CVERecord?id=CVE-2026-133335"/>
+<updated>2026-11-25T11:47:31Z</updated>
+<published>2026-11-25T11:47:31Z</published>
+<category term="vendor_exploited"/>
+<category term="exploited"/>
+<summary type="text">New CVE, published Nov 25. Vendor CVSS: exploitation reported (E:A). Tier: Exploited · score 94/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-27493</id>
+<title type="text">CVE-2026-27493 · n8n-io n8n · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-27493"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-27493.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Feb 25. First Nuclei template. Tier: Likely next · score 74/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-30975</id>
+<title type="text">CVE-2026-30975 · Sonarr · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-30975"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-30975.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Mar 25. First Nuclei template. Tier: Likely next · score 46/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-32248</id>
+<title type="text">CVE-2026-32248 · parse-community parse-server · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-32248"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-32248.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Mar 12. First Nuclei template. Tier: Likely next · score 66/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-32275</id>
+<title type="text">CVE-2026-32275 · Tautulli · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-32275"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-32275.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Mar 30. First Nuclei template. Tier: Likely next · score 54/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-32760</id>
+<title type="text">CVE-2026-32760 · filebrowser · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-32760"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-32760.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Mar 19. First Nuclei template. Tier: Likely next · score 66/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-33669</id>
+<title type="text">CVE-2026-33669 · siyuan-note siyuan · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-33669"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-33669.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Mar 26. First Nuclei template. Tier: Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-33670</id>
+<title type="text">CVE-2026-33670 · siyuan-note siyuan · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-33670"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-33670.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Mar 26. First Nuclei template. Tier: Likely next · score 66/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-61426</id>
+<title type="text">CVE-2026-61426 · MervinPraison PraisonAI · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-61426"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-61426.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Jul 11. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-77606</id>
+<title type="text">CVE-2026-77606 · SemanticMediaWiki · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-77606"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-77606.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Sep 18. First Nuclei template. Tier: Likely next · score 18/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-77616</id>
+<title type="text">CVE-2026-77616 · SemanticMediaWiki · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-77616"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-77616.yaml"/>
+<updated>2026-11-25T10:47:33Z</updated>
+<published>2026-11-25T10:47:33Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Sep 18. First Nuclei template. Tier: Likely next · score 18/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-110016</id>
+<title type="text">CVE-2026-110016 · Data Tables Generator by Supsystic · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-110016"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/9cf615c19c952be7b4411f230fae050beb5f339a"/>
+<updated>2026-11-25T08:47:27Z</updated>
+<published>2026-11-25T08:47:27Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 32/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-117566</id>
+<title type="text">CVE-2026-117566 · icret EasyImages2.0 · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-117566"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/814a0fcbb97cfa10308d14e2811823af4f265931"/>
+<updated>2026-11-25T08:47:27Z</updated>
+<published>2026-11-25T08:47:27Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-123698</id>
+<title type="text">CVE-2026-123698 · Security For WooCommerce · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123698"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/a1a2ef66a0ededc4ab3adf7a20b1151e5499ea2d"/>
+<updated>2026-11-25T08:47:27Z</updated>
+<published>2026-11-25T08:47:27Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 32/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-133469</id>
+<title type="text">CVE-2026-133469 · vatesfr xen-orchestra · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133469"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/640be65e984e876c7b71dfd1e131b831eab663e9"/>
+<updated>2026-11-25T08:47:27Z</updated>
+<published>2026-11-25T08:47:27Z</published>
+<category term="nuclei_template"/>
+<category term="exploited"/>
+<summary type="text">Nuclei template (http · critical) · added Nov 25: scannable at scale. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-77244</id>
+<title type="text">CVE-2026-77244 · sooperset mcp-atlassian · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-77244"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-77244.yaml"/>
+<updated>2026-11-25T08:47:27Z</updated>
+<published>2026-11-25T08:47:27Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Sep 22. First Nuclei template. Tier: Likely next · score 66/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2022-51031</id>
+<title type="text">CVE-2022-51031 · PMB Services PMB · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2022-51031"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/f77e0f8d19c8af784e2ba44ffee8913da9050427"/>
+<updated>2026-11-25T05:47:28Z</updated>
+<published>2026-11-25T05:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 18/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-114713</id>
+<title type="text">CVE-2026-114713 · UnrealIRCd · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-114713"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/3a46bf0ceab558b42b56e38f552923e0450c65e3"/>
+<updated>2026-11-25T05:47:28Z</updated>
+<published>2026-11-25T05:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="exploited"/>
+<summary type="text">Nuclei template (network · high) · added Nov 25: scannable at scale. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-120413</id>
+<title type="text">CVE-2026-120413 · Yoast SEO · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120413"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/dbf1f66c82a1879fd932efae3d89492272c335a1"/>
+<updated>2026-11-25T05:47:28Z</updated>
+<published>2026-11-25T05:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · low) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 45/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-124426</id>
+<title type="text">CVE-2026-124426 · craftcms cms · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-124426"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/83cf30ea53aff197379c46ee44d305d0d1c24864"/>
+<updated>2026-11-25T05:47:28Z</updated>
+<published>2026-11-25T05:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-134748</id>
+<title type="text">CVE-2026-134748 · MemberPress Members · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-134748"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/e99be04501a56e27e8469ee4c45283bff4eca4d3"/>
+<updated>2026-11-25T05:47:28Z</updated>
+<published>2026-11-25T05:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 25: scannable at scale. Tier: Quiet → Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-53754</id>
+<title type="text">CVE-2026-53754 · unclecode crawl4ai · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-53754"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-53754.yaml"/>
+<updated>2026-11-25T05:47:28Z</updated>
+<published>2026-11-25T05:47:28Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Jun 23. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-59415:likely</id>
+<title type="text">CVE-2026-59415 · Spring AI · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-59415"/>
+<updated>2026-11-25T05:47:28Z</updated>
+<published>2026-11-25T05:47:28Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: total technical impact; CISA SSVC: automatable. Tier: Watch → Likely next · score 56/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-134639</id>
+<title type="text">CVE-2026-134639 · webmin · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-134639"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-25T03:47:40Z</updated>
+<published>2026-11-25T03:47:40Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 25. Fast lane: network, CVSS 9.2, no SSVC yet, product in KEV. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-113579:likely</id>
+<title type="text">CVE-2026-113579 · Adobe Experience Manager as a Cloud Service · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-113579"/>
+<updated>2026-11-24T22:47:29Z</updated>
+<published>2026-11-24T22:47:29Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.3% · 70th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-113580:likely</id>
+<title type="text">CVE-2026-113580 · Adobe Experience Manager as a Cloud Service · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-113580"/>
+<updated>2026-11-24T22:47:29Z</updated>
+<published>2026-11-24T22:47:29Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.3% · 70th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-114371:likely</id>
+<title type="text">CVE-2026-114371 · Adobe Experience Manager as a Cloud Service · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-114371"/>
+<updated>2026-11-24T22:47:29Z</updated>
+<published>2026-11-24T22:47:29Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 65th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-119017:likely</id>
+<title type="text">CVE-2026-119017 · Adobe Experience Manager 6.5 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-119017"/>
+<updated>2026-11-24T22:47:29Z</updated>
+<published>2026-11-24T22:47:29Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 65th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121349:likely</id>
+<title type="text">CVE-2026-121349 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121349"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.3% · 70th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121351:likely</id>
+<title type="text">CVE-2026-121351 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121351"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.2% · 67th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121353:likely</id>
+<title type="text">CVE-2026-121353 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121353"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 66th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121354:likely</id>
+<title type="text">CVE-2026-121354 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121354"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 67th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121887:likely</id>
+<title type="text">CVE-2026-121887 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121887"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.2% · 69th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121892:likely</id>
+<title type="text">CVE-2026-121892 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121892"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.2% · 69th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121894:likely</id>
+<title type="text">CVE-2026-121894 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121894"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 65th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121896:likely</id>
+<title type="text">CVE-2026-121896 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121896"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 65th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121898:likely</id>
+<title type="text">CVE-2026-121898 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121898"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 65th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121902:likely</id>
+<title type="text">CVE-2026-121902 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121902"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.0% · 64th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121906:likely</id>
+<title type="text">CVE-2026-121906 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121906"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 67th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-121908:likely</id>
+<title type="text">CVE-2026-121908 · Adobe Connect · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-121908"/>
+<updated>2026-11-24T21:47:26Z</updated>
+<published>2026-11-24T21:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 65th pct. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-118286:likely</id>
+<title type="text">CVE-2026-118286 · Microsoft Azure Site Recovery · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-118286"/>
+<updated>2026-11-24T20:47:26Z</updated>
+<published>2026-11-24T20:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. Score 47 to 50. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-50691:likely</id>
+<title type="text">CVE-2026-50691 · Microsoft 365 Copilot · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-50691"/>
+<updated>2026-11-24T20:47:26Z</updated>
+<published>2026-11-24T20:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. Score 47 to 50. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-62841:likely</id>
+<title type="text">CVE-2026-62841 · Microsoft Azure Event Grid System · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-62841"/>
+<updated>2026-11-24T20:47:26Z</updated>
+<published>2026-11-24T20:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. Score 47 to 50. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-69899:likely</id>
+<title type="text">CVE-2026-69899 · Microsoft Azure DevTest Labs · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-69899"/>
+<updated>2026-11-24T20:47:26Z</updated>
+<published>2026-11-24T20:47:26Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. Score 47 to 50. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-131914</id>
+<title type="text">CVE-2026-131914 · Idunno AntiCsrf · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-131914"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-131914"/>
+<updated>2026-11-24T18:47:31Z</updated>
+<published>2026-11-24T18:47:31Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 24, due Nov 27. Known ransomware use: Unknown. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-132224</id>
+<title type="text">CVE-2026-132224 · Optimizely Web Experimentation · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-132224"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-132224"/>
+<updated>2026-11-24T18:47:31Z</updated>
+<published>2026-11-24T18:47:31Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 24, due Nov 27. Known ransomware use: Unknown. Tier: Quiet → Exploited · score 90/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-112967:likely</id>
+<title type="text">CVE-2026-112967 · Microsoft Windows 10 Version 1809 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-112967"/>
+<updated>2026-11-24T18:47:31Z</updated>
+<published>2026-11-24T18:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.4% · 73rd pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-116928:likely</id>
+<title type="text">CVE-2026-116928 · Microsoft Windows 10 Version 1607 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116928"/>
+<updated>2026-11-24T18:47:31Z</updated>
+<published>2026-11-24T18:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.5% · 75th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-116945:likely</id>
+<title type="text">CVE-2026-116945 · Microsoft SQL Server 2017 (GDR) · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116945"/>
+<updated>2026-11-24T18:47:31Z</updated>
+<published>2026-11-24T18:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.2% · 68th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-66801:likely</id>
+<title type="text">CVE-2026-66801 · Microsoft GDK · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-66801"/>
+<updated>2026-11-24T18:47:31Z</updated>
+<published>2026-11-24T18:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 67th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-85844:likely</id>
+<title type="text">CVE-2026-85844 · Microsoft Windows 10 Version 1607 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-85844"/>
+<updated>2026-11-24T18:47:31Z</updated>
+<published>2026-11-24T18:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 66th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-88218:likely</id>
+<title type="text">CVE-2026-88218 · Microsoft Windows 10 Version 1607 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-88218"/>
+<updated>2026-11-24T18:47:31Z</updated>
+<published>2026-11-24T18:47:31Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: EPSS 1.1% · 66th pct. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-135789:likely</id>
+<title type="text">CVE-2026-135789 · D-Link R95 · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-135789"/>
+<updated>2026-11-24T17:40:32Z</updated>
+<published>2026-11-24T17:40:32Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: public PoC · Nov 24; CISA SSVC: total technical impact. Tier: Watch → Likely next · score 52/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-123167</id>
+<title type="text">CVE-2026-123167 · SolarWinds Serv-U · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123167"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T16:47:45Z</updated>
+<published>2026-11-24T16:47:45Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, on an edge device. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-123168</id>
+<title type="text">CVE-2026-123168 · SolarWinds Serv-U · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123168"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T16:47:45Z</updated>
+<published>2026-11-24T16:47:45Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, on an edge device. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-82315</id>
+<title type="text">CVE-2026-82315 · SolarWinds Serv-U · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-82315"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T16:47:45Z</updated>
+<published>2026-11-24T16:47:45Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, on an edge device. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-82316</id>
+<title type="text">CVE-2026-82316 · SolarWinds Serv-U · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-82316"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T16:47:45Z</updated>
+<published>2026-11-24T16:47:45Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, on an edge device. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-82319</id>
+<title type="text">CVE-2026-82319 · SolarWinds Serv-U · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-82319"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T16:47:45Z</updated>
+<published>2026-11-24T16:47:45Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, on an edge device. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-82320</id>
+<title type="text">CVE-2026-82320 · SolarWinds Serv-U · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-82320"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T16:47:45Z</updated>
+<published>2026-11-24T16:47:45Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, on an edge device. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-82321</id>
+<title type="text">CVE-2026-82321 · SolarWinds Serv-U · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-82321"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T16:47:45Z</updated>
+<published>2026-11-24T16:47:45Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, on an edge device. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-82322</id>
+<title type="text">CVE-2026-82322 · SolarWinds Serv-U · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-82322"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T16:47:45Z</updated>
+<published>2026-11-24T16:47:45Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, on an edge device. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/fast_lane:CVE-2026-124286</id>
+<title type="text">CVE-2026-124286 · Erlang OTP · fast lane</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-124286"/>
+<link rel="related" href="https://github.com/markusweldon/cverdict/blob/main/docs/SCORING.md#fast-lane"/>
+<updated>2026-11-24T15:47:33Z</updated>
+<published>2026-11-24T15:47:33Z</published>
+<category term="fast_lane"/>
+<category term="likely"/>
+<summary type="text">New CVE, published Nov 24. Fast lane: network, CVSS 9.1, no SSVC yet, product in KEV. Tier: Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-113824:likely</id>
+<title type="text">CVE-2026-113824 · Microsoft Clarity · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-113824"/>
+<updated>2026-11-24T15:47:33Z</updated>
+<published>2026-11-24T15:47:33Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: total technical impact; CISA SSVC: automatable. Tier: Watch → Likely next · score 60/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-118285:likely</id>
+<title type="text">CVE-2026-118285 · Microsoft Azure Machine Learning · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-118285"/>
+<updated>2026-11-24T15:47:33Z</updated>
+<published>2026-11-24T15:47:33Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. New evidence: CISA SSVC: total technical impact. Tier: Watch → Likely next · score 52/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/vendor_exploited:CVE-2026-129514</id>
+<title type="text">CVE-2026-129514 · hexpm · vendor reports exploitation</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129514"/>
+<link rel="related" href="https://www.cve.org/CVERecord?id=CVE-2026-129514"/>
+<updated>2026-11-24T14:47:28Z</updated>
+<published>2026-11-24T14:47:28Z</published>
+<category term="vendor_exploited"/>
+<category term="exploited"/>
+<summary type="text">New CVE, published Nov 24. Vendor CVSS: exploitation reported (E:A). Tier: Exploited · score 94/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-104129</id>
+<title type="text">CVE-2026-104129 · prest · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-104129"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/56944eb32150e26c3a1eeee16ce7f31c75831931"/>
+<updated>2026-11-24T11:47:31Z</updated>
+<published>2026-11-24T11:47:31Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · high) · added Nov 24: scannable at scale. Tier: Quiet → Likely next · score 46/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-125444</id>
+<title type="text">CVE-2026-125444 · King Addons for Elementor · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-125444"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/ed8e06ec44f937fd4a84233e4d8a3163f8853894"/>
+<updated>2026-11-24T11:47:31Z</updated>
+<published>2026-11-24T11:47:31Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (http · medium) · added Nov 24: scannable at scale. Tier: Quiet → Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-127027</id>
+<title type="text">CVE-2026-127027 · Analogic Poste.io · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-127027"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/commit/d59a5556ed01ffb61ddfbd0c5c76aea10a468b0e"/>
+<updated>2026-11-24T11:47:31Z</updated>
+<published>2026-11-24T11:47:31Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Nuclei template (javascript · critical) · added Nov 24: scannable at scale. Tier: Watch → Likely next · score 58/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-25123</id>
+<title type="text">CVE-2026-25123 · homarr-labs homarr · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-25123"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-25123.yaml"/>
+<updated>2026-11-24T11:47:31Z</updated>
+<published>2026-11-24T11:47:31Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Feb 6. First Nuclei template. Tier: Likely next · score 26/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-35672</id>
+<title type="text">CVE-2026-35672 · thorsten phpMyFAQ · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-35672"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-35672.yaml"/>
+<updated>2026-11-24T11:47:31Z</updated>
+<published>2026-11-24T11:47:31Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published May 28. First Nuclei template. Tier: Likely next · score 40/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/nuclei_template:CVE-2026-41327</id>
+<title type="text">CVE-2026-41327 · dgraph-io dgraph · Nuclei template</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-41327"/>
+<link rel="related" href="https://github.com/projectdiscovery/nuclei-templates/blob/main/http/cves/2026/CVE-2026-41327.yaml"/>
+<updated>2026-11-24T11:47:31Z</updated>
+<published>2026-11-24T11:47:31Z</published>
+<category term="nuclei_template"/>
+<category term="likely"/>
+<summary type="text">Published Apr 24. First Nuclei template. Tier: Likely next · score 52/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-110513:likely</id>
+<title type="text">CVE-2026-110513 · Apache Software Foundation Apache Iggy · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-110513"/>
+<updated>2026-11-24T02:47:24Z</updated>
+<published>2026-11-24T02:47:24Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. Score 47 to 50. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-116449:likely</id>
+<title type="text">CVE-2026-116449 · Dell PowerStore 500T · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116449"/>
+<updated>2026-11-24T02:47:24Z</updated>
+<published>2026-11-24T02:47:24Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. Score 47 to 50. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/tier_up:CVE-2026-128981:likely</id>
+<title type="text">CVE-2026-128981 · Apache Software Foundation Apache SeaTunnel Web · now Likely next</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-128981"/>
+<updated>2026-11-24T02:47:24Z</updated>
+<published>2026-11-24T02:47:24Z</published>
+<category term="tier_up"/>
+<category term="likely"/>
+<summary type="text">Rose from Watch to Likely next. Score 47 to 50. Tier: Watch → Likely next · score 50/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-133968</id>
+<title type="text">CVE-2026-133968 · Project-MONIA MONAI Label · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133968"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133968"/>
+<updated>2026-11-23T00:00:00Z</updated>
+<published>2026-11-23T00:00:00Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 23, due Nov 26. Known ransomware use: Unknown. Tier: Exploited · score 100/100.</summary>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/event/kev_added:CVE-2026-134624</id>
+<title type="text">CVE-2026-134624 · N-able MailAssure · added to CISA KEV</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-134624"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-134624"/>
+<updated>2026-11-23T00:00:00Z</updated>
+<published>2026-11-23T00:00:00Z</published>
+<category term="kev_added"/>
+<category term="exploited"/>
+<summary type="text">Added Nov 23, due Nov 26. Known ransomware use: Unknown. Tier: Exploited · score 100/100.</summary>
+</entry>
+</feed>

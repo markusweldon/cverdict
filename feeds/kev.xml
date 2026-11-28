@@ -1,0 +1,610 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<id>https://cverdict-psi.vercel.app/feeds/kev.xml</id>
+<title type="text">CVErdict · CISA KEV additions</title>
+<subtitle type="text">CISA Known Exploited Vulnerabilities added in the last 30 days.</subtitle>
+<link rel="self" type="application/atom+xml" href="https://cverdict.dev/feeds/kev.xml"/>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/kev"/>
+<updated>2026-11-27T00:00:00.000Z</updated>
+<author><name>CVErdict</name><uri>https://github.com/markusweldon/cverdict</uri></author>
+<generator uri="https://github.com/markusweldon/cverdict">cverdict-pipeline</generator>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-120705</id>
+<title type="text">CVE-2026-120705 · OSGeo GeoServer · due Nov 30</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-120705"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-120705"/>
+<updated>2026-11-27T00:00:00.000Z</updated>
+<published>2026-11-27T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">OSGeo GeoServer XML Injection Vulnerability. Added Nov 27, due Nov 30. Known ransomware use: Unknown.</summary>
+<content type="text">OsGeo GeoServer contains an XML injection vulnerability that allows an unauthenticated remote attacker to cause the server to read local text files accessible to the GeoServer process or fetch attacker-specified HTTP or HTTPS URLs via a crafted ID parameter in the WFS 2.0 GetFeatureById stored query. This vulnerability can be chained with CVE-2026-129244, CVE-2026-129243, CVE-2026-129245, and CVE-2026-129242 to achieve unauthenticated remote code execution on an affected GeoServer instance.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-129243</id>
+<title type="text">CVE-2026-129243 · OSGeo GeoServer · due Nov 30</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129243"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-129243"/>
+<updated>2026-11-27T00:00:00.000Z</updated>
+<published>2026-11-27T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">OSGeo GeoServer Incorrect Authorization Vulnerability. Added Nov 27, due Nov 30. Known ransomware use: Unknown.</summary>
+<content type="text">GeoServer contains an incorrect authorization vulnerability that allows an unauthenticated remote attacker to bypass service-level role checks and invoke operations protected solely by those checks via a request with a prefixed service parameter. This vulnerability can be chained with CVE-2026-129244, CVE-2026-120705, CVE-2026-129245, and CVE-2026-129242 to achieve unauthenticated remote code execution on an affected GeoServer instance.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-136716</id>
+<title type="text">CVE-2026-136716 · Drupal Core · due Nov 30</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-136716"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-136716"/>
+<updated>2026-11-27T00:00:00.000Z</updated>
+<published>2026-11-27T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Drupal Core Improper Check for Unusual or Exceptional Conditions Vulnerability. Added Nov 27, due Nov 30. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Drupal Core contains an improper check for unusual or exceptional conditions vulnerability that allows an unauthenticated remote attacker to take over a site via the exposed Drupal installer when the site is in one of the affected unusual or incomplete installation states.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2023-25914</id>
+<title type="text">CVE-2023-25914 · Danfoss AK-SM 800A Series · due Nov 28</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2023-25914"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2023-25914"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Danfoss AK-SM 800A Series Path Traversal Vulnerability. Added Nov 25, due Nov 28. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Danfoss AK-SM 800A Series contains a path traversal vulnerability that could allow an attacker to access and read underlying server system files via the XML interface.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2023-25915</id>
+<title type="text">CVE-2023-25915 · Danfoss AK-SM 800A Series · due Nov 28</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2023-25915"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2023-25915"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Danfoss AK-SM 800A Series Improper Input Validation Vulnerability. Added Nov 25, due Nov 28. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Danfoss AK-SM 800A Series contains an improper input validation vulnerability that could allow a remote attacker to run arbitrary commands on the affected system.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2025-41450</id>
+<title type="text">CVE-2025-41450 · Danfoss AK-SM 800A Series · due Dec 9</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-41450"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2025-41450"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Danfoss AK-SM 800A Series Improper Authentication Vulnerability. Added Nov 25, due Dec 9. Known ransomware use: Unknown. CVErdict score 100/100.</summary>
+<content type="text">Danfoss AK-SM 800A Series contains an improper authentication vulnerability that could allow an attacker to generate a web report exposing sensitive information, including internal IP addresses, usernames, and store names.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-103406</id>
+<title type="text">CVE-2026-103406 · Hewlett Packard Enterprise (HPE) Juniper Session Smart Conductor and Session Smart Router · due Nov 28</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-103406"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-103406"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Hewlett Packard Enterprise (HPE) Juniper Session Smart Conductor and Session Smart Router OS Command Injection Vulnerability. Added Nov 25, due Nov 28. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Hewlett Packard Enterprise (HPE) Juniper Session Smart Conductor and Session Smart Router contain an OS command injection vulnerability that could allow a remote attacker to execute arbitrary commands as root via a specially crafted salt minion ID.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-133275</id>
+<title type="text">CVE-2026-133275 · Mitel MiCollab · due Nov 28</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133275"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133275"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Mitel MiCollab Unrestricted Upload of File with Dangerous Type Vulnerability. Added Nov 25, due Nov 28. Known ransomware use: Unknown. CVErdict score 90/100.</summary>
+<content type="text">Mitel MiCollab contains an unrestricted upload of file with dangerous type vulnerability in the Audio, Web and Video Conferencing (AWV) component due to insufficient file type validation that could allow an unauthenticated attacker to upload arbitrary files.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-133303</id>
+<title type="text">CVE-2026-133303 · Mitel MiCollab · due Nov 28</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133303"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133303"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Mitel MiCollab XML Injection Vulnerability. Added Nov 25, due Nov 28. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Mitel MiCollab contains an XML injection vulnerability in its Audio, Web, and Video Conferencing (AWV) component that could allow an unauthenticated attacker to execute arbitrary commands using pre-staged malicious content.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-133311</id>
+<title type="text">CVE-2026-133311 · Mitel MiCollab · due Dec 9</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133311"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133311"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Mitel MiCollab Weak Authentication Vulnerability. Added Nov 25, due Dec 9. Known ransomware use: Unknown. CVErdict score 90/100.</summary>
+<content type="text">Mitel MiCollab contains a weak authentication vulnerability in the Audio, Web and Video Conferencing (AWV) component that could allow an unauthenticated attacker to access sensitive information using a specific system-generated random identifier or pre-staged content.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-133323</id>
+<title type="text">CVE-2026-133323 · Mitel MiCollab · due Nov 28</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133323"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133323"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Mitel MiCollab OS Command Injection Vulnerability. Added Nov 25, due Nov 28. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Mitel MiCollab contains an improper neutralization of special elements used in an OS command (OS command injection) vulnerability in its Audio, Web, and Video Conferencing (AWV) component that could allow an unauthenticated attacker to execute arbitrary system commands.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-133324</id>
+<title type="text">CVE-2026-133324 · Mitel MiCollab · due Nov 28</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133324"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133324"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Mitel MiCollab Not Failing Securely Vulnerability. Added Nov 25, due Nov 28. Known ransomware use: Unknown. CVErdict score 90/100.</summary>
+<content type="text">Mitel MiCollab contains a not failing securely vulnerability in the Audio, Web and Video Conferencing (AWV) component that could allow an unauthenticated attacker to bypass authentication controls and perform unauthorized actions.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-133469</id>
+<title type="text">CVE-2026-133469 · Vates Xen Orchestra · due Nov 28</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133469"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133469"/>
+<updated>2026-11-25T00:00:00.000Z</updated>
+<published>2026-11-25T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Vates Xen Orchestra Improper Validation of Specified Type of Input Vulnerability. Added Nov 25, due Nov 28. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Vates Xen Orchestra contains an improper validation of specified type of input vulnerability that could allow an unauthenticated attacker to bypass authentication and perform actions with administrative privileges via a specially crafted authentication token containing an empty JSON object.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-131914</id>
+<title type="text">CVE-2026-131914 · Idunno AntiCsrf · due Nov 27</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-131914"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-131914"/>
+<updated>2026-11-24T00:00:00.000Z</updated>
+<published>2026-11-24T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Idunno AntiCsrf Deserialization of Untrusted Data Vulnerability. Added Nov 24, due Nov 27. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Idunno AntiCsrf contains a deserialization of untrusted data vulnerability that allows an unauthenticated remote attacker to execute arbitrary code via object injection. The impacted product(s) could be end-of-life (EoL) and/or end-of-service (EoS). Users are advised to discontinue use and/or transition to a supported version.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-132165</id>
+<title type="text">CVE-2026-132165 · Drupal Core · due Nov 27</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-132165"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-132165"/>
+<updated>2026-11-24T00:00:00.000Z</updated>
+<published>2026-11-24T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Drupal Core Remote Code Execution Vulnerability. Added Nov 24, due Nov 27. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Drupal Core contains a not failing securely vulnerability that could allow an unauthenticated attacker to take over an existing site or execute arbitrary code via the Drupal installer. Under specific conditions, the attacker can use install.php to attempt to reinstall Drupal on the site.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-132224</id>
+<title type="text">CVE-2026-132224 · Optimizely Web Experimentation · due Nov 27</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-132224"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-132224"/>
+<updated>2026-11-24T00:00:00.000Z</updated>
+<published>2026-11-24T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Optimizely Web Experimentation External Control of Critical State Data Vulnerability. Added Nov 24, due Nov 27. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 90/100.</summary>
+<content type="text">Optimizely Web Experimentation contains an external control of critical state data vulnerability in its account signup flow that could allow an attacker to impersonate existing customer users and modify Project JavaScript. Successful exploitation can result in attacker-controlled JavaScript being distributed through Optimizely-hosted assets and executed in browsers visiting affected customer websites.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-133968</id>
+<title type="text">CVE-2026-133968 · Project MONAI MONAI Label · due Nov 26</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-133968"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-133968"/>
+<updated>2026-11-23T00:00:00.000Z</updated>
+<published>2026-11-23T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Project MONAI MONAI Label Path Traversal Vulnerability. Added Nov 23, due Nov 26. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Project MONAI MONAI Label contains a path traversal vulnerability that allows an unauthenticated remote attacker to write arbitrary files outside the intended datastore directory, potentially resulting in remote code execution.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-134624</id>
+<title type="text">CVE-2026-134624 · N-able MailAssure · due Nov 26</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-134624"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-134624"/>
+<updated>2026-11-23T00:00:00.000Z</updated>
+<published>2026-11-23T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">N-able MailAssure (SpamExperts) Server-Side Request Forgery (SSRF) Vulnerability. Added Nov 23, due Nov 26. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">N-able MailAssure (SpamExperts) contains a server-side request forgery vulnerability in the LDAP synchronization connection check that allows an authenticated API user to connect to arbitrary internal hosts and ports, determine which are reachable, and send crafted data to internal services.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2025-42884</id>
+<title type="text">CVE-2025-42884 · SAP NetWeaver · due Nov 23</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2025-42884"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2025-42884"/>
+<updated>2026-11-20T00:00:00.000Z</updated>
+<published>2026-11-20T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">SAP NetWeaver Improper Neutralization of Special Elements in Data Query Logic Vulnerability. Added Nov 20, due Nov 23. Known ransomware use: Unknown. CVErdict score 100/100.</summary>
+<content type="text">SAP NetWeaver Enterprise Portal contains an improper neutralization of special elements in data query logic vulnerability that allows an unauthenticated attacker to disclose or modify server information via injected JNDI environment properties or a URL used during JNDI lookup operations.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-123890</id>
+<title type="text">CVE-2026-123890 · Broadcom VMware vCenter · due Nov 23</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123890"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-123890"/>
+<updated>2026-11-20T00:00:00.000Z</updated>
+<published>2026-11-20T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">VMWare vCenter Authentication Bypass Using an Alternate Path or Channel Vulnerability. Added Nov 20, due Nov 23. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Broadcom VMware vCenter contains an authentication bypass using an alternate path or channel vulnerability in the VMware Directory Service that allows an unauthenticated attacker with network access to vCenter to bypass authentication and gain unauthorized access to the system.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-129448</id>
+<title type="text">CVE-2026-129448 · Apache Roller · due Nov 23</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-129448"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-129448"/>
+<updated>2026-11-20T00:00:00.000Z</updated>
+<published>2026-11-20T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Apache Roller Deserialization of Untrusted Data Vulnerability. Added Nov 20, due Nov 23. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Apache Roller contains a deserialization of untrusted data vulnerability that allows an unauthenticated remote attacker to execute arbitrary code via the XML-RPC endpoint, which accepts and deserializes vendor extension types before authentication. This CVE covers the same underlying vulnerability as CVE-2026-82384 but applies to a broader range of affected versions.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-76466</id>
+<title type="text">CVE-2026-76466 · Cisco Expressway Series · due Nov 23</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-76466"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-76466"/>
+<updated>2026-11-20T00:00:00.000Z</updated>
+<published>2026-11-20T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Cisco Expressway Series Use of Hard-coded Credentials Vulnerability. Added Nov 20, due Nov 23. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Cisco Expressway Series contains a use of hard-coded credentials vulnerability that allows an unauthenticated, remote attacker with persistent cookies and network access to execute commands as root on a clustered device via the database service.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2024-10441</id>
+<title type="text">CVE-2024-10441 · Synology DiskStation Manager (DSM) · due Nov 21</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2024-10441"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2024-10441"/>
+<updated>2026-11-18T00:00:00.000Z</updated>
+<published>2026-11-18T00:00:00.000Z</published>
+<category term="kev"/>
+<category term="ransomware"/>
+<summary type="text">Synology DiskStation Manager (DSM) Improper Encoding or Escaping of Output Vulnerability. Added Nov 18, due Nov 21. Known ransomware use: Known. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Synology DSM contains an improper encoding or escaping of output vulnerability in the system plugin daemon in Synology BeeStation OS (BSM) that could allow a remote attacker to execute arbitrary code via unspecified vectors.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-40217</id>
+<title type="text">CVE-2026-40217 · BerriAI LiteLLM · due Dec 2</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-40217"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-40217"/>
+<updated>2026-11-18T00:00:00.000Z</updated>
+<published>2026-11-18T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">BerriAI LiteLLM Unprotected Alternate Channel Vulnerability. Added Nov 18, due Dec 2. Known ransomware use: Unknown. CVErdict score 100/100.</summary>
+<content type="text">BerriAI LiteLLM contains an unprotected alternate channel vulnerability that could allow remote attackers to execute arbitrary code via bytecode rewriting at the /guardrails/test_custom_code URI.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-90436</id>
+<title type="text">CVE-2026-90436 · Apache Axis · due Nov 21</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-90436"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-90436"/>
+<updated>2026-11-18T00:00:00.000Z</updated>
+<published>2026-11-18T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Apache Axis Unsafe Reflection Vulnerability. Added Nov 18, due Nov 21. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Apache Axis contains an unsafe reflection vulnerability that could allow an unauthenticated remote attacker to execute arbitrary code via a crafted SOAP fault message that causes Axis to load and instantiate an attacker-specified class when a suitable class is available on the application classpath. The impacted product(s) could be end-of-life (EoL) and/or end-of-service (EoS). Users are advised to discontinue use and/or transition to a supported version.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-90817</id>
+<title type="text">CVE-2026-90817 · Vanderbilt University Research Electronic Data Capture (REDCap) · due Nov 21</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-90817"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-90817"/>
+<updated>2026-11-18T00:00:00.000Z</updated>
+<published>2026-11-18T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Vanderbilt University Research Electronic Data Capture (REDCap) Code Injection Vulnerability. Added Nov 18, due Nov 21. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Vanderbilt University Research Electronic Data Capture (REDCap) contains a code injection vulnerability which could allow an unauthenticated attacker to execute arbitrary code on the server. An attacker could exploit this via crafted HTTP requests that access an unintended controller route from a public survey context and supply a crafted file-path or stream parameter during data import processing. Exploitation requires knowledge of a valid public survey hash.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-115731</id>
+<title type="text">CVE-2026-115731 · Perforce Puppet Enterprise · due Dec 1</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-115731"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-115731"/>
+<updated>2026-11-17T00:00:00.000Z</updated>
+<published>2026-11-17T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Perforce Puppet Enterprise Deserialization of Untrusted Data Vulnerability. Added Nov 17, due Dec 1. Known ransomware use: Unknown. CVErdict score 100/100.</summary>
+<content type="text">Perforce Puppet Enterprise contains a deserialization of untrusted data vulnerability in Puppet’s report-processing code that allows a client with any CA-signed agent certificate to execute arbitrary code on the Puppet Server as the service user by submitting a report containing a crafted rich-data type through a PUT request. If the certificate authority automatically signs requests without strong verification, an unauthenticated network attacker can obtain a valid certificate and exploit the vulnerability.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-114713</id>
+<title type="text">CVE-2026-114713 · UnrealIRCd UnrealIRCd · due Nov 16</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-114713"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-114713"/>
+<updated>2026-11-13T00:00:00.000Z</updated>
+<published>2026-11-13T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">UnrealIRCd Improper Neutralization of Delimiters Vulnerability. Added Nov 13, due Nov 16. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">UnrealIRCd UnrealIRCd contains an improper neutralization of delimiters vulnerability that allows any user on a network with two or more linked servers to inject server-to-server commands that are executed with server authority.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-123039</id>
+<title type="text">CVE-2026-123039 · Check Point Multiple Products · due Nov 16</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123039"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-123039"/>
+<updated>2026-11-13T00:00:00.000Z</updated>
+<published>2026-11-13T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Check Point Multiple Products Incorrect Permission Assignment for Critical Resource Vulnerability. Added Nov 13, due Nov 16. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Check Point Firewall, Multi-Domain Security Management Server, Scalable Platforms, Security Gateway, and Security Management Server contain an incorrect permissions assignment for critical resources vulnerability when the Gaia OS DynamicCLI daemon runs as root and listens on a world-writable local socket without authenticating connecting processes. An authenticated local user can send a command to the socket and have it executed as root.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-111560</id>
+<title type="text">CVE-2026-111560 · Barracuda Networks Multiple Products · due Nov 13</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-111560"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-111560"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Barracuda Networks Multiple Products OS Command Injection Vulnerability. Added Nov 10, due Nov 13. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Barracuda Networks Email Security Gateway (ESG), Load Balancer, Application Delivery Controller (ADC), Message Archiver (BMA), WAF Control Center (WCC), Web Application Firewall (WAF), and Web Security Gateway (WSG) contain an OS command injection vulnerability. This vulnerability could allow an authenticated administrator to inject OS commands that execute with root privileges when the crafted timezone value is subsequently processed. This vulnerability can be chained with CVE-2026-116606
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-111793</id>
+<title type="text">CVE-2026-111793 · Openwave Messaging Limited Webtop Media Transcoder · due Nov 24</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-111793"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-111793"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Openwave Messaging Limited Webtop Media Transcoder Incorrect Resource Transfer Between Spheres Vulnerability. Added Nov 10, due Nov 24. Known ransomware use: Unknown. CVErdict score 90/100.</summary>
+<content type="text">Openwave Messaging Limited Webtop Media Transcoder contains an incorrect resource transfer between spheres vulnerability that may allow an authenticated user to process and convert unintended document types if bypassing the Webmail experience.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-116606</id>
+<title type="text">CVE-2026-116606 · Barracuda Networks Barracuda Email Security Gateway (ESG) · due Nov 13</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116606"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-116606"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Barracuda Networks Email Security Gateway (ESG) Authentication Bypass Using an Alternate Path or Channel Vulnerability. Added Nov 10, due Nov 13. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Barracuda Networks Email Security Gateway (ESG) contains an authentication bypass using an alternate path or channel that could allow an unauthenticated remote attacker to invoke a configuration-import function and restore a crafted, compatible backup archive, resulting in unauthorized modification of the appliance’s global configuration. This vulnerability can be chained with CVE-2026-111560.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-124194</id>
+<title type="text">CVE-2026-124194 · Microsoft Office · due Nov 24</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-124194"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-124194"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Microsoft Office Outlook Missing User Interaction for Potentially Unsafe Action Vulnerability. Added Nov 10, due Nov 24. Known ransomware use: Unknown. CVErdict score 100/100.</summary>
+<content type="text">Microsoft Office Outlook contains a missing user interaction for potentially unsafe action vulnerability that allows an unauthorized attacker to perform spoofing over a network.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-125350</id>
+<title type="text">CVE-2026-125350 · Google Chromium · due Nov 24</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-125350"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-125350"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Google Chromium Use-After-Free Vulnerability. Added Nov 10, due Nov 24. Known ransomware use: Unknown. CVErdict score 100/100.</summary>
+<content type="text">Google Chromium contains a use-after-free vulnerability in the XML component that could allow a remote attacker to execute arbitrary code inside the sandbox via a specially crafted webpage. This vulnerability could affect multiple web browsers that utilize Chromium, including, but not limited to, Google Chrome, Microsoft Edge, and Opera.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-20320</id>
+<title type="text">CVE-2026-20320 · Cisco BroadWorks · due Nov 24</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-20320"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-20320"/>
+<updated>2026-11-10T00:00:00.000Z</updated>
+<published>2026-11-10T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Cisco BroadWorks Improper Restriction of XML External Entity Reference Vulnerability. Added Nov 10, due Nov 24. Known ransomware use: Unknown. CVErdict score 100/100.</summary>
+<content type="text">Cisco BroadWorks contains an improper restriction of XML external entity reference vulnerability that could allow an unauthenticated, remote attacker to read sensitive configuration information on an affected system.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-102895</id>
+<title type="text">CVE-2026-102895 · GPUStack GPUStack · due Nov 12</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-102895"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-102895"/>
+<updated>2026-11-09T00:00:00.000Z</updated>
+<published>2026-11-09T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">GPUStack Improper Authentication Vulnerability. Added Nov 9, due Nov 12. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">GPUStack contains an improper authentication vulnerability which could allow unauthenticated administrative access, including user and model changes, persistent administrator API-key creation, disclosure of worker and cloud-provider secrets, and code execution through POST /v2/inference-backends/from-yaml.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-116779</id>
+<title type="text">CVE-2026-116779 · SignalWire FreeSwitch · due Nov 12</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-116779"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-116779"/>
+<updated>2026-11-09T00:00:00.000Z</updated>
+<published>2026-11-09T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">SignalWire FreeSwitch Code Injection Vulnerability. Added Nov 9, due Nov 12. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">SignalWire FreeSwitch contains a code injection vulnerability that permits configuration and credential disclosure, arbitrary call control, and command execution.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-123158</id>
+<title type="text">CVE-2026-123158 · OpenBSD OpenSSH · due Nov 12</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123158"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-123158"/>
+<updated>2026-11-09T00:00:00.000Z</updated>
+<published>2026-11-09T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">OpenBSD OpenSSH Unexpected Status Code or Return Value Vulnerability. Added Nov 9, due Nov 12. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">OpenBSD OpenSSH on Linux contains an unexpected status code or return value vulnerability that could allow for authentication bypass.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-123218</id>
+<title type="text">CVE-2026-123218 · IBM Aspera Faspex · due Nov 12</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-123218"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-123218"/>
+<updated>2026-11-09T00:00:00.000Z</updated>
+<published>2026-11-09T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">IBM Aspera Faspex Incorrect Authorization Vulnerability. Added Nov 9, due Nov 12. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">IBM Aspera Faspex contains an incorrect authorization vulnerability that could allow an authenticated user to craft a specific message to bypass authorization, causing privilege escalations.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-19868</id>
+<title type="text">CVE-2026-19868 · SonicWall SonicOS SSLVPN · due Nov 20</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-19868"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-19868"/>
+<updated>2026-11-06T00:00:00.000Z</updated>
+<published>2026-11-06T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">SonicWall SonicOS SSLVPN Use of Single-factor Authentication Vulnerability. Added Nov 6, due Nov 20. Known ransomware use: Unknown. CVErdict score 100/100.</summary>
+<content type="text">SonicWall SonicOS SSLVPN contains a use of single-factor authentication vulnerability that may allow a user with valid credentials for an alternate authentication method to bypass SAML authentication controls. Successful exploitation may also bypass SAML-enforced multi-factor authentication (MFA).
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2024-27834</id>
+<title type="text">CVE-2024-27834 · Apple Multiple Products · due Nov 18</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2024-27834"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2024-27834"/>
+<updated>2026-11-04T00:00:00.000Z</updated>
+<published>2026-11-04T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Apple Multiple Products Improper Authentication Vulnerability. Added Nov 4, due Nov 18. Known ransomware use: Unknown. CVErdict score 90/100.</summary>
+<content type="text">Apple iOS, iPadOS, macOS, Safari, tvOS and watchOS 10.5 contain an improper authentication vulnerability which could allow an attacker with arbitrary read and write capability to bypass pointer authentication.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-119977</id>
+<title type="text">CVE-2026-119977 · WordPress WordPress Core · due Nov 6</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-119977"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-119977"/>
+<updated>2026-11-03T00:00:00.000Z</updated>
+<published>2026-11-03T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">WordPress WordPress Core Time-of-check Time-of-use (TOCTOU) Race Condition Vulnerability. Added Nov 3, due Nov 6. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">WordPress WordPress Core contains a time-of-check time-of-use (TOCTOU) race condition vulnerability that could allow unauthenticated attackers to execute code on the server during the upgrade window. This is due to predictable, web-accessible staging paths used during full-package core upgrades.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-111357</id>
+<title type="text">CVE-2026-111357 · Ivanti Connect Secure · due Nov 2</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-111357"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-111357"/>
+<updated>2026-10-30T00:00:00.000Z</updated>
+<published>2026-10-30T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Ivanti Connect Secure Missing Authentication for Critical Function Vulnerability. Added Oct 30, due Nov 2. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">Ivanti Connect Secure contains a missing authentication for critical function vulnerability that could allow a local authenticated attacker to escalate their privileges. This vulnerability can be chained with CVE-2026-104935 and CVE-2026-118527.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-118527</id>
+<title type="text">CVE-2026-118527 · Ivanti Connect Secure · due Nov 13</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-118527"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-118527"/>
+<updated>2026-10-30T00:00:00.000Z</updated>
+<published>2026-10-30T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Ivanti Connect Secure Generation of Predictable Numbers or Identifiers Vulnerability. Added Oct 30, due Nov 13. Known ransomware use: Unknown. CVErdict score 99/100.</summary>
+<content type="text">Ivanti Connect Secure contains a generation of predictable numbers or identifiers vulnerability that allows a remote authenticated attacker to upload files with attacker-controlled content to a known location on disk. This vulnerability can be chained with CVE-2026-104935 and CVE-2026-111357.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-76418</id>
+<title type="text">CVE-2026-76418 · Cisco Secure Firewall ASA Software and Cisco Secure FTD Software · due Nov 1</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-76418"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-76418"/>
+<updated>2026-10-29T00:00:00.000Z</updated>
+<published>2026-10-29T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">Cisco Secure Firewall ASA Software and Cisco Secure FTD Software Unchecked Return Value to NULL Pointer Dereference Vulnerability. Added Oct 29, due Nov 1. Known ransomware use: Unknown. CVErdict score 90/100.</summary>
+<content type="text">Cisco Secure Firewall ASA Software and Cisco Secure FTD Software contains an unchecked return value to NULL pointer dereference vulnerability that could allow an unauthenticated, remote attacker to cause the device to reload unexpectedly, resulting in a denial of service (DoS) condition.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+<entry>
+<id>tag:cverdict-psi.vercel.app,2026:cverdict/kev/CVE-2026-97229</id>
+<title type="text">CVE-2026-97229 · GitLab Community Edition and Enterprise Edition · due Nov 1</title>
+<link rel="alternate" type="text/html" href="https://cverdict.dev/cve/CVE-2026-97229"/>
+<link rel="related" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2026-97229"/>
+<updated>2026-10-29T00:00:00.000Z</updated>
+<published>2026-10-29T00:00:00.000Z</published>
+<category term="kev"/>
+<summary type="text">GitLab Community Edition and Enterprise Edition Integer Overflow or Wraparound Vulnerability. Added Oct 29, due Nov 1. Known ransomware use: Unknown. Forensic triage requested (BOD 26-04). CVErdict score 100/100.</summary>
+<content type="text">GitLab Community Edition and Enterprise Edition contain a integer overflow or wraparound vulnerability that could allow an unauthenticated user to execute arbitrary code on the GitLab server via a specially crafted regular expression in a CI/CD configuration, due to insufficient regular expression validation.
+
+Required action: Apply mitigations in accordance with vendor instructions, ensuring compliance with CISA’s BOD 26-04 Prioritizing Security Updates Based on Risk (see URL in Notes) guidance and CISA’s “Forensics Triage Requirements” (see URL in Notes). Follow applicable BOD 26-04 guidance for cloud services or discontinue use of the product if mitigations are unavailable. Stakeholders are responsible for evaluating each asset&apos;s internet exposure and ensuring adherence to BOD 26-04 patching guidelines.</content>
+</entry>
+</feed>
