@@ -311,7 +311,7 @@ function TrendsCard({ stats, on }: { stats: StatsFile | null; on: boolean }) {
       ) : (
         <p class="tour__text">CVE volume since 1999, and why most of it is not risk.</p>
       )}
-      <More to="surge" label="Read the surge" />
+      <More to="surge" label="See the trends" />
     </Card>
   );
 }
