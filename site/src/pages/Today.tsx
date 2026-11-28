@@ -522,7 +522,14 @@ export default function Today() {
 
         <HeatStrip cards={heat} />
 
-        <Tour stats={stats.status === 'ready' ? stats.data : null} />
+        <Tour
+          stats={stats.status === 'ready' ? stats.data : null}
+          kev={kev.status === 'ready' ? kev.data.entries : null}
+          batches={batches.status === 'ready' ? batches.data : null}
+          counts={counts}
+          total={meta.status === 'ready' ? meta.data.counts.window_published : null}
+          days={meta.status === 'ready' ? meta.data.window.days : 30}
+        />
 
         <section class="today__feed" id="feed" aria-labelledby="feed-h">
           <header class="section__head">

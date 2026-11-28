@@ -98,7 +98,11 @@ function NavSheet({ open, onClose, route }: { open: boolean; onClose: () => void
         <nav aria-label="All pages">
           {NAV_GROUPS.map((g, gi) => (
             <section key={g.id} class="sheet__group" style={{ '--g': gi }}>
-              <h2 class="sheet__label">{g.label}</h2>
+              <h2 class="grouplabel__head sheet__glabel">
+                <span class="grouplabel__n mono">{String(gi + 1).padStart(2, '0')}</span>
+                <span class="grouplabel__name">{g.label}</span>
+                <span class="grouplabel__rule" aria-hidden="true" />
+              </h2>
               <ul class="sheet__list">
                 {g.items.map((n, i) => (
                   <li key={n.name} style={{ '--i': gi * 4 + i }}>

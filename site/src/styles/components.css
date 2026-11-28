@@ -190,6 +190,57 @@
   width: 16px;
 }
 
+/* A group heading, in the menu sheet and on Today: a numbered lime badge, the name, a rule. */
+.grouplabel {
+  display: grid;
+  gap: 4px;
+}
+
+.grouplabel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.grouplabel__n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--b-accent);
+  border-radius: var(--r-xs);
+  background: var(--t-accent);
+  color: var(--accent);
+  font-size: 11.5px;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.grouplabel__name {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.grouplabel__rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--b-accent), transparent);
+}
+
+.grouplabel__note {
+  margin: 0 0 0 38px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 /* The menu sheet: the same groups, sliding in from the right. */
 .dialog.dialog--sheet {
   width: min(380px, 100vw);
@@ -239,14 +290,8 @@ html:has(.dialog--sheet[open]) {
   gap: 4px;
 }
 
-.sheet__label {
-  margin: 0 0 2px 10px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.sheet__glabel {
+  margin: 0 4px 4px 6px;
 }
 
 .sheet__list {

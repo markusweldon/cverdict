@@ -243,7 +243,9 @@ export function useReveal<T extends HTMLElement>(): RefObject<T | null> {
         el.classList.add('is-in');
         io.disconnect();
       },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
+      // Once its top is a fifth of the way up the screen, so the animation plays where it is seen.
+      // Threshold 0 so a section taller than the screen still triggers.
+      { rootMargin: '0px 0px -20% 0px', threshold: 0 },
     );
     io.observe(el);
     return () => io.disconnect();
