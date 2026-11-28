@@ -10,6 +10,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inflateSync } from 'node:zlib';
 import satori from 'satori';
 import { initWasm, Resvg } from '@resvg/resvg-wasm';
 
@@ -22,8 +23,50 @@ const HEIGHT = 630;
 
 const require = createRequire(import.meta.url);
 await initWasm(readFileSync(require.resolve('@resvg/resvg-wasm/index_bg.wasm')));
-// satori reads TTF, OTF and WOFF (not WOFF2): the static Latin WOFF files of each weight.
-const font = (pkg, file) => readFileSync(join(dirname(require.resolve(`${pkg}/package.json`)), 'files', file));
+/**
+ * WOFF 1.0 to the plain sfnt (TrueType or OpenType) it wraps, with Node's own zlib. satori and
+ * opentype.js unpack WOFF with fflate's 0.7 API, which fflate 0.8 changed; fflate 0.7 has a
+ * denial-of-service bug (CVE-2026-45820) fixed in 0.8.3. Handing them the sfnt means fflate is
+ * never called, so package.json can pin the fixed 0.8.3 without breaking the fonts.
+ */
+function woffToSfnt(woff) {
+  const v = new DataView(woff.buffer, woff.byteOffset, woff.byteLength);
+  if (v.getUint32(0) !== 0x774f4646) return woff; // not 'wOFF': already TTF or OTF
+  const flavor = v.getUint32(4);
+  const n = v.getUint16(12);
+  const tables = [];
+  for (let i = 0; i < n; i++) {
+    const at = 44 + i * 20;
+    const [tag, offset, compLength, origLength, checksum] = [v.getUint32(at), v.getUint32(at + 4), v.getUint32(at + 8), v.getUint32(at + 12), v.getUint32(at + 16)];
+    const raw = woff.subarray(offset, offset + compLength);
+    const data = compLength < origLength ? inflateSync(raw) : raw;
+    if (data.length !== origLength) throw new Error('WOFF table has the wrong length after inflating');
+    tables.push({ tag, checksum, data });
+  }
+  let pow = 1;
+  while (pow * 2 <= n) pow *= 2;
+  const head = 12 + n * 16;
+  const size = tables.reduce((a, t) => a + ((t.data.length + 3) & ~3), head);
+  const out = Buffer.alloc(size);
+  out.writeUInt32BE(flavor, 0);
+  out.writeUInt16BE(n, 4);
+  out.writeUInt16BE(pow * 16, 6);
+  out.writeUInt16BE(Math.log2(pow), 8);
+  out.writeUInt16BE(n * 16 - pow * 16, 10);
+  let off = head;
+  tables.forEach((t, i) => {
+    out.writeUInt32BE(t.tag, 12 + i * 16);
+    out.writeUInt32BE(t.checksum, 16 + i * 16);
+    out.writeUInt32BE(off, 20 + i * 16);
+    out.writeUInt32BE(t.data.length, 24 + i * 16);
+    out.set(t.data, off);
+    off += (t.data.length + 3) & ~3;
+  });
+  return out;
+}
+
+// satori reads TTF, OTF and WOFF (not WOFF2): the static Latin WOFF files of each weight, unwrapped.
+const font = (pkg, file) => woffToSfnt(readFileSync(join(dirname(require.resolve(`${pkg}/package.json`)), 'files', file)));
 const fonts = [
   { name: 'Geist', data: font('@fontsource/geist', 'geist-latin-400-normal.woff'), weight: 400, style: 'normal' },
   { name: 'Geist', data: font('@fontsource/geist', 'geist-latin-600-normal.woff'), weight: 600, style: 'normal' },
