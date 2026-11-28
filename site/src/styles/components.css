@@ -2533,6 +2533,19 @@ a.chip:hover {
   display: none;
 }
 
+/* Where the row does not fit, its right edge fades out so it reads as one to swipe; the last
+   item keeps room past the fade so it can be read in full once scrolled to. */
+@media (max-width: 1100px) {
+  .ticker {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+  }
+
+  .ticker__item:last-child {
+    padding-right: 44px;
+  }
+}
+
 .ticker__item {
   flex: 1 0 auto;
   border-right: 1px solid var(--border);

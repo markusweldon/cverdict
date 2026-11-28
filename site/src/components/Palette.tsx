@@ -33,9 +33,9 @@ const PAGES: readonly [string, string, string][] = [
   ['Explore', 'explore', 'Every CVE in the window'],
   ['Patch days', 'batches', 'Batches and bulk releases'],
   ['Receipts', 'receipts', 'Did we flag it before CISA did?'],
-  ['Method', 'method', 'Formula, chips, sources'],
   ['MCP Server', 'mcp', 'AI agents: install, tools, limits'],
   ['Feeds & API', 'feeds', 'JSON, Atom, iCalendar'],
+  ['Method', 'method', 'Formula, chips, sources'],
 ];
 
 function buildItems(q: string, rows: readonly Row[]): Item[] {

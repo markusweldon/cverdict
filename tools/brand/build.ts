@@ -1308,10 +1308,10 @@ function surfaces(T: Theme): string {
     { name: 'Explore', route: '/explore', iconName: 'Search', body: 'Every CVE of the window, searchable and filterable by day.', color: T.ink.likely },
     { name: 'Patch days', route: '/batches', iconName: 'Layers', body: 'Batches and bulk releases, and the few CVEs in each that matter.', color: T.ink.likely },
     { name: 'Receipts', route: '/receipts', iconName: 'Check', body: 'Flagged before KEV, next to CVSS 7 and EPSS 10%, every hit and miss.', color: T.ok },
-    { name: 'CVE pages', route: '/cve/<id>', iconName: 'Info', body: 'The verdict, the score chip by chip, what we could not see, "Copy as ticket".', color: T.accent },
-    { name: 'Method', route: '/method', iconName: 'Filter', body: 'Every chip, its points and the known blind spots.', color: T.ink.watch },
     { name: 'MCP', route: '/mcp', iconName: 'Terminal', body: 'Add the read-only MCP server to an AI agent in one command.', color: T.ai },
     { name: 'API', route: '/feeds', iconName: 'Rss', body: 'Atom and iCalendar feeds, the open JSON files and llms.txt.', color: T.muted },
+    { name: 'Method', route: '/method', iconName: 'Filter', body: 'Every chip, its points and the known blind spots.', color: T.ink.watch },
+    { name: 'CVE pages', route: '/cve/<id>', iconName: 'Info', body: 'The verdict, the score chip by chip, what we could not see, "Copy as ticket".', color: T.accent },
   ];
   const cols = 4;
   const gap = 16;

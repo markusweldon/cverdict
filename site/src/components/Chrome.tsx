@@ -63,9 +63,9 @@ export const NAV_GROUPS: readonly { id: string; label: string; items: readonly N
     id: 'build',
     label: 'Build with it',
     items: [
-      { name: 'method', path: 'method', label: 'Method', hint: 'The chips, their points, the blind spots' },
       { name: 'mcp', path: 'mcp', label: 'MCP', hint: 'Verdicts for AI agents, one command' },
       { name: 'feeds', path: 'feeds', label: 'API', hint: 'Atom, iCalendar, JSON and llms.txt' },
+      { name: 'method', path: 'method', label: 'Method', hint: 'The chips, their points, the blind spots' },
     ],
   },
 ];
@@ -240,9 +240,9 @@ export function Footer() {
           CISA, ENISA, CIRCL, MITRE, FIRST or any vendor.
         </p>
         <nav class="foot__links" aria-label="Footer">
-          <a href={href('method')}>Method</a>
-          <a href={href('feeds')}>Feeds &amp; API</a>
           <a href={href('mcp')}>MCP Server</a>
+          <a href={href('feeds')}>Feeds &amp; API</a>
+          <a href={href('method')}>Method</a>
           <a href={REPO_URL} target="_blank" rel="noopener noreferrer nofollow">
             Source
           </a>
