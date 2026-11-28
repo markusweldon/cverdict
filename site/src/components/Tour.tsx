@@ -22,6 +22,7 @@ import { cveHref, href, navigate } from '../router';
 import { growth, kevGrowth, windowLabel } from '../surge';
 import { TIER_META } from '../tiers';
 import { Countdown, upcomingKev } from './Kev';
+import { CheckFlow, type FlowMode } from './CheckFlow';
 import { McpInstall } from './McpInstall';
 import { Picker } from './Picker';
 import { Snippet } from './Snippet';
@@ -43,9 +44,9 @@ function More({ to, label }: { to: string; label: string }) {
   );
 }
 
-function Card({ kind, i, icon, kicker, children, wide }: { kind: string; i: number; icon: ComponentChildren; kicker: string; children: ComponentChildren; wide?: boolean }) {
+function Card({ kind, i, icon, kicker, children, wide, lead }: { kind: string; i: number; icon: ComponentChildren; kicker: string; children: ComponentChildren; wide?: boolean; lead?: boolean }) {
   return (
-    <article class={`tour__card tour__card--${kind}${wide ? ' tour__card--wide' : ''}`} style={{ '--i': i }}>
+    <article class={`tour__card tour__card--${kind}${wide ? ' tour__card--wide' : ''}${lead ? ' tour__card--lead' : ''}`} style={{ '--i': i }}>
       <p class="tour__kicker">
         {icon} {kicker}
       </p>
@@ -69,7 +70,7 @@ export function GroupLabel({ n, label, note, id }: { n: string; label: string; n
 }
 
 /** One group of cards: plays its animations once on screen. */
-function Band({ n, label, note, children }: { n: string; label: string; note: string; children: (on: boolean) => ComponentChildren }) {
+function Band({ n, label, note, lead, children }: { n: string; label: string; note: string; lead?: ComponentChildren; children: (on: boolean) => ComponentChildren }) {
   const ref = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
   useEffect(() => {
@@ -96,6 +97,8 @@ function Band({ n, label, note, children }: { n: string; label: string; note: st
   return (
     <div class="tour__band" ref={ref} role="group" aria-labelledby={id}>
       <GroupLabel n={n} label={label} note={note} id={id} />
+      {/* A full-width card above the row: on a phone it stays out of the swipe row. */}
+      {lead}
       <div class="tour__grid">{children(on)}</div>
     </div>
   );
@@ -104,7 +107,7 @@ function Band({ n, label, note, children }: { n: string; label: string; note: st
 /** A public, intentionally vulnerable app with a committed lockfile: a real result in one tap. */
 const TRY_REPO = 'OWASP/NodeGoat';
 
-type CheckWay = 'repo' | 'file' | 'ci';
+type CheckWay = FlowMode;
 
 /** Same three ways as the Check page, one word each. */
 const CHECK_WAYS: readonly { id: CheckWay; label: string }[] = [
@@ -233,14 +236,20 @@ function CheckCi() {
 function CheckCard() {
   const [way, setWay] = useState<CheckWay>('repo');
   return (
-    <Card kind="check" i={0} icon={<IconLock size={13} />} kicker="Check · Am I affected?" wide>
-      <h4 class="tour__title">Check your dependencies in one paste</h4>
-      <p class="tour__text">{CHECK_TEXT[way]}</p>
-      <Picker label="How to check" options={CHECK_WAYS} value={way} onPick={setWay} />
-      {way === 'repo' && <CheckRepo />}
-      {way === 'file' && <CheckFile />}
-      {way === 'ci' && <CheckCi />}
-      <More to="check" label="How it works" />
+    <Card kind="check" i={0} icon={<IconLock size={13} />} kicker="Check · Am I affected?" lead>
+      <div class="tour__checkgrid">
+        <div class="tour__checkmain">
+          <h4 class="tour__title">Check your dependencies in one paste</h4>
+          <p class="tour__text">{CHECK_TEXT[way]}</p>
+          <Picker label="How to check" options={CHECK_WAYS} value={way} onPick={setWay} />
+          {way === 'repo' && <CheckRepo />}
+          {way === 'file' && <CheckFile />}
+          {way === 'ci' && <CheckCi />}
+          <More to="check" label="How it works" />
+        </div>
+        {/* The same diagram as the Check page, for the chosen tab. */}
+        <CheckFlow mode={way} compact />
+      </div>
     </Card>
   );
 }
@@ -518,10 +527,9 @@ export function Tour({ stats, kev, batches, counts, total, days }: TourProps) {
         </h2>
         <p class="tour__sub">Every page, with what it shows right now. Pick what matters to you.</p>
       </header>
-      <Band n="01" label="Act on it" note="What needs you now">
+      <Band n="01" label="Act on it" note="What needs you now" lead={<CheckCard />}>
         {(on) => (
           <>
-            <CheckCard />
             <KevCard entries={kev} />
             <WokeCard on={on} near={near} />
           </>

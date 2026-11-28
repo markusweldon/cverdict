@@ -83,10 +83,11 @@ function Wire({ side, label, note, safe }: { side: 'in' | 'index'; label: string
   );
 }
 
-export function CheckFlow({ mode }: { mode: FlowMode }) {
+/** compact: on a phone, one short row of icons and names (the homepage's Check card) instead of the tall column. */
+export function CheckFlow({ mode, compact }: { mode: FlowMode; compact?: boolean }) {
   const f = FLOWS[mode];
   return (
-    <figure class={`flow flow--${mode}`} key={mode} aria-labelledby="check-flow-cap">
+    <figure class={`flow flow--${mode}${compact ? ' flow--compact' : ''}`} key={mode} aria-labelledby="check-flow-cap">
       <figcaption id="check-flow-cap" class="sr-only">
         How it works: {f.summary}
       </figcaption>

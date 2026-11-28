@@ -4881,3 +4881,104 @@ circle.dc__kev {
     align-self: stretch;
   }
 }
+
+/* Act on it: Check is a full-width card above the row, its controls beside the flow diagram of
+   the chosen tab. Narrower, the diagram goes under the controls (and top to bottom on a phone). */
+.tour__card--lead {
+  margin-bottom: 14px;
+}
+
+.tour__checkgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  align-items: center;
+  gap: 28px;
+}
+
+.tour__checkmain {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tour__card .flow {
+  max-width: none;
+  margin: 0;
+  padding: 24px 16px 16px;
+}
+
+.tour__card .flow__grid {
+  grid-template-columns: minmax(0, 1fr) minmax(84px, 0.75fr) minmax(0, 1.1fr) minmax(84px, 0.75fr) minmax(0, 1.05fr);
+}
+
+.tour__card .flow__node--dst .flow__title {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .tour__checkgrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+
+/* With Check above the row, KEV Clock and Woke Up share the row half and half (in the two-column
+   and phone layouts they already fill it). */
+@media (min-width: 1181px) {
+  .tour__card--kev,
+  .tour__card--woke {
+    grid-column: span 2;
+  }
+}
+
+/* The Check card's diagram on a phone: the same flow as one short row, icons and names only. The
+   full captions are on the Check page and in the figure's screen-reader text. */
+@media (max-width: 720px) {
+  .flow--compact .flow__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(20px, 0.4fr) minmax(0, 1fr) minmax(20px, 0.4fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 4px;
+    row-gap: 14px;
+  }
+  .flow--compact .flow__node--src { grid-column: 1; grid-row: 1; }
+  .flow--compact .flow__wire--in { grid-column: 2; grid-row: 1; }
+  .flow--compact .flow__node--mid { grid-column: 3; grid-row: 1; }
+  .flow--compact .flow__wire--index { grid-column: 4; grid-row: 1; }
+  .flow--compact .flow__node--dst { grid-column: 5; grid-row: 1; }
+  .flow--compact .flow__zone--mid { grid-column: 3; grid-row: 1; margin: -12px -6px; }
+  .flow--compact .flow__zone--left { grid-column: 1 / 4; grid-row: 1; margin: -12px -6px; }
+  .flow--compact .flow__zonelabel {
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .flow--compact .flow__node {
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 4px;
+    text-align: center;
+  }
+  .flow--compact .flow__sub,
+  .flow--compact .flow__wiretext { display: none; }
+  .flow--compact .flow__title { font-size: 12px; line-height: 1.25; }
+  .flow--compact .flow__node--dst { padding-inline: 2px; }
+  .flow--compact .flow__node--dst .flow__title { font-size: 10px; white-space: nowrap; }
+  .flow--compact .flow__wire { flex-direction: column; gap: 0; padding: 0; }
+  .flow--compact .flow__line { width: 100%; height: 2px; flex: none; }
+  .flow--compact .flow__wire--in .flow__line::after { top: 50%; bottom: auto; left: auto; right: 0; transform: translateY(-50%) rotate(45deg); }
+  .flow--compact .flow__wire--index .flow__line::after { top: 50%; left: 0; transform: translateY(-50%) rotate(-135deg); }
+  .flow--compact .flow__dot { top: 50%; left: 0; margin: -3px 0 0; animation-name: flow-x; }
+  .flow--compact .flow__wire--index .flow__dot { animation-name: flow-x-back; }
+  .flow--compact .flow__result {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    margin-top: 6px;
+    border-radius: var(--r);
+    font-size: 12px;
+  }
+}
