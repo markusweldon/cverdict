@@ -237,7 +237,7 @@ function CheckCi() {
 function CheckCard() {
   const [way, setWay] = useState<CheckWay>('repo');
   return (
-    <Card kind="check" i={0} icon={<IconLock size={13} />} kicker="Check · Am I affected?" lead>
+    <Card kind="check" i={0} icon={<IconLock size={13} />} kicker="Check" lead>
       <div class="tour__checkgrid">
         <div class="tour__checkmain">
           <h4 class="tour__title">Am I affected? Find out in seconds</h4>
