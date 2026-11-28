@@ -14,9 +14,10 @@ import { CHIPS } from '../../../shared/model';
 import { CLI_LINE } from '../check/ci';
 import { handoff } from '../check/handoff';
 import { parseRepo } from '../check/repo';
+import { copyLink } from '../actions';
 import { data } from '../data';
 import { tierAt } from '../filters';
-import { cnaName, fmtDate, fmtInt, HOUR_MS, kevDeadline, vendorProduct } from '../format';
+import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, HOUR_MS, kevDeadline, vendorProduct } from '../format';
 import { prefersReducedMotion, useCountUp, useData, useNow } from '../hooks';
 import { methodScore } from '../receipts';
 import { cveHref, href, navigate } from '../router';
@@ -29,7 +30,7 @@ import { Picker } from './Picker';
 import { Snippet } from './Snippet';
 import { Spark } from './Spark';
 import { TierBar, TierIcon } from './Tier';
-import { IconArrowRight, IconClock, IconCode, IconFilter, IconLayers, IconLock, IconRefresh, IconRss, IconSearch, IconShield, IconSparkle } from './icons';
+import { IconArrowRight, IconClock, IconCopy, IconCode, IconFilter, IconLayers, IconLock, IconRefresh, IconRss, IconSearch, IconShield, IconSparkle } from './icons';
 
 /** A number that counts up from zero once its group is on screen. */
 function Num({ value, format = fmtInt, on }: { value: number; format?: (v: number) => string; on: boolean }) {
@@ -501,21 +502,61 @@ function MethodCard({ on }: { on: boolean }) {
   );
 }
 
-function AgentsCard() {
+function AgentsCard({ kev }: { kev: readonly KevEntry[] | null }) {
+  const now = useNow(60_000);
+  // What the kev_due tool would return right now (its default: the next 7 days, soonest first).
+  const due = kev ? upcomingKev(kev, now).filter((e) => kevDeadline(e.due_date) >= now && kevDeadline(e.due_date) - now <= 7 * DAY_MS) : [];
   return (
     <Card kind="agents" i={0} icon={<IconCode size={13} />} kicker="MCP · for AI agents" wide>
       <h4 class="tour__title">Verdicts in your agent, one command</h4>
       <p class="tour__text">A read-only MCP server: verdicts, KEV due dates and your dependencies, from the same open data.</p>
       <McpInstall />
-      <p class="tour__ask">
-        <span class="muted">Then ask:</span> “Which KEV deadlines are due this week?”
-      </p>
+      <div class="tour__chat">
+        <p class="tour__bubble tour__bubble--you">Which KEV deadlines are due this week?</p>
+        {due.length > 0 && (
+          <div class="tour__bubble tour__bubble--tool">
+            <p class="tour__tool mono">kev_due · today’s data</p>
+            <p>
+              {fmtInt(due.length)} in the next 7 days, soonest first:
+            </p>
+            <ul class="tour__list">
+              {due.slice(0, 2).map((e) => (
+                <li key={e.id}>
+                  <a href={cveHref(e.id)} class="mono">
+                    {e.id}
+                  </a>
+                  <span class="muted">{vendorProduct(e.vendor, e.product)}</span>
+                  <span class="tour__due mono">{fmtDate(e.due_date)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
       <More to="mcp" label="Other clients" />
     </Card>
   );
 }
 
+const updated = (age: string) => (age === 'now' ? 'updated just now' : `updated ${age} ago`);
+
+/** One line of the meta.json excerpt: a key and its value, coloured by type. */
+function JsonLine({ k, v, indent = 1, last }: { k: string; v: string | number; indent?: number; last?: boolean }) {
+  return (
+    <span class="term__line">
+      {'  '.repeat(indent)}
+      <span class="term__key">"{k}"</span>: <span class={typeof v === 'number' ? 'term__num' : 'term__str'}>{typeof v === 'number' ? v : `"${v}"`}</span>
+      {last ? '' : ','}
+    </span>
+  );
+}
+
 function ApiCard() {
+  const meta = useData(data.meta);
+  const now = useNow(60_000);
+  const m = meta.status === 'ready' ? meta.data : null;
+  const url = `${BRAND.siteUrl}/data/v1/meta.json`;
+  const cmd = `curl -s ${url}`;
   const files = ['signal.json', 'kev.json', 'cve/00…ff.json', 'feeds/*.xml', 'kev-due.ics', 'llms.txt'];
   return (
     <Card kind="api" i={1} icon={<IconRss size={13} />} kicker="API">
@@ -523,12 +564,47 @@ function ApiCard() {
       <p class="tour__text">The same files this site reads, refreshed hourly. Scores are CC0.</p>
       <p class="tour__chips">
         {files.map((f) => (
-          <span key={f} class="tour__chip mono">
+          <span key={f} class="tour__chip tour__chip--api mono">
             {f}
           </span>
         ))}
       </p>
-      <Snippet title="Try it, no key" code={`curl -s ${BRAND.siteUrl}/data/v1/meta.json`} />
+      {/* The real answer to the command, from the meta.json this page already loaded. */}
+      <figure class="term">
+        <figcaption class="term__bar">
+          <span class="term__live">
+            <i aria-hidden="true" />
+            {m ? updated(fmtAge(m.generated_at, now)) : 'live'}
+          </span>
+          <button type="button" class="btn btn--ghost btn--sm" onClick={() => void copyLink(cmd, 'Command')}>
+            <IconCopy size={12} /> Copy
+          </button>
+        </figcaption>
+        <pre class="term__body mono">
+          <span class="term__line">
+            <span class="term__prompt">$</span> curl -s {url.replace(/^https?:\/\//, '')}
+          </span>
+          {m ? (
+            <>
+              <span class="term__line">{'{'}</span>
+              <JsonLine k="generated_at" v={m.generated_at} />
+              <span class="term__line">
+                {'  '}
+                <span class="term__key">"counts"</span>: {'{'}
+              </span>
+              <JsonLine k="window_published" v={m.counts.window_published} indent={2} />
+              <JsonLine k="window_passed" v={m.counts.window_passed} indent={2} />
+              <JsonLine k="kev_total" v={m.counts.kev_total} indent={2} last />
+              <span class="term__line">
+                {'  },'} <span class="term__more">…</span>
+              </span>
+              <span class="term__line">{'}'}</span>
+            </>
+          ) : (
+            <span class="term__line term__more">…</span>
+          )}
+        </pre>
+      </figure>
       <More to="feeds" label="Feeds and files" />
     </Card>
   );
@@ -593,7 +669,7 @@ export function Tour({ stats, kev, batches, counts, total, days }: TourProps) {
       <Band n="03" label="Build with it" note="Bring the verdicts into your tools">
         {(on) => (
           <>
-            <AgentsCard />
+            <AgentsCard kev={kev} />
             <ApiCard />
             <MethodCard on={on} />
           </>

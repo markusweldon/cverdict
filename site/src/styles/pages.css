@@ -4433,7 +4433,7 @@ circle.dc__kev {
 .tour__card--receipts { --c: var(--ok); }
 .tour__card--method { --c: var(--watch); }
 .tour__card--agents { --c: var(--ai); }
-.tour__card--api { --c: var(--muted); }
+.tour__card--api { --c: var(--ok); }
 
 .tour__kicker {
   display: inline-flex;
@@ -5058,11 +5058,45 @@ circle.dc__kev {
   .tour__band.is-armed.is-in .tour__ptbar::after { animation: none; }
 }
 
-/* MCP: a first question to try once it is installed. */
-.tour__ask {
-  margin: 0;
-  color: var(--text);
+/* MCP: a first question, and what the kev_due tool returns for it with today's data. */
+.tour__chat {
+  display: grid;
+  gap: 6px;
   font-size: 12.5px;
+}
+
+.tour__bubble {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: var(--r);
+}
+
+.tour__bubble p {
+  margin: 0;
+}
+
+.tour__bubble--you {
+  justify-self: end;
+  max-width: 85%;
+  border-bottom-right-radius: 3px;
+  background: var(--raised);
+  color: var(--text);
+}
+
+.tour__bubble--tool {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--ai) 30%, transparent);
+  border-bottom-left-radius: 3px;
+  background: var(--t-ai);
+  color: var(--text);
+}
+
+.tour__tool {
+  color: var(--ai);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
 }
 
 /* Check: the invitation to verify it, as on the Check page. */
@@ -5077,4 +5111,83 @@ circle.dc__kev {
   text-decoration: underline;
   text-decoration-color: var(--border-strong);
   text-underline-offset: 2px;
+}
+
+/* API: file chips in the card's green, and a small terminal with the live answer from meta.json. */
+.tour__chip--api {
+  border-color: color-mix(in srgb, var(--ok) 30%, transparent);
+  background: var(--t-ok);
+  color: var(--text);
+}
+
+.term {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg);
+}
+
+.term__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--raised);
+}
+
+.term__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.term__live i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 70%, transparent);
+  animation: term-live 2.4s ease-in-out infinite;
+}
+
+@keyframes term-live {
+  50% { opacity: 0.35; }
+}
+
+.term__body {
+  display: grid;
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  color: var(--faint);
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.term__line {
+  display: block;
+}
+
+.term__prompt {
+  color: var(--ok);
+}
+
+.term__body > .term__line:first-child {
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.term__key { color: var(--ai); }
+.term__str { color: var(--ok); }
+.term__num { color: var(--watch); }
+.term__more { color: var(--faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .term__live i { animation: none; }
 }
