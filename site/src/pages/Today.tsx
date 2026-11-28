@@ -45,6 +45,7 @@ import {
   type TierCounts,
 } from '../filters';
 import { cnaName, DAY_MS, fmtAge, fmtDate, fmtInt, fmtPct, fmtSlot, HOUR_MS, oneIn, plural } from '../format';
+import { kevStreak, type KevStreak } from '../kevstreak';
 import { prefersReducedMotion, useCountUp, useData, useDebounced, useKnobUrl, useListController, useMediaQuery, useNow, useTitle } from '../hooks';
 import { cveHref, historyValue, href, navigate, setHistoryValue, setQuery, useLocation } from '../router';
 import { backtestAt } from '../receipts';
@@ -75,15 +76,27 @@ function CountUp({ value, class: cls }: { value: number; class?: string }) {
   );
 }
 
-function Ticker({ meta, passed24h, kevSoon, batchesWeek }: { meta: Meta; passed24h: number; kevSoon: number | null; batchesWeek: number | null }) {
+function Ticker({ meta, passed24h, kevSoon, kevLast, batchesWeek }: { meta: Meta; passed24h: number; kevSoon: number | null; kevLast: KevStreak | null; batchesWeek: number | null }) {
   const now = useNow(30_000);
   const state = freshness(meta, now);
+  // Most actionable first: on a phone the row scrolls and the first two or three are what shows.
+  // Then published before passed, the hero's noise-to-signal order.
   const items: { label: string; value: string; tone?: string; to?: string; tip: string }[] = [
+    { label: 'KEV due ≤ 72h', value: kevSoon === null ? '…' : fmtInt(kevSoon), tone: kevSoon ? 'warn' : undefined, to: 'kev', tip: 'CISA KEV deadlines in the next three days' },
+    {
+      label: 'Last KEV listing',
+      value: kevLast === null ? '…' : kevLast.days === 0 ? 'today' : `${kevLast.days}d ago`,
+      tone: kevLast?.days === 0 ? 'hot' : undefined,
+      to: 'kev',
+      tip: kevLast?.resetBy[0]
+        ? `CISA last added a CVE to KEV on ${fmtDate(kevLast.last, Number.NaN)}: ${kevLast.resetBy[0].id}${kevLast.resetBy.length > 1 ? ` and ${kevLast.resetBy.length - 1} more` : ''}. Longest gap without a listing in 30 days: ${kevLast.longestGap} ${kevLast.longestGap === 1 ? 'day' : 'days'}.`
+        : 'When CISA last added a CVE to KEV',
+    },
     { label: 'Published 24h', value: fmtInt(meta.counts.published_24h), tip: meta.definitions.published_24h ?? '' },
     { label: 'Passed 24h', value: fmtInt(passed24h), tone: passed24h ? 'lit' : undefined, tip: 'Published in the last 24 hours and Exploited or Likely at the current evidence bar. Most CVEs clear the bar days after they are published.' },
-    { label: 'KEV due ≤ 72h', value: kevSoon === null ? '…' : fmtInt(kevSoon), tone: kevSoon ? 'warn' : undefined, to: 'kev', tip: 'CISA KEV deadlines in the next three days' },
     { label: 'Batches this week', value: batchesWeek === null ? '…' : fmtInt(batchesWeek), to: 'batches', tip: 'Patch-day cohorts (50+ CVEs from one CNA in a day) in the last 7 days' },
     { label: 'Data age', value: fmtAge(meta.generated_at, now), tone: state === 'fresh' ? 'ok' : state === 'late' ? 'warn' : 'bad', to: 'method#sources', tip: 'Time since the last hourly pipeline run' },
+
   ];
   return (
     <ul class="ticker" aria-label="At a glance">
@@ -430,6 +443,7 @@ export default function Today() {
   const generated = meta.status === 'ready' ? Date.parse(meta.data.generated_at) : now;
   const passed24h = useMemo(() => rows.filter((r) => pubMs(r) >= generated - DAY_MS && isPassed(tierAt(r, level))).length, [rows, level, generated]);
   const kevSoon = kev.status === 'ready' ? kev.data.entries.filter((e) => kevUrgency(e, now) === 'soon').length : null;
+  const kevLast = kev.status === 'ready' ? kevStreak(kev.data.entries, now) : null;
   const weekBatches = batches.status === 'ready' ? batches.data.batches.filter((b) => Date.parse(`${b.date}T00:00:00Z`) >= generated - 7 * DAY_MS) : null;
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
 
@@ -467,7 +481,7 @@ export default function Today() {
 
   return (
     <div class="today">
-      {ready ? <Ticker meta={meta.data} passed24h={passed24h} kevSoon={kevSoon} batchesWeek={weekBatches?.length ?? null} /> : <Loading label="Loading today’s numbers" lines={1} height="28px" class="ticker-skel" />}
+      {ready ? <Ticker meta={meta.data} passed24h={passed24h} kevSoon={kevSoon} kevLast={kevLast} batchesWeek={weekBatches?.length ?? null} /> : <Loading label="Loading today’s numbers" lines={1} height="28px" class="ticker-skel" />}
 
       <div class="today__grid">
         <div class="today__hero">

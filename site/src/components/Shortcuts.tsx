@@ -36,9 +36,9 @@ const GROUPS: readonly [string, readonly [string[], string][]][] = [
       [['g', 'e'], 'Explore'],
       [['g', 'b'], 'Patch days'],
       [['g', 'r'], 'Receipts'],
-      [['g', 'm'], 'Method'],
       [['g', 'a'], 'MCP Server'],
       [['g', 'f'], 'Feeds & API'],
+      [['g', 'm'], 'Method'],
     ],
   ],
 ];

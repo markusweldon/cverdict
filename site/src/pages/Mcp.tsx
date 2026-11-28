@@ -4,6 +4,7 @@ import { MCP_SERVER, MCP_SNIPPETS, MCP_TOOLS, UNTRUSTED } from '../../../shared/
 import { SHARD_COUNT } from '../../../shared/shard';
 import { ExtLink } from '../components/ExtLink';
 import { IconCode } from '../components/icons';
+import { McpInstall } from '../components/McpInstall';
 import { Snippet } from '../components/Snippet';
 import { useTitle } from '../hooks';
 import { href } from '../router';
@@ -33,7 +34,9 @@ export default function Mcp() {
           Node 22.12 or later. The server is the npm package <ExtLink href={NPM_URL}>{MCP_SERVER.npm}</ExtLink>: one file, no runtime dependencies. Your agent starts it on your machine when it needs it.
         </p>
         <div class="snippets">
-          {MCP_SNIPPETS.map(([title, code]) => (
+          <McpInstall />
+          {/* The first snippet is Claude Code, which the picker above already shows. */}
+          {MCP_SNIPPETS.slice(1).map(([title, code]) => (
             <Snippet key={title} title={title} code={code} />
           ))}
         </div>

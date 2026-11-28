@@ -21,6 +21,22 @@ export const MCP_SERVER = {
 
 const CLONE_DIR = BRAND.repo.split('/')[1];
 
+/** The mcpServers entry most clients read, on one line so it fits a card. */
+const MCP_JSON = JSON.stringify({ mcpServers: { [BRAND.slug]: { command: 'npx', args: ['-y', MCP_SERVER.npm] } } });
+
+/**
+ * One way in per popular client, for the client picker on the homepage and the MCP Server page:
+ * a terminal command where the client has one, else the file to put the mcpServers entry in.
+ */
+export const MCP_CLIENTS: readonly { id: string; label: string; where: string; code: string }[] = [
+  { id: 'claude-code', label: 'Claude Code', where: 'In a terminal', code: `claude mcp add ${BRAND.slug} -- npx -y ${MCP_SERVER.npm}` },
+  { id: 'codex', label: 'Codex', where: 'In a terminal', code: `codex mcp add ${BRAND.slug} -- npx -y ${MCP_SERVER.npm}` },
+  { id: 'cursor', label: 'Cursor', where: 'In ~/.cursor/mcp.json', code: MCP_JSON },
+  { id: 'vscode', label: 'Copilot · VS Code', where: 'In a terminal', code: `code --add-mcp '${JSON.stringify({ name: BRAND.slug, command: 'npx', args: ['-y', MCP_SERVER.npm] })}'` },
+  { id: 'gemini', label: 'Gemini CLI', where: 'In a terminal', code: `gemini mcp add ${BRAND.slug} npx -- -y ${MCP_SERVER.npm}` },
+  { id: 'claude-desktop', label: 'Claude Desktop', where: 'In claude_desktop_config.json (Settings, Developer, Edit Config)', code: MCP_JSON },
+];
+
 /**
  * How to run the server, for the Feeds page: the npm package first, then a clone. In the clone
  * snippet `-s` matters: a plain `npm run` prints its own banner to stdout, the JSON-RPC channel.
@@ -28,7 +44,7 @@ const CLONE_DIR = BRAND.repo.split('/')[1];
 export const MCP_SNIPPETS: readonly [title: string, code: string][] = [
   ['Claude Code', `claude mcp add ${BRAND.slug} -- npx -y ${BRAND.slug}-mcp`],
   [
-    'Other clients: an mcpServers entry (check yours for the exact key names)',
+    'Any other client: an mcpServers entry (check yours for the exact key names)',
     `{\n  "mcpServers": {\n    "${BRAND.slug}": {\n      "command": "npx",\n      "args": ["-y", "${BRAND.slug}-mcp"]\n    }\n  }\n}`,
   ],
   ['Behind a proxy: add to the entry (Node 22.21 or later; older versions ignore NODE_USE_ENV_PROXY)', `"env": { "NODE_USE_ENV_PROXY": "1", "HTTPS_PROXY": "http://proxy.example:3128" }`],

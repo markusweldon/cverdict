@@ -20,7 +20,7 @@ import { cveHref, href, navigate } from '../router';
 import { growth, kevGrowth, windowLabel } from '../surge';
 import { TIER_META } from '../tiers';
 import { Countdown, upcomingKev } from './Kev';
-import { Snippet } from './Snippet';
+import { McpInstall } from './McpInstall';
 import { Spark } from './Spark';
 import { TierBar, TierIcon } from './Tier';
 import { IconArrowRight, IconClock, IconCode, IconFilter, IconLayers, IconLock, IconRefresh, IconRss, IconSearch, IconShield, IconSparkle } from './icons';
@@ -348,7 +348,7 @@ function ReceiptsCard({ on, near }: { on: boolean; near: boolean }) {
 
 function MethodCard({ on }: { on: boolean }) {
   return (
-    <Card kind="method" i={0} icon={<IconFilter size={13} />} kicker="Method">
+    <Card kind="method" i={2} icon={<IconFilter size={13} />} kicker="Method">
       <p class="tour__big">
         <Num value={CHIPS.length} on={on} />
         <span class="tour__of"> reason chips</span>
@@ -368,10 +368,10 @@ function MethodCard({ on }: { on: boolean }) {
 
 function AgentsCard() {
   return (
-    <Card kind="agents" i={1} icon={<IconCode size={13} />} kicker="MCP · for AI agents" wide>
+    <Card kind="agents" i={0} icon={<IconCode size={13} />} kicker="MCP · for AI agents" wide>
       <h4 class="tour__title">Verdicts in your agent, one command</h4>
       <p class="tour__text">A read-only MCP server: verdicts, KEV due dates and your dependencies, from the same open data.</p>
-      <Snippet title="Claude Code" code="claude mcp add cverdict -- npx -y cverdict-mcp" />
+      <McpInstall />
       <More to="mcp" label="Other clients" />
     </Card>
   );
@@ -380,7 +380,7 @@ function AgentsCard() {
 function ApiCard() {
   const files = ['signal.json', 'kev.json', 'cve/00…ff.json', 'feeds/*.xml', 'kev-due.ics', 'llms.txt'];
   return (
-    <Card kind="api" i={2} icon={<IconRss size={13} />} kicker="API">
+    <Card kind="api" i={1} icon={<IconRss size={13} />} kicker="API">
       <h4 class="tour__title">Open data, no key</h4>
       <p class="tour__text">The same files this site reads, refreshed hourly. Scores are CC0.</p>
       <p class="tour__chips">
@@ -455,9 +455,9 @@ export function Tour({ stats, kev, batches, counts, total, days }: TourProps) {
       <Band n="03" label="Build with it" note="Bring the verdicts into your tools">
         {(on) => (
           <>
-            <MethodCard on={on} />
             <AgentsCard />
             <ApiCard />
+            <MethodCard on={on} />
           </>
         )}
       </Band>
