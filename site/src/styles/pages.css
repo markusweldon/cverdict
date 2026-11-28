@@ -43,6 +43,11 @@
   grid-area: heat;
 }
 
+/* The grid's gap spaces Today's sections; the general panel + panel margin would double it. */
+.today__grid > .panel + .panel {
+  margin-top: 0;
+}
+
 /* Heating up: four cards in a row, two on tablets, one per row on phones. */
 .heat__list {
   display: grid;
@@ -54,18 +59,33 @@
 }
 
 .heat__card {
+  --glow: var(--likely);
+  position: relative;
   display: grid;
   gap: 8px;
   align-content: start;
   min-width: 0;
-  padding: 12px;
+  padding: 12px 12px 12px 13px;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-left: 3px solid var(--b-likely);
   border-radius: var(--r);
-  background: var(--raised);
+  background:
+    radial-gradient(110% 70% at 0% 0%, color-mix(in srgb, var(--glow) 9%, transparent), transparent 60%),
+    var(--raised);
+  transition:
+    transform 0.25s var(--ease),
+    box-shadow 0.25s var(--ease),
+    border-color 0.2s ease;
+}
+
+.heat__card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px -22px color-mix(in srgb, var(--glow) 55%, rgb(0 0 0 / 0.7));
 }
 
 .heat__card--exploited {
+  --glow: var(--exploited);
   border-left-color: var(--exploited);
 }
 
@@ -88,8 +108,212 @@
 .heat__rank {
   grid-row: span 2;
   color: var(--faint);
-  font-size: 18px;
-  line-height: 1.2;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.heat__card:first-child .heat__rank {
+  color: var(--glow);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--glow) 55%, transparent);
+}
+
+/* Header: a flickering flame, the title and how far back it looks. */
+.heat__head {
+  align-items: flex-start;
+}
+
+.heat__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heat__flame {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--b-exploited);
+  border-radius: var(--r-sm);
+  background: var(--t-exploited);
+  color: var(--exploited);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--exploited) 30%, transparent);
+}
+
+.heat__flame .icon {
+  transform-origin: 50% 90%;
+  animation: flicker 2.6s ease-in-out infinite;
+}
+
+.heat__live {
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.heat__key {
+  display: flex;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.heat__key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* The 7-day strip: one column a day, one glowing tick per piece of evidence, as in the waterfall. */
+.heat__strip {
+  display: grid;
+  gap: 3px;
+}
+
+.heat__days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  align-items: end;
+  height: 34px;
+  padding: 0 1px;
+  border-bottom: 1px solid var(--border);
+}
+
+.heat__day {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding-bottom: 2px;
+}
+
+.heat__day--today {
+  background: linear-gradient(to top, color-mix(in srgb, var(--glow) 8%, transparent), transparent);
+  border-radius: 3px 3px 0 0;
+}
+
+.heat__tick {
+  display: block;
+  width: 100%;
+  max-width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--quiet);
+}
+
+.heat__key .heat__tick {
+  width: 12px;
+}
+
+.heat__tick--hot {
+  background: var(--exploited);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--exploited) 70%, transparent);
+}
+
+.heat__tick--code {
+  background: var(--likely);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--likely) 60%, transparent);
+}
+
+.heat__axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--faint);
+  font-size: 10px;
+}
+
+/* Heat against the hottest card, cooler to hotter. */
+.heat__meter {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--quiet);
+}
+
+.heat__fill {
+  display: block;
+  width: var(--heat, 0%);
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--watch), var(--likely) 55%, var(--exploited));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--exploited) 45%, transparent);
+  transform-origin: left center;
+}
+
+/* Once on screen: cards rise, the days light up left to right, the meters fill. */
+.heat.is-armed .heat__card {
+  opacity: 0;
+}
+
+.heat.is-armed.is-in .heat__card {
+  opacity: 1;
+  animation: tour-in 0.55s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 0.08s);
+}
+
+.heat.is-armed .heat__days .heat__tick {
+  opacity: 0;
+  transform: scaleX(0.3);
+}
+
+.heat.is-armed.is-in .heat__days .heat__tick {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.3s ease,
+    transform 0.4s var(--ease);
+  transition-delay: calc(var(--i, 0) * 0.08s + var(--d, 0) * 0.09s + 0.25s);
+}
+
+.heat.is-armed .heat__fill {
+  transform: scaleX(0);
+}
+
+.heat.is-armed.is-in .heat__fill {
+  transform: none;
+  transition: transform 1s var(--ease) calc(var(--i, 0) * 0.08s + 0.5s);
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1.06, 0.96) rotate(-2deg);
+  }
+  55% {
+    transform: scale(0.97, 1.05) rotate(1.5deg);
+    opacity: 0.9;
+  }
+  80% {
+    transform: scale(1.03, 0.98) rotate(-1deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heat__flame .icon {
+    animation: none;
+  }
+
+  .heat__card {
+    transition: none;
+  }
+
+  .heat__card:hover {
+    transform: none;
+  }
 }
 
 .heat__who {
@@ -153,6 +377,10 @@
 
 /* Phones: the top two, so the feed stays near the top. */
 @media (max-width: 639px) {
+  .heat__key {
+    display: none;
+  }
+
   .heat__list {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -180,6 +408,15 @@
 
 .today__batches {
   grid-area: batches;
+}
+
+/* One rhythm, as on every page: 16 px between panels (the grid gap), and 28 px, the gap under a
+   page head, before a section that opens with a bare title (Everything in CVErdict, Signal and
+   the side column beside it, Patch days). */
+.today__grid > .tour,
+.today__grid > .today__feed,
+.today__grid > .today__side,
+.today__grid > .today__batches {
   margin-top: 12px;
 }
 
@@ -1195,7 +1432,7 @@
   z-index: 10;
   display: grid;
   gap: 8px;
-  margin: 0 calc(var(--gutter) * -1) 14px;
+  margin: 0 calc(var(--gutter) * -1) 12px;
   padding: 10px var(--gutter);
   border-bottom: 1px solid var(--border);
   background: var(--glass);
@@ -2812,7 +3049,7 @@ circle.dc__kev {
 
 .check__paneltitle {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -3783,7 +4020,7 @@ circle.dc__kev {
 }
 
 .sect__title {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .sect__more {
@@ -4128,17 +4365,11 @@ circle.dc__kev {
   display: grid;
   gap: 26px;
   min-width: 0;
-  margin-top: 8px;
 }
 
 .tour__head {
   display: grid;
   gap: 4px;
-}
-
-.tour__head .section__title {
-  font-size: 22px;
-  letter-spacing: -0.015em;
 }
 
 .tour__sub {

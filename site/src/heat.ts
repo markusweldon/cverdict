@@ -50,6 +50,11 @@ export interface HeatCard {
   latest: string;
   /** Other heated CVEs of the same vendor, hottest first (shown as "+N more"). */
   more: string[];
+  /**
+   * The evidence behind the heat, for the card's 7-day strip: each event with points, by day
+   * (0 is HEAT_DAYS - 1 days ago, HEAT_DAYS - 1 is the last 24 hours), the card's other CVEs included.
+   */
+  timeline: { day: number; type: EventType }[];
 }
 
 /** One card per vendor: three Danfoss controllers listed on the same day are one story. Case and spacing do not matter. */
@@ -82,6 +87,9 @@ export function heatingUp(file: Pick<EventsFile, 'generated_at' | 'items'> | nul
     const newest = items.reduce((a, b) => (Date.parse(b.at) > Date.parse(a.at) ? b : a));
     if (heat <= 0 || (newest.tier_after !== 'exploited' && newest.tier_after !== 'likely')) continue;
     const types = new Set(items.map((i) => i.type));
+    const timeline = items
+      .filter((i) => (HEAT_POINTS[i.type] ?? 0) > 0)
+      .map((i) => ({ day: Math.max(0, HEAT_DAYS - 1 - Math.floor(Math.max(0, now - Date.parse(i.at)) / DAY_MS)), type: i.type }));
     cards.push({
       cve,
       vendor: newest.vendor,
@@ -92,6 +100,7 @@ export function heatingUp(file: Pick<EventsFile, 'generated_at' | 'items'> | nul
       what: ORDER.filter((t) => types.has(t) && HEAT_POINTS[t] > 0),
       latest: newest.at,
       more: [],
+      timeline,
     });
   }
   cards.sort((a, b) => b.heat - a.heat || Date.parse(b.latest) - Date.parse(a.latest) || a.cve.localeCompare(b.cve));
@@ -100,11 +109,14 @@ export function heatingUp(file: Pick<EventsFile, 'generated_at' | 'items'> | nul
   for (const c of cards) {
     const key = vendorKey(c);
     const first = lead.get(key);
-    if (first) first.more.push(c.cve);
-    else {
+    if (first) {
+      first.more.push(c.cve);
+      first.timeline.push(...c.timeline);
+    } else {
       lead.set(key, c);
       out.push(c);
     }
   }
-  return out.slice(0, max);
+  const byWeight = (a: { day: number; type: EventType }, b: { day: number; type: EventType }) => a.day - b.day || HEAT_POINTS[b.type] - HEAT_POINTS[a.type];
+  return out.slice(0, max).map((c) => ({ ...c, timeline: c.timeline.sort(byWeight) }));
 }

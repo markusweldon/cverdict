@@ -83,7 +83,7 @@ function Band({ n, label, note, children }: { n: string; label: string; note: st
         el.classList.add('is-in');
         io.disconnect();
       },
-      { rootMargin: '0px 0px -20% 0px', threshold: 0 },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0 },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -241,7 +241,7 @@ function WokeCard({ on, near }: { on: boolean; near: boolean }) {
 
 function ExploreCard({ counts, total, days, on }: { counts: Record<Tier, number> | null; total: number | null; days: number; on: boolean }) {
   return (
-    <Card kind="explore" i={0} icon={<IconSearch size={13} />} kicker="Explore">
+    <Card kind="explore" i={1} icon={<IconSearch size={13} />} kicker="Explore">
       {counts && total !== null ? (
         <>
           <p class="tour__big">
@@ -271,7 +271,7 @@ function PatchCard({ batches, on }: { batches: BatchesFile | null; on: boolean }
   const b = batches?.batches.length ? [...batches.batches].sort((x, y) => y.count - x.count)[0] : null;
   const passed = b ? b.by_tier.exploited + b.by_tier.likely : 0;
   return (
-    <Card kind="patch" i={1} icon={<IconLayers size={13} />} kicker="Patch days">
+    <Card kind="patch" i={2} icon={<IconLayers size={13} />} kicker="Patch days">
       {b ? (
         <>
           <p class="tour__big">
@@ -296,7 +296,7 @@ function TrendsCard({ stats, on }: { stats: StatsFile | null; on: boolean }) {
   const g = stats ? growth(stats.monthly, stats.generated_at) : null;
   const kg = stats ? kevGrowth(stats.monthly, g) : null;
   return (
-    <Card kind="trends" i={2} icon={<IconSparkle size={13} />} kicker="Trends">
+    <Card kind="trends" i={0} icon={<IconSparkle size={13} />} kicker="Trends">
       {stats && g ? (
         <>
           <p class="tour__big">
@@ -311,7 +311,7 @@ function TrendsCard({ stats, on }: { stats: StatsFile | null; on: boolean }) {
       ) : (
         <p class="tour__text">CVE volume since 1999, and why most of it is not risk.</p>
       )}
-      <More to="surge" label="Read the surge" />
+      <More to="surge" label="See the trends" />
     </Card>
   );
 }
@@ -445,9 +445,9 @@ export function Tour({ stats, kev, batches, counts, total, days }: TourProps) {
       <Band n="02" label="Look into it" note="Dig into the data and the proof">
         {(on) => (
           <>
+            <TrendsCard stats={stats} on={on} />
             <ExploreCard counts={counts} total={total} days={days} on={on} />
             <PatchCard batches={batches} on={on} />
-            <TrendsCard stats={stats} on={on} />
             <ReceiptsCard on={on} near={near} />
           </>
         )}

@@ -53,9 +53,9 @@ export const NAV_GROUPS: readonly { id: string; label: string; items: readonly N
     id: 'look',
     label: 'Look into it',
     items: [
+      { name: 'surge', path: 'surge', label: 'Trends', hint: 'The surge in volume, and what it is not' },
       { name: 'explore', path: 'explore', label: 'Explore', hint: 'Every CVE of the window, by day' },
       { name: 'batches', path: 'batches', label: 'Patch days', hint: 'Batches and bulk releases' },
-      { name: 'surge', path: 'surge', label: 'Trends', hint: 'The surge in volume, and what it is not' },
       { name: 'receipts', path: 'receipts', label: 'Receipts', hint: 'Every hit and miss, against CISA' },
     ],
   },

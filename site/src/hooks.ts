@@ -231,7 +231,7 @@ export function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number]
  * parts of it) and adds `is-in` once it is on screen, so its CSS transitions play there. Without
  * IntersectionObserver, or with reduced motion, nothing is armed and everything shows at once.
  */
-export function useReveal<T extends HTMLElement>(): RefObject<T | null> {
+export function useReveal<T extends HTMLElement>(deps: readonly unknown[] = []): RefObject<T | null> {
   const ref = useRef<T>(null);
   useEffect(() => {
     const el = ref.current;
@@ -243,12 +243,12 @@ export function useReveal<T extends HTMLElement>(): RefObject<T | null> {
         el.classList.add('is-in');
         io.disconnect();
       },
-      // Once its top is a fifth of the way up the screen, so the animation plays where it is seen.
-      // Threshold 0 so a section taller than the screen still triggers.
-      { rootMargin: '0px 0px -20% 0px', threshold: 0 },
+      // Once its top is a tenth of the way up the screen: the animation plays where it is seen,
+      // without a blank strip waiting at the bottom. Threshold 0 so a tall section still triggers.
+      { rootMargin: '0px 0px -10% 0px', threshold: 0 },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, deps);
   return ref;
 }
