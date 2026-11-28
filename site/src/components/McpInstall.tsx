@@ -1,5 +1,5 @@
 /**
- * The MCP install snippet with a client picker (Claude Code, Codex, Cursor, VS Code, Gemini CLI,
+ * The MCP install snippet with a client picker (Claude Code, Codex, Cursor, Copilot in VS Code, Gemini CLI,
  * Claude Desktop), on the homepage's MCP card and the MCP Server page. The last pick is remembered
  * in this browser, so both places open on the same client.
  */

@@ -105,7 +105,7 @@ describe('package and docs', () => {
   });
 
   it('gives each client picker entry a command that starts the published package', () => {
-    expect(MCP_CLIENTS.map((c) => c.label)).toEqual(['Claude Code', 'Codex', 'Cursor', 'VS Code', 'Gemini CLI', 'Claude Desktop']);
+    expect(MCP_CLIENTS.map((c) => c.label)).toEqual(['Claude Code', 'Codex', 'Cursor', 'Copilot · VS Code', 'Gemini CLI', 'Claude Desktop']);
     expect(MCP_CLIENTS[0].code).toBe(MCP_SNIPPETS[0][1]);
     expect(MCP_CLIENTS.find((c) => c.id === 'codex')?.code).toBe('codex mcp add cverdict -- npx -y cverdict-mcp');
     expect(MCP_CLIENTS.find((c) => c.id === 'gemini')?.code).toBe('gemini mcp add cverdict npx -- -y cverdict-mcp');

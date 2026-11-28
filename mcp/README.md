@@ -25,7 +25,7 @@ codex mcp add cverdict -- npx -y cverdict-mcp
 # Gemini CLI
 gemini mcp add cverdict npx -- -y cverdict-mcp
 
-# VS Code
+# GitHub Copilot in VS Code
 code --add-mcp '{"name":"cverdict","command":"npx","args":["-y","cverdict-mcp"]}'
 ```
 

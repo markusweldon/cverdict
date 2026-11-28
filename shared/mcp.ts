@@ -32,7 +32,7 @@ export const MCP_CLIENTS: readonly { id: string; label: string; where: string; c
   { id: 'claude-code', label: 'Claude Code', where: 'In a terminal', code: `claude mcp add ${BRAND.slug} -- npx -y ${MCP_SERVER.npm}` },
   { id: 'codex', label: 'Codex', where: 'In a terminal', code: `codex mcp add ${BRAND.slug} -- npx -y ${MCP_SERVER.npm}` },
   { id: 'cursor', label: 'Cursor', where: 'In ~/.cursor/mcp.json', code: MCP_JSON },
-  { id: 'vscode', label: 'VS Code', where: 'In a terminal', code: `code --add-mcp '${JSON.stringify({ name: BRAND.slug, command: 'npx', args: ['-y', MCP_SERVER.npm] })}'` },
+  { id: 'vscode', label: 'Copilot · VS Code', where: 'In a terminal', code: `code --add-mcp '${JSON.stringify({ name: BRAND.slug, command: 'npx', args: ['-y', MCP_SERVER.npm] })}'` },
   { id: 'gemini', label: 'Gemini CLI', where: 'In a terminal', code: `gemini mcp add ${BRAND.slug} npx -- -y ${MCP_SERVER.npm}` },
   { id: 'claude-desktop', label: 'Claude Desktop', where: 'In claude_desktop_config.json (Settings, Developer, Edit Config)', code: MCP_JSON },
 ];
