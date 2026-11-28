@@ -2433,11 +2433,9 @@ circle.dc__kev {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* The knob stays at hand while you scroll the feed. */
+  /* A full-bleed row under the hero. Not pinned: on a phone it took a fifth of the screen all the
+     way down, and the bar is a setting you change now and then, not while reading. */
   .today__knob {
-    position: sticky;
-    top: calc(var(--top-h, var(--header-h)) - 1px);
-    z-index: 15;
     margin: 0 calc(var(--gutter) * -1);
   }
 
@@ -4891,9 +4889,16 @@ circle.dc__kev {
 .tour__checkgrid {
   display: grid;
   grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  grid-template-areas:
+    'main flow'
+    'more flow';
   align-items: center;
-  gap: 28px;
+  gap: 8px 28px;
 }
+
+.tour__checkmain { grid-area: main; }
+.tour__checkgrid > .flow { grid-area: flow; }
+.tour__checkmore { grid-area: more; }
 
 .tour__checkmain {
   display: flex;
@@ -4918,8 +4923,10 @@ circle.dc__kev {
 }
 
 @media (max-width: 1180px) {
+  /* Stacked, the link to the Check page comes last, under the diagram. */
   .tour__checkgrid {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'main' 'flow' 'more';
     gap: 18px;
   }
 }
@@ -4981,4 +4988,79 @@ circle.dc__kev {
     border-radius: var(--r);
     font-size: 12px;
   }
+}
+
+/* KEV Clock: the deadlines after the next one, with their dates. */
+.tour__due {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+/* Method: points per chip, as small bars on one scale. */
+.tour__pts {
+  display: grid;
+  gap: 5px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.tour__pts li {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 8px;
+}
+
+.tour__ptlabel {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour__ptbar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.tour__ptbar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w);
+  border-radius: inherit;
+  background: var(--c);
+  transform-origin: left center;
+}
+
+.tour__band.is-armed.is-in .tour__ptbar::after {
+  animation: tour-bar 0.7s var(--ease) 0.3s both;
+}
+
+@keyframes tour-bar {
+  from { transform: scaleX(0); }
+  to { transform: none; }
+}
+
+.tour__ptval {
+  color: var(--text);
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__band.is-armed.is-in .tour__ptbar::after { animation: none; }
+}
+
+/* MCP: a first question to try once it is installed. */
+.tour__ask {
+  margin: 0;
+  color: var(--text);
+  font-size: 12.5px;
 }

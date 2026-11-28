@@ -8,6 +8,7 @@
  */
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { BRAND } from '../../../shared/brand';
 import { type BatchesFile, type KevEntry, KNOB_DEFAULT, type StatsFile, type Tier } from '../../../shared/contract';
 import { CHIPS } from '../../../shared/model';
 import { CLI_LINE } from '../check/ci';
@@ -239,16 +240,18 @@ function CheckCard() {
     <Card kind="check" i={0} icon={<IconLock size={13} />} kicker="Check · Am I affected?" lead>
       <div class="tour__checkgrid">
         <div class="tour__checkmain">
-          <h4 class="tour__title">Check your dependencies in one paste</h4>
+          <h4 class="tour__title">Am I affected? Find out in seconds</h4>
           <p class="tour__text">{CHECK_TEXT[way]}</p>
           <Picker label="How to check" options={CHECK_WAYS} value={way} onPick={setWay} />
           {way === 'repo' && <CheckRepo />}
           {way === 'file' && <CheckFile />}
           {way === 'ci' && <CheckCi />}
-          <More to="check" label="How it works" />
         </div>
         {/* The same diagram as the Check page, for the chosen tab. */}
         <CheckFlow mode={way} compact />
+        <div class="tour__checkmore">
+          <More to="check" label="How it works" />
+        </div>
       </div>
     </Card>
   );
@@ -256,7 +259,9 @@ function CheckCard() {
 
 function KevCard({ entries }: { entries: readonly KevEntry[] | null }) {
   const now = useNow(60_000);
-  const next = entries ? upcomingKev(entries, now).find((e) => kevDeadline(e.due_date) >= now) : undefined;
+  const upcoming = entries ? upcomingKev(entries, now).filter((e) => kevDeadline(e.due_date) >= now) : [];
+  const next = upcoming[0];
+  const after = upcoming.slice(1, 4);
   const soon = entries
     ? entries.filter((e) => {
         const left = kevDeadline(e.due_date) - now;
@@ -276,6 +281,20 @@ function KevCard({ entries }: { entries: readonly KevEntry[] | null }) {
             <span class="muted">{vendorProduct(next.vendor, next.product)}</span>
           </p>
           {soon > 0 && <p class="tour__chips"><span class="tour__chip tour__chip--hot">{fmtInt(soon)} due within 72 hours</span></p>}
+          {after.length > 0 && (
+            <ul class="tour__list" aria-label="Then">
+              {after.map((e) => (
+                <li key={e.id}>
+                  <IconClock size={12} />
+                  <a href={cveHref(e.id)} class="mono">
+                    {e.id}
+                  </a>
+                  <span class="muted">{vendorProduct(e.vendor, e.product)}</span>
+                  <span class="tour__due mono">{fmtDate(e.due_date)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       ) : (
         <p class="tour__text">Every CISA KEV due date, counting down, with ransomware and forensic flags.</p>
@@ -314,7 +333,7 @@ function WokeCard({ on, near }: { on: boolean; near: boolean }) {
             </p>
           )}
           <ul class="tour__list">
-            {w.items.slice(0, 2).map((i) => (
+            {w.items.slice(0, 3).map((i) => (
               <li key={i.id}>
                 <TierIcon tier={tierAt(i.row, KNOB_DEFAULT)} size={12} />
                 <a href={cveHref(i.id)} class="mono">
@@ -440,6 +459,10 @@ function ReceiptsCard({ on, near }: { on: boolean; near: boolean }) {
   );
 }
 
+/** A few chips and their points, straight from the model: exploitation first, then exploit code. */
+const SAMPLE_CHIPS = ['kev.listed', 'x.metasploit', 'x.nuclei', 'epss.high', 'x.poc'].flatMap((id) => CHIPS.filter((c) => c.id === id));
+const SAMPLE_MAX = Math.max(1, ...SAMPLE_CHIPS.map((c) => c.points));
+
 function MethodCard({ on }: { on: boolean }) {
   return (
     <Card kind="method" i={2} icon={<IconFilter size={13} />} kicker="Method">
@@ -448,6 +471,15 @@ function MethodCard({ on }: { on: boolean }) {
         <span class="tour__of"> reason chips</span>
       </p>
       <p class="tour__text">Each score is a plain sum of them, from a base of 15. No machine learning, no LLM-written text: every point links to its evidence.</p>
+      <ul class="tour__pts" aria-label="Points for some of the chips">
+        {SAMPLE_CHIPS.map((c) => (
+          <li key={c.id} style={{ '--w': `${(c.points / SAMPLE_MAX) * 100}%` }}>
+            <span class="tour__ptlabel">{c.short}</span>
+            <span class="tour__ptbar" aria-hidden="true" />
+            <span class="tour__ptval mono">+{c.points}</span>
+          </li>
+        ))}
+      </ul>
       <p class="tour__legend">
         {(['exploited', 'likely', 'watch', 'quiet'] as const).map((t) => (
           <span key={t}>
@@ -466,6 +498,9 @@ function AgentsCard() {
       <h4 class="tour__title">Verdicts in your agent, one command</h4>
       <p class="tour__text">A read-only MCP server: verdicts, KEV due dates and your dependencies, from the same open data.</p>
       <McpInstall />
+      <p class="tour__ask">
+        <span class="muted">Then ask:</span> “Which KEV deadlines are due this week?”
+      </p>
       <More to="mcp" label="Other clients" />
     </Card>
   );
@@ -484,6 +519,7 @@ function ApiCard() {
           </span>
         ))}
       </p>
+      <Snippet title="Try it, no key" code={`curl -s ${BRAND.siteUrl}/data/v1/meta.json`} />
       <More to="feeds" label="Feeds and files" />
     </Card>
   );
