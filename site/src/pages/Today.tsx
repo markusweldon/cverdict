@@ -9,7 +9,7 @@ import { freshness } from '../components/Chrome';
 import { FilterBar } from '../components/FilterBar';
 import { HeatStrip } from '../components/HeatStrip';
 import { Tour } from '../components/Tour';
-import { IconArrowRight, IconLayers } from '../components/icons';
+import { IconArrowRight } from '../components/icons';
 import { kevUrgency, KevStrip } from '../components/Kev';
 import { Knob } from '../components/Knob';
 import { NewExploitedLegend } from '../components/NewExploited';
@@ -622,7 +622,7 @@ export default function Today() {
         <section class="today__batches" aria-labelledby="bat-h">
           <header class="section__head">
             <h2 id="bat-h" class="section__title">
-              <IconLayers size={16} /> Batches <span class="section__count">largest in {meta.status === 'ready' ? meta.data.window.days : 30} days</span>
+              Patch days <span class="section__count">largest batches in {meta.status === 'ready' ? meta.data.window.days : 30} days</span>
             </h2>
             <a class="section__more" href={href('batches')}>
               All {batches.status === 'ready' ? plural(batches.data.batches.length, 'batch', 'batches') : 'batches'} <IconArrowRight size={12} />
