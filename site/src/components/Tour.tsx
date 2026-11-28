@@ -8,7 +8,7 @@
  */
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { BRAND } from '../../../shared/brand';
+import { BRAND, REPO_URL } from '../../../shared/brand';
 import { type BatchesFile, type KevEntry, KNOB_DEFAULT, type StatsFile, type Tier } from '../../../shared/contract';
 import { CHIPS } from '../../../shared/model';
 import { CLI_LINE } from '../check/ci';
@@ -246,6 +246,15 @@ function CheckCard() {
           {way === 'repo' && <CheckRepo />}
           {way === 'file' && <CheckFile />}
           {way === 'ci' && <CheckCi />}
+          <p class="tour__proof">
+            {way === 'ci' ? (
+              <>
+                Don’t take our word for it: <a href={`${REPO_URL}/tree/main/cli`}>read the Action’s source</a>. It only downloads the public index.
+              </>
+            ) : (
+              <>Don’t take our word for it: open your browser’s network tab while it runs. Public files come in from cverdict.dev{way === 'repo' ? ' and GitHub' : ''}, and nothing goes back.</>
+            )}
+          </p>
         </div>
         {/* The same diagram as the Check page, for the chosen tab. */}
         <CheckFlow mode={way} compact />

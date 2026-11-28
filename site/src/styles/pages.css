@@ -5064,3 +5064,17 @@ circle.dc__kev {
   color: var(--text);
   font-size: 12.5px;
 }
+
+/* Check: the invitation to verify it, as on the Check page. */
+.tour__proof {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.tour__proof a {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
