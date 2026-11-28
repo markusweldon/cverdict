@@ -2276,8 +2276,34 @@ function fingerprint(f) {
 		f.file
 	].join("\0")).digest("hex").slice(0, 32);
 }
-`${BRAND.repo}`, BRAND.name, `${BRAND.slug}`, `${REPO_URL}`;
+// shared/mcp.ts
+/**
+* Copy and identity of the MCP server (mcp/): server name, instructions, tool titles and
+* descriptions, verdict phrases and messages. Imported by the server and by the Feeds page, so the
+* docs and `tools/list` cannot drift apart. Imports nothing but brand strings and types, so zod and
+* the MCP SDK can never reach the site bundle (mcp/test/copy.test.ts checks this).
+*/
+var MCP_SERVER = {
+	/** Reverse-DNS name in the namespace the MCP Registry uses for GitHub publishers. */
+	name: `io.github.${BRAND.repo}`,
+	title: BRAND.name,
+	/** Same as mcp/package.json (checked by a test). */
+	version: "0.2.0",
+	/** npm package name: `npx -y cverdict-mcp`. */
+	npm: `${BRAND.slug}-mcp`,
+	/** Where the server is documented. */
+	docs: `${REPO_URL}/blob/main/mcp/README.md`
+};
 var CLONE_DIR = BRAND.repo.split("/")[1];
+JSON.stringify({ mcpServers: { [BRAND.slug]: {
+	command: "npx",
+	args: ["-y", MCP_SERVER.npm]
+} } });
+`${BRAND.slug}${MCP_SERVER.npm}`, `${BRAND.slug}${MCP_SERVER.npm}`, `${JSON.stringify({
+	name: BRAND.slug,
+	command: "npx",
+	args: ["-y", MCP_SERVER.npm]
+})}`, `${BRAND.slug}${MCP_SERVER.npm}`;
 `${BRAND.slug}${BRAND.slug}`, `${BRAND.slug}${BRAND.slug}`, `${REPO_URL}${CLONE_DIR}${BRAND.slug}`;
 /** Data bases the server tries, in order: the data branch on GitHub, then the site's /data/ rewrite. */
 var MCP_DATA_BASES = [`${RAW_DATA_URL}/v1/`, `${BRAND.siteUrl}/data/v1/`];
