@@ -1301,14 +1301,14 @@ function surfaces(T: Theme): string {
   b += hd;
   const items: { name: string; route: string; iconName: string; body: string; color: string }[] = [
     { name: 'Today', route: '/', iconName: 'Scan', body: 'The noise meter, the waterfall, Heating up, a card for every page and the signal feed.', color: T.accent },
-    { name: 'CVE pages', route: '/cve/<id>', iconName: 'Info', body: 'The verdict, the score chip by chip, what we could not see, "Copy as ticket".', color: T.accent },
+    { name: 'Check', route: '/check', iconName: 'Lock', body: 'Am I affected? A public GitHub repo, a lockfile or an SBOM, matched in your browser.', color: T.ai },
     { name: 'KEV Clock', route: '/kev', iconName: 'Clock', body: 'Every KEV due date counting down, with ransomware and forensic flags.', color: T.ink.exploited },
     { name: 'Woke Up', route: '/woke', iconName: 'Alert', body: 'Old CVEs that gained exploitation evidence in the last 30 days.', color: T.ink.exploited },
-    { name: 'Receipts', route: '/receipts', iconName: 'Check', body: 'Flagged before KEV, next to CVSS 7 and EPSS 10%, every hit and miss.', color: T.ok },
-    { name: 'Check', route: '/check', iconName: 'Lock', body: 'Am I affected? A public GitHub repo, a lockfile or an SBOM, matched in your browser.', color: T.ai },
+    { name: 'Trends', route: '/surge', iconName: 'Sparkle', body: 'The surge since 1999, KEV additions per 1,000 CVEs, Time to KEV and AI credits.', color: T.ink.watch },
     { name: 'Explore', route: '/explore', iconName: 'Search', body: 'Every CVE of the window, searchable and filterable by day.', color: T.ink.likely },
     { name: 'Patch days', route: '/batches', iconName: 'Layers', body: 'Batches and bulk releases, and the few CVEs in each that matter.', color: T.ink.likely },
-    { name: 'Trends', route: '/surge', iconName: 'Sparkle', body: 'The surge since 1999, KEV additions per 1,000 CVEs, Time to KEV and AI credits.', color: T.ink.watch },
+    { name: 'Receipts', route: '/receipts', iconName: 'Check', body: 'Flagged before KEV, next to CVSS 7 and EPSS 10%, every hit and miss.', color: T.ok },
+    { name: 'CVE pages', route: '/cve/<id>', iconName: 'Info', body: 'The verdict, the score chip by chip, what we could not see, "Copy as ticket".', color: T.accent },
     { name: 'Method', route: '/method', iconName: 'Filter', body: 'Every chip, its points and the known blind spots.', color: T.ink.watch },
     { name: 'MCP', route: '/mcp', iconName: 'Terminal', body: 'Add the read-only MCP server to an AI agent in one command.', color: T.ai },
     { name: 'API', route: '/feeds', iconName: 'Rss', body: 'Atom and iCalendar feeds, the open JSON files and llms.txt.', color: T.muted },
